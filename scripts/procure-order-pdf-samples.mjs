@@ -10,7 +10,7 @@ await mkdir(outputDirectory, { recursive: true });
 
 const tenant = {
   navn: "Fjordholm Drift A/S", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C",
-  fakturaModtagelse: "faktura@fjordholm.example", procureAppUrl: "https://procure-preview.example.invalid",
+  fakturaModtagelse: "faktura@fjordholm.example", faktureringsInstruktioner: ["Fakturaen skal være i PDF-format."], procureAppUrl: "https://procure-preview.example.invalid",
 };
 const supplier = {
   navn: "Nordisk Materialehandel A/S", adresse: "Industrivej 12", postnr: "8200", by: "Aarhus N", kundenummer: "FH-1042",

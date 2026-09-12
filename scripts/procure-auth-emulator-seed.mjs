@@ -76,7 +76,7 @@ export async function seedProcureAuthEmulator() {
   const now = Date.now();
   const tenantBase = {
     _findes: true,
-    virksomhed: { navn: "Fjordholm Drift A/S", cvr: "00000000", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@fjordholm.example", procureAppUrl: "https://procure-preview.example.invalid" },
+    virksomhed: { navn: "Fjordholm Drift A/S", cvr: "00000000", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@fjordholm.example", faktureringsInstruktioner: ["Fakturaen skal være i PDF-format."], procureAppUrl: "https://procure-preview.example.invalid" },
     abonnement: { status: "aktiv" },
     moduler: { indkoeb: true, oekonomi: true },
     brugere: Object.fromEntries(Object.values(users).filter((user) => user.tenant === TENANT_A).map((user) => [user.uid, { email: user.email, navn: user.name, rolle: user.role }])),
@@ -97,6 +97,10 @@ export async function seedProcureAuthEmulator() {
       "lager-ordre-1": { id: "lager-ordre-1", nummer: "BST-2026-00042", leverandoerId: "nordisk", status: "sendt", revision: 1, godkendtRevision: 1,
         leveringssted: "Hovedlager · rampe 2", leveringsstedId: "hovedlager", leveringsadresse: "Lagervej 8", leveringspostnr: "8000", leveringsby: "Aarhus C",
         oensketDato: "2026-09-30", oprettetAf: users.buyer.uid, oprettetMs: 1789120800000, bestillerNavn: users.buyer.name, bestillerEmail: users.buyer.email,
+        linjer: { tape: { vare: "Pakketape, klar 48 mm", varenummer: "EMB-1001", antal: 10, enhed: "ruller", prisPrEnhedOere: 2400, forbrugsvareId: "tape", varegruppe: "Emballage" } } },
+      "mail-ordre-1": { id: "mail-ordre-1", nummer: "BST-2026-00043", leverandoerId: "nordisk", status: "godkendt", revision: 5, godkendtRevision: 5,
+        leveringssted: "Hovedlager · rampe 2", leveringsstedId: "hovedlager", leveringsadresse: "Lagervej 8", leveringspostnr: "8000", leveringsby: "Aarhus C",
+        hurtigstMuligt: true, oprettetAf: users.buyer.uid, oprettetMs: 1789120800000, bestillerNavn: users.buyer.name, bestillerEmail: users.buyer.email,
         linjer: { tape: { vare: "Pakketape, klar 48 mm", varenummer: "EMB-1001", antal: 10, enhed: "ruller", prisPrEnhedOere: 2400, forbrugsvareId: "tape", varegruppe: "Emballage" } } },
     },
     procureQrMaerkater: {

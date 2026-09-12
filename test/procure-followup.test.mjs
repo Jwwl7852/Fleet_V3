@@ -43,7 +43,7 @@ describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
   it("er deterministisk, revisionslåst og sendes som faktisk payload", async () => {
     const ordre = order();
     const supplier = { navn: "Nordisk Drift", adresse: "Industrivej 12", postnr: "8200", by: "Aarhus N" };
-    const company = { navn: "Fjordholm A/S", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@fjordholm.example" };
+    const company = { navn: "Fjordholm A/S", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@fjordholm.example", faktureringsInstruktioner: ["Fakturaen skal være i PDF-format."] };
     const preview = createOrderPdfBytes(ordre, supplier, company);
     const archive = createOrderPdfBytes(ordre, supplier, company);
     assert.deepEqual(preview, archive);
@@ -62,11 +62,14 @@ describe("ordre-PDF: preview, transport og arkiv er samme bytekontrakt", () => {
     const data = ordrePdfData(ordre, supplier, company);
     assert.deepEqual(data.lines.map((line) => [line.navn, line.antal]), [["Strækfilm", 80], ["Pakketape", 120]]);
     assert.ok(data.lines.every((line) => !("prisOere" in line)));
+    assert.deepEqual(data.invoiceInstructions, ["Fakturaen skal være i PDF-format."]);
     assert.equal(validerOrdrePdfGrundlag(ordre, supplier, company).ok, true);
     const pdfHex = Buffer.from(preview).toString("latin1");
     const encoded = (value) => Buffer.from(value, "latin1").toString("hex");
     assert.doesNotMatch(pdfHex, new RegExp(`${encoded("VAREMODTAGELSE")}|${encoded("Scan for at åbne bestillingen")}`));
     assert.match(pdfHex, new RegExp(encoded("Angiv vores bestillingsnummer BST-2026-00888 på følgesedlen og fakturaen.")));
+    assert.match(pdfHex, new RegExp(encoded("Fakturaen skal være i PDF-format.")));
+    assert.ok(pdfHex.indexOf(encoded("FAKTURERING")) < pdfHex.indexOf(encoded("BESTILLER")), "Fakturering skal stå før bestillerfeltet på første side");
     assert.equal(ordreEnhed({ antal: 1, enhed: "kasser", antalPrBestillingsenhed: 12, grundenhed: "stk." }), "kasse á 12 stk.");
     assert.equal(ordreEnhed({ antal: 6, enhed: "kasse", antalPrBestillingsenhed: 12, grundenhed: "stk." }), "kasser á 12 stk.");
   });

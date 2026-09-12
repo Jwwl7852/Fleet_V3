@@ -6333,15 +6333,20 @@ export const ordreMailSend = onCall({
   }
   const sprog = sprogOenske || (erGyldigtSprog(lev.sprog) ? lev.sprog : STANDARD_SPROG);
 
-  const indhold = ordreMailIndhold(ordre, { leverandoer: lev, sprog });
+  const virksomhed = (await rod.child("virksomhed").once("value")).val() || {};
+  const indhold = ordreMailIndhold(ordre, { leverandoer: lev, sprog, virksomhed });
   const emneOenske = saniterHeaderFelt(d.emne, 250);
   const emne = emneOenske && emneOenske.includes(ordre.nummer)
     ? emneOenske
     : saniterHeaderFelt(`${emneOenske || indhold.emne} · ${ordre.nummer}`, 250);
   const ledsagetekst = valideTekst(d.ledsagetekst) || "";
-  const tekst = valideTekst(ledsagetekst
-    ? `${ledsagetekst}\n\n${indhold.brodtekst}`
-    : indhold.brodtekst);
+  /* Det fulde mailforslag fra den aktuelle klient indeholder allerede den
+     serverberegnede faktureringsblok. Ældre klienter sender kun en kort
+     ledsagetekst; dér tilføjes hele det kanoniske indhold. Serveren accepterer
+     aldrig en tekst, hvor kundens fakturamail/PO-instruks er redigeret væk. */
+  const tekst = valideTekst(ledsagetekst && ledsagetekst.includes(indhold.faktureringsblok)
+    ? ledsagetekst
+    : ledsagetekst ? `${ledsagetekst}\n\n${indhold.brodtekst}` : indhold.brodtekst);
   if (!tekst) throw new HttpsError("internal", "Mailindholdet kunne ikke bygges.");
 
   const cc = (kortStreng(d.cc, 500) || "").split(/[;,]/).map((mail) => mail.trim()).filter(Boolean);
@@ -7121,8 +7126,10 @@ export const procureModtagelseRegistrer = onCall({ region: REGION }, async (req)
       tenantData.forbrugsvarebevaegelser = tenantData.forbrugsvarebevaegelser || {};
       tenantData.forbrugsvarebevaegelser[movementId] = stock.movement;
       lagerbevaegelser[movementId] = stock.movement;
+      const persistedLocation = Object.fromEntries(Object.entries(stock.location)
+        .filter(([, value]) => value !== null && value !== undefined));
       inventoryEffects.push({ movementId, itemId: orderLine.vareId, itemName: orderLine.navn,
-        ...stock.location, before: stock.movement.foer, received: converted.quantity, after: stock.movement.efter });
+        ...persistedLocation, before: stock.movement.foer, received: converted.quantity, after: stock.movement.efter });
     }
     ordre.modtagelser = { ...(ordre.modtagelser || {}), [modtagelseId]: {
       ...bygget.receipt, modtagetAfNavn: actorName, dokumenter, lagerbevaegelser,

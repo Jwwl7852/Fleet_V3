@@ -1,7 +1,7 @@
 /* Deterministisk leverandørordre-PDF. Filen kopieres til functions/delt, så
    preview, mailvedhæftning og arkiv bruger præcis samme bytegenerator. */
 
-export const ORDRE_PDF_SKABELON_VERSION = 4;
+export const ORDRE_PDF_SKABELON_VERSION = 5;
 
 const PAGE = { width: 595, height: 842, margin: 32, footerTop: 805 };
 const COLOR = {
@@ -29,6 +29,15 @@ const UNIT_FORMS = Object.freeze({
 
 const asText = (value) => String(value ?? "").trim();
 const pick = (...values) => values.map(asText).find(Boolean) || "";
+
+function configuredLines(...values) {
+  const lines = values.flatMap((value) => {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === "object") return Object.values(value);
+    return asText(value).split(/\r?\n/);
+  }).map(asText).filter(Boolean);
+  return [...new Set(lines)];
+}
 
 function unitForms(unit) {
   const raw = asText(unit);
@@ -129,6 +138,10 @@ export function ordrePdfData(ordre = {}, leverandoer = {}, tenant = {}) {
       asap, date: asap ? "" : formatDate(ordre.oensketDato || ordre.wantedDate),
     },
     invoiceEmail: pick(tenant.fakturaModtagelse, tenant.fakturamodtagelse, tenant.fakturaEmail, tenant.invoiceEmail),
+    invoiceInstructions: configuredLines(
+      ordre.faktureringsInstruktioner, ordre.fakturaInstruktioner, ordre.invoiceInstructions,
+      tenant.faktureringsInstruktioner, tenant.fakturaInstruktioner, tenant.invoiceInstructions,
+    ),
     lines, receiptUrl: ordreModtagelsesUrl(ordre, tenant), qr: tenant.procureReceiptQr || null,
   };
 }
@@ -246,20 +259,32 @@ function buildDocument(data) {
     text(data.customerNumber, 318, 135, { size: 13 });
   }
 
-  const gap = 10; const half = (PAGE.width - PAGE.margin * 2 - gap) / 2;
-  block("BESTILLER", PAGE.margin, 176, half, 112, [data.buyer.name, ...data.buyer.address, `Kontakt: ${data.buyer.contactName}`, data.buyer.contactEmail]);
-  block("LEVERANDØR", PAGE.margin + half + gap, 176, half, 112, [data.supplier.name, ...data.supplier.address]);
-  rect(PAGE.margin, 302, PAGE.width - PAGE.margin * 2, 104, { fill: COLOR.white, stroke: COLOR.border });
-  sectionHeader("LEVERING", PAGE.margin, 302, PAGE.width - PAGE.margin * 2);
-  paragraph(data.delivery.name, PAGE.margin + 14, 342, 235, { size: 10.8, bold: true, leading: 15 });
-  data.delivery.address.forEach((row, index) => text(row, PAGE.margin + 14, 361 + index * 15, { size: 9.5 }));
-  line(297, 338, 297, 390, COLOR.border, 0.8);
-  text("ØNSKET LEVERING", 318, 337, { size: 10.5, bold: true, color: COLOR.teal });
-  text(data.delivery.request, 318, 354, { size: 15, bold: true });
-  text("Mellem 7.00-15.00", 318, 374, { size: 9.5 });
-  text("(lagerets åbningstider)", 318, 388, { size: 9.5 });
+  const invoiceTop = 176; const fullWidth = PAGE.width - PAGE.margin * 2;
+  const instructionLines = data.invoiceInstructions.flatMap((instruction) => wrap(instruction, fullWidth - 28, 9.2));
+  const invoiceHeight = 96 + instructionLines.length * 12;
+  rect(PAGE.margin, invoiceTop, fullWidth, invoiceHeight, { fill: COLOR.white, stroke: COLOR.border });
+  sectionHeader("FAKTURERING", PAGE.margin, invoiceTop, fullWidth);
+  text("Send faktura til:", PAGE.margin + 14, invoiceTop + 38, { size: 9.5 });
+  paragraph(data.invoiceEmail, PAGE.margin + 14, invoiceTop + 53, fullWidth - 28, { size: 10.2, bold: true, leading: 13 });
+  paragraph(`Angiv vores bestillingsnummer ${data.number} på følgesedlen og fakturaen.`, PAGE.margin + 14, invoiceTop + 70, fullWidth - 28, { size: 9.5, leading: 13 });
+  instructionLines.forEach((instruction, index) => text(instruction, PAGE.margin + 14, invoiceTop + 86 + index * 12, { size: 9.2 }));
 
-  let tableTop = 420;
+  const gap = 10; const half = (fullWidth - gap) / 2;
+  const partyTop = invoiceTop + invoiceHeight + 14;
+  block("BESTILLER", PAGE.margin, partyTop, half, 112, [data.buyer.name, ...data.buyer.address, `Kontakt: ${data.buyer.contactName}`, data.buyer.contactEmail]);
+  block("LEVERANDØR", PAGE.margin + half + gap, partyTop, half, 112, [data.supplier.name, ...data.supplier.address]);
+  const deliveryTop = partyTop + 126;
+  rect(PAGE.margin, deliveryTop, fullWidth, 104, { fill: COLOR.white, stroke: COLOR.border });
+  sectionHeader("LEVERING", PAGE.margin, deliveryTop, fullWidth);
+  paragraph(data.delivery.name, PAGE.margin + 14, deliveryTop + 40, 235, { size: 10.8, bold: true, leading: 15 });
+  data.delivery.address.forEach((row, index) => text(row, PAGE.margin + 14, deliveryTop + 59 + index * 15, { size: 9.5 }));
+  line(297, deliveryTop + 36, 297, deliveryTop + 88, COLOR.border, 0.8);
+  text("ØNSKET LEVERING", 318, deliveryTop + 35, { size: 10.5, bold: true, color: COLOR.teal });
+  text(data.delivery.request, 318, deliveryTop + 52, { size: 15, bold: true });
+  text("Mellem 7.00-15.00", 318, deliveryTop + 72, { size: 9.5 });
+  text("(lagerets åbningstider)", 318, deliveryTop + 86, { size: 9.5 });
+
+  let tableTop = deliveryTop + 118;
   const columns = [PAGE.margin, 128, 405, 477, PAGE.width - PAGE.margin];
   const drawTableHeader = (continued = false) => {
     if (continued) {
@@ -273,7 +298,9 @@ function buildDocument(data) {
     columns.slice(1, -1).forEach((x) => line(x, headTop, x, headTop + 27));
     return headTop + 27;
   };
-  let cursor = drawTableHeader();
+  let cursor;
+  if (tableTop + 53 > 760) { page = makePage(); tableTop = 48; cursor = drawTableHeader(true); }
+  else cursor = drawTableHeader();
   for (const row of data.lines) {
     // Helvetica-metrikkerne i PDF-læserne er en anelse bredere end den
     // deterministiske estimator ovenfor. En sikker tekstbredde forhindrer,
@@ -290,17 +317,6 @@ function buildDocument(data) {
     unit.forEach((part, index) => text(part, columns[3], cursor + 9 + index * 13, { size: 9.2, align: "center", width: columns[4] - columns[3] }));
     cursor += rowHeight;
   }
-
-  if (cursor + 128 > 790) {
-    page = makePage(); cursor = 58;
-    text("BESTILLING", PAGE.margin, 20, { size: 12, bold: true });
-    text(`Bestillingsnr. ${data.number}`, 330, 20, { size: 10, bold: true, align: "right", width: PAGE.width - PAGE.margin - 330 });
-  }
-  const bottomTop = cursor + 22; const bottomWidth = PAGE.width - PAGE.margin * 2;
-  rect(PAGE.margin, bottomTop, bottomWidth, 100, { fill: COLOR.white, stroke: COLOR.border }); sectionHeader("FAKTURERING", PAGE.margin, bottomTop, bottomWidth);
-  text("Send faktura til:", PAGE.margin + 14, bottomTop + 41, { size: 9.5 });
-  paragraph(data.invoiceEmail, PAGE.margin + 14, bottomTop + 57, bottomWidth - 28, { size: 10.2, bold: true, leading: 13 });
-  paragraph(`Angiv vores bestillingsnummer ${data.number} på følgesedlen og fakturaen.`, PAGE.margin + 14, bottomTop + 78, bottomWidth - 28, { size: 9.5, leading: 13 });
 
   pages.forEach((commands, index) => {
     commands.push(rgb(COLOR.teal, true), "0.7 w", `${PAGE.margin} ${yPdf(PAGE.footerTop)} m ${PAGE.width - PAGE.margin} ${yPdf(PAGE.footerTop)} l S`);

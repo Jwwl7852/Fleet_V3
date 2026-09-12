@@ -145,7 +145,7 @@ describe("§15.5/§15.6 — en ordre kan kun sendes fra status \"godkendt\"", ()
    ══════════════════════════════════════════════════════════════════════════ */
 describe("§15.7 — mailindholdet bygges af den server-hentede ordre", () => {
   it("⚠ ordreMailIndhold() KALDES MED DEN SERVER-HENTEDE ordre, IKKE ET KLIENTOBJEKT", () => {
-    assert.match(b, /ordreMailIndhold\(ordre, \{ leverandoer: lev, sprog \}\)/);
+    assert.match(b, /ordreMailIndhold\(ordre, \{ leverandoer: lev, sprog, virksomhed \}\)/);
   });
 
   it("⚠ INGEN d.linjer/d.ordrelinjer/d.varer LÆSES NOGEN STEDER", () => {
@@ -156,8 +156,10 @@ describe("§15.7 — mailindholdet bygges af den server-hentede ordre", () => {
 
   it("⚠ ordreMailIndhold() ER EN REN FUNKTION UDEN LEVERANDØRPRISER", () => {
     const ordre = { nummer: "BST-2026-00001", linjer: { l1: { vare: "Skruer", antal: 10 } } };
-    const indhold = ordreMailIndhold(ordre, { leverandoer: { navn: "Test A/S", kontaktEmail: "t@a.dk" }, sprog: "da" });
+    const indhold = ordreMailIndhold(ordre, { leverandoer: { navn: "Test A/S", kontaktEmail: "t@a.dk" }, sprog: "da", virksomhed: { fakturaModtagelse: "faktura@example.invalid", faktureringsInstruktioner: ["Vedhæft én PDF pr. faktura."] } });
     assert.match(indhold.brodtekst, /10 × Skruer/);
+    assert.match(indhold.brodtekst, /Fakturering\nSend faktura til: faktura@example\.invalid/);
+    assert.match(indhold.brodtekst, /Vedhæft én PDF pr\. faktura\./);
     assert.ok(!/kr\.|pris|moms|total|i alt/i.test(indhold.brodtekst), "leverandørmailen afslører interne prisfelter");
   });
 });

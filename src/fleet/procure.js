@@ -355,6 +355,24 @@ function formatOrdreDato(value) {
   }).format(date);
 }
 
+const somFakturalinjer = (...values) => [...new Set(values.flatMap((value) => {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") return Object.values(value);
+  return String(value ?? "").split(/\r?\n/);
+}).map((value) => String(value ?? "").trim()).filter(Boolean))];
+
+export function ordreFaktureringsdata(ordre = {}, virksomhed = {}) {
+  return {
+    email: [virksomhed.fakturaModtagelse, virksomhed.fakturamodtagelse,
+      virksomhed.fakturaEmail, virksomhed.invoiceEmail]
+      .map((value) => String(value ?? "").trim()).find(Boolean) || "",
+    instruktioner: somFakturalinjer(
+      ordre.faktureringsInstruktioner, ordre.fakturaInstruktioner, ordre.invoiceInstructions,
+      virksomhed.faktureringsInstruktioner, virksomhed.fakturaInstruktioner, virksomhed.invoiceInstructions,
+    ),
+  };
+}
+
 /**
  * mailudkast(ordre, { leverandoer }) → { emne, brodtekst, tilEmail }
  *
@@ -366,10 +384,11 @@ function formatOrdreDato(value) {
  * ⚠ LEVERANDØRUDKASTET INDEHOLDER INGEN PRISER. Prisgrundlaget bliver i den
  * interne ordre til godkendelse, budget, analyse og fakturamatch.
  */
-export function mailudkast(ordre, { leverandoer } = {}) {
+export function mailudkast(ordre, { leverandoer, virksomhed } = {}) {
   const linjer = linjeListe(ordre);
   const nummer = ordre?.nummer || "(uden nummer)";
   const navn = leverandoer?.navn || "leverandøren";
+  const fakturering = ordreFaktureringsdata(ordre, virksomhed);
 
   const punkter = linjer.map((l) => {
     const antal = Number.isFinite(l.antal) ? l.antal : "?";
@@ -394,9 +413,10 @@ export function mailudkast(ordre, { leverandoer } = {}) {
       "Mellem 7.00-15.00",
       "(lagerets åbningstider)",
       "",
-      /* ⚠ DEN VIGTIGSTE LINJE I MAILEN. Uden nummeret på fakturaen kan
-         matchet i trin 5 kun gættes. */
+      "Fakturering",
+      `Send faktura til: ${fakturering.email}`,
       `Angiv vores bestillingsnummer ${nummer} på følgesedlen og fakturaen.`,
+      ...fakturering.instruktioner,
       "",
       "Med venlig hilsen",
     ].join("\n"),
@@ -424,6 +444,7 @@ const ORDREMAIL_TEKST = {
     til: "Til", bestiller: "Vi bestiller hermed følgende under ordrenummer",
     levering: "Levering", hurtigst: "Hurtigst muligt", senest: "Senest",
     aabning: "Mellem 7.00-15.00", aabningNote: "(lagerets åbningstider)",
+    fakturering: "Fakturering", sendFakturaTil: "Send faktura til",
     angiv: "Angiv vores bestillingsnummer", paaFakturaen: "på følgesedlen og fakturaen.",
     hilsen: "Med venlig hilsen", leverandoeren: "leverandøren",
   },
@@ -431,6 +452,7 @@ const ORDREMAIL_TEKST = {
     til: "Till", bestiller: "Vi beställer härmed följande under beställningsnummer",
     levering: "Leverans", hurtigst: "Så snart som möjligt", senest: "Senast",
     aabning: "Mellan 7.00-15.00", aabningNote: "(lagrets öppettider)",
+    fakturering: "Fakturering", sendFakturaTil: "Skicka faktura till",
     angiv: "Ange vårt beställningsnummer", paaFakturaen: "på följesedeln och fakturan.",
     hilsen: "Med vänlig hälsning", leverandoeren: "leverantören",
   },
@@ -438,6 +460,7 @@ const ORDREMAIL_TEKST = {
     til: "To", bestiller: "We hereby place the following order under order number",
     levering: "Delivery", hurtigst: "As soon as possible", senest: "No later than",
     aabning: "Between 7.00-15.00", aabningNote: "(warehouse opening hours)",
+    fakturering: "Invoicing", sendFakturaTil: "Send invoice to",
     angiv: "Please state our order number", paaFakturaen: "on the delivery note and invoice.",
     hilsen: "Kind regards", leverandoeren: "the supplier",
   },
@@ -455,11 +478,18 @@ const ORDREMAIL_TEKST = {
  * dette kaldes — faldet her er et sidste værn, ikke den primære kontrol, og
  * en render-funktion der kaster på et skævt input, er en dårlig sidste linje.
  */
-export function ordreMailIndhold(ordre, { leverandoer, sprog } = {}) {
+export function ordreMailIndhold(ordre, { leverandoer, sprog, virksomhed } = {}) {
   const t = ORDREMAIL_TEKST[erGyldigtSprog(sprog) ? sprog : STANDARD_SPROG];
   const linjer = linjeListe(ordre);
   const nummer = ordre?.nummer || "(uden nummer)";
   const navn = leverandoer?.navn || t.leverandoeren;
+  const fakturering = ordreFaktureringsdata(ordre, virksomhed);
+  const faktureringsblok = [
+    t.fakturering,
+    `${t.sendFakturaTil}: ${fakturering.email}`,
+    `${t.angiv} ${nummer} ${t.paaFakturaen}`,
+    ...fakturering.instruktioner,
+  ].join("\n");
 
   const punkter = linjer.map((l) => {
     const antal = Number.isFinite(l.antal) ? l.antal : "?";
@@ -484,10 +514,11 @@ export function ordreMailIndhold(ordre, { leverandoer, sprog } = {}) {
       t.aabning,
       t.aabningNote,
       "",
-      `${t.angiv} ${nummer} ${t.paaFakturaen}`,
+      faktureringsblok,
       "",
       t.hilsen,
     ].join("\n"),
+    faktureringsblok,
   };
 }
 

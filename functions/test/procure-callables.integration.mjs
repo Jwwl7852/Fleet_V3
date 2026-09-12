@@ -86,7 +86,7 @@ const supplier = {
   kontaktEmail: "kontakt@example.invalid",
   sprog: "da",
 };
-const company = { navn: "Nordisk Drift", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@example.invalid", procureAppUrl: "https://procure-preview.example.invalid" };
+const company = { navn: "Nordisk Drift", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@example.invalid", faktureringsInstruktioner: ["Fakturaen skal være i PDF-format."], procureAppUrl: "https://procure-preview.example.invalid" };
 
 await db.ref().set(null);
 await db.ref(`tenants/${tenantA}`).set({
@@ -181,9 +181,11 @@ assert.equal(sentRecord.ordreRevision, 4);
 assert.equal(sentRecord.til, "ordre@example.invalid");
 assert.equal(sentRecord.afsender, process.env.MAILGUN_AFSENDER);
 assert.equal(sentRecord.mailStatus, "accepteret");
-assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/pdfArkiv/4/skabelonVersion`).get()).val(), 4);
+assert.equal((await db.ref(`tenants/${tenantA}/indkoebsordrer/${orderId}/pdfArkiv/4/skabelonVersion`).get()).val(), 5);
 assert.ok(!/kr\.|pris|moms|total|i alt/i.test(mailPayloads[0].text), "leverandørmailen indeholder interne priser");
 assert.match(mailPayloads[0].text, /Angiv vores bestillingsnummer BST-2026-00888 på følgesedlen og fakturaen\./);
+assert.match(mailPayloads[0].text, /Fakturering\nSend faktura til: faktura@example\.invalid/);
+assert.match(mailPayloads[0].text, /Fakturaen skal være i PDF-format\./);
 assert.ok(!Buffer.from(attachmentBytes).toString("latin1").toLowerCase()
   .includes(Buffer.from("VAREMODTAGELSE", "latin1").toString("hex").toLowerCase()),
 "ny leverandør-PDF indeholder modtagelses-QR-blokken");

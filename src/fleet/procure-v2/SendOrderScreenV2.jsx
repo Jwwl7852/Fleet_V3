@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { sendOrdreMail } from "../godkendelse.js";
+import { ordreMailIndhold } from "../procure.js";
 import { canSendOrder, orderTotalOere } from "./procure-v2-domain.js";
 import { getOrderPdf, getWebshopCredential, registerWebshopOrder } from "./procure-v2-adapter.js";
 import { createOrderPdfBytes } from "./procure-pdf.js";
@@ -10,22 +11,38 @@ const requestId = () => globalThis.crypto?.randomUUID?.() || `procure-${Date.now
 const supplierFor = (state, id) => state.suppliers.find((item) => item.id === id);
 const formatDate = (value) => value ? new Intl.DateTimeFormat("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`)) : "";
 const deliveryText = (order) => order?.asSoonAsPossible ? "Hurtigst muligt" : `Senest ${formatDate(order?.wantedDate)}`;
+const mailOrder = (order) => ({
+  nummer: order?.poNumber, hurtigstMuligt: order?.asSoonAsPossible, oensketDato: order?.wantedDate,
+  faktureringsInstruktioner: order?.invoiceInstructions || order?.faktureringsInstruktioner,
+  linjer: (order?.lines || []).map((line) => ({ vare: line.name, antal: Number(line.quantity), enhed: line.unit })),
+});
 
 export default function SendOrderScreenV2({ state, setState, demo, tenant, canWrite }) {
   const location = useLocation(); const navigate = useNavigate();
   const orderId = location.pathname.split("/").filter(Boolean)[2];
   const order = state.orders.find((item) => item.id === orderId || item.poNumber?.toLowerCase() === orderId?.toLowerCase());
   const supplier = supplierFor(state, order?.supplierId);
+  const mailTenant = demo ? { ...(tenant || {}), fakturaModtagelse: tenant?.fakturaModtagelse || "faktura@fjordholm.example" } : (tenant || {});
+  const mailProposal = order ? ordreMailIndhold(mailOrder(order), {
+    leverandoer: { navn: supplier?.name, ordreEmail: supplier?.orderEmail }, sprog: "da", virksomhed: mailTenant,
+  }).brodtekst : "";
   const available = supplier?.orderMethod === "both" ? ["mail", "webshop"] : supplier?.orderMethod === "webshop" ? ["webshop"] : ["mail"];
   const [method, setMethod] = useState(order?.orderMethod === "webshop" ? "webshop" : available[0] || "mail");
   const [cc, setCc] = useState("");
   const [subject, setSubject] = useState(order ? `Bestilling ${order.poNumber} – ${order.title}` : "");
-  const [body, setBody] = useState(order ? `Hej ${supplier?.name || "leverandør"}\n\nHermed vores bestilling. Bekræft venligst bestillingen og den bekræftede leveringsdato. Ordreoplysningerne fremgår af den vedhæftede PDF.\n\nLevering: ${deliveryText(order)}\nMellem 7.00-15.00\n(lagerets åbningstider)\n\nMed venlig hilsen\n${order.contact || tenant?.navn || "Virksomheden"}` : "");
+  const [body, setBody] = useState(mailProposal);
+  const initializedBodyForOrder = useRef(mailTenant?.fakturaModtagelse || mailTenant?.fakturaEmail || mailTenant?.invoiceEmail ? order?.id : null);
   const [pdfInfo, setPdfInfo] = useState(null); const [message, setMessage] = useState(null); const [busy, setBusy] = useState(false);
   const sendRequest = useRef(requestId()); const webshopRequest = useRef(requestId());
   const [credential, setCredential] = useState(null); const credentialTimer = useRef(null);
   const [webshop, setWebshop] = useState({ externalOrderNumber: "", amountKr: order ? String((orderTotalOere(order) / 100).toFixed(2)).replace(".", ",") : "", paymentMethod: "faktura", confirmationReference: "", paymentDate: new Date().toISOString().slice(0, 10), paymentReference: "", documentId: "" });
   useEffect(() => () => clearTimeout(credentialTimer.current), []);
+  useEffect(() => {
+    const invoiceEmail = mailTenant?.fakturaModtagelse || mailTenant?.fakturaEmail || mailTenant?.invoiceEmail;
+    if (!order?.id || !invoiceEmail || initializedBodyForOrder.current === order.id) return;
+    setBody(mailProposal);
+    initializedBodyForOrder.current = order.id;
+  }, [mailProposal, mailTenant?.fakturaModtagelse, mailTenant?.fakturaEmail, mailTenant?.invoiceEmail, order?.id]);
   useEffect(() => {
     let active = true; let objectUrl = null;
     if (!order) return undefined;

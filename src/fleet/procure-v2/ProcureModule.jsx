@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { harPerm, PERM } from "../permissions.js";
 import { useFleet } from "../FleetContext.jsx";
 import { useListe } from "../useListe.js";
+import { usePost } from "../usePost.js";
 import { DEMO_INDKOEBSBEHOV, DEMO_INDKOEBSORDRER } from "../demo-procure.js";
 import { DEMO_FAKTURAER, DEMO_LEVERANDOERER } from "../demo-indkoeb.js";
 import {
@@ -159,6 +160,7 @@ export default function ProcureModule() {
   const approvalsSource = useListe("procureGodkendelsessager", { vindue: "alle", graense: 500, demo: [] });
   const inventoryMovementsSource = useListe("forbrugsvarebevaegelser", { vindue: "alle", graense: 2000, demo: [] });
   const purchasesSource = useListe("indkoeb", { vindue: "alle", graense: 1000, demo: [] });
+  const companySource = usePost(null, "virksomhed", { demo: { navn: tenant?.navn || "Fjordholm Drift A/S", adresse: "Havnevej 14", postnr: "8000", by: "Aarhus C", fakturaModtagelse: "faktura@fjordholm.example" } });
   const [setup, setSetup] = useState(() => demo ? DEMO_SETUP : EMPTY_SETUP);
   const [demoState, setDemoState] = useState(() => ({
     needs: DEMO_NEEDS, orders: DEMO_ORDERS, suppliers: DEMO_SUPPLIERS,
@@ -185,7 +187,8 @@ export default function ProcureModule() {
   if (!canRead) return <section className="procure-v2 procure-denied"><h1>PROCURE</h1><p>Du har ikke adgang til indkøb. Kontakt en administrator, hvis du mener, det er en fejl.</p></section>;
   const busy = !demo && (needsSource.henter || ordersSource.henter || suppliersSource.henter || catalogSource.henter || invoicesSource.henter || approvalsSource.henter || inventoryMovementsSource.henter || purchasesSource.henter);
   const error = !demo && (needsSource.fejl || ordersSource.fejl || suppliersSource.fejl || catalogSource.fejl || invoicesSource.fejl || approvalsSource.fejl || inventoryMovementsSource.fejl || purchasesSource.fejl);
-  const common = { state, setState, demo, tenant, user: bruger, canWrite, canApprove, canAdmin, busy, error };
+  const tenantDetails = { ...(tenant || {}), ...(companySource.post || {}) };
+  const common = { state, setState, demo, tenant: tenantDetails, user: bruger, canWrite, canApprove, canAdmin, busy: busy || companySource.henter, error: error || companySource.fejl };
   const path = location.pathname.replace(/\/$/, "");
   if (path === "/indkoeb") return <OverviewScreen {...common} />;
   if (path === "/indkoeb/mobil/qr-maerkater") return <QrLabelScreen {...common} />;

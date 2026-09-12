@@ -63,6 +63,14 @@ try {
   assert.equal(await desktop.evaluate("document.body.innerText.includes('Registrér forbrug')"), false);
   screenshots.push(await desktop.screenshot("01-desktop-varelager.png", ".procure-inventory"));
 
+  await desktop.navigate(`${baseUrl}/indkoeb/bestillinger/mail-ordre-1/send`, "document.querySelector('.procure-mail-body')");
+  await desktop.waitFor("document.querySelector('.procure-mail-body')?.value.includes('Fakturering\\nSend faktura til: faktura@fjordholm.example')", "mailforslag med fakturering");
+  await desktop.waitFor("!document.querySelector('.procure-pdf-row')?.disabled", "revisionslåst ordre-PDF klar til preview", 1000);
+  checks.mailProposal = await desktop.evaluate("document.querySelector('.procure-mail-body').value");
+  assert.match(checks.mailProposal, /Angiv vores bestillingsnummer BST-2026-00043 på følgesedlen og fakturaen\./);
+  assert.match(checks.mailProposal, /Fakturaen skal være i PDF-format\./);
+  screenshots.push(await desktop.screenshot("12-desktop-mailforslag-fakturering.png", ".procure-send-grid"));
+
   await desktop.navigate(`${baseUrl}/indkoeb/katalog`, "document.querySelector('.procure-products')");
   await desktop.evaluate(click("button", "Vareopsætning"));
   await desktop.waitFor("document.querySelector('.procure-modal')?.innerText.includes('Før lagerstatus') && document.querySelector('.procure-modal')?.innerText.includes('Standardafdeling')", "vareopsætning");
