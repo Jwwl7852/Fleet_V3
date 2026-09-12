@@ -6,7 +6,7 @@
  * Reglen står ved magt: et modul må stadig ikke bygge sin egen sidebar,
  * tenant-vælger eller periodevælger. Skal en af dem tilbage, hører den HER.
  */
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, DEMO_ROLLER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV, GRUPPE_ORDEN, GRUPPE_LABEL, modulNavnFor } from "./nav.js";
@@ -108,6 +108,15 @@ export default function AppShell() {
   const hoved = findHovedmodul(pathname);
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
+
+  /* Hjælp kan dermed medtage den side brugeren faktisk kom fra uden at tage
+     et screenshot eller kopiere sidens forretningsdata. Sessionen ryddes af
+     browseren og er ikke en adgangsbeslutning. */
+  useEffect(() => {
+    if (!pathname.startsWith("/support")) {
+      window.sessionStorage.setItem("veyro:support:seneste-side", `${pathname}${location.search}`);
+    }
+  }, [pathname, location.search]);
 
   /* ⚠ SKIVE 2B — NAVVISNING ER BRUGERENS EGEN, ÉT EKSTRA OPSLAG.
      `usePost` med `id = null` (ingen bruger endnu) henter slet ikke —

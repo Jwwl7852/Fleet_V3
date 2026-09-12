@@ -35,6 +35,10 @@ const ROD = join(dirname(fileURLToPath(import.meta.url)), "..");
 
    Tilføjer du en fil, så følg dens imports hele vejen ned. */
 export const DELTE_FILER = [
+  /* Kundens og ejerens supportadaptere skal bruge samme identitets-, status-
+     og AI-publiceringsregler. support-ai.js importerer support.js, så begge
+     hører til den transitive serverkopi. */
+  "support.js", "support-ai.js",
   /* ⚠ procure.js ER DELT fordi behovskriv og skærmens formular kalder den
      SAMME valideBehov(). Serveren afviser med den sætning brugeren allerede
      har set — to formuleringer af én spærring er to forklaringer på én ting. */
