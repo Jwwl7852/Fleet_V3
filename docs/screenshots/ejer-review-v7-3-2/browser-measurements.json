@@ -1,0 +1,282 @@
+{
+  "version": "V7.3.2",
+  "capturedAtUtc": "2026-09-12T19:04:15.351Z",
+  "base": "http://127.0.0.1:5213",
+  "route": "/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys",
+  "case": "v7-pilot-nordlys",
+  "normalLogin": true,
+  "reload": true,
+  "viewports": [
+    "1440x900",
+    "1920x1080",
+    "390x844",
+    "360x800"
+  ],
+  "desktop": {
+    "1440x900": {
+      "response": {
+        "initial": {
+          "panel": {
+            "top": 426.109375,
+            "bottom": 813.625,
+            "height": 387.515625
+          },
+          "scroll": {
+            "top": 437.109375,
+            "bottom": 586.359375,
+            "height": 149.25,
+            "scrollTop": 0,
+            "scrollHeight": 984,
+            "clientHeight": 149
+          },
+          "composer": {
+            "top": 597.359375,
+            "bottom": 811.625,
+            "height": 214.265625
+          },
+          "nonOverlap": true,
+          "composerVisible": true,
+          "activeComposers": 1
+        },
+        "bottom": {
+          "panel": {
+            "top": 426.109375,
+            "bottom": 813.625,
+            "height": 387.515625
+          },
+          "scroll": {
+            "top": 437.109375,
+            "bottom": 586.359375,
+            "height": 149.25,
+            "scrollTop": 835,
+            "scrollHeight": 984,
+            "clientHeight": 149
+          },
+          "composer": {
+            "top": 597.359375,
+            "bottom": 811.625,
+            "height": 214.265625
+          },
+          "nonOverlap": true,
+          "composerVisible": true,
+          "activeComposers": 1
+        },
+        "leftBefore": 0,
+        "leftAfter": 0
+      },
+      "aiChat": {
+        "initial": {
+          "panel": {
+            "top": 426.109375,
+            "bottom": 813.625,
+            "height": 387.515625
+          },
+          "scroll": {
+            "top": 506.703125,
+            "bottom": 634.703125,
+            "height": 128,
+            "scrollTop": 0,
+            "scrollHeight": 1558,
+            "clientHeight": 128
+          },
+          "composer": {
+            "top": 645.703125,
+            "bottom": 850.34375,
+            "height": 204.640625
+          },
+          "nonOverlap": true,
+          "composerVisible": true,
+          "activeComposers": 1
+        },
+        "bottom": {
+          "panel": {
+            "top": 426.109375,
+            "bottom": 813.625,
+            "height": 387.515625
+          },
+          "scroll": {
+            "top": 506.703125,
+            "bottom": 634.703125,
+            "height": 128,
+            "scrollTop": 1430,
+            "scrollHeight": 1558,
+            "clientHeight": 128
+          },
+          "composer": {
+            "top": 645.703125,
+            "bottom": 850.34375,
+            "height": 204.640625
+          },
+          "nonOverlap": true,
+          "composerVisible": true,
+          "activeComposers": 1
+        },
+        "firstVisible": {
+          "top": 506.703125,
+          "bottom": 881.15625,
+          "visiblePixels": 128
+        },
+        "lastVisible": {
+          "top": 292.953125,
+          "bottom": 635.109375,
+          "endVisible": true
+        }
+      },
+      "draft": {
+        "lines": 3,
+        "preservedInChat": true,
+        "preservedBack": true,
+        "enterTriggeredExchange": false
+      },
+      "informationTabActiveComposers": 0
+    },
+    "1920x1080": {
+      "response": {
+        "initial": {
+          "panel": {
+            "top": 426.109375,
+            "bottom": 993.625,
+            "height": 567.515625
+          },
+          "scroll": {
+            "top": 437.109375,
+            "bottom": 783.75,
+            "height": 346.640625,
+            "scrollTop": 0,
+            "scrollHeight": 965,
+            "clientHeight": 347
+          },
+          "composer": {
+            "top": 794.75,
+            "bottom": 991.625,
+            "height": 196.875
+          },
+          "nonOverlap": true,
+          "composerVisible": true,
+          "activeComposers": 1
+        },
+        "bottom": {
+          "panel": {
+            "top": 426.109375,
+            "bottom": 993.625,
+            "height": 567.515625
+          },
+          "scroll": {
+            "top": 437.109375,
+            "bottom": 783.75,
+            "height": 346.640625,
+            "scrollTop": 618,
+            "scrollHeight": 965,
+            "clientHeight": 347
+          },
+          "composer": {
+            "top": 794.75,
+            "bottom": 991.625,
+            "height": 196.875
+          },
+          "nonOverlap": true,
+          "composerVisible": true,
+          "activeComposers": 1
+        },
+        "leftBefore": 0,
+        "leftAfter": 0
+      },
+      "aiChat": {
+        "initial": {
+          "panel": {
+            "top": 426.109375,
+            "bottom": 993.625,
+            "height": 567.515625
+          },
+          "scroll": {
+            "top": 486.40625,
+            "bottom": 746.140625,
+            "height": 259.734375,
+            "scrollTop": 0,
+            "scrollHeight": 1355,
+            "clientHeight": 260
+          },
+          "composer": {
+            "top": 757.140625,
+            "bottom": 961.78125,
+            "height": 204.640625
+          },
+          "nonOverlap": true,
+          "composerVisible": true,
+          "activeComposers": 1
+        },
+        "bottom": {
+          "panel": {
+            "top": 426.109375,
+            "bottom": 993.625,
+            "height": 567.515625
+          },
+          "scroll": {
+            "top": 486.40625,
+            "bottom": 746.140625,
+            "height": 259.734375,
+            "scrollTop": 1095,
+            "scrollHeight": 1355,
+            "clientHeight": 260
+          },
+          "composer": {
+            "top": 757.140625,
+            "bottom": 961.78125,
+            "height": 204.640625
+          },
+          "nonOverlap": true,
+          "composerVisible": true,
+          "activeComposers": 1
+        },
+        "firstVisible": {
+          "top": 486.40625,
+          "bottom": 820.265625,
+          "visiblePixels": 259.734375
+        },
+        "lastVisible": {
+          "top": 445.28125,
+          "bottom": 746.84375,
+          "endVisible": true
+        }
+      },
+      "draft": {
+        "lines": 3,
+        "preservedInChat": true,
+        "preservedBack": true,
+        "enterTriggeredExchange": false
+      },
+      "informationTabActiveComposers": 0
+    }
+  },
+  "mobile": {
+    "390x844": {
+      "active": "Svar og AI",
+      "preserved": true,
+      "horizontalOverflow": false
+    },
+    "360x800": {
+      "active": "AI-chat",
+      "preserved": true,
+      "focused": true,
+      "horizontalOverflow": false
+    }
+  },
+  "screenshots": [
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-2\\1440x900-svarudkast-top.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-2\\1440x900-svarudkast-bund.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-2\\1440x900-ai-chat-top.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-2\\1440x900-ai-chat-bund.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-2\\1920x1080-svarudkast-top.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-2\\1920x1080-svarudkast-bund.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-2\\1920x1080-ai-chat-top.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-2\\1920x1080-ai-chat-bund.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-2\\390x844-mobil-svar.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v7-3-2\\360x800-mobil-ai-chat.png"
+  ],
+  "font": {
+    "status": "loaded",
+    "inter": true,
+    "body": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "textarea": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif"
+  }
+}

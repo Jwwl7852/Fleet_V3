@@ -706,3 +706,25 @@ ingen klargjort Veyro-post er rapporteret som bogført.
 - Microsoft 365, OpenAI, Dinero, OCR og bilagsmail er fortsat **Ikke
   tilsluttet**. Ingen push, merge, deployment, produktionsændring, eksternt
   AI-kald eller virkelig mailafsendelse er udført.
+
+## V7.3.2 — afsluttet højrepanel — 2026-09-12
+
+- **Svarudkast** har nu en særskilt rulbar indholdsflade, mens
+  hurtiginstruksen står i en reserveret gridrække nederst og er synlig ved både
+  top- og bundscroll.
+- **AI-chat** har en reel historikflade over komposeren. `position: sticky` og
+  lagrækkefølgen er fjernet, så skriveområdet ikke kan dække beskederne.
+- Ved 1440×900 og 1920×1080 blev første og sidste AI-indhold fremrullet,
+  komposerens position var uændret, og venstre Samtale-kolonne forblev 0 → 0.
+- Tre usendte linjer og Enter som linjeskift blev bevaret ved faneskift. Kun én
+  AI-komposer var aktiv; **Oplysninger** viste ingen AI-komposer.
+- Normal login/reload, 7/7 målrettede tests, 11/11 designtests, målrettet
+  ESLint og Vite-build med 537 moduler består. 10 screenshots og de konkrete
+  browsermålinger ligger i `docs/screenshots/ejer-review-v7-3-2/`.
+- Mobilens faneskift, fokus, bevarede tekst og manglende vandrette overflow er
+  kort kontrolleret ved 390×844 og 360×800. Et fysisk mobilt skærmtastatur er
+  fortsat den dokumenterede resttest; desktopdelen af V73-03 er bestået.
+- V7.3.1-signatur og -notefunktioner er bevaret. Microsoft 365, OpenAI, Dinero,
+  OCR og bilagsmail er fortsat **Ikke tilsluttet**. Ingen push, merge,
+  deployment, produktionsændring, eksternt AI-kald eller virkelig
+  mailafsendelse er udført.
