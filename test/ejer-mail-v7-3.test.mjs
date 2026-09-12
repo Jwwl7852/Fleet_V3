@@ -42,6 +42,18 @@ test("V7.3.1 mobilpanel og supportnoter følger samme aktive sag", () => {
   assert.match(support, /data-note-id=\{n\.id\}/);
 });
 
+test("V7.3.2 højrepanelet reserverer plads til begge AI-komposere", () => {
+  const jsx = readFileSync(new URL("../src/moduler/udbyder/EjerMailV71Samtale.jsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../src/fleet/ejer-mail-v7.css", import.meta.url), "utf8");
+  assert.match(jsx, /ejer-svarudkastpanel/);
+  assert.match(jsx, /ejer-mail-ai-scrollregion/);
+  assert.match(jsx, /data-testid="fast-hurtiginstruks"/);
+  assert.match(jsx, /data-testid="fast-ai-chat-komposer"/);
+  assert.match(css, /\.ejer-svarudkastpanel\{grid-template-rows:minmax\(0,1fr\) auto/);
+  assert.match(css, /\.ejer-ai-chatpanel\{grid-template-rows:auto minmax\(128px,1fr\) auto auto/);
+  assert.doesNotMatch(css, /\.ejer-mail-aiinstruks\{position:sticky/);
+});
+
 test("V7.3 server beskytter signatur og noter med tenantløs ejeradgang", () => {
   const server = readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
   assert.match(server, /export const ejermailsignaturhent/); assert.match(server, /export const ejermailsignaturgem/);
