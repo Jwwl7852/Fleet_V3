@@ -173,8 +173,12 @@ export function sanitizeMobileDraft(input = {}, { uid, now = Date.now(), revisio
       custom[id] = { id, name, quantity, unit: String(row.unit || "stk.").slice(0, 30), category: String(row.category || "Ukategoriseret").slice(0, 80) };
     }
   }
+  const lineDepartments = {};
+  for (const [lineId, departmentId] of Object.entries(input.lineDepartments || {})) {
+    if ((items[lineId] || custom[lineId]) && /^[A-Za-z0-9_-]{2,80}$/.test(String(departmentId || ""))) lineDepartments[lineId] = String(departmentId).slice(0, 80);
+  }
   return {
-    revision, items, custom,
+    revision, items, custom, lineDepartments,
     departmentId: String(input.departmentId || "").slice(0, 80),
     department: String(input.department || "").slice(0, 120),
     deliveryLocationId: String(input.deliveryLocationId || "").slice(0, 80) || null,
@@ -186,18 +190,20 @@ export function sanitizeMobileDraft(input = {}, { uid, now = Date.now(), revisio
 }
 
 export function splitServerDraft(draft = {}, selections = []) {
-  const wanted = new Map(selections.map((row) => [String(row.id), Number(row.quantity)]));
+  const wanted = new Map(selections.map((row) => [String(row.id), { quantity: Number(row.quantity), departmentId: String(row.departmentId || draft.lineDepartments?.[row.id] || draft.departmentId || "") }]));
   const submitted = [];
-  const next = { ...draft, items: { ...(draft.items || {}) }, custom: { ...(draft.custom || {}) } };
+  const next = { ...draft, items: { ...(draft.items || {}) }, custom: { ...(draft.custom || {}) }, lineDepartments: { ...(draft.lineDepartments || {}) } };
   const errors = {};
-  for (const [id, quantity] of wanted) {
+  for (const [id, selection] of wanted) {
+    const { quantity, departmentId } = selection;
     const custom = next.custom[id];
     const available = Number(custom?.quantity ?? next.items[id] ?? 0);
     if (!Number.isFinite(quantity) || quantity <= 0 || quantity > available) { errors[id] = `Ugyldig delmængde; højst ${available}.`; continue; }
-    submitted.push({ id, quantity, custom: Boolean(custom), ...(custom || {}) });
+    if (!/^[A-Za-z0-9_-]{2,80}$/.test(departmentId)) { errors[id] = "Vælg en afdeling på varelinjen."; continue; }
+    submitted.push({ id, quantity, departmentId, custom: Boolean(custom), ...(custom || {}) });
     const remainder = available - quantity;
-    if (custom) remainder > 0 ? next.custom[id] = { ...custom, quantity: remainder } : delete next.custom[id];
-    else remainder > 0 ? next.items[id] = remainder : delete next.items[id];
+    if (custom) remainder > 0 ? next.custom[id] = { ...custom, quantity: remainder } : (delete next.custom[id], delete next.lineDepartments[id]);
+    else remainder > 0 ? next.items[id] = remainder : (delete next.items[id], delete next.lineDepartments[id]);
   }
   if (!submitted.length && !Object.keys(errors).length) errors.selection = "Vælg mindst én linje.";
   return { ok: !Object.keys(errors).length, errors, submitted, draft: next };

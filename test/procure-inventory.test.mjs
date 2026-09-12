@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
-  applyInventoryMovement, applyInventoryTransfer, inventoryCsv,
-  inventoryLocation, inventoryPeriodSummary, inventoryTotal, stockQuantityForOrderLine,
+  applyInventoryMovement, applyInventoryTransfer, calculatedConsumptionIntervals, inventoryCsv,
+  inventoryLocation, inventoryOverviewRows, inventoryPeriodSummary, inventoryTotal, materialConsumptionCsv,
+  stockQuantityForOrderLine,
 } from "../src/fleet/procure-v2/procure-inventory-domain.js";
 import { DEMO_CATALOG } from "../src/fleet/procure-v2/procure-v2-demo.js";
 
@@ -126,6 +127,64 @@ test("lageroversigten samler placeringer og nettoudligner interne flytninger", (
   assert.equal(rows.length, 1);
   assert.deepEqual({ opening: rows[0].opening, transfers: rows[0].transfers, closing: rows[0].closing },
     { opening: 12, transfers: 0, closing: 12 });
+});
+
+test("beregnet lagerafgang mellem optællinger tæller ikke slutkorrektionen to gange", () => {
+  const day = 86400000;
+  const movements = [
+    { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", lager: "Hovedlager", placering: "A-01", art: "optaelling", efter: 10, delta: 0, ms: day, enhed: "ruller" },
+    { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", lager: "Hovedlager", placering: "A-01", art: "modtaget", foer: 10, efter: 16, delta: 6, ms: 11 * day, enhed: "ruller" },
+    { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", lager: "Hovedlager", placering: "A-01", art: "optaelling", foer: 16, efter: 12, delta: -4, ms: 31 * day, enhed: "ruller" },
+  ];
+  const result = calculatedConsumptionIntervals(item(), movements, { fromMs: 0, toMs: 40 * day });
+  assert.equal(result.hasBasis, true);
+  assert.equal(result.quantity, 4);
+  assert.equal(result.measured[0].unregisteredDifference, 4);
+  assert.equal(result.measured[0].movements.length, 1, "slutoptælling er ikke en ekstra fysisk afgang");
+  assert.equal(result.annualQuantity, null, "få måneders data må ikke ligne et årsresultat");
+});
+
+test("retur, nettoflytning, eksisterende udtag og øvrige korrektioner indgår én gang", () => {
+  const day = 86400000;
+  const movements = [
+    { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", art: "optaelling", efter: 20, delta: 0, ms: day, enhed: "ruller" },
+    { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", art: "modtaget", delta: 10, ms: 2 * day, enhed: "ruller" },
+    { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", art: "flytningUd", delta: -3, ms: 3 * day, enhed: "ruller" },
+    { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", art: "retur", delta: -2, ms: 4 * day, enhed: "ruller" },
+    { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", art: "forbrug", delta: -4, ms: 5 * day, enhed: "ruller" },
+    { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", art: "korrektion", delta: 1, ms: 6 * day, enhed: "ruller" },
+    { forbrugsvareId: "tape", lagerId: "h", placeringId: "a", art: "optaelling", efter: 16, delta: -6, ms: 31 * day, enhed: "ruller" },
+  ];
+  const result = calculatedConsumptionIntervals(item(), movements, { fromMs: 0, toMs: 40 * day });
+  assert.deepEqual({ quantity: result.quantity, receipts: result.measured[0].receipts, transfers: result.measured[0].transfers,
+    returns: result.measured[0].returns, registeredUsage: result.measured[0].registeredUsage, otherCorrections: result.measured[0].otherCorrections },
+  { quantity: 10, receipts: 10, transfers: -3, returns: 2, registeredUsage: 4, otherCorrections: 1 });
+});
+
+test("oversigten har én række pr. varenummer og viser ukendt eller inkompatibel beholdning ærligt", () => {
+  const counted = item({ minimumBeholdning: 10, lagerplaceringer: {
+    a: { lagerId: "h", placeringId: "a", beholdning: 6, enhed: "ruller", senestOptaltMs: 10, afdelingId: "drift" },
+    b: { lagerId: "h", placeringId: "b", beholdning: 7, enhed: "ruller", senestOptaltMs: null, afdelingId: "drift" },
+  } });
+  const [row] = inventoryOverviewRows([counted], []);
+  assert.equal(row.quantity, 13);
+  assert.equal(row.status, "Over niveau");
+  assert.equal(row.neverCounted, true);
+  const [filtered] = inventoryOverviewRows([counted], [], { departmentId: "drift" });
+  assert.equal(filtered.locations.length, 2);
+  const [incompatible] = inventoryOverviewRows([item({ lagerplaceringer: {
+    a: { lagerId: "h", placeringId: "a", beholdning: 1, enhed: "kasser", senestOptaltMs: 10 },
+  } })], []);
+  assert.equal(incompatible.quantity, null);
+  assert.equal(incompatible.unitsCompatible, false);
+});
+
+test("materialeforbrugs-CSV angiver periode, grundlag og manglende dækning", () => {
+  const csv = materialConsumptionCsv([{ name: "Mælk", sku: "MAT-1", department: "Administration", basis: "Indkøbt mængde", quantity: 12, unit: "liter", measurementPeriod: "01.09.2026–30.09.2026", partialCoverage: false },
+    { name: "Træ", sku: "TR-1", department: "Fælles lager", basis: "Beregnet mellem optællinger", quantity: null, unit: "plader", measurementPeriod: "", partialCoverage: true }], { from: "2026-09-01", to: "2026-09-30" });
+  assert.match(csv, /"2026-09-01";"2026-09-30";"Mælk"/);
+  assert.match(csv, /"Indkøbt mængde";"12";"liter"/);
+  assert.match(csv, /"Mangler grundlag";"plader";"";"Delvist dækket"/);
 });
 
 test("servergrænser er tenantafledte, atomiske og idempotente", () => {

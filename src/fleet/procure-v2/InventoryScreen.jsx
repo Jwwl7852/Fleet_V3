@@ -3,10 +3,9 @@ import { Link } from "react-router-dom";
 import { registerInventoryMovement, registerPhysicalReturn } from "./procure-v2-adapter.js";
 import {
   INVENTORY_TYPES, applyInventoryMovement, applyInventoryTransfer,
-  inventoryCsv, inventoryPeriodSummary, stockQuantityForOrderLine,
+  inventoryCsv, inventoryOverviewRows, inventoryPeriodSummary, stockQuantityForOrderLine,
 } from "./procure-inventory-domain.js";
 import { acceptedQuantityForLine, remainingQuantity, unitLabel } from "./procure-v2-domain.js";
-import { gemForbrugsvare } from "../varelager.js";
 
 const requestId = () => globalThis.crypto?.randomUUID?.() || `lager-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const number = (value) => new Intl.NumberFormat("da-DK", { maximumFractionDigits: 3 }).format(Number(value || 0));
@@ -18,10 +17,13 @@ const toDomainItem = (item) => ({
   ...item, navn: item.name, varenummer: item.sku, enhed: item.baseUnit || item.unit,
   grundenhed: item.baseUnit || item.unit, bestillingsenhed: item.orderUnit || item.unit,
   antalPrBestillingsenhed: item.unitsPerOrder || 1, lagerfoert: item.stocked === true,
+  minimumBeholdning: Number.isFinite(item.minimumStock) ? item.minimumStock : null,
+  standardAfdelingId: item.defaultDepartmentId || null,
   lagerplaceringer: Object.fromEntries(Object.entries(item.inventoryLocations || {}).map(([key, row]) => [key, {
     lagerId: row.warehouseId, lager: row.warehouse, placeringId: row.locationId, placering: row.location,
     beholdning: row.quantity, enhed: row.unit, revision: row.revision,
     senestOptaltMs: row.lastCountedAt, senestBevaegetMs: row.lastMovedAt,
+    afdelingId: row.departmentId || item.defaultDepartmentId || null,
   }])),
 });
 
@@ -31,6 +33,7 @@ const fromDomainItem = (source, item) => ({
     warehouseId: row.lagerId, warehouse: row.lager, locationId: row.placeringId, location: row.placering,
     quantity: row.beholdning, unit: row.enhed, revision: row.revision,
     lastCountedAt: row.senestOptaltMs, lastMovedAt: row.senestBevaegetMs,
+    departmentId: row.afdelingId || null,
   }])),
 });
 
@@ -120,47 +123,47 @@ function InventoryDialog({ row, mode, state, demo, user, onClose, onSaved }) {
 }
 
 export default function InventoryScreen({ state, setState, demo, tenant, canWrite, busy, error, user }) {
-  const [search, setSearch] = useState(""); const [warehouse, setWarehouse] = useState(""); const [location, setLocation] = useState(""); const [below, setBelow] = useState(false);
-  const [selectedKey, setSelectedKey] = useState(""); const [mode, setMode] = useState(""); const [message, setMessage] = useState("");
+  const [search, setSearch] = useState(""); const [department, setDepartment] = useState(""); const [below, setBelow] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState(""); const [selectedLocationKey, setSelectedLocationKey] = useState("");
+  const [detailTab, setDetailTab] = useState("beholdning"); const [mode, setMode] = useState(""); const [message, setMessage] = useState("");
   const [periodFrom, setPeriodFrom] = useState("2026-01-01"); const [periodTo, setPeriodTo] = useState("2026-12-31");
-  const [stockCandidate, setStockCandidate] = useState(""); const [marking, setMarking] = useState(false);
   const openerRef = useRef(null);
   const detailRef = useRef(null);
-  const rows = useMemo(() => state.catalog.filter((item) => item.stocked).flatMap((item) => {
-    const locations = Object.entries(item.inventoryLocations || {});
-    if (!locations.length) {
-      const place = Object.values(state.setup?.lagerplaceringer || {}).find((candidate) => candidate.active !== false);
-      const warehouseName = state.setup?.lagre?.[place?.lagerId]?.label || place?.lagerId || "Ikke placeret";
-      return [{ key: `${item.id}|unknown`, item, warehouseId: place?.lagerId || "", warehouse: warehouseName,
-        locationId: place?.id || "", location: place?.label || "Ikke placeret", quantity: null,
-        unit: item.baseUnit || item.unit, revision: 0, lastCountedAt: null }];
-    }
-    return locations.map(([key, row]) => ({ key: `${item.id}|${key}`, item, ...row }));
-  }).map((row) => {
-    const onOrder = state.orders.reduce((sum, order) => sum + order.lines.filter((line) => line.itemId === row.item.id).reduce((lineSum, line) => {
-      if (!["sent", "sendt", "received", "modtaget"].includes(order.status)) return lineSum;
-      const remaining = remainingQuantity(order, state.receipts.filter((receipt) => receipt.orderId === order.id), line.id);
-      const converted = stockQuantityForOrderLine(toDomainItem(row.item), line, remaining);
-      return lineSum + (converted.ok ? converted.quantity : 0);
-    }, 0), 0);
-    return { ...row, onOrder };
-  }), [state.catalog, state.orders, state.receipts, state.setup]);
-  const visible = rows.filter((row) => !search || `${row.item.name} ${row.item.sku}`.toLowerCase().includes(search.toLowerCase()))
-    .filter((row) => !warehouse || row.warehouseId === warehouse).filter((row) => !location || row.locationId === location)
-    .filter((row) => !below || (Number.isFinite(row.quantity) && Number.isFinite(row.item.minimumStock) && row.quantity < row.item.minimumStock));
-  const selected = rows.find((row) => row.key === selectedKey) || visible[0] || null;
-  const selectedMovements = state.inventoryMovements.filter((movement) => selected && movement.forbrugsvareId === selected.item.id && movement.lagerId === selected.warehouseId && movement.placeringId === selected.locationId).sort((a, b) => Number(b.ms) - Number(a.ms));
-  const warehouses = [...new Map(rows.filter((row) => row.warehouseId).map((row) => [row.warehouseId, row.warehouse])).entries()];
-  const locations = [...new Map(rows.filter((row) => row.locationId).map((row) => [row.locationId, row.location])).entries()];
+  const domainItems = useMemo(() => state.catalog.map(toDomainItem), [state.catalog]);
+  const summaries = useMemo(() => inventoryOverviewRows(domainItems, state.inventoryMovements, { departmentId: department })
+    .map((summary) => {
+      const source = state.catalog.find((item) => item.id === summary.item.id) || summary.item;
+      const onOrder = state.orders.reduce((sum, order) => sum + (order.lines || []).filter((line) => line.itemId === source.id).reduce((lineSum, line) => {
+        if (!["sent", "sendt", "received", "modtaget"].includes(order.status)) return lineSum;
+        const remaining = remainingQuantity(order, state.receipts.filter((receipt) => receipt.orderId === order.id), line.id);
+        const converted = stockQuantityForOrderLine(toDomainItem(source), line, remaining);
+        return lineSum + (converted.ok ? converted.quantity : 0);
+      }, 0), 0);
+      return { ...summary, item: source, onOrder };
+    }), [department, domainItems, state.catalog, state.inventoryMovements, state.orders, state.receipts]);
+  const visible = summaries.filter((row) => !search || `${row.item.name} ${row.item.sku}`.toLowerCase().includes(search.toLowerCase()))
+    .filter((row) => !below || row.status === "Under genbestillingsniveau");
+  const selectedSummary = summaries.find((row) => row.item.id === selectedItemId) || visible[0] || null;
+  const selectedLocations = selectedSummary ? Object.entries(selectedSummary.item.inventoryLocations || {}).map(([key, row]) => ({
+    key: `${selectedSummary.item.id}|${key}`, item: selectedSummary.item, ...row,
+  })).filter((row) => !department || row.departmentId === department) : [];
+  const selected = selectedLocations.find((row) => row.key === selectedLocationKey) || selectedLocations[0] || (selectedSummary ? {
+    key: `${selectedSummary.item.id}|unknown`, item: selectedSummary.item,
+    warehouseId: "", warehouse: "Ikke placeret", locationId: "", location: "Ikke placeret",
+    quantity: null, unit: selectedSummary.unit, revision: 0, lastCountedAt: null,
+  } : null);
+  const selectedMovements = state.inventoryMovements.filter((movement) => selectedSummary && movement.forbrugsvareId === selectedSummary.item.id)
+    .sort((a, b) => Number(b.ms) - Number(a.ms));
   const fromMs = Date.parse(`${periodFrom}T00:00:00Z`); const toMs = Date.parse(`${periodTo}T23:59:59.999Z`);
-  const periodRows = inventoryPeriodSummary(state.catalog.map(toDomainItem), state.inventoryMovements, { fromMs, toMs, groupBy: "warehouse" });
+  const periodRows = inventoryPeriodSummary(domainItems, state.inventoryMovements, { fromMs, toMs, groupBy: "warehouse" })
+    .filter((row) => !selectedSummary || row.itemId === selectedSummary.item.id);
   const openPeriodDetails = (periodRow) => {
-    const target = rows.find((row) => row.item.id === periodRow.itemId && row.warehouseId === periodRow.warehouseId);
+    const target = selectedLocations.find((row) => row.item.id === periodRow.itemId && row.warehouseId === periodRow.warehouseId);
     if (!target) return;
-    setSelectedKey(target.key);
+    setSelectedItemId(target.item.id); setSelectedLocationKey(target.key); setDetailTab("bevaegelser");
     requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
-  const open = (nextMode, row = selected, opener = document.activeElement) => { if (!row?.warehouseId && nextMode !== "startbeholdning") { setMessage("Vælg eller opret en lagerplacering først."); return; } openerRef.current = opener; setSelectedKey(row.key); setMode(nextMode); setMessage(""); };
+  const open = (nextMode, row = selected, opener = document.activeElement) => { if (!row?.warehouseId && nextMode !== "startbeholdning") { setMessage("Vælg eller opret en lagerplacering i Varekataloget først."); return; } openerRef.current = opener; setSelectedItemId(row.item.id); setSelectedLocationKey(row.key); setMode(nextMode); setMessage(""); };
   const closeDialog = () => { setMode(""); requestAnimationFrame(() => openerRef.current?.focus()); };
   const saved = (text, local) => {
     if (demo && local?.item) setState((current) => ({ ...current,
@@ -169,36 +172,22 @@ export default function InventoryScreen({ state, setState, demo, tenant, canWrit
     }));
     closeDialog(); setMessage(text);
   };
-  const markStocked = async () => {
-    const item = state.catalog.find((candidate) => candidate.id === stockCandidate);
-    if (!item || marking || !canWrite) return;
-    setMarking(true); setMessage("");
-    if (demo) {
-      setState((current) => ({ ...current, catalog: current.catalog.map((candidate) => candidate.id === item.id
-        ? { ...candidate, stocked: true, baseUnit: candidate.baseUnit || candidate.unit,
-          orderUnit: candidate.orderUnit || candidate.unit, unitsPerOrder: Number(candidate.unitsPerOrder || 1) }
-        : candidate) }));
-      setMessage(`${item.name} er markeret som lagerført. Registrér nu en startbeholdning.`);
-    } else {
-      const result = await gemForbrugsvare({ id: item.id, navn: item.name, varenummer: item.sku,
-        enhed: item.unit, leverandoerId: item.supplierId, lagerfoert: true,
-        grundenhed: item.baseUnit || item.unit, bestillingsenhed: item.orderUnit || item.unit,
-        antalPrBestillingsenhed: Number(item.unitsPerOrder || 1), minimumBeholdning: item.minimumStock });
-      setMessage(result.ok ? `${item.name} er markeret som lagerført. Registrér nu en startbeholdning.` : result.besked);
-    }
-    setStockCandidate(""); setMarking(false);
-  };
   if (busy) return <section className="procure-v2"><div className="procure-loading">Indlæser lageret …</div></section>;
   if (error) return <section className="procure-v2"><div className="procure-error">Lageret kunne ikke indlæses. Prøv igen.</div></section>;
   return <section className="procure-v2 procure-inventory">
-    <header className="procure-pagehead"><div><h1>Lager</h1><p>Beholdning, optællinger og sporbare bevægelser</p></div><div className="procure-head-actions"><Link className="procure-button secondary" to="/indkoeb/mobil/modtag">Modtag varer</Link><button className="procure-button secondary" disabled={!selected || !canWrite} onClick={(event) => open("forbrug", selected, event.currentTarget)}>Registrér forbrug</button><button className="procure-button" disabled={!selected || !canWrite} onClick={(event) => open(Number.isFinite(selected?.quantity) ? "optaelling" : "startbeholdning", selected, event.currentTarget)}>Optæl lager</button></div>{demo && <span className="procure-demo">Syntetiske testdata · {tenant?.navn || "demo"}</span>}</header>
+    <header className="procure-pagehead"><div><h1>Varelager</h1><p>Senest kendte beholdning med efterfølgende registrerede bevægelser</p></div><div className="procure-head-actions"><Link className="procure-button secondary" to="/indkoeb/mobil/modtag">Modtag varer</Link><Link className="procure-button secondary" to="/indkoeb/katalog?opsaetning=1">Vareopsætning</Link><button className="procure-button" disabled={!selected || !canWrite} onClick={(event) => open(Number.isFinite(selected?.quantity) ? "optaelling" : "startbeholdning", selected, event.currentTarget)}>Optæl lager</button></div>{demo && <span className="procure-demo">Syntetiske testdata · {tenant?.navn || "demo"}</span>}</header>
     {message && <div className="procure-alert info" role="status"><span>{message}</span></div>}
-    <div className="procure-inventory-stock-toggle"><label>Tilføj katalogvare til lager<select value={stockCandidate} onChange={(event) => setStockCandidate(event.target.value)}><option value="">Vælg ikke-lagerført vare</option>{state.catalog.filter((item) => !item.stocked).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.sku || "uden varenummer"}</option>)}</select></label><button className="procure-button secondary" disabled={!stockCandidate || !canWrite || marking} onClick={markStocked}>{marking ? "Gemmer …" : "Markér som lagerført"}</button></div>
-    <div className="procure-inventory-mobile-actions"><Link to="/indkoeb/mobil/modtag">Modtag varer</Link><button disabled={!selected || !canWrite} onClick={(event) => open("forbrug", selected, event.currentTarget)}>Registrér forbrug</button><button disabled={!selected || !canWrite} onClick={(event) => open(Number.isFinite(selected?.quantity) ? "optaelling" : "startbeholdning", selected, event.currentTarget)}>Optæl lager</button></div>
-    <div className="procure-inventory-filters"><label className="procure-search"><span>⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Søg vare eller varenummer" /></label><select value={warehouse} onChange={(event) => setWarehouse(event.target.value)}><option value="">Alle lagre</option>{warehouses.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><select value={location} onChange={(event) => setLocation(event.target.value)}><option value="">Alle placeringer</option>{locations.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><label className="procure-inventory-under"><input type="checkbox" checked={below} onChange={(event) => setBelow(event.target.checked)} /> Under minimum</label></div>
-    <article className="procure-card procure-inventory-list"><div className="procure-table-wrap"><table><thead><tr><th>Vare</th><th>Lager og placering</th><th>Beholdning</th><th>Minimum</th><th>Bestilt, ikke modtaget</th><th>Senest optalt</th></tr></thead><tbody>{visible.map((row) => <tr key={row.key} className={selected?.key === row.key ? "selected" : ""} onClick={() => setSelectedKey(row.key)}><td><b>{row.item.name}</b><small>{row.item.sku || "Uden varenummer"}</small></td><td>{row.warehouse}<small>{row.location}</small></td><td><b>{Number.isFinite(row.quantity) ? `${number(row.quantity)} ${unitLabel(row.unit, row.quantity)}` : "Ukendt"}</b></td><td>{Number.isFinite(row.item.minimumStock) ? `${number(row.item.minimumStock)} ${row.unit}` : "Ikke sat"}</td><td>{number(row.onOrder)} {row.unit}</td><td>{date(row.lastCountedAt)}</td></tr>)}</tbody></table></div>{!visible.length && <p className="procure-empty">Ingen lagerførte varer matcher filtrene.</p>}</article>
-    {selected && <article ref={detailRef} className="procure-card procure-inventory-detail"><div className="procure-inventory-detail-head"><div><h2>{selected.item.name} · {selected.warehouse} · {selected.location}</h2><p>{Number.isFinite(selected.quantity) ? `${number(selected.quantity)} ${unitLabel(selected.unit, selected.quantity)} registreret` : "Beholdningen er endnu ikke optalt"}</p></div><div><button className="procure-button secondary small" disabled={!canWrite || !Number.isFinite(selected.quantity)} onClick={(event) => open("flytning", selected, event.currentTarget)}>Flyt</button><button className="procure-button secondary small" disabled={!canWrite || !Number.isFinite(selected.quantity)} onClick={(event) => open("retur", selected, event.currentTarget)}>Retur</button><button className="procure-button secondary small" disabled={!canWrite || !Number.isFinite(selected.quantity)} onClick={(event) => open("korrektion", selected, event.currentTarget)}>Korrektion</button></div></div><div className="procure-detail-tabs"><button className="active">Bevægelser</button><span>Bestillinger</span><span>Optællinger</span></div><div className="procure-table-wrap"><table><thead><tr><th>Hændelse</th><th>Ændring</th><th>Beholdning</th><th>Medarbejder</th><th>Tidspunkt</th></tr></thead><tbody>{selectedMovements.map((movement) => <tr key={movement.id}><td><b>{INVENTORY_TYPES[movement.art]?.label || movement.art}</b>{movement.ordreId && <small>{state.orders.find((order) => order.id === movement.ordreId)?.poNumber || movement.ordreId}</small>}{movement.note && <small>{movement.note}</small>}</td><td className={Number(movement.delta) < 0 ? "negative" : "positive"}>{Number(movement.delta) > 0 ? "+" : ""}{number(movement.delta)} {movement.enhed}</td><td>{Number.isFinite(Number(movement.efter)) ? `${number(movement.efter)} ${movement.enhed}` : "Ukendt"}</td><td>{movement.medarbejderNavn || "Medarbejder"}</td><td>{dateTime(movement.ms)}</td></tr>)}</tbody></table></div>{!selectedMovements.length && <p className="procure-empty">Ingen bevægelser på denne placering.</p>}</article>}
-    <article className="procure-card procure-inventory-period"><div className="procure-cardhead"><div><h2>Periodeoversigt og intern kontrol</h2><p>Valgt periode: {periodFrom} – {periodTo}. Historiske tal beregnes af bevægelserne.</p></div><div className="procure-period-controls"><label>Fra<input aria-label="Fra dato" type="date" value={periodFrom} max={periodTo} onChange={(event) => setPeriodFrom(event.target.value)} /></label><label>Til<input aria-label="Til dato" type="date" value={periodTo} min={periodFrom} onChange={(event) => setPeriodTo(event.target.value)} /></label><button className="procure-button secondary small" onClick={() => download(`procure-lager-${periodFrom}-${periodTo}.csv`, inventoryCsv(periodRows, { from: periodFrom, to: periodTo }))}>Eksportér CSV</button></div></div><div className="procure-table-wrap"><table><thead><tr><th>Vare og lager</th><th>Primo</th><th>Start i perioden</th><th>Modtagelser</th><th>Forbrug</th><th>Retur</th><th>± korrektion</th><th>Nettoflytning</th><th>Ultimo</th><th>Optællinger</th><th>Grundlag</th></tr></thead><tbody>{periodRows.map((row) => { const unit = row.item.grundenhed || row.item.enhed; return <tr key={row.key}><td><b>{row.item.navn}</b><small>{row.movements[0]?.lager || row.warehouseId} · alle placeringer</small></td><td>{row.opening ?? "Ukendt"} {row.opening === null ? "" : unit}</td><td>{number(row.starts)} {unit}</td><td>{number(row.receipts)} {unit}</td><td>{number(row.consumption)} {unit}</td><td>{number(row.returns)} {unit}</td><td>{row.corrections > 0 ? "+" : ""}{number(row.corrections)} {unit}</td><td>{row.transfers > 0 ? "+" : ""}{number(row.transfers)} {unit}</td><td><b>{row.closing ?? "Ukendt"} {row.closing === null ? "" : unit}</b></td><td>{row.counts} · afvigelse {number(row.countDeviation)} {unit}</td><td><button type="button" className="procure-linkbutton" onClick={() => openPeriodDetails(row)}>Vis bevægelser</button></td></tr>; })}</tbody></table></div></article>
+    <div className="procure-inventory-mobile-actions"><Link to="/indkoeb/mobil/modtag">Modtag varer</Link><Link to="/indkoeb/katalog?opsaetning=1">Vareopsætning</Link><button disabled={!selected || !canWrite} onClick={(event) => open(Number.isFinite(selected?.quantity) ? "optaelling" : "startbeholdning", selected, event.currentTarget)}>Optæl lager</button></div>
+    <div className="procure-inventory-filters simplified"><label className="procure-search"><span>⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Søg vare eller varenummer" /></label><select aria-label="Afdeling" value={department} onChange={(event) => setDepartment(event.target.value)}><option value="">Alle afdelinger</option>{Object.values(state.setup?.afdelinger || {}).filter((row) => row.active !== false).map((row) => <option key={row.id} value={row.id}>{row.label}</option>)}</select><label className="procure-inventory-under"><input type="checkbox" checked={below} onChange={(event) => setBelow(event.target.checked)} /> Under genbestillingsniveau</label></div>
+    {department && <p className="procure-filter-context">Viser kun placeringer tilknyttet <b>{state.setup?.afdelinger?.[department]?.label || department}</b>. Fælles placeringer tilskrives ikke automatisk en afdeling.</p>}
+    <article className="procure-card procure-inventory-list"><div className="procure-table-wrap"><table><thead><tr><th>Vare</th><th>Antal på lager</th><th>Genbestillingsniveau</th><th>Seneste status</th><th>Status</th><th>Gns. månedsforbrug</th><th>Årligt forbrug</th></tr></thead><tbody>{visible.map((row) => <tr key={row.item.id} className={selectedSummary?.item.id === row.item.id ? "selected" : ""} onClick={() => { setSelectedItemId(row.item.id); setSelectedLocationKey(""); setDetailTab("beholdning"); }}><td><b>{row.item.name}</b><small>{row.item.sku || "Uden varenummer"}</small></td><td><b>{row.quantity === null ? "Ukendt" : `${number(row.quantity)} ${unitLabel(row.unit, row.quantity)}`}</b><small>{row.locations.length} placering{row.locations.length === 1 ? "" : "er"}</small></td><td>{row.minimum === null ? "Ikke sat" : `${number(row.minimum)} ${row.unit}`}</td><td>{row.neverCounted ? `Ikke optalt alle steder${row.latestCountedAt ? ` · senest ${date(row.latestCountedAt)}` : ""}` : date(row.oldestCountedAt)}</td><td><span className={`procure-status ${row.tone}`}>{row.status}</span></td><td>{row.consumption.monthlyQuantity === null ? "Mangler grundlag" : `${number(row.consumption.monthlyQuantity)} ${row.unit}`}</td><td>{row.consumption.annualQuantity === null ? <span title="Årstal vises kun ved mindst 330 dages måledækning">Mangler helårsdækning</span> : `${number(row.consumption.annualQuantity)} ${row.unit}`}</td></tr>)}</tbody></table></div>{!visible.length && <p className="procure-empty">Ingen lagerførte varer matcher filtrene.</p>}</article>
+    {selectedSummary && <article ref={detailRef} className="procure-card procure-inventory-detail"><div className="procure-inventory-detail-head"><div><h2>{selectedSummary.item.name} · {selectedSummary.item.sku || "uden varenummer"}</h2><p>{selectedSummary.quantity === null ? "Beholdningen er ukendt på mindst én placering" : `${number(selectedSummary.quantity)} ${unitLabel(selectedSummary.unit, selectedSummary.quantity)} på ${selectedSummary.locations.length} placering${selectedSummary.locations.length === 1 ? "" : "er"}`}</p></div><div><button className="procure-button" disabled={!canWrite || !selected} onClick={(event) => open(Number.isFinite(selected?.quantity) ? "optaelling" : "startbeholdning", selected, event.currentTarget)}>Optæl valgt placering</button><button className="procure-button secondary small" disabled={!canWrite || !Number.isFinite(selected?.quantity)} onClick={(event) => open("flytning", selected, event.currentTarget)}>Flyt</button><button className="procure-button secondary small" disabled={!canWrite || !Number.isFinite(selected?.quantity)} onClick={(event) => open("retur", selected, event.currentTarget)}>Retur</button><button className="procure-button secondary small" disabled={!canWrite || !Number.isFinite(selected?.quantity)} onClick={(event) => open("korrektion", selected, event.currentTarget)}>Korrektion</button></div></div><div className="procure-detail-tabs" role="tablist">{[["beholdning","Placeringer"],["bevaegelser","Bevægelser"],["optaellinger","Optællinger"],["bestillinger","Bestillinger"],["periode","Periodeafstemning"]].map(([id,label]) => <button key={id} type="button" role="tab" aria-selected={detailTab === id} className={detailTab === id ? "active" : ""} onClick={() => setDetailTab(id)}>{label}</button>)}</div>
+      {detailTab === "beholdning" && <div className="procure-location-grid">{selectedLocations.map((row) => <button type="button" key={row.key} className={selected?.key === row.key ? "selected" : ""} onClick={() => setSelectedLocationKey(row.key)}><span><b>{row.warehouse}</b><small>{row.location}{row.departmentId ? ` · ${state.setup?.afdelinger?.[row.departmentId]?.label || row.departmentId}` : " · fælles"}</small></span><strong>{Number.isFinite(row.quantity) ? `${number(row.quantity)} ${unitLabel(row.unit, row.quantity)}` : "Ukendt"}</strong><small>{row.lastCountedAt ? `Optalt ${date(row.lastCountedAt)}` : "Aldrig optalt"}</small></button>)}</div>}
+      {detailTab === "bevaegelser" && <><div className="procure-table-wrap"><table><thead><tr><th>Hændelse</th><th>Placering</th><th>Ændring</th><th>Beholdning</th><th>Medarbejder</th><th>Tidspunkt</th></tr></thead><tbody>{selectedMovements.map((movement) => <tr key={movement.id}><td><b>{INVENTORY_TYPES[movement.art]?.label || movement.art}</b>{movement.ordreId && <small>{state.orders.find((order) => order.id === movement.ordreId)?.poNumber || movement.ordreId}</small>}{movement.note && <small>{movement.note}</small>}</td><td>{movement.lager}<small>{movement.placering}</small></td><td className={Number(movement.delta) < 0 ? "negative" : "positive"}>{Number(movement.delta) > 0 ? "+" : ""}{number(movement.delta)} {movement.enhed}</td><td>{Number.isFinite(Number(movement.efter)) ? `${number(movement.efter)} ${movement.enhed}` : "Ukendt"}</td><td>{movement.medarbejderNavn || "Medarbejder"}</td><td>{dateTime(movement.ms)}</td></tr>)}</tbody></table></div>{!selectedMovements.length && <p className="procure-empty">Ingen bevægelser er registreret.</p>}</>}
+      {detailTab === "optaellinger" && <div className="procure-table-wrap"><table><thead><tr><th>Placering</th><th>Optalt beholdning</th><th>Afvigelse</th><th>Medarbejder</th><th>Tidspunkt</th></tr></thead><tbody>{selectedMovements.filter((row) => ["startbeholdning","optaelling"].includes(row.art)).map((row) => <tr key={row.id}><td>{row.lager} · {row.placering}</td><td>{number(row.efter)} {row.enhed}</td><td>{row.delta > 0 ? "+" : ""}{number(row.art === "startbeholdning" ? 0 : row.delta)} {row.enhed}</td><td>{row.medarbejderNavn || "Medarbejder"}</td><td>{dateTime(row.ms)}</td></tr>)}</tbody></table></div>}
+      {detailTab === "bestillinger" && <div className="procure-table-wrap"><table><thead><tr><th>Reference</th><th>Leverandør</th><th>Antal</th><th>Status</th></tr></thead><tbody>{state.orders.flatMap((order) => (order.lines || []).filter((line) => line.itemId === selectedSummary.item.id).map((line) => <tr key={`${order.id}-${line.id}`}><td><Link to={`/indkoeb/bestillinger?sag=${order.id}`}>{order.poNumber || order.id}</Link></td><td>{state.suppliers.find((supplier) => supplier.id === order.supplierId)?.name || "Afklares"}</td><td>{number(line.quantity)} {line.unit}</td><td>{order.status}</td></tr>))}</tbody></table></div>}
+      {detailTab === "periode" && <div className="procure-inventory-period"><div className="procure-cardhead"><div><h3>Periodeoversigt og intern kontrol</h3><p>Valgt periode: {periodFrom} – {periodTo}. Historiske tal beregnes af bevægelserne.</p></div><div className="procure-period-controls"><label>Fra<input aria-label="Fra dato" type="date" value={periodFrom} max={periodTo} onChange={(event) => setPeriodFrom(event.target.value)} /></label><label>Til<input aria-label="Til dato" type="date" value={periodTo} min={periodFrom} onChange={(event) => setPeriodTo(event.target.value)} /></label><button className="procure-button secondary small" onClick={() => download(`procure-varelager-${periodFrom}-${periodTo}.csv`, inventoryCsv(periodRows, { from: periodFrom, to: periodTo }))}>Eksportér CSV</button></div></div><div className="procure-table-wrap"><table><thead><tr><th>Vare og lager</th><th>Primo</th><th>Start i perioden</th><th>Modtagelser</th><th>Registrerede udtag</th><th>Retur</th><th>± korrektion</th><th>Nettoflytning</th><th>Ultimo</th><th>Optællinger</th><th>Grundlag</th></tr></thead><tbody>{periodRows.map((row) => { const unit = row.item.grundenhed || row.item.enhed; return <tr key={row.key}><td><b>{row.item.navn}</b><small>{row.movements[0]?.lager || row.warehouseId} · alle placeringer</small></td><td>{row.opening ?? "Ukendt"} {row.opening === null ? "" : unit}</td><td>{number(row.starts)} {unit}</td><td>{number(row.receipts)} {unit}</td><td>{number(row.consumption)} {unit}</td><td>{number(row.returns)} {unit}</td><td>{row.corrections > 0 ? "+" : ""}{number(row.corrections)} {unit}</td><td>{row.transfers > 0 ? "+" : ""}{number(row.transfers)} {unit}</td><td><b>{row.closing ?? "Ukendt"} {row.closing === null ? "" : unit}</b></td><td>{row.counts} · afvigelse {number(row.countDeviation)} {unit}</td><td><button type="button" className="procure-linkbutton" onClick={() => openPeriodDetails(row)}>Vis bevægelser</button></td></tr>; })}</tbody></table></div></div>}
+    </article>}
     {mode && selected && <InventoryDialog row={selected} mode={mode} state={state} demo={demo} user={user} onClose={closeDialog} onSaved={saved} />}
   </section>;
 }

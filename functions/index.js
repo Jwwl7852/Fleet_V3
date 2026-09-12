@@ -6530,6 +6530,10 @@ export const procureMobilKladdeGem = onCall({ region: REGION }, async (req) => {
     const master = await rod.child(`procureOpsaetning/${type}/${id}`).once("value");
     if (!master.exists() || master.val()?.active === false) throw new HttpsError("failed-precondition", `${label} findes ikke eller er deaktiveret.`);
   }
+  for (const departmentId of new Set(Object.values(validatedDraft.lineDepartments || {}))) {
+    const department = await rod.child(`procureOpsaetning/afdelinger/${departmentId}`).once("value");
+    if (!department.exists() || department.val()?.active === false) throw new HttpsError("failed-precondition", "En varelinje peger på en ukendt eller deaktiveret afdeling.");
+  }
   const ref = mobilKladdeRef(rod, uid);
   let duplicate = false; let conflict = false;
   const now = Date.now();
@@ -6562,7 +6566,8 @@ export const procureMobilKladdeDelIndsend = onCall({ region: REGION }, async (re
   const before = beforeSnap.val();
   const split = splitServerDraft(before, selections);
   if (!split.ok) throw new HttpsError("invalid-argument", Object.values(split.errors)[0]);
-  const catalog = (await rod.child("forbrugsvarer").once("value")).val() || {};
+  const [catalogSnap, departmentsSnap] = await Promise.all([rod.child("forbrugsvarer").once("value"), rod.child("procureOpsaetning/afdelinger").once("value")]);
+  const catalog = catalogSnap.val() || {}; const departments = departmentsSnap.val() || {};
   const fullBasisOere = Object.entries(before.items || {}).reduce((sum, [id, quantity]) => {
     const item = catalog[id] || {};
     const unitPrice = Number(item.bestillingsprisOere ?? item.indkoebsprisOere ?? 0);
@@ -6572,6 +6577,8 @@ export const procureMobilKladdeDelIndsend = onCall({ region: REGION }, async (re
   for (const row of split.submitted) {
     const item = row.custom ? row : catalog[row.id];
     if (!item) throw new HttpsError("not-found", `Varen ${row.id} findes ikke længere.`);
+    const department = departments[row.departmentId];
+    if (!department || department.active === false) throw new HttpsError("failed-precondition", `${item.navn || item.name}: vælg en aktiv afdeling.`);
     const lineId = `line-${createHash("sha256").update(`${requestId}:${row.id}`).digest("hex").slice(0, 16)}`;
     const unitsPerOrder = Number(item.antalPrBestillingsenhed || item.unitsPerOrder || 1);
     const orderUnit = kortStreng(item.bestillingsenhed || item.orderUnit || item.enhed || item.unit || "stk.", 30);
@@ -6586,8 +6593,10 @@ export const procureMobilKladdeDelIndsend = onCall({ region: REGION }, async (re
       rejectedQuantity: 0, pendingQuantity: row.quantity, orderUnit, baseUnit,
       unitsPerOrder: Number.isFinite(unitsPerOrder) && unitsPerOrder > 0 ? unitsPerOrder : 1,
       unitPriceOere: Number.isInteger(unitPriceOere) ? unitPriceOere : 0,
+      departmentId: row.departmentId, department: department.label,
     };
   }
+  const submittedDepartments = [...new Set(Object.values(lines).map((line) => line.departmentId))];
   const approvalId = `approval-${createHash("sha256").update(`${tenantId}:${uid}:${requestId}`).digest("hex").slice(0, 24)}`;
   const publicReference = `IND-${new Date().getUTCFullYear()}-${createHash("sha256").update(approvalId).digest("hex").slice(0, 6).toUpperCase()}`;
   let duplicate = false; let conflict = false;
@@ -6605,7 +6614,8 @@ export const procureMobilKladdeDelIndsend = onCall({ region: REGION }, async (re
   const approvalRef = rod.child(`procureGodkendelsessager/${approvalId}`);
   const approvalTx = await approvalRef.transaction((current) => current || {
     id: approvalId, reference: publicReference, status: "pending", revision: 1, sourceDraftUid: uid, sourceRequestId: requestId,
-    departmentId: before.departmentId || null, department: before.department || null,
+    departmentId: submittedDepartments.length === 1 ? submittedDepartments[0] : null,
+    department: submittedDepartments.length === 1 ? departments[submittedDepartments[0]]?.label : "Flere afdelinger",
     deliveryLocationId: before.deliveryLocationId || null, deliveryLocation: before.deliveryLocation || null,
     wantedDate: before.wantedDate || null, asSoonAsPossible: Boolean(before.asSoonAsPossible),
     approvalBasisOere: fullBasisOere, lines, submittedBy: uid, submittedAt: now,
@@ -6665,6 +6675,7 @@ export const procureGodkendelseslinjerAfgor = onCall({ region: REGION }, async (
       antal: line.quantity, enhed: line.orderUnit, grundenhed: line.baseUnit,
       antalPrBestillingsenhed: line.unitsPerOrder, prisPrEnhedOere: line.unitPriceOere,
       varegruppe: line.categorySnapshot, kildeGodkendelseslinjeId: line.id,
+      afdelingId: line.departmentId || null, afdeling: line.department || null,
       oprindeligtAnmodetAntal: line.requestedQuantity,
     }; });
     updates[`tenants/${tenantId}/indkoebsordrer/${orderId}`] = {
@@ -8356,6 +8367,143 @@ export const kontantkoebskriv = onCall({ region: REGION }, async (req) => {
   return { ok: true, id: ref.key };
 });
 
+/* PROCURE: allerede foretaget køb. Linjerne bliver i det fælles `indkoeb`-
+   register; anmodningsnoden nedenfor er kun et idempotensværn. Funktionen
+   sender ingen mail, foretager ingen betaling og markerer ikke noget bogført. */
+export const procureKoebRegistrer = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.skriv", modul: "indkoeb" });
+  const d = req.data || {};
+  const requestId = kortStreng(d.requestId, 80);
+  if (!requestId || !erGyldigtSendRequestId(requestId)) throw new HttpsError("invalid-argument", "Købsreferencen mangler eller er ugyldig.");
+  const supplierId = kortStreng(d.supplierId, 60);
+  if (!supplierId || !(await rod.child(`leverandoerer/${supplierId}`).once("value")).exists()) throw new HttpsError("invalid-argument", "Vælg en eksisterende leverandør.");
+  const purchaseDate = kortStreng(d.purchaseDate, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(purchaseDate)) throw new HttpsError("invalid-argument", "Angiv købsdatoen.");
+  const paymentMethod = kortStreng(d.paymentMethod, 30);
+  if (!["firmakort", "udlaeg", "kontant", "faktura"].includes(paymentMethod)) throw new HttpsError("invalid-argument", "Vælg en gyldig betalingsform.");
+  const inputLines = Array.isArray(d.lines) ? d.lines.slice(0, 50) : [];
+  if (!inputLines.length) throw new HttpsError("invalid-argument", "Tilføj mindst én varelinje.");
+  const [itemsSnap, departmentsSnap, userSnap] = await Promise.all([
+    rod.child("forbrugsvarer").once("value"), rod.child("procureOpsaetning/afdelinger").once("value"), rod.child(`brugere/${uid}`).once("value"),
+  ]);
+  const items = itemsSnap.val() || {}; const departments = departmentsSnap.val() || {};
+  const actorName = kortStreng(userSnap.val()?.navn || userSnap.val()?.email, 160) || "Medarbejder";
+  const lines = inputLines.map((source, index) => {
+    const itemId = kortStreng(source.itemId, 60); const item = items[itemId];
+    if (!item || item.aktiv === false) throw new HttpsError("invalid-argument", `Varelinje ${index + 1} peger ikke på en aktiv katalogvare.`);
+    const departmentId = kortStreng(source.departmentId, 60); const department = departments[departmentId];
+    if (!department || department.active === false) throw new HttpsError("invalid-argument", `Vælg en aktiv afdeling på varelinje ${index + 1}.`);
+    const quantity = Number(source.quantity); const amountOere = Number(source.amountOere);
+    if (!Number.isFinite(quantity) || quantity <= 0) throw new HttpsError("invalid-argument", `Antallet på varelinje ${index + 1} er ugyldigt.`);
+    if (!Number.isInteger(amountOere) || amountOere < 0) throw new HttpsError("invalid-argument", `Beløbet på varelinje ${index + 1} skal være i hele øre.`);
+    const unit = kortStreng(source.unit, 20);
+    if (!unit || ![item.enhed, item.bestillingsenhed, item.grundenhed].filter(Boolean).includes(unit)) throw new HttpsError("invalid-argument", `Enheden på varelinje ${index + 1} matcher ikke vareopsætningen.`);
+    return { id: `linje-${index + 1}`, itemId, item, departmentId, department, quantity, amountOere, unit,
+      warehouseId: kortStreng(source.warehouseId, 60), warehouse: kortStreng(source.warehouse, 120),
+      locationId: kortStreng(source.locationId, 60), location: kortStreng(source.location, 120),
+      expectedRevision: Number(source.expectedRevision || 0) };
+  });
+  const purchaseId = `koeb-${requestId}`; const readableReference = `KOB-${purchaseDate.replaceAll("-", "")}-${requestId.slice(-6).toUpperCase()}`;
+  const fingerprint = createHash("sha256").update(JSON.stringify({ supplierId, purchaseDate, paymentMethod,
+    lines: lines.map((line) => [line.itemId, line.departmentId, line.quantity, line.unit, line.amountOere, line.warehouseId, line.locationId]) })).digest("hex");
+  const tenantBeforeSnap = await rod.once("value");
+  if (!tenantBeforeSnap.exists()) throw new HttpsError("not-found", "Kunden findes ikke.");
+  const tenantBefore = tenantBeforeSnap.val();
+  let coldFallback = true; let result; let rejected = ""; const now = Date.now();
+  const tx = await rod.transaction((tenantData) => {
+    if (!tenantData && coldFallback) tenantData = structuredClone(tenantBefore);
+    coldFallback = false;
+    if (!tenantData) return;
+    const previous = tenantData.procureKoebsanmodninger?.[requestId];
+    if (previous) {
+      if (previous.fingerprint !== fingerprint) { rejected = "Købsreferencen er allerede brugt til andre oplysninger."; return; }
+      result = { already: true, purchaseId: previous.purchaseId, reference: previous.reference,
+        inventoryEffects: previous.inventoryEffects || [] }; return tenantData;
+    }
+    tenantData.indkoeb ||= {}; tenantData.forbrugsvarer ||= {}; tenantData.forbrugsvarebevaegelser ||= {};
+    const inventoryEffects = [];
+    for (const line of lines) {
+      if (line.item.lagerfoert === true) {
+        if (!line.warehouseId || !line.locationId) { rejected = `${line.item.navn}: vælg lager og placering for den modtagne vare.`; return; }
+        const converted = stockQuantityForOrderLine({ ...line.item, id: line.itemId }, { enhed: line.unit }, line.quantity);
+        if (!converted.ok) { rejected = converted.message; return; }
+        const built = applyInventoryMovement({ ...tenantData.forbrugsvarer[line.itemId], id: line.itemId }, {
+          type: "modtaget", quantity: converted.quantity, unit: converted.unit,
+          requestId: `${requestId}-${line.id}`, warehouseId: line.warehouseId, warehouse: line.warehouse,
+          locationId: line.locationId, location: line.location, expectedRevision: line.expectedRevision, departmentId: line.departmentId,
+        }, { uid, actorName, now });
+        if (!built.ok) { rejected = Object.values(built.errors)[0]; return; }
+        tenantData.forbrugsvarer[line.itemId] = { ...built.item }; delete tenantData.forbrugsvarer[line.itemId].id;
+        tenantData.forbrugsvarebevaegelser[`${purchaseId}-${line.id}`] = { ...built.movement, koebId: purchaseId };
+        inventoryEffects.push({ itemId: line.itemId, before: built.movement.foer, after: built.movement.efter, delta: built.movement.delta, unit: built.movement.enhed });
+      }
+      tenantData.indkoeb[`${purchaseId}__${line.id}`] = {
+        koebId: purchaseId, koebReference: readableReference, koebstype: "alleredeForetaget", dato: Date.parse(`${purchaseDate}T12:00:00Z`),
+        leverandoerId: supplierId, vareId: line.itemId, vare: line.item.navn, varenummer: line.item.varenummer || line.itemId,
+        antal: line.quantity, enhed: line.unit, prisPrEnhedOere: Math.round(line.amountOere / line.quantity), beloebOere: line.amountOere,
+        afdelingId: line.departmentId, afdeling: line.department.label, betalingsform: paymentMethod === "faktura" ? "faktura" : "kontant",
+        betalingsmetode: paymentMethod, bekraeftetKoeb: true, fakturastatus: paymentMethod === "faktura" ? "mangler" : "godkendt",
+        kvitteringsstatus: "mangler", udgiftsstatus: "afventerGodkendelse", oekonomistatus: "ikkeBogfoert",
+        lagerfoert: line.item.lagerfoert === true, lagerModtaget: line.item.lagerfoert === true,
+        oprettetAf: uid, oprettetAfNavn: actorName, oprettetMs: now,
+      };
+    }
+    tenantData.procureKoebsanmodninger ||= {};
+    tenantData.procureKoebsanmodninger[requestId] = { purchaseId, reference: readableReference, fingerprint, oprettetAf: uid, oprettetMs: now, inventoryEffects };
+    result = { already: false, purchaseId, reference: readableReference, inventoryEffects };
+    return tenantData;
+  });
+  if (!tx.committed) throw new HttpsError(rejected.includes("ændret") ? "aborted" : "failed-precondition", rejected || "Købet kunne ikke gemmes.");
+  await logProcure(tenantId, uid, AUDIT.opret, "indkoeb", purchaseId, null,
+    { reference: result.reference, lines: lines.length }, result.already ? "gentaget kald — intet ekstra køb" : "allerede foretaget køb registreret");
+  return { ok: true, ...result, status: "afventerUdgiftsgodkendelse", receiptStatus: "mangler",
+    vendorMailSent: false, paymentCreated: false };
+});
+
+const koebBilagSti = (purchaseId, documentId) => `procureKoebsbilag/${purchaseId}/dokumenter/${documentId}`;
+const koebBilagStorageSti = (tenantId, purchaseId, documentId) => `tenants/${tenantId}/procureKoeb/${purchaseId}/dokumenter/${documentId}`;
+async function hentKoebslinjer(rod, purchaseId) {
+  const snap = await rod.child("indkoeb").once("value");
+  const rows = Object.entries(snap.val() || {}).filter(([, row]) => row.koebId === purchaseId);
+  if (!rows.length) throw new HttpsError("not-found", "Købet findes ikke.");
+  return rows;
+}
+export const procureKoebBilagUploadInitier = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.skriv", modul: "indkoeb" });
+  const purchaseId = kortStreng(req.data?.purchaseId, 100); if (!purchaseId) throw new HttpsError("invalid-argument", "Købsreference mangler.");
+  await hentKoebslinjer(rod, purchaseId);
+  const name = kortStreng(req.data?.originalFilename, 200); const mimeType = kortStreng(req.data?.mimeType, 100); const size = Number(req.data?.size);
+  if (!name || !TILLADT_MIME.includes(mimeType)) throw new HttpsError("invalid-argument", "Kun PDF, JPEG og PNG kan vedhæftes.");
+  if (!Number.isFinite(size) || size <= 0 || size > MAX_FILSTOERRELSE_BYTES) throw new HttpsError("invalid-argument", "Filstørrelsen er ugyldig eller over 25 MB.");
+  const documentId = rod.child(`procureKoebsbilag/${purchaseId}/dokumenter`).push().key;
+  const storagePath = koebBilagStorageSti(tenantId, purchaseId, documentId);
+  await rod.child(koebBilagSti(purchaseId, documentId)).set({ documentId, originalFilename: name, validatedMime: mimeType, size, storagePath, uploader: uid, createdAt: Date.now(), status: "karantaene" });
+  const uploadUrl = await lokalStorageUrl(req, { handling: "write", storagePath, mimeType, stoerrelse: size }) || (await getStorage().bucket().file(storagePath).getSignedUrl({ version: "v4", action: "write", expires: Date.now() + 600000, contentType: mimeType }))[0];
+  return { documentId, storagePath, uploadUrl };
+});
+export const procureKoebBilagUploadBekraeft = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "indkoeb.skriv", modul: "indkoeb" });
+  const purchaseId = kortStreng(req.data?.purchaseId, 100); const documentId = kortStreng(req.data?.documentId, 80);
+  const rows = await hentKoebslinjer(rod, purchaseId); const docRef = rod.child(koebBilagSti(purchaseId, documentId)); const snap = await docRef.once("value");
+  if (!snap.exists()) throw new HttpsError("not-found", "Kvitteringen findes ikke."); const doc = snap.val();
+  if (doc.status === "aktiv") return { ok: true, already: true, sha256: doc.sha256 };
+  const file = getStorage().bucket().file(doc.storagePath); const [exists] = await file.exists(); if (!exists) throw new HttpsError("failed-precondition", "Uploaden er ikke modtaget.");
+  const [meta] = await file.getMetadata(); const actualSize = Number(meta.size); const [head] = await file.download({ start: 0, end: 15 });
+  if (!Number.isFinite(actualSize) || actualSize <= 0 || actualSize > MAX_FILSTOERRELSE_BYTES || !tjekSignatur(head, doc.validatedMime)) { await file.delete({ ignoreNotFound: true }); await docRef.update({ status: "afvist", rejectedAt: Date.now() }); throw new HttpsError("failed-precondition", "Filens type eller størrelse blev afvist."); }
+  const [all] = await file.download(); const sha256 = createHash("sha256").update(all).digest("hex"); const verifiedAt = Date.now();
+  const updates = { [`${koebBilagSti(purchaseId, documentId)}/status`]: "aktiv", [`${koebBilagSti(purchaseId, documentId)}/sha256`]: sha256, [`${koebBilagSti(purchaseId, documentId)}/verifiedAt`]: verifiedAt };
+  for (const [lineId] of rows) { updates[`indkoeb/${lineId}/bilagId`] = documentId; updates[`indkoeb/${lineId}/kvitteringsstatus`] = "vedhaeftet"; }
+  await rod.update(updates); await logProcure(tenantId, uid, AUDIT.tilstandsskift, "koebsbilag", documentId, { status: "karantaene" }, { status: "aktiv" }, "kvittering verificeret");
+  return { ok: true, sha256, size: actualSize };
+});
+export const procureKoebBilagDownloadLink = onCall({ region: REGION }, async (req) => {
+  const { rod, uid } = await procureDoer(req, { perm: "indkoeb.laes", modul: "indkoeb" });
+  const purchaseId = kortStreng(req.data?.purchaseId, 100); const documentId = kortStreng(req.data?.documentId, 80); await hentKoebslinjer(rod, purchaseId);
+  const snap = await rod.child(koebBilagSti(purchaseId, documentId)).once("value"); if (!snap.exists() || snap.val()?.status !== "aktiv") throw new HttpsError("not-found", "Kvitteringen er ikke tilgængelig.");
+  const doc = snap.val(); const url = await lokalStorageUrl(req, { handling: "read", storagePath: doc.storagePath, mimeType: doc.validatedMime }) || (await getStorage().bucket().file(doc.storagePath).getSignedUrl({ version: "v4", action: "read", expires: Date.now() + 300000 }))[0];
+  void uid; return { url, sha256: doc.sha256, expiresAt: Date.now() + 300000 };
+});
+
 /* ══════════════════════════════════════════════════════════════════════════
    FORBRUGSVARER — Procures eget varelager (beslutning 85)
    ══════════════════════════════════════════════════════════════════════════
@@ -8380,6 +8528,9 @@ export const forbrugsvareskriv = onCall({ region: REGION }, async (req) => {
   if (kortStreng(d.varenummer, 60)) post.varenummer = kortStreng(d.varenummer, 60);
   if (kortStreng(d.note, 250)) post.note = kortStreng(d.note, 250);
   if (kortStreng(d.leverandoerId, 60)) post.leverandoerId = kortStreng(d.leverandoerId, 60);
+  if (kortStreng(d.varegruppe, 80)) post.varegruppe = kortStreng(d.varegruppe, 80);
+  if (kortStreng(d.standardAfdelingId, 60)) post.standardAfdelingId = kortStreng(d.standardAfdelingId, 60);
+  post.aktiv = d.aktiv !== false;
   post.lagerfoert = d.lagerfoert === true;
   if (kortStreng(d.grundenhed, 20)) post.grundenhed = kortStreng(d.grundenhed, 20);
   if (kortStreng(d.bestillingsenhed, 20)) post.bestillingsenhed = kortStreng(d.bestillingsenhed, 20);
@@ -8467,6 +8618,12 @@ export const forbrugsvarebevaegelse = onCall({ region: REGION }, async (req) => 
   if (vare.lagerfoert === true) {
     throw new HttpsError("failed-precondition",
       "Lagerførte varer skal registreres via Lager, så lager og placering bevares.");
+  }
+  if (post.standardAfdelingId) {
+    const afdeling = await rod.child(`procureOpsaetning/afdelinger/${post.standardAfdelingId}`).once("value");
+    if (!afdeling.exists() || afdeling.val()?.active === false) {
+      throw new HttpsError("invalid-argument", "Standardafdelingen findes ikke eller er deaktiveret.");
+    }
   }
 
   const nu = Date.now();

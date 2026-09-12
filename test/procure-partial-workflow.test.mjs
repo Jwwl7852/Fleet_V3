@@ -50,6 +50,17 @@ test("serverkladde sanitiseres og delindsendelse bevarer restmængden", () => {
   assert.equal(split.draft.custom.fri.quantity, 1);
 });
 
+test("hver mobil varelinje bevarer sin kundeskabte afdeling ved delindsendelse", () => {
+  const draft = sanitizeMobileDraft({ items: { tape: 10, milk: 12 }, departmentId: "fallback",
+    lineDepartments: { tape: "varemodtagelse", milk: "administration" } }, { uid: "buyer", now: 10, revision: 1 });
+  const split = splitServerDraft(draft, [{ id: "tape", quantity: 6, departmentId: "varemodtagelse" }, { id: "milk", quantity: 12, departmentId: "administration" }]);
+  assert.equal(split.ok, true);
+  assert.deepEqual(split.submitted.map((row) => [row.id, row.departmentId]), [["tape", "varemodtagelse"], ["milk", "administration"]]);
+  assert.equal(split.draft.items.tape, 4);
+  assert.equal(split.draft.lineDepartments.tape, "varemodtagelse");
+  assert.equal(split.draft.lineDepartments.milk, undefined);
+});
+
 test("callables håndhæver auth, tenant, revision, idempotens og godkenderpermission", () => {
   const source = fs.readFileSync(new URL("../functions/index.js", import.meta.url), "utf8");
   for (const name of ["procureMobilKladdeHent", "procureMobilKladdeGem", "procureMobilKladdeDelIndsend", "procureGodkendelseslinjerAfgor"]) assert.match(source, new RegExp(`export const ${name}`));

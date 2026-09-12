@@ -8,8 +8,8 @@ const todayPlus = (days) => {
   const date = new Date(); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10);
 };
 const newSubmissionId = () => globalThis.crypto?.randomUUID?.() || `m-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const emptyDraft = () => ({ submissionId: newSubmissionId(), items: {}, custom: [], submitQuantities: {}, department: "Lager", departmentId: "lager", deliveryLocation: "Hovedlager", wantedDate: todayPlus(7), asSoonAsPossible: false, updatedAt: Date.now() });
-const clientDraft = (value) => ({ ...emptyDraft(), ...(value || {}), custom: Array.isArray(value?.custom) ? value.custom : Object.values(value?.custom || {}), submitQuantities: value?.submitQuantities || {} });
+const emptyDraft = () => ({ submissionId: newSubmissionId(), items: {}, custom: [], submitQuantities: {}, lineDepartments: {}, department: "", departmentId: "", deliveryLocation: "", deliveryLocationId: "", wantedDate: todayPlus(7), asSoonAsPossible: false, updatedAt: Date.now() });
+const clientDraft = (value) => ({ ...emptyDraft(), ...(value || {}), custom: Array.isArray(value?.custom) ? value.custom : Object.values(value?.custom || {}), submitQuantities: value?.submitQuantities || {}, lineDepartments: value?.lineDepartments || {} });
 const statusLabel = (status) => ({
   "pending-approval": "Afventer godkendelse", afventerGodkendelse: "Afventer godkendelse",
   approved: "Klar til afsendelse", godkendt: "Klar til afsendelse",
@@ -56,6 +56,7 @@ function qrIdFromValue(value) {
 
 const draftSignature = (draft = {}) => JSON.stringify({
   items: draft.items || {}, custom: Array.isArray(draft.custom) ? draft.custom : Object.values(draft.custom || {}),
+  lineDepartments: draft.lineDepartments || {},
   departmentId: draft.departmentId || "", department: draft.department || "",
   deliveryLocationId: draft.deliveryLocationId || "", deliveryLocation: draft.deliveryLocation || "",
   wantedDate: draft.wantedDate || "", asSoonAsPossible: Boolean(draft.asSoonAsPossible),
@@ -77,7 +78,7 @@ function mergeConcurrentDraft(base = {}, local = {}, remote = {}) {
     return { ...row, quantity };
   }).filter((row) => row.quantity > 0);
   const pick = (field) => local[field] !== base[field] ? local[field] : remote[field];
-  return { ...remote, ...local, items, customItems,
+  return { ...remote, ...local, items, customItems, lineDepartments: { ...(remote.lineDepartments || {}), ...(local.lineDepartments || {}) },
     departmentId: pick("departmentId"), department: pick("department"),
     deliveryLocationId: pick("deliveryLocationId"), deliveryLocation: pick("deliveryLocation"),
     wantedDate: pick("wantedDate"), asSoonAsPossible: pick("asSoonAsPossible"), updatedAt: Date.now() };
@@ -291,8 +292,8 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
   const selected = useMemo(() => {
     if (!draft) return [];
     const catalog = state.catalog.filter((item) => Number(draft.items[item.id]) > 0)
-      .map((item) => ({ ...item, quantity: Number(draft.items[item.id]) }));
-    return [...catalog, ...(draft.custom || []).map((item) => ({ ...item, quantity: Number(item.quantity || 1), custom: true }))];
+      .map((item) => ({ ...item, quantity: Number(draft.items[item.id]), departmentId: draft.lineDepartments?.[item.id] || item.defaultDepartmentId || draft.departmentId }));
+    return [...catalog, ...(draft.custom || []).map((item) => ({ ...item, quantity: Number(item.quantity || 1), departmentId: draft.lineDepartments?.[item.id] || draft.departmentId, custom: true }))];
   }, [draft, state.catalog]);
   const lineCount = selected.length;
   const total = selected.reduce((sum, item) => sum + orderUnitSummary(item, item.quantity).totalOere, 0);
@@ -306,7 +307,8 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
     return search && tab;
   });
   const quantity = (id) => Number(draft?.items?.[id] || 0);
-  const setQuantity = (id, value) => setDraft((current) => ({ ...current, items: { ...current.items, [id]: value } }));
+  const setQuantity = (id, value) => setDraft((current) => { const item = state.catalog.find((row) => row.id === id); return { ...current, items: { ...current.items, [id]: value }, lineDepartments: { ...(current.lineDepartments || {}), [id]: current.lineDepartments?.[id] || item?.defaultDepartmentId || current.departmentId } }; });
+  const setLineDepartment = (id, departmentId) => setDraft((current) => ({ ...current, lineDepartments: { ...(current.lineDepartments || {}), [id]: departmentId } }));
   const setSubmissionQuantity = (id, value, maximum) => setDraft((current) => ({ ...current, submitQuantities: { ...(current.submitQuantities || {}), [id]: Math.min(maximum, Math.max(0, Number(value) || 0)) } }));
   const saveHistory = (items) => { setHistory(items); localStorage.setItem(historyKey, JSON.stringify(items)); };
   const saveReceipt = (receipt) => { setLastReceipt(receipt); localStorage.setItem(receiptKey, JSON.stringify(receipt)); };
@@ -335,7 +337,7 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
         id: `mobile-${stamp}-${index}`, reference,
         poNumber: outcomeStatus === "approved" ? `PO-${year}-${String(stamp).slice(-6)}-${index + 1}` : null,
         supplierId, status: outcomeStatus, createdAt,
-        lines: lines.map((item) => ({ id: item.id, sourceLineId: item.id, name: item.name, quantity: item.submitQuantity, requestedQuantity: item.quantity, unit: item.orderUnit || item.unit, unitPriceOere: orderUnitSummary(item, 1).orderPriceOere, baseUnit: item.baseUnit || item.unit, unitsPerOrder: item.unitsPerOrder || 1, categorySnapshot: item.category || "Ukategoriseret" })),
+        lines: lines.map((item) => ({ id: item.id, sourceLineId: item.id, name: item.name, departmentId: item.departmentId || draft.departmentId, department: activeDepartments.find((row) => row.id === (item.departmentId || draft.departmentId))?.label || "Ikke angivet", quantity: item.submitQuantity, requestedQuantity: item.quantity, unit: item.orderUnit || item.unit, unitPriceOere: orderUnitSummary(item, 1).orderPriceOere, baseUnit: item.baseUnit || item.unit, unitsPerOrder: item.unitsPerOrder || 1, categorySnapshot: item.category || "Ukategoriseret" })),
       }));
       setState((current) => ({ ...current, orders: [...references.filter((item) => item.poNumber), ...current.orders] }));
       saveHistory([...references, ...history]);
@@ -351,7 +353,7 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
       }));
       navigate("/indkoeb/mobil/mine?kvittering=1", { replace: true }); submittingRef.current = false; setSubmitting(false); return;
     }
-    const result = await submitMobileDraftPart({ selections: submitLines.map((item) => ({ id: item.id, quantity: item.submitQuantity })), expectedRevision: serverRevisionRef.current, requestId: draft.submissionId });
+    const result = await submitMobileDraftPart({ selections: submitLines.map((item) => ({ id: item.id, quantity: item.submitQuantity, departmentId: item.departmentId || draft.departmentId })), expectedRevision: serverRevisionRef.current, requestId: draft.submissionId });
     if (!result.ok) { setMessage(result.message); submittingRef.current = false; setSubmitting(false); return; }
     const reference = { id: result.data.approvalId, reference: result.data.reference, status: result.data.status || "pending-approval", createdAt: new Date().toISOString(), lines: submitLines,
       submittedLineCount: submitLines.length, remainingLineCount: Math.max(0, lineCount - submitLines.filter((item) => item.submitQuantity >= item.quantity).length) };
@@ -368,7 +370,8 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
 
   const addCustom = () => {
     if (!customName.trim()) return;
-    setDraft((current) => ({ ...current, custom: [...(current.custom || []), { id: `custom-${Date.now()}`, name: customName.trim(), unit: "stk.", quantity: 1, category: "Ukategoriseret" }] }));
+    const id = `custom-${Date.now()}`;
+    setDraft((current) => ({ ...current, custom: [...(current.custom || []), { id, name: customName.trim(), unit: "stk.", quantity: 1, category: "Ukategoriseret" }], lineDepartments: { ...(current.lineDepartments || {}), [id]: current.departmentId } }));
     setCustomName(""); setCustomOpen(false); customButtonRef.current?.focus();
   };
 
@@ -411,7 +414,7 @@ export default function MobileOrderScreen({ state, setState, demo, tenant, user,
     {mode === "cart" && <div className="procure-mobile-cart">
       {!lineCount ? <div className="procure-mobile-empty"><b>Kurven er tom</b><span>Tilføj varer, mens du går hylderne igennem.</span><Link to="/indkoeb/mobil">Find varer</Link></div> : <>
         <div className="procure-mobile-section-head"><span>{lineCount} varelinjer</span><b>{kr(total)} ekskl. moms</b></div>
-        {selected.map((item) => { const sendNow = submissionQuantity(item); const chosen = sendNow > 0; const unit = item.orderUnit || item.unit || "enhed"; return <article className="procure-mobile-cartline" key={item.id}><div><small>{state.suppliers.find((supplier) => supplier.id === item.supplierId)?.name || "Leverandør afklares"}</small><h2>{item.name}</h2><p><b>På listen</b> {formatUnitQuantity(item.quantity, unit)}</p></div><Quantity label={unit} value={item.quantity} step={item.orderStep || 1} minimum={item.minimumOrderQuantity || 1} onChange={(value) => item.custom ? setDraft((current) => ({ ...current, custom: current.custom.map((row) => row.id === item.id ? { ...row, quantity: value } : row).filter((row) => row.quantity > 0) })) : setQuantity(item.id, value)} /><div className={`procure-mobile-send-part ${chosen ? "selected" : ""}`}><label className="procure-mobile-send-toggle"><input type="checkbox" checked={chosen} onChange={(event) => setSubmissionQuantity(item.id, event.target.checked ? item.quantity : 0, item.quantity)} /><span>Send denne linje videre</span></label>{chosen && <><span>Send nu</span><Quantity label={`send ${unit}`} value={sendNow} step={item.orderStep || 1} minimum={item.minimumOrderQuantity || 1} onChange={(value) => setSubmissionQuantity(item.id, value, item.quantity)} /></>}<small><b>Bliver på listen</b> {formatUnitQuantity(item.quantity - sendNow, unit)}</small></div></article>; })}
+        {selected.map((item) => { const sendNow = submissionQuantity(item); const chosen = sendNow > 0; const unit = item.orderUnit || item.unit || "enhed"; return <article className="procure-mobile-cartline" key={item.id}><div><small>{state.suppliers.find((supplier) => supplier.id === item.supplierId)?.name || "Leverandør afklares"}</small><h2>{item.name}</h2><p><b>På listen</b> {formatUnitQuantity(item.quantity, unit)}</p></div><Quantity label={unit} value={item.quantity} step={item.orderStep || 1} minimum={item.minimumOrderQuantity || 1} onChange={(value) => item.custom ? setDraft((current) => ({ ...current, custom: current.custom.map((row) => row.id === item.id ? { ...row, quantity: value } : row).filter((row) => row.quantity > 0) })) : setQuantity(item.id, value)} /><label className="procure-mobile-line-department">Afdeling<select value={item.departmentId || ""} onChange={(event) => setLineDepartment(item.id, event.target.value)}><option value="">Vælg afdeling</option>{activeDepartments.map((row) => <option value={row.id} key={row.id}>{row.label}</option>)}</select></label><div className={`procure-mobile-send-part ${chosen ? "selected" : ""}`}><label className="procure-mobile-send-toggle"><input type="checkbox" checked={chosen} onChange={(event) => setSubmissionQuantity(item.id, event.target.checked ? item.quantity : 0, item.quantity)} /><span>Send denne linje videre</span></label>{chosen && <><span>Send nu</span><Quantity label={`send ${unit}`} value={sendNow} step={item.orderStep || 1} minimum={item.minimumOrderQuantity || 1} onChange={(value) => setSubmissionQuantity(item.id, value, item.quantity)} /></>}<small><b>Bliver på listen</b> {formatUnitQuantity(item.quantity - sendNow, unit)}</small></div></article>; })}
         <article className="procure-mobile-delivery"><h2>Levering</h2><label>Afdeling<select value={draft.departmentId || ""} disabled={!activeDepartments.length} onChange={(event) => { const row = activeDepartments.find((item) => item.id === event.target.value); setDraft({ ...draft, departmentId: row?.id || "", department: row?.label || "" }); }}>{!activeDepartments.length && <option value="">Ingen aktive afdelinger · kontakt administrator</option>}{activeDepartments.map((row) => <option value={row.id} key={row.id}>{row.label}</option>)}</select></label><label>Leveringssted<select value={draft.deliveryLocationId || ""} disabled={!activeDeliveryLocations.length} onChange={(event) => { const row = activeDeliveryLocations.find((item) => item.id === event.target.value); setDraft({ ...draft, deliveryLocationId: row?.id || "", deliveryLocation: row?.label || "" }); }}>{!activeDeliveryLocations.length && <option value="">Ingen aktive leveringssteder · kontakt administrator</option>}{activeDeliveryLocations.map((row) => <option value={row.id} key={row.id}>{row.label}</option>)}</select></label><fieldset className="procure-mobile-delivery-choice"><legend>Ønsket levering</legend><label><input type="radio" name="delivery-time" checked={Boolean(draft.asSoonAsPossible)} onChange={() => setDraft({ ...draft, asSoonAsPossible: true })} /> Hurtigst muligt</label><label><input type="radio" name="delivery-time" checked={!draft.asSoonAsPossible} onChange={() => setDraft({ ...draft, asSoonAsPossible: false })} /> På en bestemt dato</label>{!draft.asSoonAsPossible && <input aria-label="Ønsket leveringsdato" type="date" value={draft.wantedDate || ""} onChange={(event) => setDraft({ ...draft, wantedDate: event.target.value })} />}</fieldset></article>
         <div className="procure-mobile-review"><h2>Kompakt overblik</h2><p><span>Sendes nu</span><b>{submitLines.length} af {lineCount} varelinjer · {kr(submissionTotal)}</b></p><p><span>Bliver på listen</span><b>{selected.filter((item) => submissionQuantity(item) < item.quantity).length} varelinjer</b></p><p><span>Leverandører</span><b>{new Set(submitLines.map((item) => item.supplierId).filter(Boolean)).size || "Afklares"}</b></p><p><span>Levering</span><b>{draft.deliveryLocation} · {draft.asSoonAsPossible ? "Hurtigst muligt" : draft.wantedDate || "Dato mangler"}</b></p><small>Godkendelsesgrundlaget beregnes af hele listen før deling. Kun aktivt godkendte mængder kan danne leverandørordrer.</small></div>
         <button className="procure-mobile-submit" disabled={!canWrite || submitting || !online || !submitLines.length || !draft.departmentId || !draft.deliveryLocationId || (!draft.asSoonAsPossible && !draft.wantedDate)} onClick={submit}>{submitting ? "Indsender sikkert …" : canApprove ? "Send valgte til godkendelse" : "Indsend valgte behov"}</button>

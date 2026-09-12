@@ -19,6 +19,7 @@ import ProcurementWorkspaceScreen from "./ProcurementWorkspaceScreen.jsx";
 import MobileReceiptScreen from "./MobileReceiptScreen.jsx";
 import InventoryScreen from "./InventoryScreen.jsx";
 import SendOrderScreenV2 from "./SendOrderScreenV2.jsx";
+import NewPurchaseScreen from "./NewPurchaseScreen.jsx";
 import ProcureSetupScreen, { DEMO_SETUP, EMPTY_SETUP } from "./ProcureSetupScreen.jsx";
 import { loadProcureSetup } from "./procure-v2-adapter.js";
 import "./procure-v2.css";
@@ -52,11 +53,13 @@ const normalizeCatalogItem = (item) => ({
   unitsPerOrder: Number(item.antalPrBestillingsenhed || 1), orderPriceOere: Number(item.bestillingsprisOere || item.indkoebsprisOere || 0),
   minimumOrderQuantity: Number(item.minimumsantal || 1), orderStep: Number(item.bestillingstrin || 1), allowSingles: item.enkeltsalg !== false,
   boughtBefore: Boolean(item.tidligereKoeb), visual: item.billedeType || "other",
+  active: item.aktiv !== false, defaultDepartmentId: item.standardAfdelingId || null,
   stocked: item.lagerfoert === true, minimumStock: Number.isFinite(item.minimumBeholdning) ? item.minimumBeholdning : null,
   inventoryLocations: Object.fromEntries(Object.entries(item.lagerplaceringer || {}).map(([key, row]) => [key, {
     warehouseId: row.lagerId, warehouse: row.lager, locationId: row.placeringId, location: row.placering,
     quantity: Number.isFinite(row.beholdning) ? row.beholdning : null, unit: row.enhed || item.grundenhed || item.enhed,
     revision: Number(row.revision || 0), lastCountedAt: row.senestOptaltMs || null, lastMovedAt: row.senestBevaegetMs || null,
+    departmentId: row.afdelingId || item.standardAfdelingId || null,
   }])),
 });
 
@@ -76,7 +79,7 @@ const normalizeOrder = (order) => order.poNumber ? order : ({
   paymentStatus: order.betaling?.oekonomistatus === "afventerDokumentation" ? "Afventer dokumentation" : order.betaling?.oekonomistatus || "Ikke registreret",
   paymentDocumentRef: order.betaling?.dokumentId || null,
   webshopOrder: Object.values(order.webshop?.registreringer || {}).sort((a, b) => Number(b.registreretMs || 0) - Number(a.registreretMs || 0))[0] || null,
-  lines: Object.entries(order.linjer || {}).map(([id, line]) => ({ id, itemId: line.forbrugsvareId || line.vareId || line.itemId, sku: line.varenummer, name: line.vare, categorySnapshot: line.varegruppe || "Ukategoriseret", quantity: line.antal, unit: line.enhed || "stk.", unitPriceOere: line.prisPrEnhedOere || 0, priceBasis: line.prisgrundlag || "Historisk pris" })),
+  lines: Object.entries(order.linjer || {}).map(([id, line]) => ({ id, itemId: line.forbrugsvareId || line.vareId || line.itemId, sku: line.varenummer, name: line.vare, categorySnapshot: line.varegruppe || "Ukategoriseret", departmentId: line.afdelingId || order.afdelingId || "", department: line.afdeling || order.afdeling || "", quantity: line.antal, unit: line.enhed || "stk.", unitPriceOere: line.prisPrEnhedOere || 0, priceBasis: line.prisgrundlag || "Historisk pris" })),
   history: [],
 });
 
@@ -124,6 +127,23 @@ const normalizeApprovalCase = (approval) => {
   });
 };
 
+const normalizePurchases = (rows = []) => {
+  const groups = new Map();
+  for (const row of rows.filter((item) => item.koebId && item.koebstype === "alleredeForetaget")) {
+    const current = groups.get(row.koebId) || { id: row.koebId, reference: row.koebReference || row.koebId,
+      recordType: "purchase", supplierId: row.leverandoerId, purchaseDate: row.dato, paymentMethod: row.betalingsmetode || row.betalingsform,
+      status: row.udgiftsstatus || "afventerGodkendelse", economyStatus: row.oekonomistatus || "ikkeBogfoert",
+      receiptStatus: row.kvitteringsstatus || (row.bilagId ? "vedhaeftet" : "mangler"), documentId: row.bilagId || null,
+      createdByName: row.oprettetAfNavn || "Medarbejder", createdAt: row.oprettetMs, lines: [] };
+    current.lines.push({ id: row.id, itemId: row.vareId, sku: row.varenummer, name: row.vare, quantity: row.antal,
+      unit: row.enhed, unitPriceOere: Number(row.prisPrEnhedOere || 0), amountOere: Number(row.beloebOere ?? Math.round(Number(row.antal || 0) * Number(row.prisPrEnhedOere || 0))),
+      departmentId: row.afdelingId, department: row.afdeling, stocked: row.lagerfoert === true });
+    if (row.bilagId) { current.documentId = row.bilagId; current.receiptStatus = "vedhaeftet"; }
+    groups.set(row.koebId, current);
+  }
+  return [...groups.values()];
+};
+
 export default function ProcureModule() {
   const location = useLocation();
   const { bruger, demo, tenant } = useFleet();
@@ -138,12 +158,13 @@ export default function ProcureModule() {
   const invoicesSource = useListe("fakturaer", { vindue: "alle", graense: 500, demo: DEMO_FAKTURAER });
   const approvalsSource = useListe("procureGodkendelsessager", { vindue: "alle", graense: 500, demo: [] });
   const inventoryMovementsSource = useListe("forbrugsvarebevaegelser", { vindue: "alle", graense: 2000, demo: [] });
+  const purchasesSource = useListe("indkoeb", { vindue: "alle", graense: 1000, demo: [] });
   const [setup, setSetup] = useState(() => demo ? DEMO_SETUP : EMPTY_SETUP);
   const [demoState, setDemoState] = useState(() => ({
     needs: DEMO_NEEDS, orders: DEMO_ORDERS, suppliers: DEMO_SUPPLIERS,
     catalog: DEMO_CATALOG, approvals: DEMO_APPROVALS, receipts: DEMO_RECEIPTS,
     invoices: DEMO_INVOICES, rules: DEMO_RULES, qrLabels: DEMO_QR_LABELS,
-    inventoryMovements: DEMO_INVENTORY_MOVEMENTS, setup: DEMO_SETUP,
+    inventoryMovements: DEMO_INVENTORY_MOVEMENTS, purchases: [], setup: DEMO_SETUP,
   }));
   useEffect(() => {
     if (demo) return undefined;
@@ -155,15 +176,15 @@ export default function ProcureModule() {
     needs: needsSource.data.map(normalizeNeed), orders: ordersSource.data.map(normalizeOrder),
     suppliers: suppliersSource.data.map(normalizeSupplier), catalog: catalogSource.data.map(normalizeCatalogItem), approvals: approvalsSource.data.map(normalizeApprovalCase),
     receipts: receiptsFromOrders(ordersSource.data), invoices: invoicesSource.data.map(normalizeInvoice), rules: [],
-    qrLabels: [], inventoryMovements: inventoryMovementsSource.data, setup,
-  }), [needsSource.data, ordersSource.data, suppliersSource.data, catalogSource.data, invoicesSource.data, approvalsSource.data, inventoryMovementsSource.data, setup]);
+    qrLabels: [], inventoryMovements: inventoryMovementsSource.data, purchases: normalizePurchases(purchasesSource.data), setup,
+  }), [needsSource.data, ordersSource.data, suppliersSource.data, catalogSource.data, invoicesSource.data, approvalsSource.data, inventoryMovementsSource.data, purchasesSource.data, setup]);
   const state = demo ? demoState : liveState;
   const setState = (producer) => { if (demo) setDemoState((current) => typeof producer === "function" ? producer(current) : producer); };
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [location.pathname]);
 
   if (!canRead) return <section className="procure-v2 procure-denied"><h1>PROCURE</h1><p>Du har ikke adgang til indkøb. Kontakt en administrator, hvis du mener, det er en fejl.</p></section>;
-  const busy = !demo && (needsSource.henter || ordersSource.henter || suppliersSource.henter || catalogSource.henter || invoicesSource.henter || approvalsSource.henter || inventoryMovementsSource.henter);
-  const error = !demo && (needsSource.fejl || ordersSource.fejl || suppliersSource.fejl || catalogSource.fejl || invoicesSource.fejl || approvalsSource.fejl || inventoryMovementsSource.fejl);
+  const busy = !demo && (needsSource.henter || ordersSource.henter || suppliersSource.henter || catalogSource.henter || invoicesSource.henter || approvalsSource.henter || inventoryMovementsSource.henter || purchasesSource.henter);
+  const error = !demo && (needsSource.fejl || ordersSource.fejl || suppliersSource.fejl || catalogSource.fejl || invoicesSource.fejl || approvalsSource.fejl || inventoryMovementsSource.fejl || purchasesSource.fejl);
   const common = { state, setState, demo, tenant, user: bruger, canWrite, canApprove, canAdmin, busy, error };
   const path = location.pathname.replace(/\/$/, "");
   if (path === "/indkoeb") return <OverviewScreen {...common} />;
@@ -179,6 +200,7 @@ export default function ProcureModule() {
   if (path === "/indkoeb/opsaetning") return <ProcureSetupScreen {...common} />;
   if (/^\/indkoeb\/modtagelser(?:\/[^/]+)?$/.test(path)) return <ReceiptScreen {...common} />;
   if (/^\/indkoeb\/bestillinger\/[^/]+\/send$/.test(path)) return <SendOrderScreenV2 {...common} />;
+  if (path === "/indkoeb/bestillinger/ny") return <NewPurchaseScreen {...common} />;
   if (path === "/indkoeb/bestillinger") return <ProcurementWorkspaceScreen {...common} />;
   if (/^\/indkoeb\/bestillinger\/[^/]+$/.test(path)) return <OrdersScreen {...common} />;
   if (path === "/indkoeb/varer") return <Navigate to="/indkoeb/katalog" replace />;

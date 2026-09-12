@@ -205,3 +205,47 @@ export async function saveProcureBudget(input) {
   try { const response = await kaldFunktion("procureBudgetGem", input); return { ok: true, data: response?.data ?? response }; }
   catch (error) { return callableFailure(error, "Budgettet kunne ikke gemmes."); }
 }
+
+export async function registerAlreadyPurchased(input = {}) {
+  let data = null;
+  try {
+    const { attachments: files = [], ...payload } = input;
+    const response = await kaldFunktion("procureKoebRegistrer", payload);
+    data = response?.data ?? response;
+    const attachments = [];
+    for (const file of files) {
+      const initiated = await kaldFunktion("procureKoebBilagUploadInitier", {
+        purchaseId: data.purchaseId, originalFilename: file.name, mimeType: file.type, size: file.size,
+      });
+      const meta = initiated?.data ?? initiated;
+      const upload = await fetch(meta.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      if (!upload.ok) throw new Error(`Upload fejlede med HTTP ${upload.status}.`);
+      const confirmed = await kaldFunktion("procureKoebBilagUploadBekraeft", { purchaseId: data.purchaseId, documentId: meta.documentId });
+      attachments.push({ ...meta, ...(confirmed?.data ?? confirmed), name: file.name });
+    }
+    return { ok: true, data: { ...data, attachments, receiptStatus: attachments.length ? "vedhaeftet" : "mangler" } };
+  } catch (error) {
+    const failure = callableFailure(error, data
+      ? "Købet er gemt, men kvitteringen kunne ikke vedhæftes. Købet står som ‘Kvittering mangler’ og kan suppleres uden at oprette et nyt køb."
+      : "Købet kunne ikke gemmes. Ingen leverandørbestilling eller betaling er foretaget.");
+    return data ? { ...failure, kind: "partial", data: { ...data, receiptStatus: "mangler" } } : failure;
+  }
+}
+
+export async function getPurchaseAttachment({ purchaseId, documentId }) {
+  try { const response = await kaldFunktion("procureKoebBilagDownloadLink", { purchaseId, documentId }); return { ok: true, data: response?.data ?? response }; }
+  catch (error) { return callableFailure(error, "Kvitteringen kunne ikke åbnes."); }
+}
+
+export async function attachPurchaseReceipt({ purchaseId, file }) {
+  try {
+    const initiated = await kaldFunktion("procureKoebBilagUploadInitier", {
+      purchaseId, originalFilename: file.name, mimeType: file.type, size: file.size,
+    });
+    const meta = initiated?.data ?? initiated;
+    const upload = await fetch(meta.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+    if (!upload.ok) throw new Error(`Upload fejlede med HTTP ${upload.status}.`);
+    const confirmed = await kaldFunktion("procureKoebBilagUploadBekraeft", { purchaseId, documentId: meta.documentId });
+    return { ok: true, data: { ...meta, ...(confirmed?.data ?? confirmed), name: file.name } };
+  } catch (error) { return callableFailure(error, "Kvitteringen kunne ikke vedhæftes. Købet er bevaret uændret."); }
+}

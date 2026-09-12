@@ -117,6 +117,7 @@ export function applyInventoryMovement(item = {}, input = {}, { uid = "", actorN
     placeringId: movement.placeringId, placering: movement.placering,
     beholdning: after, enhed: movement.enhed, revision: revision + 1,
     senestBevaegetMs: now,
+    afdelingId: current?.afdelingId || id(input.departmentId || item.standardAfdelingId) || null,
     ...(type === "optaelling" || type === "startbeholdning" ? { senestOptaltMs: now } : current?.senestOptaltMs ? { senestOptaltMs: current.senestOptaltMs } : {}),
   };
   const nextItem = { ...item, lagerplaceringer: { ...(item.lagerplaceringer || {}), [key]: nextLocation }, sidstBevaegetMs: now };
@@ -232,4 +233,117 @@ export function inventoryCsv(rows = [], { from = "", to = "" } = {}) {
   const header = ["Fra dato", "Til dato", "Vare", "Varenummer", "Lager", "Placering", "Primo", "Startbeholdning i perioden", "Modtagelser", "Forbrug", "Retur", "Korrektioner", "Nettoflytning", "Ultimo", "Enhed"];
   return [header, ...rows.map((row) => [from, to, row.item.navn, row.item.varenummer, row.movements[0]?.lager || row.warehouseId, row.locationId ? row.movements[0]?.placering || row.locationId : "Alle placeringer", row.opening ?? "Ukendt", row.starts, row.receipts, row.consumption, row.returns, row.corrections, row.transfers, row.closing ?? "Ukendt", row.item.grundenhed || row.item.enhed])]
     .map((columns) => columns.map(quote).join(";")).join("\r\n");
+}
+
+const isCount = (row) => ["startbeholdning", "optaelling"].includes(row?.art)
+  && finite(row?.efter) !== null;
+
+/**
+ * Beregner fysisk lagerafgang mellem dokumenterede optaellinger.
+ *
+ * En optaellings egen delta er afstemningen til det talte antal og maa ikke
+ * samtidig blive talt som forbrug. Derfor bruges de to observerede
+ * beholdninger som intervallets endepunkter, mens kun de mellemliggende
+ * fysiske bevægelser indgår i forklaringen.
+ */
+export function calculatedConsumptionIntervals(item = {}, movements = [], {
+  fromMs = 0, toMs = Number.MAX_SAFE_INTEGER,
+} = {}) {
+  const relevant = movements
+    .filter((row) => row.forbrugsvareId === item.id)
+    .sort((a, b) => Number(a.ms || 0) - Number(b.ms || 0));
+  const byLocation = new Map();
+  for (const row of relevant) {
+    const key = `${row.lagerId || ""}|${row.placeringId || ""}`;
+    if (!byLocation.has(key)) byLocation.set(key, []);
+    byLocation.get(key).push(row);
+  }
+  const intervals = [];
+  for (const [locationKey, rows] of byLocation) {
+    const counts = rows.filter(isCount);
+    for (let index = 1; index < counts.length; index += 1) {
+      const start = counts[index - 1];
+      const end = counts[index];
+      const startMs = Number(start.ms || 0); const endMs = Number(end.ms || 0);
+      const inSelectedPeriod = startMs >= fromMs && endMs <= toMs;
+      const overlapsSelectedPeriod = endMs >= fromMs && startMs <= toMs;
+      if (!overlapsSelectedPeriod) continue;
+      const between = rows.filter((row) => Number(row.ms || 0) > startMs
+        && Number(row.ms || 0) <= endMs && row !== end);
+      let receipts = 0; let transfers = 0; let returns = 0;
+      let registeredUsage = 0; let otherCorrections = 0;
+      for (const row of between) {
+        const delta = movementDelta(row);
+        if (row.art === "modtaget") receipts += delta;
+        else if (["flytningInd", "flytningUd"].includes(row.art)) transfers += delta;
+        else if (row.art === "retur") returns += Math.abs(delta);
+        else if (row.art === "forbrug") registeredUsage += Math.abs(delta);
+        else if (["korrektion", "svind"].includes(row.art)) otherCorrections += delta;
+      }
+      const startQuantity = finite(start.efter); const endQuantity = finite(end.efter);
+      const quantity = startQuantity + receipts + transfers - returns + otherCorrections - endQuantity;
+      const days = Math.max(1, (endMs - startMs) / 86400000);
+      intervals.push({
+        key: `${item.id}|${locationKey}|${startMs}|${endMs}`,
+        itemId: item.id, locationKey, warehouseId: start.lagerId || end.lagerId || "",
+        warehouse: start.lager || end.lager || "", locationId: start.placeringId || end.placeringId || "",
+        location: start.placering || end.placering || "", unit: start.enhed || end.enhed || item.grundenhed || item.enhed,
+        startMs, endMs, startQuantity, endQuantity, receipts, transfers, returns,
+        registeredUsage, otherCorrections, quantity, unregisteredDifference: quantity - registeredUsage,
+        days, monthlyQuantity: quantity / days * 30.4375,
+        negative: quantity < 0, inSelectedPeriod, partialCoverage: !inSelectedPeriod,
+        movements: between,
+      });
+    }
+  }
+  const measured = intervals.filter((row) => row.inSelectedPeriod);
+  const quantity = measured.reduce((sum, row) => sum + row.quantity, 0);
+  const days = measured.reduce((sum, row) => sum + row.days, 0);
+  return {
+    intervals,
+    measured,
+    hasBasis: measured.length > 0,
+    partialCoverage: intervals.some((row) => row.partialCoverage),
+    quantity: measured.length ? quantity : null,
+    monthlyQuantity: measured.length && days > 0 ? quantity / days * 30.4375 : null,
+    annualQuantity: measured.length && days >= 330 ? quantity / days * 365.25 : null,
+    coveredDays: days,
+    negative: measured.some((row) => row.negative),
+  };
+}
+
+export function inventoryOverviewRows(items = [], movements = [], { departmentId = "" } = {}) {
+  return items.filter((item) => item.lagerfoert === true).map((item) => {
+    const allLocations = Object.values(item.lagerplaceringer || {});
+    const locations = departmentId
+      ? allLocations.filter((row) => row.afdelingId === departmentId)
+      : allLocations;
+    const unit = id(item.grundenhed || item.enhed);
+    const unitsCompatible = locations.every((row) => id(row.enhed || unit) === unit);
+    const known = locations.length > 0 && locations.every((row) => finite(row.beholdning) !== null);
+    const quantity = known && unitsCompatible
+      ? locations.reduce((sum, row) => sum + Number(row.beholdning), 0) : null;
+    const countDates = locations.map((row) => finite(row.senestOptaltMs));
+    const neverCounted = !locations.length || countDates.some((value) => value === null);
+    const latestCountedAt = countDates.filter((value) => value !== null).sort((a, b) => b - a)[0] || null;
+    const oldestCountedAt = countDates.filter((value) => value !== null).sort((a, b) => a - b)[0] || null;
+    const minimum = finite(item.minimumBeholdning);
+    let status = "Ikke optalt"; let tone = "warn";
+    if (quantity !== null && minimum === null) { status = "Niveau ikke sat"; tone = "info"; }
+    else if (quantity !== null && quantity < minimum) { status = "Under genbestillingsniveau"; tone = "bad"; }
+    else if (quantity !== null && quantity === minimum) { status = "Ved genbestillingsniveau"; tone = "warn"; }
+    else if (quantity !== null) { status = "Over niveau"; tone = "ok"; }
+    const consumption = calculatedConsumptionIntervals(item, movements);
+    return { item, locations, unit, quantity, minimum, status, tone, latestCountedAt,
+      oldestCountedAt, neverCounted, unitsCompatible, consumption };
+  });
+}
+
+export function materialConsumptionCsv(rows = [], { from = "", to = "" } = {}) {
+  const quote = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const columns = ["Fra dato", "Til dato", "Vare", "Varenummer", "Afdeling", "Grundlag", "Mængde", "Enhed", "Måleperiode", "Dækning"];
+  return [columns, ...rows.map((row) => [from, to, row.name, row.sku, row.department,
+    row.basis, row.quantity ?? "Mangler grundlag", row.unit, row.measurementPeriod || "",
+    row.partialCoverage ? "Delvist dækket" : row.quantity === null ? "Mangler grundlag" : "Dækket"])]
+    .map((values) => values.map(quote).join(";")).join("\r\n");
 }

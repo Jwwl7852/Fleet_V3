@@ -47,8 +47,8 @@ async function createUser(authHost, key, definition) {
 }
 
 const catalog = {
-  tape: { navn: "Pakketape, klar 48 mm", varenummer: "EMB-1001", enhed: "ruller", bestillingsenhed: "ruller", grundenhed: "ruller", antalPrBestillingsenhed: 1, bestillingsprisOere: 2400, indkoebsprisOere: 2400, leverandoerId: "nordisk", varegruppe: "Emballage", aktiv: true, favorit: true, tidligereKoeb: true, lagerfoert: true, minimumBeholdning: 10,
-    lagerplaceringer: { "10_hovedlager_a-01": { lagerId: "hovedlager", lager: "Hovedlager", placeringId: "a-01", placering: "A-01", beholdning: 58, enhed: "ruller", revision: 1, senestBevaegetMs: 1789120800000, senestOptaltMs: 1789120800000 } } },
+  tape: { navn: "Pakketape, klar 48 mm", varenummer: "EMB-1001", enhed: "ruller", bestillingsenhed: "ruller", grundenhed: "ruller", antalPrBestillingsenhed: 1, bestillingsprisOere: 2400, indkoebsprisOere: 2400, leverandoerId: "nordisk", varegruppe: "Emballage", standardAfdelingId: "lager", aktiv: true, favorit: true, tidligereKoeb: true, lagerfoert: true, minimumBeholdning: 10,
+    lagerplaceringer: { "10_hovedlager_a-01": { lagerId: "hovedlager", lager: "Hovedlager", placeringId: "a-01", placering: "A-01", afdelingId: "lager", beholdning: 58, enhed: "ruller", revision: 1, senestBevaegetMs: 1789120800000, senestOptaltMs: 1789120800000 } } },
   film: { navn: "Strækfilm 50 cm", varenummer: "EMB-2040", enhed: "rulle", bestillingsenhed: "rulle", grundenhed: "rulle", antalPrBestillingsenhed: 1, bestillingsprisOere: 7500, indkoebsprisOere: 7500, leverandoerId: "nordisk", varegruppe: "Emballage", aktiv: true, favorit: true, tidligereKoeb: true },
   gloves: { navn: "Arbejdshandsker", varenummer: "SIK-1212", enhed: "kasse", bestillingsenhed: "kasse", grundenhed: "par", antalPrBestillingsenhed: 12, bestillingsprisOere: 18900, indkoebsprisOere: 18900, leverandoerId: "sikker", varegruppe: "Sikkerhedsudstyr", aktiv: true, favorit: false, tidligereKoeb: true },
   cleaner: { navn: "Industrirens 5 l", varenummer: "REN-5000", enhed: "dunk", bestillingsenhed: "dunk", grundenhed: "liter", antalPrBestillingsenhed: 5, bestillingsprisOere: 22900, indkoebsprisOere: 22900, leverandoerId: "sikker", varegruppe: "Rengøring", aktiv: true, favorit: false, tidligereKoeb: false },
@@ -58,6 +58,7 @@ const catalog = {
   bags: { navn: "Affaldssække 120 l", varenummer: "REN-1200", enhed: "rulle", bestillingsenhed: "rulle", grundenhed: "stk.", antalPrBestillingsenhed: 10, bestillingsprisOere: 6900, indkoebsprisOere: 6900, leverandoerId: "nordisk", varegruppe: "Rengøring", aktiv: true },
   soap: { navn: "Håndsæbe", varenummer: "REN-3300", enhed: "dunk", bestillingsenhed: "dunk", grundenhed: "liter", antalPrBestillingsenhed: 5, bestillingsprisOere: 11900, indkoebsprisOere: 11900, leverandoerId: "sikker", varegruppe: "Rengøring", aktiv: true },
   cable: { navn: "Kabelbindere", varenummer: "RES-4400", enhed: "pose", bestillingsenhed: "pose", grundenhed: "stk.", antalPrBestillingsenhed: 100, bestillingsprisOere: 4900, indkoebsprisOere: 4900, leverandoerId: "nordisk", varegruppe: "Reservedele", aktiv: true },
+  milk: { navn: "Mælk 1 liter", varenummer: "KANT-1001", enhed: "liter", bestillingsenhed: "liter", grundenhed: "liter", antalPrBestillingsenhed: 1, bestillingsprisOere: 1200, indkoebsprisOere: 1200, leverandoerId: "nordisk", varegruppe: "Kantine", standardAfdelingId: "administration", aktiv: true, tidligereKoeb: true, lagerfoert: false },
 };
 
 export async function seedProcureAuthEmulator() {
@@ -85,7 +86,7 @@ export async function seedProcureAuthEmulator() {
     },
     forbrugsvarer: catalog,
     procureOpsaetning: {
-      afdelinger: { lager: { id: "lager", label: "Lager", active: true, revision: 1 }, drift: { id: "drift", label: "Drift", active: true, revision: 1 } },
+      afdelinger: { lager: { id: "lager", label: "Varemodtagelse", active: true, revision: 1 }, drift: { id: "drift", label: "Teknisk drift", active: true, revision: 1 }, administration: { id: "administration", label: "Administration", active: true, revision: 1 } },
       varekategorier: { emballage: { id: "emballage", label: "Emballage", active: true, revision: 1 }, sikkerhed: { id: "sikkerhed", label: "Sikkerhedsudstyr", active: true, revision: 1 } },
       leveringssteder: { hovedlager: { id: "hovedlager", label: "Hovedlager · rampe 2", adresse: "Lagervej 8", postnr: "8000", by: "Aarhus C", active: true, revision: 1 }, vaerksted: { id: "vaerksted", label: "Værksted", adresse: "Værkstedsvej 2", postnr: "8000", by: "Aarhus C", active: true, revision: 1 } },
       lagre: { hovedlager: { id: "hovedlager", label: "Hovedlager", active: true, revision: 1 } },
@@ -100,6 +101,11 @@ export async function seedProcureAuthEmulator() {
     },
     procureQrMaerkater: {
       "qr-auth-tape-a1": { forbrugsvareId: "tape", placering: "A1 · tape", aktiv: true, anmodningsnoegle: "seed-tape-a1", oprettetAf: users.admin.uid, oprettetMs: now, aendretAf: users.admin.uid, aendretMs: now },
+    },
+    forbrugsvarebevaegelser: {
+      "seed-tape-count-start": { forbrugsvareId: "tape", art: "optaelling", antal: 50, delta: 0, enhed: "ruller", lagerId: "hovedlager", lager: "Hovedlager", placeringId: "a-01", placering: "A-01", afdelingId: "lager", foer: 50, efter: 50, medarbejderNavn: users.buyer.name, uid: users.buyer.uid, ms: 1782900000000 },
+      "seed-tape-receipt": { forbrugsvareId: "tape", art: "modtaget", antal: 10, delta: 10, enhed: "ruller", lagerId: "hovedlager", lager: "Hovedlager", placeringId: "a-01", placering: "A-01", afdelingId: "lager", foer: 50, efter: 60, medarbejderNavn: users.buyer.name, uid: users.buyer.uid, ms: 1785600000000 },
+      "seed-tape-count-end": { forbrugsvareId: "tape", art: "optaelling", antal: 58, delta: -2, enhed: "ruller", lagerId: "hovedlager", lager: "Hovedlager", placeringId: "a-01", placering: "A-01", afdelingId: "lager", foer: 60, efter: 58, medarbejderNavn: users.buyer.name, uid: users.buyer.uid, ms: 1789120800000 },
     },
   };
   const databaseWrite = (tenant, value) => jsonRequest(`http://${databaseHost}/tenants/${tenant}.json?ns=${PROJECT_ID}`, {
