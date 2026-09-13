@@ -146,6 +146,8 @@ test("callable binder unit, historik og eventuel booking i én transaktion", () 
   assert.ok(blok.includes("ny.kasseudlaan"));
   assert.ok(blok.includes("bindendeBookingerForUnit"));
   assert.ok(blok.includes("kraevUnitlagerskriv(req, kilde)"));
+  assert.ok(blok.includes("fraPladsId: eksisterende.fraPladsId ?? null"),
+    "et retry må ikke erstatte hændelsens null med unitens nye aktuelle placering");
   assert.ok(!blok.includes("req.data?.tenant"));
   assert.ok(!blok.includes("req.data?.uid"));
 });

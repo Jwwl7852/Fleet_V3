@@ -2575,7 +2575,9 @@ export const unitlagerhandling = onCall({ region: REGION }, async (req) => {
     if (eksisterende) {
       const foreslaaet = {
         operationId, unitId, art,
-        fraPladsId: eksisterende.fraPladsId ?? unit?.pladsId ?? null,
+        // Gemt null er et vigtigt før-billede (fx en modtagelse fra "ude").
+        // Den aktuelle placering er allerede ændret efter første gennemførsel.
+        fraPladsId: eksisterende.fraPladsId ?? null,
         tilPladsId, bookingId: bookingId || null,
         // En bookingretur kan have fået sagsnummeret som server-afledt reference.
         // Et identisk retry uden en eksplicit reference skal derfor stadig genkendes.
