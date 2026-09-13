@@ -23,7 +23,9 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   // PROCUREs serverlukkede kladder/opsætning, linjespor og læsbare
   // godkendelseskø udvider den målte regelkontrakt med ca. 3 kB. Bevar et
   // snævert loft, så senere ukontrolleret vækst fortsat opdages.
-  assert.ok(Buffer.byteLength(rules, "utf8") < 455_000);
+  // Git kan checke filen ud med CRLF på Windows. Loftet måler den
+  // versionsstyrede regelkilde (LF), ikke arbejdsplatformens linjeender.
+  assert.ok(Buffer.byteLength(rules.replace(/\r\n/g, "\n"), "utf8") < 455_000);
   // To nye servervaliderede PROCURE-regler (godkendelseskø og ordrespor)
   // genbruger fortsat den fælles revocation-gate.
   assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 214);

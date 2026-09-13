@@ -9,6 +9,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { posix } from "node:path";
 
 import {
   tjekDisponering, blokerer, spaerringer, forRessource, TONE
@@ -341,9 +342,10 @@ test("⚠ REGLEN FOR DELTE FILER ER TRANSITIV", () => {
      træet fejler i SKYEN, ved deploy — ikke ved test. */
   for (const fil of DELTE_FILER) {
     const src = readFileSync(`src/fleet/${fil}`, "utf8");
-    for (const m of src.matchAll(/from\s+"\.\/([\w-]+\.js)"/g)) {
-      assert.ok(DELTE_FILER.includes(m[1]),
-        `${fil} importerer ${m[1]}, som ikke kopieres til functions/delt/`);
+    for (const m of src.matchAll(/from\s+"(\.\/[\w/-]+\.js)"/g)) {
+      const importeret = posix.normalize(posix.join(posix.dirname(fil), m[1]));
+      assert.ok(DELTE_FILER.includes(importeret),
+        `${fil} importerer ${importeret}, som ikke kopieres til functions/delt/`);
     }
   }
   for (const f of ["disponering.js", "flaade.js", "personale.js", "reservations.js",

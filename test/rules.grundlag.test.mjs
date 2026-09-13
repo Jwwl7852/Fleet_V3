@@ -18,6 +18,7 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { posix } from "node:path";
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from "./rules-test-claims.mjs";
@@ -224,7 +225,8 @@ describe("grundlagskriv — den eneste vej ind", () => {
        fejler i skyen — ved DEPLOY, ikke ved test. */
     for (const fil of DELTE_FILER) {
       const src = readFileSync(`src/fleet/${fil}`, "utf8");
-      const importer = [...src.matchAll(/from\s+"\.\/([\w-]+\.js)"/g)].map((m) => m[1]);
+      const importer = [...src.matchAll(/from\s+"(\.\/[\w/-]+\.js)"/g)]
+        .map((m) => posix.normalize(posix.join(posix.dirname(fil), m[1])));
       for (const i of importer) {
         assert.ok(DELTE_FILER.includes(i),
           `${fil} importerer ${i}, som ikke kopieres til functions/delt/`);
