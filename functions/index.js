@@ -179,6 +179,7 @@ export {
   supportBeskedSend, supportEskaler, supportSagLoes, supportSagGenaabn,
   supportEjerKoelist, supportEjerSagHent, supportEjerOvertag,
   supportEjerStatusOpdater, supportEjerSvarKladdeGem,
+  supportEjerAiForslagGem, supportEjerBaggrundGem,
   supportEjerSvarGodkend, supportEjerSvarTransporter,
   supportEjerSvarSend, supportEjerNoteSkriv,
 } from "./support-endpoints.js";

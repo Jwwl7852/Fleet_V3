@@ -8,7 +8,11 @@ import {
   supportSagTilEjerTraad,
 } from "../src/fleet/support.js";
 import { DEMO_SUPPORT_VIDEN } from "../src/fleet/demo-support-viden.js";
-import { kundeGodkendtViden, lokaltSupportAiSvar } from "../src/fleet/support-ai.js";
+import {
+  kundeGodkendtViden,
+  lokaltEjerSupportAiForslag,
+  lokaltSupportAiSvar,
+} from "../src/fleet/support-ai.js";
 import { opretSupportHukommelseslager } from "../src/fleet/support-lokal.js";
 
 const kundeA = { uid: "kunde-a-bruger", tenant: "kunde-a" };
@@ -115,14 +119,28 @@ test("AI-politikken kræver kundegodkendelse og aktuel revision", () => {
   assert.deepEqual(kundesynligeSupportBeskeder({ a: { synlighed: "kunde", afsenderType: "kunde" }, b: { synlighed: "intern", afsenderType: "ejer" } }), { a: { synlighed: "kunde", afsenderType: "kunde" } });
 });
 
+test("intern portal-AI må bruge intern baggrund uden at flytte den til kundesvarforslaget", () => {
+  const sag = { kontaktNavn: "Maria Lund", virksomhedsnavn: "Nordlys", modul: "FLEET", programversion: "3.0.0", problemResume: "Enheden mangler efter et filter", afproevedeTrin: ["Søgning er gentaget"] };
+  const viden = [
+    { id: "kunde", titel: "FLEET filter", indhold: "Nulstil aktive filtre og søg igen.", kilde: "Kundeguide", modul: "FLEET", relevanteVersioner: "3.x", noegleord: ["filter", "enhed"], vidensstatus: "godkendt", publikum: "kunde_godkendt", aktuelVersion: 3 },
+    { id: "intern", titel: "Intern indekskontrol", indhold: "INTERN_HEMMELIGHED må aldrig kopieres til kunden.", kilde: "Driftsnote", modul: "FLEET", relevanteVersioner: "3.x", noegleord: ["filter", "enhed"], vidensstatus: "godkendt", publikum: "intern", aktuelVersion: 2 },
+  ];
+  const resultat = lokaltEjerSupportAiForslag({ sag, viden, instruktion: "Find dokumenteret løsning" });
+  assert.equal(resultat.kilder.length, 2);
+  assert.match(resultat.aiSvar, /Intern indekskontrol/);
+  assert.match(resultat.kundesvar, /Nulstil aktive filtre/);
+  assert.doesNotMatch(resultat.kundesvar, /INTERN_HEMMELIGHED|Driftsnote|Intern indekskontrol/);
+});
+
 test("V8-adapteren bruger samme sag-id og en beregnet, delt tråd", () => {
   const sag = { id: "sup_samme_1", kontraktVersion: "veyro.support.v1.1", nummer: "SUP-2026-00001", tenantId: "kunde-a", oprettetAfUid: "kunde-a-bruger", status: "afventerSupport", ansvarstype: "ejer", ansvarligUid: null, emne: "Samme sag", modul: "FLEET", revision: 3, oprettetMs: 1, opdateretMs: 2 };
-  const traad = supportSagTilEjerTraad({ sag, beskeder: { k: { afsenderType: "kunde", synlighed: "kunde", tekst: "Hjælp", oprettetMs: 1 } } });
+  const traad = supportSagTilEjerTraad({ sag, beskeder: { k: { afsenderType: "kunde", synlighed: "kunde", tekst: "Hjælp", oprettetMs: 1 } }, sagsOplysninger: { saelgerBaggrund: { id: "saelgerBaggrund", intern: true, vaerdi: "Kun ejer" } } });
   assert.equal(traad.id, sag.id);
   assert.equal(traad.traadId, sag.id);
   assert.equal(traad.support.status, "triage");
   assert.equal(traad.beskeder.k.retning, "indgaaende");
   assert.equal(traad.kilde.adapter, "veyro.support.v1.1");
+  assert.equal(traad.sagsOplysninger.saelgerBaggrund.vaerdi, "Kun ejer");
 });
 
 test("direkte ejersvar er lukket og godkendelse forældes ved ny kundebesked", async () => {
@@ -141,7 +159,7 @@ test("arkitekturen bruger callable servervej og én fælles supportfil", () => {
   const endpoints = readFileSync("functions/support-endpoints.js", "utf8");
   const hjaelp = readFileSync("src/moduler/support/Hjaelp.jsx", "utf8");
   assert.doesNotMatch(adapter, /\.ref\s*\(/, "kundeadapteren må ikke skrive direkte i RTDB");
-  for (const navn of ["supportSamtaleStart", "supportSamtaleHent", "supportBeskedSend", "supportEskaler", "supportEjerOvertag", "supportEjerSvarKladdeGem", "supportEjerSvarGodkend", "supportEjerSvarTransporter"]) assert.match(endpoints, new RegExp(`export const ${navn}`));
+  for (const navn of ["supportSamtaleStart", "supportSamtaleHent", "supportBeskedSend", "supportEskaler", "supportEjerOvertag", "supportEjerAiForslagGem", "supportEjerBaggrundGem", "supportEjerSvarKladdeGem", "supportEjerSvarGodkend", "supportEjerSvarTransporter"]) assert.match(endpoints, new RegExp(`export const ${navn}`));
   assert.match(endpoints, /Direkte ejersvar er lukket/);
   assert.match(hjaelp, /Kontakt support/);
   assert.match(hjaelp, /Ingen ekstern AI eller mail/);

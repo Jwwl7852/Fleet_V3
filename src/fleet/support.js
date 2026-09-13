@@ -374,7 +374,9 @@ export function supportStatusFraEjer(status) {
  * aldrig en kopi under udbyder/salgsindbakke/traade. Alle mutationer går
  * tilbage gennem supportEjer*-operationerne til den autoritative supportsag.
  */
-export function supportSagTilEjerTraad({ sag, beskeder = {}, noter = {}, internAi = {}, svarKladder = {} } = {}) {
+export function supportSagTilEjerTraad({
+  sag, beskeder = {}, noter = {}, internAi = {}, svarKladder = {}, sagsOplysninger = {},
+} = {}) {
   if (!sag) return null;
   const ejerBeskeder = Object.fromEntries(Object.entries(beskeder).map(([id, post]) => [id, {
     id,
@@ -429,6 +431,7 @@ export function supportSagTilEjerTraad({ sag, beskeder = {}, noter = {}, internA
     noter: ejerNoter,
     aiArbejdsrum: internAi || {},
     svarKladder: svarKladder || {},
+    sagsOplysninger: sagsOplysninger || {},
   };
 }
 

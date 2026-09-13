@@ -59,6 +59,7 @@ try {
       kunder: { nordlys: { oprettetMs: 1 }, anden: { oprettetMs: 1 } },
       vidensbase: { poster: {
         godkendt: { id: "godkendt", titel: "FLEET filtersøgning", indhold: "Nulstil de aktive filtre og søg igen på enhedens lokale test-id.", kilde: "Syntetisk FLEET-vejledning", modul: "FLEET", relevanteVersioner: "3.x", noegleord: ["enhed", "filter"], leveringsstatus: "tilgaengelig", vidensstatus: "godkendt", publikum: "kunde_godkendt", aktuelVersion: 3, gennemgaaetAfNavn: "Syntetisk reviewer", gennemgaaetMs: 1 },
+        intern: { id: "intern", titel: "Intern FLEET-diagnose", indhold: "Kontrollér den syntetiske indeksrevision internt.", kilde: "Syntetisk intern driftsnote", modul: "FLEET", relevanteVersioner: "3.x", noegleord: ["enhed", "filter"], leveringsstatus: "tilgaengelig", vidensstatus: "godkendt", publikum: "intern", aktuelVersion: 2, gennemgaaetAfNavn: "Syntetisk reviewer", gennemgaaetMs: 1 },
         legacy: { id: "legacy", titel: "Må ikke vises", indhold: "Internt indhold", kilde: "Legacy", modul: "FLEET", noegleord: ["legacyhemmelig"], leveringsstatus: "tilgaengelig", godkendt: true, kundeGodkendt: true, aktuelVersion: 1 },
       } },
     },
@@ -90,9 +91,25 @@ try {
   assert.equal(overtaget.traad.ansvarligUid, dennis.uid);
   await afvist("supportEjerStatusOpdater", { sagId, anmodningId: "joern_status_0001", status: "afventer_os", forventetRevision: overtaget.traad.revision }, joern.token, "PERMISSION_DENIED");
   await afvist("supportEjerSvarSend", { sagId, anmodningId: "direkte_svar_001", tekst: "må ikke", forventetRevision: overtaget.traad.revision }, dennis.token, "FAILED_PRECONDITION");
+  const aiPayload = { sagId, anmodningId: "intern_ai_samling_1", instruktion: "Find dokumenteret løsning og næste sikre trin", forventetSagRevision: overtaget.traad.revision, forventetRevision: 0, basisAktivitetMs: overtaget.traad.senesteAktivitetMs, basisKladdeRevision: 0, basisKladdeFingeraftryk: "811c9dc5" };
+  const ai = await kald("supportEjerAiForslagGem", aiPayload, dennis.token);
+  const aiRetry = await kald("supportEjerAiForslagGem", aiPayload, dennis.token);
+  assert.equal(ai.revision, 1);
+  assert.equal(aiRetry.gentaget, true, "intern AI skal være idempotent");
+  assert.equal(ai.traad.aiArbejdsrum.aktivtForslag.kilder.length, 2);
+  assert.match(ai.traad.aiArbejdsrum.chat.a_intern_ai_samling_1.tekst, /kun intern/);
+  await afvist("supportEjerAiForslagGem", { ...aiPayload, anmodningId: "joern_ai_samling01", forventetRevision: 1 }, joern.token, "PERMISSION_DENIED");
+  await afvist("supportEjerAiForslagGem", { ...aiPayload, anmodningId: "kunde_ai_samling01", forventetRevision: 1 }, kunde.token, "PERMISSION_DENIED");
+  const baggrundPayload = { sagId, anmodningId: "baggrund_samling1", vaerdi: "Syntetisk intern sagsbaggrund, som aldrig må nå kunden.", forventetSagRevision: overtaget.traad.revision, forventetRevision: 0 };
+  const baggrund = await kald("supportEjerBaggrundGem", baggrundPayload, dennis.token);
+  const baggrundRetry = await kald("supportEjerBaggrundGem", baggrundPayload, dennis.token);
+  assert.equal(baggrundRetry.gentaget, true, "intern baggrund skal være idempotent");
+  assert.equal(baggrund.traad.sagsOplysninger.saelgerBaggrund.revision, 1);
+  assert.equal(baggrund.traad.revision, overtaget.traad.revision + 1, "intern baggrund ændrer sagsgrundlaget");
+  await afvist("supportEjerBaggrundGem", { ...baggrundPayload, anmodningId: "joern_baggrund_01", forventetSagRevision: baggrund.traad.revision, forventetRevision: 1 }, joern.token, "PERMISSION_DENIED");
   await kald("supportEjerNoteSkriv", { sagId, anmodningId: "intern_note_0001", tekst: "Syntetisk intern note, som aldrig må nå kunden." }, dennis.token);
 
-  const gemt = await kald("supportEjerSvarKladdeGem", { sagId, anmodningId: "kladde_gem_0001", id: "portal", kanal: "portal", tekst: "Jeg har overtaget sagen. Prøv venligst det registrerede trin igen.", signatur: "Venlig hilsen\nDennis", vedhaeftninger: [], forventetSagRevision: overtaget.traad.revision, forventetRevision: 0 }, dennis.token);
+  const gemt = await kald("supportEjerSvarKladdeGem", { sagId, anmodningId: "kladde_gem_0001", id: "portal", kanal: "portal", tekst: "Jeg har overtaget sagen. Prøv venligst det registrerede trin igen.", signatur: "Venlig hilsen\nDennis", vedhaeftninger: [], forventetSagRevision: baggrund.traad.revision, forventetRevision: 0 }, dennis.token);
   const kladde = gemt.traad.svarKladder.portal;
   assert.equal(kladde.status, "kladde");
   const godkendt = await kald("supportEjerSvarGodkend", { sagId, anmodningId: "kladde_godkend1", id: "portal", forventetRevision: kladde.revision }, dennis.token);
@@ -117,7 +134,10 @@ try {
   assert.equal(kundeSvar.sag.id, sagId);
   assert.equal(kundeSvar.beskeder.at(-1).afsenderType, "ejer");
   assert.match(kundeSvar.beskeder.at(-1).tekst, /Dennis/);
+  assert.equal(kundeSvar.beskeder.at(-1).tekst.match(/Venlig hilsen/g)?.length, 1, "kundepayload skal have præcis én signatur");
   assert.equal(JSON.stringify(kundeSvar).includes("Syntetisk intern note"), false);
+  assert.equal(JSON.stringify(kundeSvar).includes("Syntetisk intern sagsbaggrund"), false);
+  assert.equal(JSON.stringify(kundeSvar).includes("Intern FLEET-diagnose"), false);
   const loest = await kald("supportSagLoes", { sagId, anmodningId: "kunde_loes_0001" }, kunde.token);
   assert.equal(loest.sag.status, "loest");
   const genaabnet = await kald("supportSagGenaabn", { sagId, anmodningId: "kunde_genaabn_0001" }, kunde.token);
@@ -144,7 +164,11 @@ try {
     aendringEfterGodkendelseAfvist: true,
     kladdeGodkendTransport: true,
     idempotentTransportRetry: true,
+    idempotentInternAiRetry: true,
+    idempotentBaggrundRetry: true,
     internNoteIkkeKundesynlig: true,
+    internAiOgBaggrundIkkeKundesynlig: true,
+    kundepayloadEnSignatur: true,
     kundesvarGenstarterIkkeAi: true,
     loesOgGenaabnSammeSag: true,
     andenBrugerSammeTenantAfvist: true,

@@ -22,7 +22,7 @@ import {
   supportStatusFraEjer,
   supportStatusskift,
 } from "./delt/support.js";
-import { lokaltSupportAiSvar } from "./delt/support-ai.js";
+import { lokaltEjerSupportAiForslag, lokaltSupportAiSvar } from "./delt/support-ai.js";
 import { naesteNummer } from "./delt/booking-state.js";
 
 const REGION = "europe-west1";
@@ -126,11 +126,12 @@ function svarIndholdHash(post = {}) {
 }
 
 async function ejerTraad(db, sag) {
-  const [beskeder, noter, internAi, svarKladder] = await Promise.all([
+  const [beskeder, noter, internAi, svarKladder, sagsOplysninger] = await Promise.all([
     db.ref(`support/beskeder/${sag.id}`).once("value"),
     db.ref(`support/interneNoter/${sag.id}`).once("value"),
     db.ref(`support/internAi/${sag.id}`).once("value"),
     db.ref(`support/svarKladder/${sag.id}`).once("value"),
+    db.ref(`support/sagsOplysninger/${sag.id}`).once("value"),
   ]);
   return supportSagTilEjerTraad({
     sag,
@@ -138,7 +139,36 @@ async function ejerTraad(db, sag) {
     noter: noter.val() || {},
     internAi: internAi.val() || {},
     svarKladder: svarKladder.val() || {},
+    sagsOplysninger: sagsOplysninger.val() || {},
   });
+}
+
+function kraevRevision(vaerdi, navn, { positiv = false } = {}) {
+  const revision = Number(vaerdi);
+  if (!Number.isSafeInteger(revision) || revision < (positiv ? 1 : 0)) {
+    throw new HttpsError("invalid-argument", `${navn} har ugyldigt format.`);
+  }
+  return revision;
+}
+
+function supportTekstfingeraftryk(vaerdi = "") {
+  let hash = 2166136261;
+  for (const tegn of String(vaerdi)) {
+    hash ^= tegn.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function senesteSupportKladde(svarKladder = {}) {
+  return Object.values(svarKladder || {})
+    .sort((a, b) => Number(b?.opdateretMs || 0) - Number(a?.opdateretMs || 0))[0] || null;
+}
+
+function ejerNavn(req) {
+  return renSupportTekst(req.auth?.token?.name, 160)
+    || renSupportTekst(req.auth?.token?.email, 320)
+    || "Ejer";
 }
 
 async function verificeretKundeMetadata(db, bruger, req) {
@@ -370,6 +400,128 @@ export const supportEjerStatusOpdater = onCall(options, async (req) => {
   const gemt = tx.snapshot.val()?.sager?.[sag.id];
   await db.ref(`tenants/${gemt.tenantId}/supportsager/${gemt.id}`).set({ oprettetAfUid: gemt.oprettetAfUid, status: gemt.status, opdateretMs: gemt.opdateretMs });
   return { traad: await ejerTraad(db, gemt) };
+});
+
+/**
+ * Kanonisk intern portal-AI. Genereringen er deterministisk og lokal; hverken
+ * instruktion, analyse eller interne kilder kan nå kundens API-projektion.
+ */
+export const supportEjerAiForslagGem = onCall(options, async (req) => {
+  const ejer = ejerIdentitet(req); const d = req.data || {}; const db = getDatabase();
+  const sag = await hentEjersag(db, d.sagId); const anmodningId = kraevAnmodningId(d.anmodningId);
+  const instruktion = renSupportTekst(d.instruktion, 4_000);
+  const forventetSagRevision = kraevRevision(d.forventetSagRevision, "forventetSagRevision", { positiv: true });
+  const forventetRevision = kraevRevision(d.forventetRevision, "forventetRevision");
+  const basisAktivitetMs = kraevRevision(d.basisAktivitetMs, "basisAktivitetMs", { positiv: true });
+  const basisKladdeRevision = kraevRevision(d.basisKladdeRevision, "basisKladdeRevision");
+  const basisKladdeFingeraftryk = typeof d.basisKladdeFingeraftryk === "string"
+    && /^[a-f0-9]{8}$/.test(d.basisKladdeFingeraftryk)
+    ? d.basisKladdeFingeraftryk
+    : null;
+  if (!instruktion || !basisKladdeFingeraftryk) {
+    throw new HttpsError("invalid-argument", "Support-AI kræver instruktion og et aktuelt sagsgrundlag.");
+  }
+  if (sag.ansvarstype !== SUPPORT_ANSVAR.ejer || sag.ansvarligUid !== ejer.uid) {
+    throw new HttpsError("permission-denied", "Overtag sagen før intern Support-AI anvendes.");
+  }
+  const [beskederSnap, oplysningerSnap, videnSnap] = await Promise.all([
+    db.ref(`support/beskeder/${sag.id}`).once("value"),
+    db.ref(`support/sagsOplysninger/${sag.id}`).once("value"),
+    db.ref("udbyder/vidensbase/poster").once("value"),
+  ]);
+  const forslag = lokaltEjerSupportAiForslag({
+    sag,
+    beskeder: beskederSnap.val() || {},
+    sagsOplysninger: oplysningerSnap.val() || {},
+    viden: Object.values(videnSnap.val() || {}),
+    instruktion,
+  });
+  const idemBruger = `ejer_${ejer.uid}`; const nu = Date.now(); let konflikt = null; let gentaget = false;
+  const supportRef = db.ref("support");
+  const transaktionsstart = verificeretTransaktionsstart((await supportRef.once("value")).val() || {});
+  const tx = await supportRef.transaction((rod) => {
+    const aktuelRod = transaktionsstart(rod) || {}; const aktuelSag = aktuelRod.sager?.[sag.id];
+    const tidligere = aktuelRod.idempotens?.[idemBruger]?.[anmodningId];
+    if (tidligere) {
+      if (tidligere.operation !== "ejerAiForslag" || tidligere.sagId !== sag.id) konflikt = { kode: "already-exists", besked: "anmodningId er brugt til en anden handling." };
+      else gentaget = true;
+      return konflikt ? undefined : aktuelRod;
+    }
+    if (!aktuelSag || aktuelSag.ansvarligUid !== ejer.uid) { konflikt = { kode: "permission-denied", besked: "Kun den ansvarlige ejer kan bruge intern Support-AI." }; return; }
+    if (Number(aktuelSag.revision) !== forventetSagRevision || Number(aktuelSag.opdateretMs) !== basisAktivitetMs) { konflikt = { kode: "aborted", besked: "Sagen er ændret. Genindlæs uden at kassere usendt tekst." }; return; }
+    const arbejdsrum = aktuelRod.internAi?.[sag.id] || {};
+    if (Number(arbejdsrum.revision || 0) !== forventetRevision) { konflikt = { kode: "aborted", besked: "Det interne AI-arbejdsrum er ændret. Genindlæs sagen." }; return; }
+    const kladde = senesteSupportKladde(aktuelRod.svarKladder?.[sag.id]);
+    if (Number(kladde?.revision || 0) !== basisKladdeRevision
+        || supportTekstfingeraftryk(kladde?.tekst || "") !== basisKladdeFingeraftryk) {
+      konflikt = { kode: "failed-precondition", besked: "Svarudkastet er ændret. Gem eller genindlæs før ny fejlsøgning." }; return;
+    }
+    const ejerBeskedId = `e_${anmodningId}`; const aiBeskedId = `a_${anmodningId}`;
+    aktuelRod.internAi ||= {};
+    aktuelRod.internAi[sag.id] = {
+      ...arbejdsrum,
+      revision: forventetRevision + 1,
+      chat: {
+        ...(arbejdsrum.chat || {}),
+        [ejerBeskedId]: { id: ejerBeskedId, udvekslingId: anmodningId, rolle: "ejer", tekst: instruktion, aktorUid: ejer.uid, aktorNavn: ejerNavn(req), oprettetMs: nu, intern: true },
+        [aiBeskedId]: { id: aiBeskedId, udvekslingId: anmodningId, rolle: "ai", tekst: forslag.aiSvar, aktorUid: "lokal_support_adapter", aktorNavn: "Lokal Support-AI", oprettetMs: nu + 1, intern: true, kilder: forslag.kilder },
+      },
+      aktivtForslag: { tekst: forslag.kundesvar, basisAktivitetMs, basisSagRevision: forventetSagRevision, basisKladdeRevision, basisKladdeFingeraftryk, oprettetMs: nu + 1, oprettetAf: ejer.uid, provider: "lokal_support_testadapter", kilder: forslag.kilder, mangler: forslag.mangler, harKundegodkendtLoesning: forslag.harKundegodkendtLoesning },
+      operationer: { ...(arbejdsrum.operationer || {}), [anmodningId]: { oprettetMs: nu, aktorUid: ejer.uid, art: "support_ai" } },
+      opdateretMs: nu,
+      opdateretAf: ejer.uid,
+    };
+    aktuelRod.idempotens ||= {}; aktuelRod.idempotens[idemBruger] ||= {};
+    aktuelRod.idempotens[idemBruger][anmodningId] = { operation: "ejerAiForslag", sagId: sag.id, revision: forventetRevision + 1, ms: nu };
+    return aktuelRod;
+  });
+  if (!tx.committed || konflikt) throw new HttpsError(konflikt?.kode || "aborted", konflikt?.besked || "Support-AI-forslaget blev ikke gemt.");
+  return {
+    traad: await ejerTraad(db, tx.snapshot.val()?.sager?.[sag.id]),
+    revision: Number(tx.snapshot.val()?.internAi?.[sag.id]?.revision || forventetRevision + 1),
+    gentaget,
+    harKundegodkendtLoesning: forslag.harKundegodkendtLoesning,
+    antalKilder: forslag.kilder.length,
+  };
+});
+
+/** Intern sagsbaggrund. Ændringen øger sagens revision og forælder dermed
+ * enhver tidligere godkendelse, men den returneres aldrig til kunden. */
+export const supportEjerBaggrundGem = onCall(options, async (req) => {
+  const ejer = ejerIdentitet(req); const d = req.data || {}; const db = getDatabase();
+  const sag = await hentEjersag(db, d.sagId); const anmodningId = kraevAnmodningId(d.anmodningId);
+  const forventetSagRevision = kraevRevision(d.forventetSagRevision, "forventetSagRevision", { positiv: true });
+  const forventetRevision = kraevRevision(d.forventetRevision, "forventetRevision");
+  if (typeof d.vaerdi !== "string" || d.vaerdi.trim().length > 4_000) {
+    throw new HttpsError("invalid-argument", "Den interne baggrund er ugyldig eller for lang.");
+  }
+  const vaerdi = d.vaerdi.trim(); const idemBruger = `ejer_${ejer.uid}`; const nu = Date.now(); let konflikt = null; let gentaget = false;
+  const supportRef = db.ref("support");
+  const transaktionsstart = verificeretTransaktionsstart((await supportRef.once("value")).val() || {});
+  const tx = await supportRef.transaction((rod) => {
+    const aktuelRod = transaktionsstart(rod) || {}; const aktuelSag = aktuelRod.sager?.[sag.id];
+    const tidligere = aktuelRod.idempotens?.[idemBruger]?.[anmodningId];
+    if (tidligere) {
+      if (tidligere.operation !== "ejerBaggrund" || tidligere.sagId !== sag.id) konflikt = { kode: "already-exists", besked: "anmodningId er brugt til en anden handling." };
+      else gentaget = true;
+      return konflikt ? undefined : aktuelRod;
+    }
+    if (!aktuelSag || aktuelSag.ansvarligUid !== ejer.uid) { konflikt = { kode: "permission-denied", besked: "Kun den ansvarlige ejer kan ændre intern sagsbaggrund." }; return; }
+    if (Number(aktuelSag.revision) !== forventetSagRevision) { konflikt = { kode: "aborted", besked: "Sagen er ændret. Genindlæs uden at kassere usendt tekst." }; return; }
+    const foer = aktuelRod.sagsOplysninger?.[sag.id]?.saelgerBaggrund;
+    if (Number(foer?.revision || 0) !== forventetRevision) { konflikt = { kode: "aborted", besked: "Den interne baggrund er ændret samtidigt. Genindlæs sagen." }; return; }
+    const nySagRevision = Number(aktuelSag.revision) + 1;
+    aktuelRod.sagsOplysninger ||= {}; aktuelRod.sagsOplysninger[sag.id] ||= {};
+    aktuelRod.sagsOplysninger[sag.id].saelgerBaggrund = { id: "saelgerBaggrund", label: "Intern supportbaggrund", vaerdi, tilstand: "tilfoejet_af_ejer", kilde: `${ejerNavn(req)} · intern tilføjelse`, revision: forventetRevision + 1, raekke: 80, oprettetMs: foer?.oprettetMs || nu, opdateretMs: nu, opdateretAf: ejer.uid, intern: true };
+    aktuelRod.sager[sag.id] = { ...aktuelSag, revision: nySagRevision, opdateretMs: nu };
+    aktuelRod.idempotens ||= {}; aktuelRod.idempotens[idemBruger] ||= {};
+    aktuelRod.idempotens[idemBruger][anmodningId] = { operation: "ejerBaggrund", sagId: sag.id, revision: nySagRevision, oplysningsRevision: forventetRevision + 1, ms: nu };
+    return aktuelRod;
+  });
+  if (!tx.committed || konflikt) throw new HttpsError(konflikt?.kode || "aborted", konflikt?.besked || "Den interne baggrund blev ikke gemt.");
+  const gemt = tx.snapshot.val()?.sager?.[sag.id];
+  await db.ref(`tenants/${gemt.tenantId}/supportsager/${gemt.id}`).set({ oprettetAfUid: gemt.oprettetAfUid, status: gemt.status, opdateretMs: gemt.opdateretMs });
+  return { traad: await ejerTraad(db, gemt), revision: forventetRevision + 1, gentaget };
 });
 
 export const supportEjerSvarKladdeGem = onCall(options, async (req) => {
