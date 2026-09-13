@@ -103,10 +103,10 @@ operation, begrundelse, commit og testbevis.
 ## Milepæle
 
 - **Kontrakt klar til ejeradapter:** indholdet i dette dokument og
-  `VEYRO_SUPPORT_KONTRAKT_V1.md` er konkret. Lokalt commit tilføjes efter den
-  afsluttende gate.
+  `VEYRO_SUPPORT_KONTRAKT_V1.md` er konkret i
+  `1ba18d529093322f4442b04791aeb97a219eb0f4`.
 - **Fælles backend klar til browserprøve:** serverforløbet er bevist i den
-  isolerede emulator. Commit tilføjes efter den afsluttende gate.
+  isolerede emulator på samme commit.
 - **Ejeradapter klar:** afventer ejerchattens klientcommit mod ovenstående
   mapping.
 - **Fælles forløb gennem begge faktiske UI'er:** kan først markeres bestået,

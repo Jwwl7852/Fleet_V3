@@ -1,0 +1,21 @@
+{
+  "package": "VEYRO_SUPPORT_SAMLING_REVIEW_V1_1",
+  "date": "2026-09-13",
+  "supportBranch": "codex/support-kundeplatform-development",
+  "codeCommit": "1ba18d529093322f4442b04791aeb97a219eb0f4",
+  "ownerReadOnlyCommit": "29b8b0252384cc111e58b3bfe279a18e56046642",
+  "files": [
+    "docs/VEYRO_SUPPORT_KONTRAKT_V1.md",
+    "docs/VEYRO_SUPPORT_AFSTEMNING_V1_1.md",
+    "docs/VEYRO_SUPPORT_SAMLING_REVIEW_V1_1.md",
+    "docs/support-samling-v1-1-evidence/emulator-result.json",
+    "docs/support-samling-v1-1-evidence/browser-observation.md"
+  ],
+  "screenshots": {
+    "included": false,
+    "reason": "Ejerens aktuelle adapter er ikke portalforbundet; separate demo-UI'er er ikke bevis for samme sag."
+  },
+  "externalAi": false,
+  "mail": false,
+  "productionData": false
+}
