@@ -2,11 +2,39 @@ export const EJER_SUPPORT_ADAPTER_STATUS = Object.freeze({
   model: "eksisterende mailtråde + serverberegnede portalprojektioner",
   kanal: "email_eller_portal",
   kontraktRevision: "veyro.support.v1.1",
-  portalForbundet: "naar_faelles_endpoints_er_tilgængelige",
-  tilstand: "ejeradapter_klar",
+  portalForbundet: "faelles_endpoints_v1_1",
+  tilstand: "ejeradapter_forbundet",
 });
 
 export const SUPPORT_PORTAL_ADAPTER = "veyro.support.v1.1";
+
+const nytAnmodningId = (prefix) => `${prefix}_${crypto.randomUUID().replaceAll("-", "_")}`;
+
+export const stabiltSupportAnmodningId = (payload, prefix) =>
+  payload.anmodningId || payload.operationId || nytAnmodningId(prefix);
+
+export function bygPortalAiPayload(payload) {
+  return {
+    sagId: payload.traadId,
+    anmodningId: stabiltSupportAnmodningId(payload, "intern_ai"),
+    instruktion: payload.instruktion,
+    forventetSagRevision: payload.forventetSagRevision,
+    forventetRevision: payload.forventetRevision || 0,
+    basisAktivitetMs: payload.basisAktivitetMs,
+    basisKladdeRevision: payload.basisKladdeRevision || 0,
+    basisKladdeFingeraftryk: payload.basisKladdeFingeraftryk,
+  };
+}
+
+export function bygPortalBaggrundPayload(payload) {
+  return {
+    sagId: payload.traadId,
+    anmodningId: stabiltSupportAnmodningId(payload, "baggrund"),
+    vaerdi: payload.vaerdi,
+    forventetSagRevision: payload.forventetSagRevision,
+    forventetRevision: payload.forventetRevision || 0,
+  };
+}
 
 export function erPortalSupport(traadEllerPayload = {}) {
   return (traadEllerPayload.kildeAdapter || traadEllerPayload.kilde?.adapter) === SUPPORT_PORTAL_ADAPTER;

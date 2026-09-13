@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { bygSupportAiResultat, findSupportKilder, supportSagFakta, supportVersionMatcher } from "../src/fleet/ejer-support-ai.js";
-import { EJER_SUPPORT_ADAPTER_STATUS, erPortalSupport, opretEjerSupportAdapter, supportKanal, supportStatusVisning } from "../src/fleet/ejer-support-kontrakt.js";
+import { bygPortalAiPayload, bygPortalBaggrundPayload, EJER_SUPPORT_ADAPTER_STATUS, erPortalSupport, opretEjerSupportAdapter, supportKanal, supportStatusVisning } from "../src/fleet/ejer-support-kontrakt.js";
 
 const sag = { id: "s1", sagstype: "support", kontaktNavn: "Maja Larsen", virksomhedhedsnavn: "Nordlys", senesteAktivitetMs: 10, support: { modul: "FLEET", version: "3.4.2", fejltekst: "Session expired", forsoegt: "Browser genstartet" }, beskeder: { m1: { id: "m1", retning: "indgaaende", tekst: "Session expired efter adgangsændring", sendtMs: 10 } } };
 const viden = { kunde: { id: "kunde", titel: "Forny session", indhold: "Log helt ud og ind igen.", kilde: "Implementeret auth-flow", modul: "FLEET", noegleord: ["session expired"], godkendt: true, vidensstatus: "godkendt", publikum: "kunde_godkendt", aktuelVersion: 2 }, intern: { id: "intern", titel: "Mulig cache", indhold: "Kan skyldes cache.", kilde: "Intern analyse", modul: "FLEET", noegleord: ["session expired"], godkendt: true, vidensstatus: "godkendt", publikum: "intern", aktuelVersion: 1 }, gammel: { id: "gammel", titel: "Gammel løsning", indhold: "Må ikke bruges.", kilde: "Arkiv", modul: "FLEET", noegleord: ["session expired"], godkendt: true, vidensstatus: "foraeldet", publikum: "kunde_godkendt", aktuelVersion: 1 } };
@@ -47,7 +47,7 @@ test("V8.1 B ejeradapteren er samlet og følger den afstemte V1.1-grænse", asyn
   const adapter = opretEjerSupportAdapter({ hentPlatform: async () => { kald.push("hent"); return { traade: {} }; } });
   assert.deepEqual(await adapter.hentPlatform(), { traade: {} });
   assert.deepEqual(kald, ["hent"]);
-  assert.equal(adapter.status.tilstand, "ejeradapter_klar");
+  assert.equal(adapter.status.tilstand, "ejeradapter_forbundet");
   assert.equal(EJER_SUPPORT_ADAPTER_STATUS.kontraktRevision, "veyro.support.v1.1");
   assert.equal(erPortalSupport({ kilde: { adapter: "veyro.support.v1.1" } }), true);
   assert.equal(erPortalSupport({ kilde: { adapter: "v8_support_local" } }), false);
@@ -61,11 +61,34 @@ test("V8.1 B portaladapteren bruger kun de afstemte ejeroperationer og transport
   assert.match(adapter, /supportEjerOvertag/);
   assert.match(adapter, /supportEjerStatusOpdater/);
   assert.match(adapter, /supportEjerNoteSkriv/);
+  assert.match(adapter, /supportEjerAiForslagGem/);
+  assert.match(adapter, /supportEjerBaggrundGem/);
   assert.match(adapter, /supportEjerSvarKladdeGem/);
   assert.match(adapter, /forventetSagRevision/);
   assert.match(adapter, /supportEjerSvarGodkend/);
   assert.match(adapter, /supportEjerSvarTransporter/);
   assert.doesNotMatch(adapter, /supportEjerSvarSend/);
+  assert.doesNotMatch(adapter, /portalInternFunktionMangler/);
+});
+
+test("Support V1.1 interne payloads bevarer idempotens og begge revisionslag", () => {
+  const ai = bygPortalAiPayload({
+    traadId: "sag-1", operationId: "operation_12345678", instruktion: "Find næste sikre trin",
+    forventetSagRevision: 7, forventetRevision: 3, basisAktivitetMs: 99,
+    basisKladdeRevision: 2, basisKladdeFingeraftryk: "811c9dc5",
+  });
+  assert.deepEqual(ai, {
+    sagId: "sag-1", anmodningId: "operation_12345678", instruktion: "Find næste sikre trin",
+    forventetSagRevision: 7, forventetRevision: 3, basisAktivitetMs: 99,
+    basisKladdeRevision: 2, basisKladdeFingeraftryk: "811c9dc5",
+  });
+  assert.deepEqual(bygPortalBaggrundPayload({
+    traadId: "sag-1", anmodningId: "baggrund_12345678", vaerdi: "Kun internt",
+    forventetSagRevision: 8, forventetRevision: 1,
+  }), {
+    sagId: "sag-1", anmodningId: "baggrund_12345678", vaerdi: "Kun internt",
+    forventetSagRevision: 8, forventetRevision: 1,
+  });
 });
 
 test("V8.1 mobilopfølgning reserverer læseplads til AI-historikken", () => {

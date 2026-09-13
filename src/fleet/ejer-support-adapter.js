@@ -14,12 +14,14 @@ import {
 import { UDBYDERSVAR, tolkUdbyderfejl } from "./udbyder-regler.js";
 import {
   EJER_SUPPORT_ADAPTER_STATUS,
+  bygPortalAiPayload,
+  bygPortalBaggrundPayload,
   erPortalSupport,
   opretEjerSupportAdapter,
+  stabiltSupportAnmodningId,
   supportKanal,
 } from "./ejer-support-kontrakt.js";
 
-const anmodningId = (prefix) => `${prefix}_${crypto.randomUUID().replaceAll("-", "_")}`;
 const udenAdapterfelt = ({ kildeAdapter: _kildeAdapter, ...payload }) => payload;
 
 async function kaldPortal(navn, data = {}) {
@@ -32,15 +34,30 @@ async function kaldPortal(navn, data = {}) {
 }
 
 async function hentPlatform() {
-  const lokal = await hentSalgsplatform();
-  const portal = await kaldPortal("supportEjerKoelist");
+  const [lokalResultat, portal] = await Promise.all([
+    hentSalgsplatform().then((data) => ({ ok: true, data })).catch((fejl) => ({ ok: false, fejl })),
+    kaldPortal("supportEjerKoelist"),
+  ]);
+  const lokal = lokalResultat.ok ? lokalResultat.data : { traade: {} };
   if (!portal.ok) {
-    return { ...lokal, supportKontrakt: { ...EJER_SUPPORT_ADAPTER_STATUS, endpointTilgaengelig: false, fejl: portal.besked } };
+    return {
+      ...lokal,
+      supportKontrakt: {
+        ...EJER_SUPPORT_ADAPTER_STATUS,
+        endpointTilgaengelig: false,
+        privatMailEndpointTilgaengelig: lokalResultat.ok,
+        fejl: portal.besked,
+      },
+    };
   }
   return {
     ...lokal,
     traade: { ...(lokal.traade || {}), ...(portal.data?.traade || {}) },
-    supportKontrakt: { ...EJER_SUPPORT_ADAPTER_STATUS, endpointTilgaengelig: true },
+    supportKontrakt: {
+      ...EJER_SUPPORT_ADAPTER_STATUS,
+      endpointTilgaengelig: true,
+      privatMailEndpointTilgaengelig: lokalResultat.ok,
+    },
   };
 }
 
@@ -51,26 +68,26 @@ const portalEllerLokal = (portalNavn, lokalHandling, bygPortalPayload) => async 
 
 const opdaterStatus = portalEllerLokal("supportEjerStatusOpdater", opdaterSupportsag, (payload) => ({
   sagId: payload.traadId,
-  anmodningId: anmodningId("status"),
+  anmodningId: stabiltSupportAnmodningId(payload, "status"),
   status: payload.status,
   forventetRevision: payload.forventetRevision,
 }));
 
 const overtag = portalEllerLokal("supportEjerOvertag", opdaterSalgstraad, (payload) => ({
   sagId: payload.traadId,
-  anmodningId: anmodningId("overtag"),
+  anmodningId: stabiltSupportAnmodningId(payload, "overtag"),
   forventetRevision: payload.forventetRevision,
 }));
 
 const noteSkriv = portalEllerLokal("supportEjerNoteSkriv", opretSalgsnote, (payload) => ({
   sagId: payload.traadId,
-  anmodningId: anmodningId("note"),
+  anmodningId: stabiltSupportAnmodningId(payload, "note"),
   tekst: payload.tekst,
 }));
 
 const kladdeGem = portalEllerLokal("supportEjerSvarKladdeGem", gemKommunikationssvarkladde, (payload) => ({
   sagId: payload.traadId,
-  anmodningId: anmodningId("kladde"),
+  anmodningId: stabiltSupportAnmodningId(payload, "kladde"),
   id: payload.id || "portal",
   kanal: "portal",
   tekst: payload.tekst,
@@ -82,28 +99,21 @@ const kladdeGem = portalEllerLokal("supportEjerSvarKladdeGem", gemKommunikations
 
 const svarGodkend = portalEllerLokal("supportEjerSvarGodkend", godkendKommunikationssvar, (payload) => ({
   sagId: payload.traadId,
-  anmodningId: anmodningId("godkend"),
+  anmodningId: stabiltSupportAnmodningId(payload, "godkend"),
   id: payload.id,
   forventetRevision: payload.forventetRevision,
 }));
 
 const svarSend = portalEllerLokal("supportEjerSvarTransporter", afsendKommunikationssvar, (payload) => ({
   sagId: payload.traadId,
-  anmodningId: payload.anmodningId || anmodningId("transport"),
+  anmodningId: stabiltSupportAnmodningId(payload, "transport"),
   id: payload.id,
   forventetRevision: payload.forventetRevision,
 }));
 
-const portalInternFunktionMangler = async () => ({
-  ok: false,
-  art: UDBYDERSVAR.ugyldig,
-  data: null,
-  besked: "Intern AI og sagsoplysninger for portalsager afventer de fælles V1.1-endpoints. Intet er skrevet til en parallel mailtråd.",
-});
-
-const internPortalEllerLokal = (lokalHandling) => async (payload) => erPortalSupport(payload)
-  ? portalInternFunktionMangler()
-  : lokalHandling(udenAdapterfelt(payload));
+const aiSkriv = portalEllerLokal("supportEjerAiForslagGem", gemSupportAiForslag, bygPortalAiPayload);
+const generelAiSkriv = portalEllerLokal("supportEjerAiForslagGem", gemKommunikationsAiChat, bygPortalAiPayload);
+const oplysningSkriv = portalEllerLokal("supportEjerBaggrundGem", gemKommunikationsSagsoplysning, bygPortalBaggrundPayload);
 
 export const ejerSupportAdapter = opretEjerSupportAdapter({
   hentPlatform,
@@ -114,9 +124,9 @@ export const ejerSupportAdapter = opretEjerSupportAdapter({
   opdaterStatus,
   overtag,
   noteSkriv,
-  aiSkriv: internPortalEllerLokal(gemSupportAiForslag),
-  generelAiSkriv: internPortalEllerLokal(gemKommunikationsAiChat),
-  oplysningSkriv: internPortalEllerLokal(gemKommunikationsSagsoplysning),
+  aiSkriv,
+  generelAiSkriv,
+  oplysningSkriv,
   kladdeGem,
   svarGodkend,
   svarSend,

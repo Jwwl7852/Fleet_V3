@@ -125,13 +125,13 @@ export default function EjerMailV71Samtale({ valgt, bruger, mailsignatur, hent, 
     if (r.ok) { setVisReview(false); requestAnimationFrame(() => reviewKnapRef.current?.focus()); }
   };
   const afsendSvar = () => kladde && udfoer(() => (erSupport && supportAdapter ? supportAdapter.svarSend : afsendKommunikationssvar)({ traadId: valgt.id, id: kladde.id, forventetRevision: kladde.revision, ...adapterFelt }));
-  const gemBaggrund = () => udfoer(() => (erSupport && supportAdapter ? supportAdapter.oplysningSkriv : gemKommunikationsSagsoplysning)({ traadId: valgt.id, vaerdi: baggrund, forventetRevision: saelgerBaggrund?.revision || 0, ...adapterFelt }), "Oplysningen er gemt internt på den delte sag.");
+  const gemBaggrund = () => udfoer(() => (erSupport && supportAdapter ? supportAdapter.oplysningSkriv : gemKommunikationsSagsoplysning)({ traadId: valgt.id, vaerdi: baggrund, forventetSagRevision: valgt.revision, forventetRevision: saelgerBaggrund?.revision || 0, ...adapterFelt }), "Oplysningen er gemt internt på den delte sag.");
   const foreslaaSvar = async ({ blivPaaFane = false } = {}) => {
     if (!aiInstruks.trim()) return;
     if (erSupport) {
       const r = await udfoer(() => (supportAdapter?.aiSkriv || gemSupportAiForslag)({
         traadId: valgt.id, operationId: crypto.randomUUID(), instruktion: aiInstruks.trim(),
-        forventetRevision: aiRum.revision || 0, basisAktivitetMs: valgt.senesteAktivitetMs,
+        forventetSagRevision: valgt.revision, forventetRevision: aiRum.revision || 0, basisAktivitetMs: valgt.senesteAktivitetMs,
         basisKladdeRevision: kladde?.revision || 0, basisKladdeFingeraftryk: tekstfingeraftryk(svartekst), ...adapterFelt,
       }), "Support-AI har gemt fejlsøgning, kilder og et særskilt svarforslag i det fælles, interne arbejdsrum.");
       if (r.ok) { setAiInstruks(""); setVisHeleSenesteForslag(false); if (!blivPaaFane) setAktivFane("ai-chat"); }
