@@ -26,6 +26,7 @@ function normalizedState(state, tenantId) {
 function visibleState(state, actor) {
   const result = clone(state);
   const ownOnly = !actor.permissions.includes("workforce.employee.read");
+  const canReadSensitiveLeave = actor.permissions.includes("workforce.leave.sensitive");
   if (ownOnly) {
     assertPermission(actor, "workforce.self");
     const employeeId = actor.employeeId;
@@ -38,7 +39,19 @@ function visibleState(state, actor) {
     result.planningAssignments = [];
     result.history = [];
   }
-  if (!actor.permissions.includes("workforce.leave.sensitive")) result.sensitiveLeave = {};
+  if (!canReadSensitiveLeave) {
+    result.sensitiveLeave = {};
+    result.leaves = result.leaves.map((leave) => {
+      const projected = { ...leave };
+      delete projected.type;
+      delete projected.sensitiveNote;
+      if (leave.employeeId !== actor.employeeId) {
+        delete projected.requestedType;
+        delete projected.employeeNote;
+      }
+      return projected;
+    });
+  }
   return result;
 }
 

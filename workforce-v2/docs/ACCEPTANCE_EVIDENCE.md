@@ -63,3 +63,22 @@ Opdaterede screenshots:
 Korrektionsrunden dokumenterer fortsat ikke autentifikation eller den fælles
 backend. Det påkrævede tværsessionsforløb er derfor eksplicit placeret i
 `INTEGRATION_HANDOFF.md`.
+
+## Afsluttende adgangskontrol 13. september 2026
+
+- Den lokale repositoryprojektion er testet med en godkender, som har
+  `workforce.leave.approve`, men ikke `workforce.leave.sensitive`.
+  Godkenderen modtog periode, status og id, men ikke ansøgt kategori,
+  medarbejdernote eller den følsomme årsagssamling.
+- Benjamin kunne via sin egen medarbejderprojektion fortsat se sin egen
+  ansøgte kategori og kommentar, men ikke `sensitiveLeave`.
+- Lederens rettighedsberettigede UI skelner nu mellem “Ønsket frihed” og
+  “Registreret årsag”. For den afventende ansøgning vises den registrerede
+  årsag som “Ikke fastlagt” i stedet for “Skjult”.
+- Screenshots: `screenshots-final/01-fravaer-adgang-desktop.jpg` og
+  `screenshots-final/02-fravaer-detalje-desktop.jpg`.
+
+Kontrollen er kørt mod modulrepositoryet. Den dokumenterer ikke, at felterne
+filtreres før levering fra Firebase eller en Cloud Function. Den fælles
+backendkontrol er fortsat et eksplicit acceptkrav i
+`INTEGRATION_HANDOFF.md`.

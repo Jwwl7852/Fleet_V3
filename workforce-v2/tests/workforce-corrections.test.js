@@ -7,6 +7,7 @@ import {
 } from "../src/domain/workforceDomain.js";
 import { formatLeavePeriod } from "../src/domain/workforcePresentation.js";
 import { createSeedState } from "../src/data/seed.js";
+import { createMemoryWorkforceRepository } from "../src/data/workforceRepository.js";
 
 test("nattevagt vises på startdagen og samme vagt-id tælles kun én gang", () => {
   const monday = localDateTimeMs("2026-09-14", "00:00");
@@ -88,3 +89,43 @@ test("Vis som er kun tilgængelig uden en autentificeret actor", () => {
   assert.match(source, /!actorProp\s*&&\s*<label className="wf-role">Vis som/);
   assert.match(source, /const actor = actorProp \|\|/);
 });
+
+test("fraværsårsag og medarbejdernote projiceres efter følsom læseret", async () => {
+  const repository = createMemoryWorkforceRepository({ initialState: createSeedState({ now: localDateTimeMs("2026-09-17", "12:00") }) });
+  const approver = {
+    id: "user-approver", tenantId: "demo-transport", employeeId: "emp-dennis",
+    permissions: ["workforce.employee.read", "workforce.leave.approve"],
+  };
+  const approverState = await repository.getState(approver);
+  const pendingForApprover = approverState.leaves.find((leave) => leave.id === "leave-pending");
+  assert.equal(pendingForApprover.status, "pending");
+  assert.ok(Number.isFinite(pendingForApprover.fromMs));
+  assert.ok(Number.isFinite(pendingForApprover.toMs));
+  assert.equal(hasOwn(pendingForApprover, "requestedType"), false);
+  assert.equal(hasOwn(pendingForApprover, "employeeNote"), false);
+  assert.deepEqual(approverState.sensitiveLeave, {});
+  const approvedForApprover = approverState.leaves.find((leave) => leave.id === "leave-approved");
+  assert.equal(hasOwn(approvedForApprover, "type"), false);
+  assert.equal(hasOwn(approvedForApprover, "sensitiveNote"), false);
+
+  const decision = await repository.decideLeave(approver, "leave-pending", "approved", "Godkendt uden adgang til årsag");
+  assert.equal(decision.leave.status, "approved");
+
+  const employee = {
+    id: "user-benjamin", tenantId: "demo-transport", employeeId: "emp-benjamin",
+    permissions: ["workforce.self"],
+  };
+  const employeeState = await repository.getState(employee);
+  assert.deepEqual(employeeState.leaves.map((leave) => leave.id), ["leave-pending"]);
+  assert.equal(employeeState.leaves[0].status, "approved");
+  assert.equal(employeeState.leaves[0].requestedType, "personal");
+  assert.equal(employeeState.leaves[0].employeeNote, "Familieaftale");
+  assert.equal(employeeState.leaves[0].response, "Godkendt uden adgang til årsag");
+  assert.equal(hasOwn(employeeState.leaves[0], "type"), false);
+  assert.equal(hasOwn(employeeState.leaves[0], "sensitiveNote"), false);
+  assert.deepEqual(employeeState.sensitiveLeave, {});
+});
+
+function hasOwn(value, key) {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
