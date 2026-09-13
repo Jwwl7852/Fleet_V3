@@ -1,79 +1,79 @@
 # Veyro Support – afstemning V1.1
 
-Dato: 13. september 2026. Lokal udvikling; ingen push eller deployment.
+Dato: 13. september 2026. Lokal udvikling; ingen push, merge eller deployment.
 
 ## Faktisk grundlag
 
-| Spor | Branch | Læst commit | Status ved læsning |
-| --- | --- | --- | --- |
-| Kunde/support | `codex/support-kundeplatform-development` | `404b20b43fbd690429c19224988af797d41e30cd` | ren før V1.1-arbejdet |
-| Ejer V8 | `codex/ejer-integrated-development` | `29b8b0252384cc111e58b3bfe279a18e56046642` | tracked ren; lokale, ikke-sporede reviewartefakter urørt |
+| Spor | Branch | Relevant checkpoint | Senest læste HEAD | Status |
+| --- | --- | --- | --- | --- |
+| Kunde/fælles support | `codex/support-kundeplatform-development` | `aa269edc0e757ff6b5c2f2beddd628c643057c71` | samme | produktkode committet; kun brugerens urelaterede reviewfiler er untracked |
+| Ejer V8.1 | `codex/ejer-integrated-development` | `2c25c196ae980995849a12b06f805551c98f9f63` | `7fa23cdd7f189e9adec8e56fb36168ad2d547fc3` | read-only; nyere commits er dokumentation og mobilhistorik, ikke en ny serveradapter |
 
-Ejerens input er læst fra
-`docs/VEYRO_EJER_SUPPORT_KONTRAKT_INPUT_V1.md`. V8-præsentationen forbliver
-ejerchattens ansvar og er ikke ændret i denne leverance.
+Ejerens nyeste kontraktinput blev læst fra
+`docs/VEYRO_EJER_SUPPORT_KONTRAKT_INPUT_V1_1.md`. Ejerens V8.1-præsentation
+forbliver ejerchattens ansvar og er ikke ændret i denne leverance.
 
-## Afstemt model
+## Kanonisk model
 
 | Emne | Autoritativt felt/sted | Læsevisning | Eneste skrivevej |
 | --- | --- | --- | --- |
-| Portalsagsidentitet | `support/sager/<sagId>`, `traadId === sagId` | kunde `sag`; ejer V8 `traad` | fælles `support*`-functions |
+| Portalsagsidentitet | `support/sager/<sagId>`, `traadId === sagId` | kunde `sag`; ejer V8 `traad` | fælles `support*`-Functions |
 | Kunde/tenant | signerede claims + verificeret kundeindeks | `links.tenantId`, evt. `links.virksomhedId` | serveren |
-| Status/ansvar | portalsagen | V8-mapping i kontrakten | overtag/status-endpoints |
+| Status/ansvar | portalsagen | V8-statusmapping | overtag/status-endpoints |
 | Kundedialog | `support/beskeder/<sagId>` | kunde-array; V8 `beskeder` | kunde-/AI-/transport-endpoints |
-| Intern note | `support/interneNoter/<sagId>` | kun V8-projektion | `supportEjerNoteSkriv` |
-| Intern AI | `support/internAi/<sagId>` | V8 `aiArbejdsrum` | ikke færdigkoblet i denne runde |
+| Intern note | `support/interneNoter/<sagId>` | kun V8 | `supportEjerNoteSkriv` |
+| Intern AI | `support/internAi/<sagId>` | V8 `aiArbejdsrum` | `supportEjerAiForslagGem` |
+| Intern baggrund | `support/sagsOplysninger/<sagId>` | V8 `sagsOplysninger` | `supportEjerBaggrundGem` |
 | Svarudkast | `support/svarKladder/<sagId>` | V8 `svarKladder` | kladde → godkend → transport |
-| Videnskilde | `udbyder/vidensbase/poster` | konkret kilde/version på AI-besked | ejerens vidensarbejdsflade |
+| Videnskilde | `udbyder/vidensbase/poster` | konkret kilde/version | ejerens vidensarbejdsflade |
 | Eksisterende mailtråd | `udbyder/salgsindbakke/traade` | eksisterende V8-adapter | eksisterende ejerendpoints; ingen migration |
 
-Der oprettes ingen portalsagskopi under ejerens salgstråde. For en ny
-portalsag er V8-objektet en ren, serverberegnet projektion.
+Der oprettes ingen portalsagskopi under ejerens salgstråde. `supportEjerKoelist`
+og `supportEjerSagHent` danner en read-projektion fra den ene sag.
 
-## Adaptergrænse til ejerchatten
+## Endelig adaptergrænse
 
-Ejerens `ejerSupportAdapter` skal vælge transport ud fra
-`traad.kilde.adapter === "veyro.support.v1.1"`. Eksisterende tråde fortsætter
-på den nuværende V8-adapter; portalprojektioner bruger nedenstående mapping.
+Ejeradapteren vælger portaltransport, når
+`traad.kilde.adapter === "veyro.support.v1.1"`.
 
 | V8-metode | Fælles callable | Payloadmapping |
 | --- | --- | --- |
-| `hentPlatform` | `supportEjerKoelist` | returnér endpointets `{ traade }` direkte |
+| `hentPlatform` | `supportEjerKoelist` | endpointets `{ traade }` |
 | hent én tråd | `supportEjerSagHent` | `traadId → sagId` |
-| `overtag` | `supportEjerOvertag` | `traadId → sagId`, tilføj nyt `anmodningId` |
-| `opdaterStatus` | `supportEjerStatusOpdater` | `traadId → sagId`; brug statusmappingen |
-| `noteSkriv` | `supportEjerNoteSkriv` | `traadId → sagId`, tilføj `anmodningId` |
-| `kladdeGem` | `supportEjerSvarKladdeGem` | kanal er `portal`; send både sags- og kladderevision |
-| `svarGodkend` | `supportEjerSvarGodkend` | `traadId → sagId` og kladderevision |
-| `svarSend` | `supportEjerSvarTransporter` | må aldrig kalde `supportEjerSvarSend` |
+| `overtag` | `supportEjerOvertag` | nyt `anmodningId`, forventet sagsrevision |
+| `opdaterStatus` | `supportEjerStatusOpdater` | portalstatusmapping + forventet revision |
+| `noteSkriv` | `supportEjerNoteSkriv` | nyt `anmodningId` |
+| intern AI | `supportEjerAiForslagGem` | instruktion, sags-/AI-revision, aktivitet og kladdegrundlag |
+| intern baggrund | `supportEjerBaggrundGem` | værdi, sagsrevision og oplysningsrevision |
+| `kladdeGem` | `supportEjerSvarKladdeGem` | kanal `portal`; sags- og kladderevision |
+| `svarGodkend` | `supportEjerSvarGodkend` | kladderevision |
+| `svarSend` | `supportEjerSvarTransporter` | aldrig legacy `supportEjerSvarSend` |
 
-V8's nuværende `gemSvar` sender ikke eksplicit `forventetSagRevision`. Den
-konkrete ejeradapter/komponent skal derfor tilføje
-`forventetSagRevision: valgt.revision` ved portalprojektioner. Det er en
-bevidst, nødvendig klientændring og må ikke erstattes af en skjult seneste-
-værdi i browseren.
+Adapteren normaliserer til `{ ok, data, besked }`. Functions-fejl må ikke
+omdannes til succes. `aborted` udløser genindlæsning, men lokal usendt tekst
+bevares; V8.1's lokale kladdestate ryddes kun efter en vellykket operation.
+`permission-denied` fejler lukket og må ikke genprøves med bredere adgang.
+Automatisk retry er kun gyldigt med samme operation, payload og
+`anmodningId`.
 
-Eksempel uden credentials:
+Den fulde, indsættelige ejerhandoff findes i
+`VEYRO_SUPPORT_EJERADAPTER_OVERLEVERING_V1_1.md`.
 
-```js
-await kaldFunktion("supportEjerSvarKladdeGem", {
-  sagId: traad.id,
-  anmodningId: `kladde_${crypto.randomUUID().replaceAll("-", "_")}`,
-  id: kladde?.id || "portal",
-  kanal: "portal",
-  tekst,
-  signatur,
-  vedhaeftninger: [],
-  forventetSagRevision: traad.revision,
-  forventetRevision: kladde?.revision || 0,
-});
-```
+## Afstemt status, viden og svartransport
 
-Resultater normaliseres til V8's `{ ok, data, besked }` i ejerens adapter.
-Functions-fejl må ikke omdannes til succes; `aborted` udløser genindlæsning,
-og `permission-denied` må ikke genprøves med bredere adgang.
+- Portalstatus: `aiDialog → ny`, `afventerSupport → triage`,
+  `underBehandling → afventer_os`, `afventerKunde → afventer_kunden`,
+  `loest → loest`.
+- Kun `vidensstatus: godkendt`, `publikum: kunde_godkendt`, aktuel revision,
+  kilde, titel og indhold kan skabe kundevendt AI-svar.
+- Interne videnskilder kan bruges i ejerens interne analyse, men returneres
+  aldrig til kunden.
+- Intern baggrund hæver sagsrevisionen og gør en tidligere godkendt kladde
+  stale.
+- Portaltransport kræver overtaget sag, uændret sagsgrundlag, godkendt kladde
+  og identisk indholdshash. Signaturen samles præcis én gang.
 
-## Lokal backend til fælles prøve
+## Lokal backend og UI-bevis
 
 | Del | Værdi |
 | --- | --- |
@@ -81,34 +81,25 @@ og `permission-denied` må ikke genprøves med bredere adgang.
 | Auth | `127.0.0.1:9198` |
 | Realtime Database | `127.0.0.1:9290` |
 | Functions | `127.0.0.1:5099` |
-| Region | `europe-west1` |
-| Runtime | Node `20.20.2`, Temurin JDK `21.0.11+10`, Firebase CLI `15.29.0` |
+| Kunde-UI under prøven | `127.0.0.1:5216/support` |
+| Ejer-UI under prøven | `127.0.0.1:5215/main/support` |
+| Fælles sag | `-P1Pq9RWrwESVAb79EhO` / `SUP-2026-00001` |
+| Runtime | Node `24.19.0` for Rules, Node `20.20.2` for Functions-prøven, Temurin JDK `21.0.11+10`, Firebase CLI `15.29.0` |
 
-Offentlige Vite-navne er dokumenteret i `.env.example`:
-`VITE_USE_FIREBASE_EMULATORS`, `VITE_FIREBASE_AUTH_PORT`,
-`VITE_FIREBASE_DATABASE_PORT` og
-`VITE_FIREBASE_FUNCTIONS_PORT`. Lokale værdier og testidentiteter må
-ligge i `.env.local`, som ikke committes. Emulatorprøven opretter udelukkende
-syntetiske `*.invalid`-brugere; ingen passwords eller tokens gemmes i docs.
+Faktiske UI'er viste samme sag gennem kundeoprettelse, lokal kunde-AI,
+eskalering, ejerens kø, overtagelse, intern AI, intern baggrund, kladde,
+godkendelse, portaltransport og kundens genindlæsning. Den midlertidige
+ejerkomposit var et lokalt forbindelsesbevis; ingen ejerfiler blev committet.
+Testidentiteter var syntetiske `*.invalid`-brugere, og credentials er ikke
+gemt i dokumentationen.
 
 ## Ejerskab ved næste ændring
 
-Support-/integrationssporet ejer `functions/support-endpoints.js`, eksport i
+Support-/integrationssporet ejer `functions/support-endpoints.js`, eksporten i
 `functions/index.js`, `src/fleet/support.js`, `src/fleet/support-ai.js`, de
-kontrollerede `functions/delt`-kopier, den kanoniske kontrakt og Rules.
-Ejerchatten ejer `EjerSupportV2.jsx`, `EjerMailV71Samtale.jsx` og
-`ejer-support-adapter.js`. Ændringsbehov i fælles filer afleveres med felt,
-operation, begrundelse, commit og testbevis.
+kontrollerede `functions/delt`-kopier, kontrakten og Rules. Ejerchatten ejer
+V8.1-komponenter og `ejer-support-adapter.js`. Ændringsbehov i fælles filer
+afleveres med felt, operation, begrundelse, commit og testbevis.
 
-## Milepæle
-
-- **Kontrakt klar til ejeradapter:** indholdet i dette dokument og
-  `VEYRO_SUPPORT_KONTRAKT_V1.md` er konkret i
-  `1ba18d529093322f4442b04791aeb97a219eb0f4`.
-- **Fælles backend klar til browserprøve:** serverforløbet er bevist i den
-  isolerede emulator på samme commit.
-- **Ejeradapter klar:** afventer ejerchattens klientcommit mod ovenstående
-  mapping.
-- **Fælles forløb gennem begge faktiske UI'er:** kan først markeres bestået,
-  når dette ejercommit er tilgængeligt og begge byggede apps peger på samme
-  emulatorer. To lokale demo-lagre tæller ikke.
+Ekstern AI, rigtig mail, vedhæftninger, deployment og produktionsdata er ikke
+aktiveret.

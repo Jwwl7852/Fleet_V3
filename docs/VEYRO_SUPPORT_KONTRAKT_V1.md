@@ -9,9 +9,10 @@ ejerens V8-model migreres ikke i denne runde.
 
 Afstemt mod:
 
-- supportsporets base `404b20b43fbd690429c19224988af797d41e30cd`;
-- ejerens V8-input på `29b8b0252384cc111e58b3bfe279a18e56046642`;
-- `docs/VEYRO_EJER_SUPPORT_KONTRAKT_INPUT_V1.md` i ejer-worktreeet.
+- supportproduktet `aa269edc0e757ff6b5c2f2beddd628c643057c71`;
+- ejerens V8.1-adapterinput `2c25c196ae980995849a12b06f805551c98f9f63`;
+- ejerens senest læste branch-HEAD `7fa23cdd7f189e9adec8e56fb36168ad2d547fc3`;
+- `docs/VEYRO_EJER_SUPPORT_KONTRAKT_INPUT_V1_1.md` i ejer-worktreeet.
 
 ## Ejerskab
 
@@ -37,6 +38,7 @@ support/sager/<sagId>                    autoritativ sag, status og ansvar
 support/beskeder/<sagId>/<beskedId>      kundesynlig dialog
 support/interneNoter/<sagId>/<noteId>    kun ejer
 support/internAi/<sagId>/...             kun ejer; V8-projektionens aiArbejdsrum
+support/sagsOplysninger/<sagId>/...      kun ejer; intern sagsbaggrund
 support/svarKladder/<sagId>/<kladdeId>   kladde, godkendelse og transportstatus
 support/idempotens/<aktor>/<anmodningId> serverreservation
 tenants/<tenantId>/supportsager/<sagId>  afledt minimalt kundeindeks
@@ -44,7 +46,7 @@ tenants/<tenantId>/supportsager/<sagId>  afledt minimalt kundeindeks
 
 `supportEjerKoelist` og `supportEjerSagHent` beregner en V8-kompatibel
 read-projektion. Projektionen har `id`, `traadId`, `sagstype: support`,
-`beskeder`, `noter`, `aiArbejdsrum`, `svarKladder`, `support`, `links`,
+`beskeder`, `noter`, `aiArbejdsrum`, `sagsOplysninger`, `svarKladder`, `support`, `links`,
 `revision` og `senesteAktivitetMs`; den gemmes ikke som en salgstråd.
 
 Eksisterende V8-mail-/supportsager forbliver autoritative i
@@ -150,6 +152,11 @@ downloadkontrakten er implementeret.
 - `supportEjerOvertag({ sagId, anmodningId, forventetRevision })`
 - `supportEjerStatusOpdater({ sagId, anmodningId, status, forventetRevision })`
 - `supportEjerNoteSkriv({ sagId, anmodningId, tekst })`
+- `supportEjerAiForslagGem({ sagId, anmodningId, instruktion,
+  forventetSagRevision, forventetRevision, basisAktivitetMs,
+  basisKladdeRevision, basisKladdeFingeraftryk })`
+- `supportEjerBaggrundGem({ sagId, anmodningId, vaerdi,
+  forventetSagRevision, forventetRevision })`
 - `supportEjerSvarKladdeGem({ sagId, anmodningId, id, kanal: "portal",
   tekst, signatur, vedhaeftninger: [], forventetSagRevision,
   forventetRevision })`
@@ -162,6 +169,14 @@ vedhæftninger og sagens grundrevision. Godkendelsen binder den præcise hash ti
 den godkendende ejer. Transport kræver samme ansvarlige ejer, samme sag,
 samme godkendte kladde, samme hash og samme sagsgrundlag. Nyt kundeinput eller
 ændret kladde kræver ny gennemgang.
+
+Intern AI kræver, at den kaldende ejer har overtaget sagen. Operationen binder
+forslaget til sagens revision, seneste aktivitet, det interne arbejdsrums
+revision og det aktuelle kladdefingeraftryk. Resultatet er deterministisk og
+lokalt i denne prøve. Kun en kilde med `publikum: kunde_godkendt` kan danne et
+kundesvar; interne kilder må kun forekomme i den interne analyse. En ændring i
+intern sagsbaggrund hæver sagens revision og gør en tidligere godkendelse
+forældet. Begge operationer er idempotente på `anmodningId`.
 
 `supportEjerSvarSend` er bevaret som en fail-closed overgang og returnerer
 altid `failed-precondition`. V8-adapterens eksisterende metode `svarSend` skal
@@ -183,10 +198,19 @@ implicit dobbeltlevering er ikke aktiveret.
   vedhæftning eller anden endnu ikke aktiveret funktion.
 - `already-exists`: et `anmodningId` er genbrugt til en anden operation.
 
+## Ejeradapterens resultat- og retrykontrakt
+
+Ejerens klientadapter normaliserer hvert callable-resultat til
+`{ ok, data, besked }`. Functions-fejl må aldrig omdannes til succes.
+`aborted` betyder genindlæsning af serverprojektionen uden at kassere lokal,
+usendt tekst. `permission-denied` må ikke genprøves med bredere adgang.
+Automatisk retry er kun tilladt med præcis samme `anmodningId` og payload på
+idempotente operationer; en ændret operation kræver et nyt id.
+
 ## Ikke del af V1.1-aktiveringen
 
 Kontrakten er lokal prototypekode. Der er ingen deployment, produktionsdata,
-ekstern AI, rigtig mail, fælles filupload eller historisk migration. Ejerens
-interne AI-/oplysningsfunktioner for en ny portalprojektion kræver fortsat en
-klient-/endpointafstemning i ejerchatten; de må ikke falde tilbage til at skrive
-en parallel salgstråd.
+ekstern AI, rigtig mail, fælles filupload eller historisk migration. De fælles
+endpoints til intern portal-AI og intern sagsbaggrund er implementeret, men den
+permanente klientændring i ejerens V8.1-worktree tilhører fortsat ejerchatten.
+Den må ikke falde tilbage til at skrive en parallel salgstråd.
