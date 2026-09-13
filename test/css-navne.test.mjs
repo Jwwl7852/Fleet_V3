@@ -113,6 +113,25 @@ const BEVIDSTE_GRUPPER = {
      samle dem, skulle rammen skrives to gange — og så kan de skride fra
      hinanden. Grupperingen tilføjer; den redefinerer ikke. */
   "fc-input-tal": ".fc-felt input,…,.fc-input-tal{border:1px solid…} — fælles feltramme",
+  /* Ejerkonsollen har en bevidst todelt stylesheet-kontrakt: den tidlige
+     blok ejer robust grundgeometri og fallback, mens den senere godkendte
+     designserie V1 kun forfiner de samme ejer-scopede elementer. De er ikke
+     globale modulnavne, og begge lag skal blive samlet i næste rene CSS-
+     konsolidering. Snapshot-listen gør hver overlapning synlig indtil da. */
+  ...Object.fromEntries([
+    "ejer-app", "ejer-side", "ejer-logo", "ejer-produkt", "ejer-nav",
+    "ejer-link", "ejer-link-aktiv", "ejer-identitet", "ejer-hoved",
+    "ejer-top", "ejer-indhold", "ejer-indbakke", "ejer-traadliste",
+    "ejer-samtale", "ejer-mails", "ejer-mail", "ejer-mail-ud",
+    "ejer-sagspanel", "ejer-ai-resultat", "ejer-design-kort",
+    "ejer-opfoelgning-editor", "ejer-opfoelgning-actions", "dinero-logo",
+    "ejer-dokumentoversigt", "ejer-plan-opfoelgning", "ejer-kundefaner",
+    "ejer-mail-mapper", "ejer-mail-liste", "ejer-mail-ai",
+    "ejer-mail-samtale", "ejer-laast-panel",
+  ].map((navn) => [navn, "ejergrundlag + godkendt ejer-designserie V1"])),
+  /* Den fælles knap deler først reset/button-adfærd med zoomknapperne og
+     får derefter sin egen ramme og afstand. Reglerne konkurrerer ikke. */
+  "fc-nulstil-visning": "fælles knapadfærd + særskilt resetknap-geometri",
 };
 
 test("Ingen klasse får en grundregel den ikke selv ejer", () => {

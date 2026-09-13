@@ -213,7 +213,6 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
          en rapport under udbyder/ havde forladt kundens tenant, og reglens
          $andet: false haandhaever at den ikke kan. Se auditoprydning. */
       "/udbyder/retention/.read",
-      "/udbyder/salgsindbakke/traade/.read",
       "/udbyder/tilbud/.read",
       "/udbyder/vidensbase/.read",
     ], "en regel med udbyder-claim'et staar et andet sted end besluttet.");
