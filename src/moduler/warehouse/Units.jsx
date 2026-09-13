@@ -3,12 +3,12 @@ import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { harModul } from "../../fleet/moduler.js";
-import { datoTid } from "../../fleet/format.js";
+import { dato, datoTid } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formularsvar,
   Henter, Datatilstand, Tom, MiniLinje,
 } from "../../fleet/ui.jsx";
-import { pladsnavn, KASSE_STATUS } from "../../fleet/unitbooking.js";
+import { pladsnavn, UDLAAN_TILSTAND } from "../../fleet/unitbooking.js";
 import { qrBredde, qrFelter, QR_STILLE_ZONE } from "../../fleet/qrkode.js";
 import {
   bindendeBookingerForUnit, kanSelvstaendigUdlevere, senesteUnitBevaegelser,
@@ -135,6 +135,21 @@ export default function WarehouseUnits() {
   const aktiveBookinger = unit ? bindendeBookingerForUnit(bookinger, unit.id) : [];
   const udlevering = unit ? kanSelvstaendigUdlevere(unit, bookinger) : { ok: false };
   const aktivBooking = aktiveBookinger.find((b) => b.tilstand === "udlaant") || null;
+  const klargoeringsBooking = aktiveBookinger.find((b) => b.tilstand === "klargjort")
+    || aktiveBookinger.find((b) => b.tilstand === "booket")
+    || aktivBooking;
+  const fysiskStatus = unit?.pladsId
+    ? { label: "På lager", tone: "ok" }
+    : { label: "Ude af lager", tone: "bad" };
+  const klargoeringsStatus = unit?.status === "udeAfDrift"
+    ? { label: "Ikke klar · ude af drift", tone: "bad" }
+    : klargoeringsBooking?.tilstand === "klargjort"
+      ? { label: "Klargjort til udlevering", tone: "warn" }
+      : klargoeringsBooking?.tilstand === "booket"
+        ? { label: "Afventer klargøring", tone: "info" }
+        : klargoeringsBooking?.tilstand === "udlaant"
+          ? { label: "Retur afventes", tone: "bad" }
+          : { label: "Ingen klargøring i gang", tone: "info" };
 
   useEffect(() => {
     if (!unit) return;
@@ -157,7 +172,7 @@ export default function WarehouseUnits() {
 
   const valgtTypeId = typevalg === "__ny__" ? nyTypeId.trim() : typevalg;
   const kanOprette = maaFlytte && nytId.trim() && valgtTypeId
-    && hjemPladsId && modtagelsesPladsId
+    && modtagelsesPladsId
     && (typevalg !== "__ny__" || nyTypeNavn.trim());
 
   const opretNu = async () => {
@@ -176,7 +191,8 @@ export default function WarehouseUnits() {
       await Promise.all([genindlaes(), genBevaegelser()]);
       saetKode(nytId.trim());
       saetResultat({ ok: true, art: "fundet", unit: r.data?.unit || {
-        id: nytId.trim(), type: valgtTypeId, status: "ledig", pladsId: modtagelsesPladsId, hjemPladsId,
+        id: nytId.trim(), type: valgtTypeId, status: "ledig", pladsId: modtagelsesPladsId,
+        ...(hjemPladsId ? { hjemPladsId } : {}),
       } });
       saetVisOpret(false);
       saetOpretOperationId(nyUnitOperationId());
@@ -241,7 +257,7 @@ export default function WarehouseUnits() {
       {visOpret && (
         <Kort titel="Opret og modtag unit">
           <p className="fc-hint">
-            Unitten får sit stabile id og registreres på den faktiske modtagelsesplads i samme serverhandling.
+            Unitten får sin QR-identitet og vises straks på den valgte modtagelsesplads.
           </p>
           <Feltraekke>
             <Felt id="ny-unit-id" label="Unit-id / QR-kode" kraevet vaerdi={nytId} saet={saetNytId}
@@ -263,17 +279,17 @@ export default function WarehouseUnits() {
                   vaerdi={modtagelsesPladsId} saet={saetModtagelsesPladsId}
                   valgmuligheder={[{ vaerdi: "", label: "— vælg lokation —" },
                     ...pladser.map((p) => ({ vaerdi: p.id, label: pladsnavn(p) }))]} />
-            <Felt id="ny-unit-hjem" label="Foreslået hjemplads" kraevet
+            <Felt id="ny-unit-hjem" label="Foreslået hjemplads"
                   vaerdi={hjemPladsId} saet={saetHjemPladsId}
-                  valgmuligheder={[{ vaerdi: "", label: "— vælg lokation —" },
+                  valgmuligheder={[{ vaerdi: "", label: "Ingen fast hjemplads" },
                     ...pladser.map((p) => ({ vaerdi: p.id, label: pladsnavn(p) }))]}
-                  hint="Forslag til senere placering; ændrer aldrig fysisk placering automatisk." />
+                  hint="Valgfrit forslag til senere placering. Den faktiske placering ændres kun, når unitten flyttes." />
           </Feltraekke>
           <Feltraekke>
             <Felt id="ny-unit-reference" label="Modtagelsesreference" vaerdi={opretReference} saet={saetOpretReference} />
             <Felt id="ny-unit-note" label="Note" vaerdi={opretNote} saet={saetOpretNote} />
           </Feltraekke>
-          <Formularsvar svar={opretSvar} okTekst="Unitten er oprettet og fysisk modtaget én gang." />
+          <Formularsvar svar={opretSvar} okTekst="Unitten er oprettet og står på den valgte modtagelsesplads." />
           {!maaFlytte && <p className="fc-svar fc-svar-naegtet">Du mangler retten til lagerbevægelser.</p>}
           <div className="warehouse-card-action">
             <Knap variant="primaer" disabled={!kanOprette || opretter} onClick={opretNu}>
@@ -292,12 +308,26 @@ export default function WarehouseUnits() {
               <div>
                 <MiniLinje label="Identitet" vaerdi={unit.id} />
                 <MiniLinje label="Type" vaerdi={unit.type || "Ikke angivet"} />
-                <MiniLinje label="Status" vaerdi={KASSE_STATUS[unit.status]?.label || unit.status} />
+                <MiniLinje label="Fysisk lagerstatus" vaerdi={<Pille tone={fysiskStatus.tone}>{fysiskStatus.label}</Pille>} />
+                <MiniLinje label="Klargøringsstatus" vaerdi={<Pille tone={klargoeringsStatus.tone}>{klargoeringsStatus.label}</Pille>} />
                 <MiniLinje label="Aktuel placering" vaerdi={unit.pladsId ? pladsnavn(pladsMap[unit.pladsId]) : "Ude / ikke placeret"} />
-                <MiniLinje label="Hjemplads" vaerdi={unit.hjemPladsId ? pladsnavn(pladsMap[unit.hjemPladsId]) : "Ikke angivet"} />
-                <MiniLinje label="Aktiv reservation" vaerdi={aktiveBookinger.length ? aktiveBookinger.map((b) => b.nr || b.id).join(", ") : "Ingen"} />
+                <MiniLinje label="Foreslået hjemplads" vaerdi={unit.hjemPladsId ? pladsnavn(pladsMap[unit.hjemPladsId]) : "Ikke valgt"} />
               </div>
             </div>
+            <section className="warehouse-booking-list" aria-label="Bookingreservationer">
+              <h3>Bookingreservation</h3>
+              {aktiveBookinger.length ? aktiveBookinger.map((booking) => (
+                <div className="warehouse-booking-item" key={booking.id}>
+                  <span>
+                    <b>Sag {booking.sagsnummer || "uden reference"}</b>
+                    <small>{dato(booking.fra)} – {dato(booking.til)}</small>
+                  </span>
+                  <Pille tone={UDLAAN_TILSTAND[booking.tilstand]?.pill || "info"}>
+                    {UDLAAN_TILSTAND[booking.tilstand]?.label || booking.tilstand}
+                  </Pille>
+                </div>
+              )) : <p className="fc-hint">Ingen aktiv bookingreservation.</p>}
+            </section>
             <div className="warehouse-card-action">
               <Knap onClick={() => window.print()}>Udskriv unitlabel</Knap>
               <Knap onClick={() => { saetVisOpret(true); setTimeout(() => document.getElementById("ny-unit-id")?.focus(), 0); }}>
@@ -356,7 +386,7 @@ export default function WarehouseUnits() {
               { key: "ref", label: "Reference", render: (b) => b.bookingId || b.reference || "—" },
             ]}
             raekker={historik}
-            tom="Ingen fysiske bevægelser er registreret i den fælles historik endnu. Historiske UNIT-bookinger bevares separat."
+            tom="Der er endnu ingen registrerede lagerbevægelser for unitten. Bookingforløb vises under reservationen ovenfor."
           />
         </Kort>
       )}

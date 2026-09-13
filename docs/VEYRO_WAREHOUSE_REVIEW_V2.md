@@ -39,7 +39,7 @@ Dato: 2026-09-13
 Følgende direkte tests er bestået i det isolerede worktree:
 
 - `test/warehouse.test.mjs`: 114/114
-- `test/warehouse-unit.test.mjs`: 13/13
+- `test/warehouse-unit.test.mjs`: 15/15
 - `test/unitbooking.test.mjs`: 174/174
 - `test/modulkrav.test.mjs`: 14/14
 - `test/functions-delt.test.mjs`: 29/29
@@ -65,14 +65,68 @@ Desktop og mobil er gennemgået i browseren med syntetiske demodata. Kontrollen
 dækkede WAREHOUSE-overblik, ejerskabsfilter og detalje for egen reservedel,
 ud-/sammenfoldning af WAREHOUSE-menuen, råt QR-id via Enter, forståelig fejl for
 ukendt id uden oprettelse, fælles placering samt blokering af selvstændig
-udlevering ved aktiv reservation. Mobilkontrollen er udført ved 390 CSS-pixel;
-felter og handlinger stables, lange placeringer brydes, og siden har ingen
-vandret overflow. Evidens ligger i `docs/warehouse-review-v2/`.
+udlevering ved aktiv reservation.
+
+Rettelsesrunden er målt ved præcis 390×844 og 360×800 CSS-pixel. Ved begge
+størrelser var dokumentbredden mindre end viewportbredden, `fc-slot` havde
+`overflow-x: visible`, og den automatiske DOM-kontrol fandt ingen elementer i
+WAREHOUSE-arbejdsfladen med skjult indhold. Scannerknapper, handlingsvalg,
+formularfelter og primære handlinger står i én kolonne på mobil. Lange
+feltnavne, værdier, fejl og lokationsnavne brydes over flere linjer.
+
+Browseren viste desuden:
+
+- `Faktisk modtagelsesplads *` som påkrævet, mens `Foreslået hjemplads` stod
+  uden stjerne og med værdien `Ingen fast hjemplads`;
+- en aktiveret `Opret og modtag` med valgt type og modtagelsesplads, men uden
+  foreslået hjemplads;
+- en ukendt kode med en fuld, læsbar fejl og uden automatisk oprettelse;
+- `På lager`, `Afventer klargøring` og `Bookingreservation` som tre adskilte
+  forhold for MDT-102;
+- `Sag 4412`, perioden `24.08.2026 – 25.09.2026` og `Booket` uden visning af det
+  interne id `ku-6`;
+- læsbar blokering af WAREHOUSE-udlevering ved den aktive reservation.
+
+Helbilleder ligger i `docs/warehouse-review-v2-round2/`:
+
+- `390x844-opret-modtag.png`
+- `390x844-unit-booking.png`
+- `360x800-ukendt-kode.png`
+- `360x800-opret-modtag.png`
+- `360x800-unit-booking.png`
+- `360x800-booking-blokering.png`
 
 Kamera kan kun verificeres til browserens capability/fallback i denne
 arbejdsstation; fysisk kamera og ekstern scanner kan ikke ærligt certificeres
 uden hardware. Tastaturscannerens Enter-flow og manuel kodeindtastning dækkes af
 den samme opslagshandling.
+
+## Afstemning og fortsat udestående integration
+
+UNIT-sporet har bekræftet, at `hjemPladsId` også i den fælles kontrakt er et
+valgfrit forslag. Ændringen er en bagudkompatibel lempelse: eksisterende værdier
+bevares, manglende værdier kræver ingen migration, og den faktiske
+`modtagelsesPladsId` er fortsat påkrævet.
+
+UNIT-sporet ejer regelstramningen, som skal bevare direkte ændring af tilladte
+stamdata, men afvise direkte klientskrivning af `pladsId`, fysisk status og
+`unitbevaegelser`. WAREHOUSE-sporet har ikke lavet en konkurrerende
+implementation. Kontrollen er ikke bestået på denne branch, før UNIT-committen
+er samlet og reglen er kørt i emulatoren.
+
+UNIT-sporet har et fungerende emulator-runtime og har rapporteret grøn isoleret
+server-QA. Samlings-Codex ejer kørsel af den samlede browsermatrix. Kommando,
+syntetiske datakrav og forventede assertions står i
+`VEYRO_WAREHOUSE_EMULATOR_HANDOFF_V1.md`.
+
+Følgende er fortsat **udestående** for den samlede branch:
+
+- WAREHOUSE alene og UNIT alene med korrekte rettigheder;
+- fælles QR-opslag og placering gennem begge faktiske brugerflader;
+- booking → udlevering → retur → modtagelsesplads → endelig placering;
+- præcis én fysisk bevægelse ved genforsøg;
+- samtidige modstridende handlinger;
+- afvisning af forkert tenant og manglende rettigheder.
 
 ## Ingen produktionsændring
 

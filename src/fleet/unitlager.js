@@ -22,7 +22,7 @@ export async function opretWarehouseUnit({
     const svar = await kaldFunktion(UNITLAGEROPRETFUNKTION, {
       kilde: "warehouse", operationId: id, unitId, typeId,
       typeNavn: typeNavn?.trim() || undefined,
-      hjemPladsId, modtagelsesPladsId,
+      hjemPladsId: hjemPladsId || undefined, modtagelsesPladsId,
       reference: reference?.trim() || undefined,
       note: note?.trim() || undefined,
     });
@@ -31,7 +31,7 @@ export async function opretWarehouseUnit({
     if (/ingen Firebase-app/i.test(String(fejl?.message))) {
       return {
         ok: false, art: "demo",
-        besked: "Demo-tilstand: formularen kan afprøves, men oprettelsen kræver den lokale server.",
+        besked: "Demo-tilstand: Du kan gennemgå formularen, men unitten bliver ikke gemt.",
         operationId: id,
       };
     }
@@ -60,7 +60,7 @@ export async function skrivUnitLagerhandling({
       return {
         ok: false,
         art: "demo",
-        besked: "Demo-tilstand: opslag og formular kan afprøves, men den fysiske handling kræver den lokale server.",
+        besked: "Demo-tilstand: Du kan gennemgå handlingen, men placeringen bliver ikke ændret.",
         operationId: id,
       };
     }

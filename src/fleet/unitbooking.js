@@ -347,10 +347,9 @@ export function valideKasse(post = {}, { typer = [], pladser = [], katalog = [] 
 
   if (!ALLE_KASSE_STATUS.includes(post.status)) f.status = "Vælg en status.";
 
-  /* ⚠ HJEMPLADSEN ER PÅKRÆVET, DEN NUVÆRENDE ER IKKE. En kasse hører til et
-     sted; hvor den STÅR lige nu, afhænger af om den er ude. */
-  if (!post.hjemPladsId) f.hjemPladsId = "Vælg en hjemplads.";
-  else if (pladser.length && !pladser.includes(post.hjemPladsId)) {
+  /* Hjempladsen er et forslag, ikke en fysisk placering. Historiske kasser
+     beholder deres værdi; nye WAREHOUSE-units kan undlade den. */
+  if (post.hjemPladsId && pladser.length && !pladser.includes(post.hjemPladsId)) {
     f.hjemPladsId = "Ukendt reolplads.";
   }
 

@@ -324,11 +324,9 @@ export default function Optaelling() {
           tom="Der er ikke talt endnu."
         />
         <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>En optælling kan ikke rettes bagefter.</b> Den er en måling, ikke
-          en holdning — noden er <b>.write: false</b> for enhver klient. Kunne
-          afvigelsen redigeres, ville optællingen være vejen til at <b>skjule</b>
-          {" "}et svind frem for vejen til at finde det. Er der talt forkert,
-          tælles der igen, og begge målinger står.
+          <b>En afsluttet optælling kan ikke rettes.</b> Hvis der er talt
+          forkert, gennemføres en ny optælling, så begge resultater bevares i
+          historikken.
         </p>
       </Kort>
     </div>

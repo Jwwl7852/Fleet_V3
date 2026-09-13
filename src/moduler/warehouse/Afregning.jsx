@@ -258,7 +258,7 @@ export default function Afregning() {
             <Knap variant="primaer" disabled={!maaOprette || arbejder}
                   title={maaOprette
                     ? "Opretter et grundlag som kladde. Det godkendes i Fakturering."
-                    : `Kræver ${PERM.grundlagSkriv} — serveren afviser.`}
+                    : "Du har ikke adgang til at oprette fakturagrundlag."}
                   onClick={opret}>
               {arbejder ? "Opretter …" : "Opret fakturagrundlag"}
             </Knap>
@@ -275,11 +275,9 @@ export default function Afregning() {
         )}
 
         <p className="fc-hint" style={{ marginTop: 12 }}>
-          ⚠ <b>Et grundlag er ikke en faktura.</b> Det oprettes som en kladde,
-          og godkendelsen sker ét sted — Økonomi → Fakturering (beslutning 12).
-          Grundlaget skrives af <b>serveren</b>: noden er <b>.write: false for
-          alle</b>, også admin, fordi nummeret kommer fra en counter i en
-          transaction og et låst grundlag aldrig må kunne ændres.
+          <b>Et grundlag er ikke en faktura.</b> Det oprettes som kladde og
+          godkendes under Økonomi → Fakturering. Efter godkendelse er
+          grundlaget låst, så den afsendte dokumentation bevares.
         </p>
       </Kort>
     </div>

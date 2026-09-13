@@ -93,10 +93,11 @@ describe("Kassen", () => {
     }
   });
 
-  it("kræver en hjemplads, også når den er ude", () => {
-    /* Hvor kassen HØRER TIL, er ikke det samme som hvor den står. */
-    assert.ok(valideKasse({ ...kasse, status: "udlaant", pladsId: null, hjemPladsId: null }, ctx)
-      .hjemPladsId);
+  it("behandler hjemplads som et valgfrit forslag", () => {
+    /* Hvor kassen foreslås placeret, er ikke det samme som hvor den står. */
+    assert.deepEqual(valideKasse({
+      ...kasse, status: "udlaant", pladsId: null, hjemPladsId: null,
+    }, ctx), {});
   });
 
   it("afviser en ukendt type og en ukendt plads", () => {

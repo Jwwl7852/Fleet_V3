@@ -163,4 +163,35 @@ test("unitoprettelse registrerer identitet og faktisk modtagelse atomisk", () =>
   assert.ok(blok.includes("ny.unitbevaegelser"));
   assert.ok(blok.includes('art: "modtagelse"'));
   assert.ok(blok.includes('kilde: "warehouse"'));
+  assert.ok(blok.includes("...(hjemPladsId ? { hjemPladsId } : {})"),
+    "foreslået hjemplads må ikke være påkrævet eller gemmes som tom streng");
+  assert.ok(blok.includes("aktuel.reolpladser?.[modtagelsesPladsId]"),
+    "den faktiske modtagelsesplads skal fortsat valideres");
+});
+
+test("unitvisningen adskiller lager, klargøring og reservation med sag og periode", () => {
+  const kilde = readFileSync("src/moduler/warehouse/Units.jsx", "utf8");
+  assert.ok(kilde.includes('label="Fysisk lagerstatus"'));
+  assert.ok(kilde.includes('label="Klargøringsstatus"'));
+  assert.ok(kilde.includes("Bookingreservation"));
+  assert.ok(kilde.includes("booking.sagsnummer"));
+  assert.ok(kilde.includes("dato(booking.fra)"));
+  assert.ok(kilde.includes("dato(booking.til)"));
+  assert.ok(kilde.includes("&& modtagelsesPladsId"));
+  assert.ok(!kilde.includes("&& hjemPladsId && modtagelsesPladsId"));
+  assert.ok(kilde.includes('label="Foreslået hjemplads"\n'));
+  assert.ok(!kilde.includes('label="Status" vaerdi={KASSE_STATUS'));
+});
+
+test("WAREHOUSE-mobil viser feltnavne og værdier uden at skjule overflow", () => {
+  const css = readFileSync("src/fleet/fleet.css", "utf8");
+  const start = css.indexOf("@media (max-width:760px)");
+  const slut = css.indexOf("@media (prefers-reduced-motion", start);
+  const mobil = css.slice(start, slut);
+  assert.ok(mobil.includes(".warehouse-workspace .fc-feltraekke{grid-template-columns:minmax(0,1fr)}"));
+  assert.ok(mobil.includes(".warehouse-unit-summary .fc-mini>span{white-space:normal"));
+  assert.ok(mobil.includes(".warehouse-unit-summary .fc-mini>b{min-width:0"));
+  assert.ok(mobil.includes(".warehouse-scan-row .fc-btn{flex:1 1 100%; width:100%}"));
+  assert.ok(mobil.includes(".warehouse-action-choice{flex:1 1 100%; width:100%}"));
+  assert.ok(!mobil.includes("overflow-x:hidden"));
 });

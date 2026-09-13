@@ -2479,8 +2479,12 @@ export const unitlageropret = onCall({ region: REGION }, async (req) => {
       afvisning = { kode: "invalid-argument", tekst: "Vælg en gyldig unittype." };
       return;
     }
-    if (!aktuel.reolpladser?.[hjemPladsId] || !aktuel.reolpladser?.[modtagelsesPladsId]) {
-      afvisning = { kode: "not-found", tekst: "Hjemme- og modtagelseslokation skal findes i virksomhedens lager." };
+    if (!aktuel.reolpladser?.[modtagelsesPladsId]) {
+      afvisning = { kode: "not-found", tekst: "Modtagelsespladsen skal findes i virksomhedens lager." };
+      return;
+    }
+    if (hjemPladsId && !aktuel.reolpladser?.[hjemPladsId]) {
+      afvisning = { kode: "not-found", tekst: "Den foreslåede hjemplads findes ikke i virksomhedens lager." };
       return;
     }
     if (aktuel.reolpladser[modtagelsesPladsId]?.status === "lukket") {
@@ -2494,7 +2498,8 @@ export const unitlageropret = onCall({ region: REGION }, async (req) => {
     }
     const unit = {
       type: typeId, status: "ledig",
-      hjemPladsId, pladsId: modtagelsesPladsId,
+      pladsId: modtagelsesPladsId,
+      ...(hjemPladsId ? { hjemPladsId } : {}),
       ...(note ? { note } : {}),
     };
     const fejl = valideKasse({ id: unitId, ...unit }, {

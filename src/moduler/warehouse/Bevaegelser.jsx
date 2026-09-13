@@ -358,14 +358,13 @@ export default function Bevaegelser() {
               <p className="fc-svar fc-svar-fejl" role="alert">
                 ⚠ Der ligger kun{" "}
                 {num(talFraMaengde(paaFra), ENHED[vare?.enhed]?.helTal ? 0 : 1)}{" "}
-                {ENHED[vare?.enhed]?.label} i beholderen. Serveren afviser det
-                her — mængden skal ned, eller varen skal findes i en anden.
+                {ENHED[vare?.enhed]?.label} i beholderen. Vælg en mindre
+                mængde, eller find resten i en anden beholder.
               </p>
             )}
             {!maaSkrive && (
               <p className="fc-svar fc-svar-naegtet" role="alert">
-                Du mangler {PERM.bevaegelserSkriv}. Serveren afviser — det er
-                ikke en fejl.
+                Du har ikke adgang til at registrere lagerbevægelser.
               </p>
             )}
           </Formular>

@@ -488,11 +488,8 @@ export default function Pluk() {
         />
 
         <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>"Afsend" sætter ikke et felt.</b> Knappen kalder en funktion der
-          skriver afsendelsesbevægelserne <b>og</b> tilstanden i én skrivning —
-          reglerne afviser <b>afsendt</b> fra en klient. Ellers kunne en ordre
-          meldes afsendt uden at en palle var rørt, mens lageret stadig stod
-          med godset.
+          <b>Afsend registrerer varernes faktiske afgang og afslutter ordren.</b>
+          Handlingen er kun tilgængelig, når alle pluklinjer er klar.
         </p>
       </Kort>
 

@@ -407,22 +407,36 @@
   border-radius:8px; padding:8px 10px; font:inherit; font-size:var(--fc-t-s); font-weight:650; cursor:pointer}
 .warehouse-action-choice:hover,.warehouse-action-choice.is-active{border-color:var(--bc-accent);
   background:var(--fc-accent-soft); color:var(--bc-accent)}
+.warehouse-booking-list{margin-top:14px; padding-top:12px; border-top:1px solid var(--bc-line)}
+.warehouse-booking-list h3{margin:0 0 8px; font-size:var(--fc-t-m)}
+.warehouse-booking-item{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+  padding:9px 0; border-top:1px solid var(--bc-line)}
+.warehouse-booking-item:first-of-type{border-top:0}
+.warehouse-booking-item>span{display:grid; gap:2px; min-width:0}
+.warehouse-booking-item small{color:var(--bc-muted); font-size:var(--fc-t-s)}
 
 @media (max-width:760px){
-  .fc-slot{overflow-x:hidden}
   .warehouse-hero{align-items:flex-start; flex-direction:column; padding:15px 16px}
   .warehouse-hero-actions{width:100%}
   .warehouse-hero-actions .fc-btn{flex:1 1 auto; text-align:center}
   .warehouse-overview-grid,.warehouse-unit-layout{grid-template-columns:minmax(0,1fr)}
   .warehouse-unit-summary{grid-template-columns:minmax(0,1fr)}
   .warehouse-unit-summary>div{min-width:0}
-  .warehouse-unit-summary .fc-mini{align-items:flex-start}
-  .warehouse-unit-summary .fc-mini>b{min-width:0; max-width:68%; white-space:normal;
+  .warehouse-unit-summary .fc-mini{display:grid; grid-template-columns:minmax(0,1fr); gap:2px;
+    align-items:start; padding:7px 0}
+  .warehouse-unit-summary .fc-mini>span{white-space:normal; overflow:visible; text-overflow:clip}
+  .warehouse-unit-summary .fc-mini>b{min-width:0; max-width:none; text-align:left; white-space:normal;
     overflow-wrap:anywhere}
   .warehouse-unit-qr{width:132px; height:132px}
   .warehouse-scan-row{align-items:stretch}
-  .warehouse-scan-row .fc-btn{flex:1 1 auto}
-  .warehouse-action-choice{flex:1 1 calc(50% - 6px)}
+  .warehouse-scan-row .fc-btn{flex:1 1 100%; width:100%}
+  .warehouse-workspace .fc-feltraekke{grid-template-columns:minmax(0,1fr)}
+  .warehouse-workspace .fc-felt,.warehouse-workspace .fc-felt-ind,
+  .warehouse-workspace .fc-felt input,.warehouse-workspace .fc-felt select,
+  .warehouse-workspace .fc-felt textarea{min-width:0; max-width:100%; width:100%; box-sizing:border-box}
+  .warehouse-action-choice{flex:1 1 100%; width:100%}
+  .warehouse-card-action .fc-btn{flex:1 1 100%; width:100%}
+  .warehouse-booking-item{flex-direction:column}
   .warehouse-task-row{align-items:flex-start}
 }
 .fc-med-suffiks{display:inline-flex; align-items:baseline; gap:5px}

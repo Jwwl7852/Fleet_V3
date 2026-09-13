@@ -3958,7 +3958,7 @@
             // ⚠ EN KASSE SLETTES ALDRIG. Der haenger udlaanshistorik paa
             // id'et; en kasse der gaar i stykker, faar status udeAfDrift.
             // Samme regel som en solgt bil (beslutning 18).
-            ".validate": "newData.hasChildren(['type', 'status', 'hjemPladsId'])",
+            ".validate": "newData.hasChildren(['type', 'status'])",
             "type": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kassetyper').child(newData.val()).exists()" },
             // ⚠ UNDERTYPEN SKAL HOERE TIL KASSENS EGEN TYPE. Uden det sidste
             // led kunne en alukasse faa en traekasses undertype, og filtret
@@ -4004,7 +4004,7 @@
             // newData.parent() er postens tilstand EFTER skrivningen — samme
             // greb som paa undertypen og paa kasseudlaanets klargoerSenest.
             "status": { ".validate": "newData.isString() && (newData.val() === data.val() || (newData.val().matches(/^(ledig|udeAfDrift)$/) && (!data.exists() || data.val().matches(/^(ledig|udeAfDrift)$/)))) && (newData.val() !== 'udeAfDrift' || newData.parent().child('udeAfDriftFra').isNumber())" },
-            "hjemPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            "hjemPladsId": { ".validate": "!newData.exists() || (newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists())" },
             // Den nuvaerende plads. ⚠ FRAVAERENDE naar kassen er udlaant —
             // en kasse hos kunden optager ikke en hylde. Prototypen skrev
             // "Udlaant hos kunde" SOM PLADS, og saa kunne ledige pladser
