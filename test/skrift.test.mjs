@@ -93,7 +93,11 @@ test("Skalaen har de trin beslutning 48 kender", () => {
     [...rod.matchAll(/--fc-t-([\w-]+):\s*([\d.]+)px/g)].map((m) => [m[1], parseFloat(m[2])])
   );
   assert.deepEqual(trin, {
-    tight: 11, xs: 12, s: 13, m: 14, l: 15, xl: 17, "2xl": 21, "3xl": 25, "4xl": 34,
+    tight: 11, xs: 12, s: 13, m: 14, l: 15, ui: 16, xl: 17,
+    subtitle: 18, "card-title": 19, section: 20, "2xl": 21,
+    "panel-title": 22, "3xl": 25, "kpi-compact": 27,
+    "page-compact": 29, kpi: 30, page: 32, "4xl": 34,
+    "page-wide": 36, display: 38,
   });
 });
 
