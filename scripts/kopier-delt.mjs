@@ -73,6 +73,10 @@ export const DELTE_FILER = [
      proeve mod noejagtig de samme regler som formularen viser brugeren:
      samme valideBevaegelse(), samme virkningPaaBeholdning(), samme skala. */
   "warehouse.js",
+  /* WAREHOUSE og UNIT bruger samme unit-id, placering og idempotente
+     fysiske hændelser. Serveradapteren må derfor validere mod samme kontrakt
+     som scannerskærmen viser. Filens imports er allerede på listen. */
+  "warehouse-unit.js",
   /* ⚠ warehouse.js IMPORTERER prioritet.js, OG SAA SKAL DEN MED. Reglen er
      ikke "importfri" — den er LUKKET UNDER IMPORT, og prioritet.js er det
      tredje eksempel efter beloeb.js og booking-state.js. Kataloget deles

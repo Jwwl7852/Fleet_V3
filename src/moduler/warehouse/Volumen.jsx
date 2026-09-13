@@ -263,12 +263,8 @@ export default function Volumen() {
           }))}
         />
         <p className="fc-hint" style={{ marginTop: 8 }}>
-          ⚠ <b>Der oprettes ikke et tilbud herfra.</b> Nodeformen er ikke
-          besluttet: et tilbud kan gå til et <b>emne</b> der ikke er kunde
-          endnu, og <code>tilbud</code> er ikke en bookingtilstand. En knap der
-          gemte tilbuddet, ville afgøre det spørgsmål ved et uheld. Tallet
-          skrives på tilbuddet den dag noden findes — tilbudsmodellen står i{" "}
-          <code>fleet/demo-kunder.js</code>.
+          <b>Der oprettes ikke et tilbud herfra.</b> Brug beregningen som
+          dokumentation, når tilbuddet oprettes i det fælles tilbudsforløb.
         </p>
       </Kort>
 

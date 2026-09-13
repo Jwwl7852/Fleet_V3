@@ -76,7 +76,9 @@ const Reolpladser = lazy(() => import("./moduler/unitbooking/Reolpladser.jsx"));
 const Kasseudlaan = lazy(() => import("./moduler/unitbooking/Udlaan.jsx"));
 const Unitbookingkalender = lazy(() => import("./moduler/unitbooking/Kalender.jsx"));
 const Unitbookinghistorik = lazy(() => import("./moduler/unitbooking/Historik.jsx"));
+const WmsOverblik = lazy(() => import("./moduler/warehouse/Overblik.jsx"));
 const Wmsvarer = lazy(() => import("./moduler/warehouse/Varer.jsx"));
+const Wmsunits = lazy(() => import("./moduler/warehouse/Units.jsx"));
 const Wmslokationer = lazy(() => import("./moduler/warehouse/Lokationer.jsx"));
 const Wmsbevaegelser = lazy(() => import("./moduler/warehouse/Bevaegelser.jsx"));
 const Wmspluk = lazy(() => import("./moduler/warehouse/Pluk.jsx"));
@@ -674,7 +676,10 @@ export default function App() {
             <Route path="opsaetning/kasser" element={<UnitbookingKasser />} />
             <Route path="unitbooking/historik" element={<Unitbookinghistorik />} />
             <Route path="unitbooking/reolpladser" element={<Reolpladser />} />
-            <Route path="warehouse" element={<Wmsvarer />} />
+            <Route path="warehouse" element={<WmsOverblik />} />
+            <Route path="warehouse/varer" element={<Wmsvarer />} />
+            <Route path="warehouse/units" element={<Wmsunits />} />
+            <Route path="warehouse/scan" element={<Wmsunits />} />
             <Route path="warehouse/lokationer" element={<Wmslokationer />} />
             <Route path="warehouse/bevaegelser" element={<Wmsbevaegelser />} />
             <Route path="warehouse/pluk" element={<Wmspluk />} />

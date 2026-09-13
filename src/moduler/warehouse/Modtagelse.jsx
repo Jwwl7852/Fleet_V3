@@ -339,11 +339,8 @@ export default function Modtagelse() {
           {/* ⚠ KUNDENS FASTE OMRÅDE MANGLER, OG DET STÅR HER FREM FOR AT BLIVE
               OPDAGET. Se hovedet. */}
           <p className="fc-hint" style={{ marginTop: 10 }}>
-            ⚠ <b>Kundens faste område kan ikke vælges endnu.</b> En kundezone er
-            et reserveret område med ledig plads i m² og m³ — og modellen har
-            hverken en reservation af en plads til én kunde eller en kapacitet.
-            En knap der lovede det, ville placere godset et sted systemet ikke
-            kan holde styr på.
+            <b>Vælg altid den konkrete plads, hvor godset sættes.</b> Et generelt
+            kundeområde kan ikke bruges som placering endnu.
           </p>
         </Kort>
       )}

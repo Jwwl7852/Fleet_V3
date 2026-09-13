@@ -775,10 +775,9 @@ function Maerkatformular({ carrier, sti, paaGemt, paaLuk }) {
           mærkatet bare ufuldstændigt — og nogen leder efter en knap der ikke
           findes. Se hovedet. */}
       <p className="fc-svar">
-        <strong>Ikke herfra:</strong> kundens ref.nr. hører på bookingen, og
-        fra-/til-adresserne på etapen. Begge noder er lukket for klienten, fordi
-        en tilstand og dens reservation skal skrives sammen — de kræver hver sin
-        server-funktion. Kundens adresse hører i kundekartoteket.
+        <strong>Transportoplysninger:</strong> Kundereference hentes fra
+        bookingen, adresser fra transportetapen og kundens adresse fra
+        kundekartoteket. Kontrollér disse oplysninger dér, før labelen udskrives.
       </p>
     </Kort>
   );

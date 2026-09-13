@@ -3880,7 +3880,7 @@
         // minut ville overskrive hinanden UDEN en fejlmeddelelse.
 
         "kassetyper": {
-          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true)",
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           "$typeId": {
             // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
             // newData.exists(). Begge dele er noedvendige, og de stopper hver
@@ -3955,7 +3955,7 @@
         },
 
         "kasser": {
-          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true)",
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
           ".indexOn": ["status", "type", "pladsId"],
           "$kasseId": {
             // ⚠ SIDSTE LED: EN KASSE FORSVINDER IKKE — DEN FAAR EN STATUS.
@@ -3966,7 +3966,7 @@
             // ⚠ EN KASSE SLETTES ALDRIG. Der haenger udlaanshistorik paa
             // id'et; en kasse der gaar i stykker, faar status udeAfDrift.
             // Samme regel som en solgt bil (beslutning 18).
-            ".validate": "newData.hasChildren(['type', 'status', 'hjemPladsId'])",
+            ".validate": "newData.hasChildren(['type', 'status'])",
             "type": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kassetyper').child(newData.val()).exists()" },
             // ⚠ UNDERTYPEN SKAL HOERE TIL KASSENS EGEN TYPE. Uden det sidste
             // led kunne en alukasse faa en traekasses undertype, og filtret
@@ -4012,7 +4012,7 @@
             // newData.parent() er postens tilstand EFTER skrivningen — samme
             // greb som paa undertypen og paa kasseudlaanets klargoerSenest.
             "status": { ".validate": "newData.isString() && (newData.val() === data.val() || (newData.val().matches(/^(ledig|udeAfDrift)$/) && (!data.exists() || data.val().matches(/^(ledig|udeAfDrift)$/)))) && (newData.val() !== 'udeAfDrift' || newData.parent().child('udeAfDriftFra').isNumber())" },
-            "hjemPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            "hjemPladsId": { ".validate": "!newData.exists() || (newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists())" },
             // Den nuvaerende plads. ⚠ FRAVAERENDE naar kassen er udlaant —
             // en kasse hos kunden optager ikke en hylde. Prototypen skrev
             // "Udlaant hos kunde" SOM PLADS, og saa kunne ledige pladser
@@ -4110,15 +4110,33 @@
           }
         },
 
-        // ══ WAREHOUSE (WMS) — lagerhotel. Kundens gods. ══
-        //
-        // ⚠ IKKE `lagre`. Den node er reservedelslageret under Indkoeb —
-        // VORES egne dele, hvor forbruget er en omkostning paa en bil. Her
-        // er varen KUNDENS, og bevaegelsen er en indtaegt. To forskellige
-        // ting, og derfor to noder frem for een med et flag.
+        // Fælles, append-only fysisk historik for bookbare units. Direkte
+        // klientskrivning er lukket; UNITs bookingfunktion og WAREHOUSEs
+        // unitlagerhandling skriver hændelsen sammen med den kanoniske kasse.
+        "unitbevaegelser": {
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('unitbooking').val() === true || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
+          ".write": false,
+          ".indexOn": ["unitId", "tidspunktMs", "bookingId", "art"],
+          "$operationId": {
+            ".validate": "$operationId.matches(/^[A-Za-z0-9][A-Za-z0-9_-]{7,79}$/) && newData.hasChildren(['operationId', 'unitId', 'art', 'kilde', 'tidspunktMs', 'udfoertAf']) && newData.child('operationId').val() === $operationId",
+            "operationId": { ".validate": "newData.isString() && newData.val() === $operationId" },
+            "unitId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kasser').child(newData.val()).exists()" },
+            "art": { ".validate": "newData.isString() && newData.val().matches(/^(modtagelse|flytning|udlevering|retur)$/)" },
+            "fraPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            "tilPladsId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('reolpladser').child(newData.val()).exists()" },
+            "bookingId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kasseudlaan').child(newData.val()).exists()" },
+            "reference": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "kilde": { ".validate": "newData.isString() && newData.val().matches(/^(unitbooking|warehouse)$/)" },
+            "tidspunktMs": { ".validate": "newData.isNumber()" },
+            "udfoertAf": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "$andet": { ".validate": false }
+          }
+        },
+
+        // ══ WAREHOUSE — kundegods og egne lagerførte varer. ══
         "varer": {
           ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".indexOn": ["kundeId", "varenummer", "varegruppe"],
+          ".indexOn": ["kundeId", "ejerforhold", "varenummer", "varegruppe"],
           "$vareId": {
             // ⚠ .write LIGGER HER OG IKKE PAA NODEN, OG SIDSTE LED ER
             // newData.exists(). Begge dele er noedvendige, og de stopper hver
@@ -4127,9 +4145,9 @@
             // En post tages ud af drift med en STATUS, ikke ved at forsvinde.
             // Se beslutning 53.
             ".write": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && (auth.token.perms != null && (((auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains('|19|')) || (auth.token.pv == null && auth.token.perms != null && auth.token.perms.contains('|varer.skriv|'))))) && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true) && newData.exists()",
-            ".validate": "newData.hasChildren(['kundeId', 'varenummer', 'navn', 'enhed', 'sporing'])",
-            // ⚠ VAREN ER KUNDENS. Uden en gyldig kunde kan bevaegelsen ikke
-            // afregnes, og saa er varen paa lageret uden en modpart.
+            ".validate": "newData.hasChildren(['varenummer', 'navn', 'enhed', 'sporing']) && ((newData.child('ejerforhold').val() === 'egen' && !newData.hasChild('kundeId')) || ((newData.child('ejerforhold').val() === 'kunde' || !newData.hasChild('ejerforhold')) && newData.hasChild('kundeId') && root.child('tenants').child($tenantId).child('kunder').child(newData.child('kundeId').val()).exists()))",
+            // Fraværende ejerforhold er den historiske kundegodsform.
+            "ejerforhold": { ".validate": "newData.isString() && newData.val().matches(/^(kunde|egen)$/)" },
             "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
             "varenummer": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40" },
             "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
@@ -4291,13 +4309,14 @@
             // godset skifter ikke maengde af at blive baaret et andet sted
             // hen. Et antal paa en placering ville vaere et tal ingen kunne
             // forklare bagefter.
-            ".validate": "newData.hasChildren(['art', 'tidspunktMs']) && ((newData.child('art').val() === 'putaway' && newData.hasChildren(['carrierId', 'tilPladsId']) && !newData.hasChild('vareId') && !newData.hasChild('antal')) || (newData.child('art').val() !== 'putaway' && newData.hasChildren(['vareId', 'kundeId', 'antal']) && !newData.hasChild('tilPladsId') && !newData.hasChild('fraPladsId')))",
+            ".validate": "newData.hasChildren(['art', 'tidspunktMs']) && ((newData.child('art').val() === 'putaway' && newData.hasChildren(['carrierId', 'tilPladsId']) && !newData.hasChild('vareId') && !newData.hasChild('antal')) || (newData.child('art').val() !== 'putaway' && newData.hasChildren(['vareId', 'ejerforhold', 'antal']) && ((newData.child('ejerforhold').val() === 'kunde' && newData.hasChild('kundeId')) || (newData.child('ejerforhold').val() === 'egen' && !newData.hasChild('kundeId'))) && !newData.hasChild('tilPladsId') && !newData.hasChild('fraPladsId')))",
             "art": { ".validate": "newData.isString() && newData.val().matches(/^(modtag|putaway|flyt|pluk|afsend|retur|optael|justering)$/)" },
             "vareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('varer').child(newData.val()).exists()" },
             // ⚠ ET HISTORISK FAKTUM, IKKE ET OPSLAG. Hvem varen tilhoerte DA
             // den blev flyttet. Skifter varen ejer, maa sidste kvartals
             // fakturagrundlag ikke aendre sig med tilbagevirkende kraft.
             "kundeId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kunder').child(newData.val()).exists()" },
+            "ejerforhold": { ".validate": "newData.isString() && newData.val().matches(/^(kunde|egen)$/)" },
             // Maengden er skaleret med 1000, som ANTAL_SKALA i beloeb.js. En
             // anden skala her ville fakturere 1000x forkert paa den linje der
             // bandt de to sammen.
@@ -4372,11 +4391,12 @@
         // ogsaa false: to skrivere ville vaere to sandheder.
         "enheder": {
           ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('warehouse').val() === true)",
-          ".indexOn": ["vareId", "kundeId", "carrierId", "tilstand"],
+          ".indexOn": ["vareId", "kundeId", "ejerforhold", "carrierId", "tilstand"],
           "$serienummer": {
             ".write": false,
-            ".validate": "newData.hasChildren(['vareId', 'kundeId', 'tilstand']) && $serienummer.matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,59}$/)",
+            ".validate": "newData.hasChildren(['vareId', 'tilstand']) && ((newData.child('ejerforhold').val() === 'egen' && !newData.hasChild('kundeId')) || ((newData.child('ejerforhold').val() === 'kunde' || !newData.hasChild('ejerforhold')) && newData.hasChild('kundeId') && root.child('tenants').child($tenantId).child('kunder').child(newData.child('kundeId').val()).exists())) && $serienummer.matches(/^[A-Za-z0-9][A-Za-z0-9_-]{0,59}$/)",
             "vareId": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('varer').child(newData.val()).exists()" },
+            "ejerforhold": { ".validate": "newData.isString() && newData.val().matches(/^(kunde|egen)$/)" },
             // ⚠ HISTORISK FAKTUM. Kunden skrives med, som paa bevaegelsen —
             // skifter varen ejer, maa sidste kvartals sporbarhedsudtraek ikke
             // pludselig pege paa en anden kunde.

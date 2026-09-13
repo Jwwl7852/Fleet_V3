@@ -31,7 +31,7 @@ import { initializeTestEnvironment, assertSucceeds, assertFails } from "./rules-
 import { ref, set, get } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
 import {
-  NODE_MODUL, MODUL_NODER, VALGFRIE_MODULER, modulerFor,
+  NODE_MODUL, MODUL_NODER, VALGFRIE_MODULER, modulerFor, skrivemodulerFor,
 } from "../src/fleet/moduler.js";
 
 const MED = "modulMed";      /* har alle moduler */
@@ -136,7 +136,9 @@ describe("Reglerne følger NODE_MODUL — i begge retninger", () => {
          Prøven kræver at HVERT af modulerne står der. Mangler det ene, er
          noden lukket for præcis den kunde der har købt det andet, og det
          ville ingen opdage: skærmen ville bare sige "ingen reolpladser". */
-      const moduler = modulerFor(grundsti(r.sti));
+      const moduler = r.felt === ".write"
+        ? skrivemodulerFor(grundsti(r.sti))
+        : modulerFor(grundsti(r.sti));
       if (!moduler.length) continue;
       for (const modul of moduler) {
         if (!r.udtryk.includes(`child('${modul}').val() === true`)) {

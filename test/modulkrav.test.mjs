@@ -57,6 +57,9 @@ const FELT_NODE = {
   bookingId: "bookinger",
   etapeId: "etaper",
   kasseId: "kasser",
+  unitId: "kasser",
+  /* operationId er både felt og nøgle på samme append-only node. */
+  operationId: "unitbevaegelser",
   vareId: "varer",
   /* ⚠ IKKE DET SAMME SOM vareId. `leverandoervarer` (Procure TARGET, trin 2,
      produktejer-review 2026-09-02) peger på den globale varemaster

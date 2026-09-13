@@ -76,6 +76,12 @@ export const DEMO_REOLPLADSER = [
  */
 export const DEMO_VARER = [
   {
+    id: "v-egen-filter", ejerforhold: "egen", varenummer: "RES-FLT-24",
+    navn: "Hydraulikfilter 24 µm", enhed: "stk", sporing: "batch",
+    varegruppe: "Egne reservedele", laengdeMm: 180, breddeMm: 180,
+    hoejdeMm: 240, vaegtG: 950, minimum: 12, aktiv: true,
+  },
+  {
     id: "v-tool-1256", kundeId: "nordiskFragt", varenummer: "TOOL-1256",
     navn: "Slagnøgle 1/2\" 18V", enhed: "stk", sporing: "serie",
     varegruppe: "Værktøj",
@@ -133,6 +139,7 @@ const M = (n) => Math.round(n * 1000);
  * driver fra hinanden første gang nogen flytter beholderen.
  */
 export const DEMO_BEHOLDNING = [
+  { id: "CRR-EGEN-01__v-egen-filter__LOT-E26-09", carrierId: "CRR-EGEN-01", vareId: "v-egen-filter", batch: "LOT-E26-09", antal: M(8) },
   { id: "CRR-100246__v-st-1002__LOT-240515", carrierId: "CRR-100246", vareId: "v-st-1002", batch: "LOT-240515", antal: M(420) },
   { id: "CRR-100246__v-st-1002__LOT-240602", carrierId: "CRR-100246", vareId: "v-st-1002", batch: "LOT-240602", antal: M(180) },
   { id: "CRR-100246__v-tool-1256___", carrierId: "CRR-100246", vareId: "v-tool-1256", batch: "_", antal: M(3) },
@@ -185,6 +192,10 @@ export const DEMO_ENHEDER = [
  *  4. En i transit, som derfor IKKE må have en plads.
  */
 export const DEMO_CARRIERS = [
+  {
+    id: "CRR-EGEN-01", type: "plastkasse", ejerforhold: "ejet", status: "paaLager",
+    pladsId: "p-d-05-13", laengdeMm: 600, breddeMm: 400, hoejdeMm: 320,
+  },
   {
     id: "CRR-100245", type: "pallekasse", ejerforhold: "ejet", status: "paaLager",
     pladsId: "p-a-01-02", kundeId: "nordiskFragt",
@@ -251,7 +262,7 @@ selvkontrol("demo-lager", () => {
      provisioneringen gik uden om reglerne og skrev dem alligevel — så
      skærmen viste varer der ikke kunne have været oprettet gennem den. */
   for (const v of DEMO_VARER) {
-    if (!kunder.has(v.kundeId)) {
+    if (v.ejerforhold !== "egen" && !kunder.has(v.kundeId)) {
       console.warn(`demo-lager: ${v.varenummer} peger paa kunden "${v.kundeId}", som ikke findes.`);
     }
   }

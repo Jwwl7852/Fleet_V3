@@ -107,7 +107,7 @@ export const MODUL = {
    */
   warehouse: {
     navKey: "warehouse",
-    label: "Warehouse",
+    label: "WAREHOUSE",
     hvad: "Lagerhotel: kundens varer, lokationer, bevægelser og afregning.",
   },
   /**
@@ -384,12 +384,13 @@ export const NODE_MODUL = {
   kunder: "kunder",
   "sensitive/kunder": "kunder",
 
-  /* ⚠ IKKE lagre. Den node er reservedelslageret under Indkøb. Kasser er
-     transportkasser der lejes ud — se noten i unitbooking.js om de tre navne
-     der allerede var taget. */
-  kasser: "unitbooking",
-  kassetyper: "unitbooking",
+  /* Den bookbare fysiske unit er fælles. `kasser/<unitId>` og dens type er
+     den eksisterende stabile identitet; WAREHOUSE må ikke oprette en kopi.
+     Bookingforløbet nedenfor forbliver UNIT Bookings alene. */
+  kasser: ["unitbooking", "warehouse"],
+  kassetyper: ["unitbooking", "warehouse"],
   kasseudlaan: "unitbooking",
+  unitbevaegelser: ["unitbooking", "warehouse"],
 
   /* ⚠ DEN FØRSTE NODE DER HØRER TIL TO MODULER, og det er en beslutning og
      ikke en forglemmelse. Unitbookings transportkasser og Warehouses
@@ -447,6 +448,23 @@ export const modulerFor = (node) => {
     if (v) return Array.isArray(v) ? v : [v];
   }
   return [];
+};
+
+/* Nogle fælles noder er læsbare fra begge moduler, men har fortsat kun én
+   direkte klientskriver. WAREHOUSEs fysiske unitændringer går gennem en
+   callable, så `kasser` og `kassetyper` må ikke åbnes som en bred, direkte
+   skrivevej blot fordi de nu kan læses fra WAREHOUSE. */
+export const NODE_SKRIVE_MODUL = {
+  kasser: "unitbooking",
+  kassetyper: "unitbooking",
+};
+
+export const skrivemodulerFor = (node) => {
+  for (let sti = node; sti; sti = sti.includes("/") ? sti.slice(0, sti.lastIndexOf("/")) : "") {
+    const v = NODE_SKRIVE_MODUL[sti];
+    if (v) return Array.isArray(v) ? v : [v];
+  }
+  return modulerFor(node);
 };
 
 /** Modul → dets noder. Udledt, så de to ikke kan komme ud af sync. */

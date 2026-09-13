@@ -4,17 +4,17 @@
  * test/functions-delt.test.mjs fejler hvis de to ikke er identiske.
  */
 /* src/fleet/warehouse.js
- * Warehouse (WMS) — lagerhotel. Kundens gods ind, på plads, ud og afregnet.
+ * WAREHOUSE — samlet lagerstyring for kundegods og egne varer.
  *
  * Se WAREHOUSE.md for hele planen og de spørgsmål der blev afgjort først.
  *
  * ---------------------------------------------------------------------------
- * ⚠ DET ER 3PL. VAREN ER KUNDENS.
+ * ⚠ EJERFORHOLDET ER EKSPLICIT.
  *
- * Warehouse opbevarer ANDRES varer og afregner for håndtering ind, opbevaring
- * og håndtering ud. Det er ikke det samme som `lagre` under Indkøb — dér er
- * varen VORES egen reservedel, og forbruget er en omkostning på en bil. Her er
- * bevægelsen en indtægt.
+ * WAREHOUSE opbevarer både kunders gods og virksomhedens egne varer. Kun
+ * kundegods danner automatisk kundegrundlag for håndtering og opbevaring.
+ * `lagre` under Indkøb er fortsat Procures særskilte forbrugslager; det bliver
+ * ikke blandet sammen med WAREHOUSEs fysiske lageridentiteter.
  *
  * To noder, ikke én med et flag: de to har forskellig ejer, forskellig
  * modpart og forskelligt regnskabsmæssigt fortegn.
@@ -89,6 +89,20 @@ export const SPORING = {
 
 export const ALLE_SPORINGER = Object.keys(SPORING);
 
+/**
+ * Ejerforholdet er ikke det samme som varen eller dens fysiske enheder.
+ * Historiske varer uden feltet er kundegods, fordi kundeId hidtil var
+ * obligatorisk. Egne varer bærer feltet eksplicit og udløser ikke automatisk
+ * kundeafregning.
+ */
+export const VARE_EJERFORHOLD = {
+  kunde: { ejerforhold: "kunde", label: "Kundegods", afregnes: true },
+  egen: { ejerforhold: "egen", label: "Egen vare", afregnes: false },
+};
+export const ALLE_VARE_EJERFORHOLD = Object.keys(VARE_EJERFORHOLD);
+export const vareEjerforhold = (vare = {}) =>
+  vare.ejerforhold === "egen" ? "egen" : "kunde";
+
 /* Bogstaver, tal, bindestreg og underscore. ⚠ IKKE PUNKTUM: batchen indgår i
    en databasenøgle, og RTDB tillader hverken . # $ [ ] eller / i en nøgle. En
    batch med punktum ville give en skrivning der fejler et helt andet sted. */
@@ -97,8 +111,16 @@ export const BATCH_MOENSTER = /^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/;
 export function valideVare(post = {}, { kunder = [] } = {}) {
   const f = {};
 
-  if (!post.kundeId) f.kundeId = "Vælg hvilken kunde varen tilhører.";
-  else if (kunder.length && !kunder.includes(post.kundeId)) f.kundeId = "Ukendt kunde.";
+  const ejerforhold = vareEjerforhold(post);
+  if (post.ejerforhold != null && !ALLE_VARE_EJERFORHOLD.includes(post.ejerforhold)) {
+    f.ejerforhold = "Vælg om varen er kundegods eller virksomhedens egen.";
+  }
+  if (ejerforhold === "kunde") {
+    if (!post.kundeId) f.kundeId = "Vælg hvilken kunde varen tilhører.";
+    else if (kunder.length && !kunder.includes(post.kundeId)) f.kundeId = "Ukendt kunde.";
+  } else if (post.kundeId) {
+    f.kundeId = "En egen vare må ikke samtidig have en kunde som ejer.";
+  }
 
   if (!post.varenummer?.trim()) f.varenummer = "Varenummer skal udfyldes.";
   else if (post.varenummer.length > 40) f.varenummer = "Højst 40 tegn.";
@@ -307,8 +329,13 @@ export function valideBevaegelse(
 
   /* ⚠ HISTORISK FAKTUM, IKKE ET OPSLAG. Se hovedet: bevægelsen bærer den
      kunde varen tilhørte DA den skete. */
-  if (!post.kundeId) f.kundeId = "Bevægelsen mangler en kunde.";
-  else if (kunder.length && !kunder.includes(post.kundeId)) f.kundeId = "Ukendt kunde.";
+  const ejerforhold = vare ? vareEjerforhold(vare) : (post.ejerforhold || "kunde");
+  if (ejerforhold === "kunde") {
+    if (!post.kundeId) f.kundeId = "Bevægelsen mangler en kunde.";
+    else if (kunder.length && !kunder.includes(post.kundeId)) f.kundeId = "Ukendt kunde.";
+  } else if (post.kundeId) {
+    f.kundeId = "En bevægelse af egne varer må ikke kundeafregnes.";
+  }
 
   if (!Number.isInteger(post.antal)) f.antal = "Mængden mangler.";
   else if (post.antal <= 0 && !ABSOLUTTE_ARTER.includes(post.art)) {
@@ -1456,11 +1483,19 @@ export function valideEnhed(post = {}, { varer = [], kunder = [], carriers = [] 
   if (!post.vareId) f.vareId = "Enheden mangler en vare.";
   else if (varer.length && !varer.includes(post.vareId)) f.vareId = "Ukendt vare.";
 
-  /* ⚠ HISTORISK FAKTUM, SOM PÅ BEVÆGELSEN. Kunden skrives med frem for at
-     blive slået op senere: skifter varen ejer, må sidste kvartals
-     sporbarhedsudtræk ikke pludselig pege på en anden kunde. */
-  if (!post.kundeId) f.kundeId = "Enheden mangler en kunde.";
-  else if (kunder.length && !kunder.includes(post.kundeId)) f.kundeId = "Ukendt kunde.";
+  /* ⚠ HISTORISK FAKTUM, SOM PÅ BEVÆGELSEN. Ejerforhold og eventuel kunde
+     skrives med frem for at blive slået op senere. Ældre rækker uden
+     ejerforhold er kundegods, fordi kundeId tidligere var obligatorisk. */
+  const ejerforhold = post.ejerforhold === "egen" ? "egen" : "kunde";
+  if (post.ejerforhold != null && !ALLE_VARE_EJERFORHOLD.includes(post.ejerforhold)) {
+    f.ejerforhold = "Ukendt ejerforhold.";
+  }
+  if (ejerforhold === "kunde") {
+    if (!post.kundeId) f.kundeId = "Enheden mangler en kunde.";
+    else if (kunder.length && !kunder.includes(post.kundeId)) f.kundeId = "Ukendt kunde.";
+  } else if (post.kundeId) {
+    f.kundeId = "En egen enhed må ikke samtidig have en kunde som ejer.";
+  }
 
   if (!ALLE_ENHED_TILSTANDE.includes(post.tilstand)) f.tilstand = "Ukendt tilstand.";
 
@@ -1509,7 +1544,8 @@ export function virkningPaaEnhed(post = {}, { vare = null } = {}) {
     serienummer: post.serienummer,
     felter: {
       vareId: post.vareId,
-      kundeId: post.kundeId,
+      ejerforhold: vareEjerforhold(vare || post),
+      kundeId: vareEjerforhold(vare || post) === "kunde" ? post.kundeId : null,
       /* ⚠ tilCarrierId, IKKE fraCarrierId. Enheden er hvor den ENDER — en
          række der pegede på hvor den kom fra, ville svare på det forrige
          spørgsmål. Er der ingen til-beholder, er enheden ude af huset. */

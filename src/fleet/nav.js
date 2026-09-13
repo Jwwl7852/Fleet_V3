@@ -452,19 +452,25 @@ export const NAV = [
     ],
   },
   {
-    key: "warehouse", sti: "/warehouse", label: "Warehouse", titel: "Warehouse",
-    under: "Lagerhotel: kundens varer, lokationer og bevægelser", gruppe: "drift",
+    key: "warehouse", sti: "/warehouse", label: "WAREHOUSE", titel: "WAREHOUSE",
+    under: "Lagerstyring af kundegods, egne varer, units og beholdere", gruppe: "drift",
     born: [
-      { key: "warehouseVarer", sti: "/warehouse", label: "Varer",
-        titel: "Warehouse – varer", under: "Kundens varekartotek, enheder og sporing" },
+      { key: "warehouseOverblik", sti: "/warehouse", label: "Overblik",
+        titel: "WAREHOUSE – overblik", under: "Dagens lagerarbejde, afvigelser og belægning" },
+      { key: "warehouseScan", sti: "/warehouse/scan", label: "Scan & flyt",
+        titel: "WAREHOUSE – scan & flyt", under: "Slå en unit op og registrér dens faktiske placering" },
+      { key: "warehouseUnits", sti: "/warehouse/units", label: "Units",
+        titel: "WAREHOUSE – units", under: "Fælles unitidentitet, QR, placering og historik" },
+      { key: "warehouseVarer", sti: "/warehouse/varer", label: "Varer",
+        titel: "WAREHOUSE – varer", under: "Kundegods og egne varer med sporing" },
       { key: "warehousePluk", sti: "/warehouse/pluk", label: "Pluk & afsend",
-        titel: "Warehouse – pluk & afsend",
+        titel: "WAREHOUSE – pluk & afsend",
         under: "Plukordrer, fremdrift og afsendelse" },
       { key: "warehouseBevaegelser", sti: "/warehouse/bevaegelser", label: "Bevægelser",
-        titel: "Warehouse – bevægelser",
+        titel: "WAREHOUSE – bevægelser",
         under: "Modtag, sæt på plads, flyt, pluk og afsend" },
       { key: "warehouseOptaelling", sti: "/warehouse/optaelling", label: "Optælling",
-        titel: "Warehouse – optælling",
+        titel: "WAREHOUSE – optælling",
         under: "Cycle count, afvigelser og lagernøjagtighed" },
       /* ⚠ CARRIER-OVERBLIK, IKKE "OVERBLIK". Planchen "Overblik" i
          WAREHOUSE.md punkt 1 er en ANDEN flade — aktive lokationer,
@@ -475,23 +481,23 @@ export const NAV = [
          den er ikke bygget. Den her er transit & placering: beholderen kommer
          ind og skal staa et sted. */
       { key: "warehouseModtagelse", sti: "/warehouse/modtagelse", label: "Modtagelse",
-        titel: "Warehouse – transit & placering",
+        titel: "WAREHOUSE – transit & placering",
         under: "Beholdere der venter paa en plads — og hvor de skal staa" },
       { key: "warehouseCarriers", sti: "/warehouse/carriers", label: "Beholdere",
-        titel: "Warehouse – beholdere",
+        titel: "WAREHOUSE – beholdere",
         under: "Carriers: indhold, placering og hvad der mangler at komme paa plads" },
       /* ⚠ LABELEN ER IKKE EN NODE. Typen udledes af etapekaeden, felterne
          slaas op, og intet gemmes — et gemt maerkat ville drive fra sin
          booking foerste gang nogen rettede et slutmaal. */
       { key: "warehouseLabels", sti: "/warehouse/labels", label: "Transportlabels",
-        titel: "Warehouse – transportlabels",
+        titel: "WAREHOUSE – transportlabels",
         under: "De tre transporttyper, og hvad der mangler før godset kan mærkes" },
       /* ⚠ AFREGNING, IKKE FAKTURERING. Skaermen viser hvad lageret KAN
          faktureres for; godkendelsen hoerer eet sted, i Indkoeb → Fakturaer
          (beslutning 12). To godkendelsesflows er den fejl beslutningen
          lukkede. */
       { key: "warehouseAfregning", kraeverPerm: "satser.laes", sti: "/warehouse/afregning", label: "Afregning",
-        titel: "Warehouse – afregning",
+        titel: "WAREHOUSE – afregning",
         under: "Hvad lageret kan faktureres for i perioden, pr. kunde" },
       /* ⚠ SPORBARHED, IKKE "Sporbarhed & optaelling". Planchen hedder det
          sidste, men optaellingen ER sin egen skaerm — to navne til det samme
@@ -500,13 +506,13 @@ export const NAV = [
          ikke et tilbud — nodeformen er ikke besluttet, og et navn der lovede
          et tilbud, ville love noget platformen ikke kan. Se DEMO_TILBUD. */
       { key: "warehouseVolumen", kraeverPerm: "satser.laes", sti: "/warehouse/volumen", label: "Volumen",
-        titel: "Warehouse – volumenkalkulator",
+        titel: "WAREHOUSE – volumenkalkulator",
         under: "Paller, m3 eller m2 til en maanedspris. Et estimat, ikke et tilbud" },
       { key: "warehouseSporbarhed", sti: "/warehouse/sporbarhed", label: "Sporbarhed",
-        titel: "Warehouse – sporbarhed",
+        titel: "WAREHOUSE – sporbarhed",
         under: "Hvor er partiet nu, og hvor har det vaeret" },
       { key: "warehouseLokationer", sti: "/warehouse/lokationer", label: "Lokationer",
-        titel: "Warehouse – lokationer",
+        titel: "WAREHOUSE – lokationer",
         under: "Zoner, hylder, belægning og status. Deles med Unitbooking." },
     ],
   },
