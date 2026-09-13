@@ -51,7 +51,7 @@ export function WorkforceV2App({ actor: actorProp, embedded = false, repository:
   return <div className={`wf-app ${embedded ? "wf-app--embedded" : ""}`}>
     {!embedded && <header className="wf-topbar"><div className="wf-brand"><span className="wf-mark">V</span><span>VEYRO <small>SYSTEMS</small></span></div>
       <div className="wf-env"><span className="wf-live-dot" /> Ændringer gemmes automatisk</div>
-      <label className="wf-role">Vis som <select value={demoRole} onChange={(event) => { setDemoRole(event.target.value); navigate(event.target.value === "manager" ? "overview" : "self"); }}><option value="manager">Leder</option><option value="employee">Medarbejder</option></select></label>
+      {!actorProp && <label className="wf-role">Vis som <select value={demoRole} onChange={(event) => { setDemoRole(event.target.value); navigate(event.target.value === "manager" ? "overview" : "self"); }}><option value="manager">Leder</option><option value="employee">Medarbejder</option></select></label>}
     </header>}
     <div className="wf-workspace">
       <aside className="wf-sidebar"><div className="wf-module-title"><span>WORKFORCE</span><small>Medarbejdere & arbejdstid</small></div>

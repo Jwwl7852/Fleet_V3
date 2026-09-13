@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { activeLeave, addLocalDays, intervalOverlaps, localDateTimeMs, plannedMinutes, shiftMinutes, startOfWeek, toLocalDateKey } from "../domain/workforceDomain.js";
+import { activeLeave, addLocalDays, deduplicateShifts, intervalOverlaps, localDateTimeMs, plannedMinutes, shiftMinutes, shiftsStartingInPeriod, startOfWeek, toLocalDateKey } from "../domain/workforceDomain.js";
 import { Card, Field, formatDate, formatHours, formatTime, Modal, Notice, PageHeader } from "./Shared.jsx";
 
 const DAYS = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
@@ -7,7 +7,7 @@ const DAYS = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
 export function SchedulePage({ state, repository, actor, run, busy }) {
   const [week, setWeek] = useState(startOfWeek()); const [workplace, setWorkplace] = useState("all"); const [editing, setEditing] = useState(null); const [copying, setCopying] = useState(false);
   const weekEnd = addLocalDays(week, 7); const employees = state.employees.filter((item) => item.status !== "terminated" && (workplace === "all" || item.workplace === workplace));
-  const shifts = state.shifts.filter((item) => item.startMs >= week && item.startMs < weekEnd && item.status !== "cancelled");
+  const shifts = deduplicateShifts(state.shifts).filter((item) => item.startMs >= week && item.startMs < weekEnd && item.status !== "cancelled");
   const workplaces = [...new Set(state.employees.map((item) => item.workplace))].sort();
   const weekLabel = `${formatDate(week, { year: true })} – ${formatDate(addLocalDays(week, 6), { year: true })}`;
   const drafts = shifts.filter((item) => item.status === "draft").length;
@@ -18,8 +18,8 @@ export function SchedulePage({ state, repository, actor, run, busy }) {
       <div className="wf-schedule-wrap"><div className="wf-schedule-grid">
         <div className="wf-schedule-corner">Medarbejder</div>{DAYS.map((day, index) => <div className="wf-day-head" key={day}><strong>{day}</strong><span>{formatDate(addLocalDays(week, index))}</span></div>)}<div className="wf-hours-head">Timer</div>
         {employees.map((employee) => <Fragment key={employee.id}><div className="wf-employee-cell"><strong>{employee.name}</strong><span>{employee.functions.join(" · ")}</span><small>{employee.workplace}</small></div>
-          {DAYS.map((_, index) => { const dayStart = addLocalDays(week, index); const dayEnd = addLocalDays(dayStart, 1); const dayShifts = shifts.filter((item) => item.employeeId === employee.id && intervalOverlaps(item, { startMs: dayStart, endMs: dayEnd })); const leave = state.leaves.find((item) => item.employeeId === employee.id && activeLeave(item) && intervalOverlaps(item, { startMs: dayStart, endMs: dayEnd }));
-            return <button className={`wf-shift-cell ${leave ? "has-leave" : ""}`} key={index} onClick={() => setEditing({ employeeId: employee.id, date: toLocalDateKey(dayStart), start: "08:00", end: "16:00", breakMinutes: 30, status: "draft", workplace: employee.workplace })}>{leave && <span className="wf-leave-band">Fravær</span>}{dayShifts.map((shift) => <span key={shift.id} className={`wf-shift wf-shift--${shift.status}`} onClick={(event) => { event.stopPropagation(); setEditing(shift); }}><strong>{formatTime(shift.startMs)}–{formatTime(shift.endMs)}</strong><small>{shiftMinutes(shift) / 60} t · {shift.status === "draft" ? "Kladde" : "Offentliggjort"}</small></span>)}{!dayShifts.length && !leave && <span className="wf-add-shift">＋</span>}</button>; })}
+          {DAYS.map((_, index) => { const dayStart = addLocalDays(week, index); const dayEnd = addLocalDays(dayStart, 1); const dayShifts = shiftsStartingInPeriod(shifts, employee.id, dayStart, dayEnd); const leave = state.leaves.find((item) => item.employeeId === employee.id && activeLeave(item) && intervalOverlaps(item, { startMs: dayStart, endMs: dayEnd }));
+            return <button className={`wf-shift-cell ${leave ? "has-leave" : ""}`} key={index} onClick={() => setEditing({ employeeId: employee.id, date: toLocalDateKey(dayStart), start: "08:00", end: "16:00", breakMinutes: 30, status: "draft", workplace: employee.workplace })}>{leave && <span className="wf-leave-band">Fravær</span>}{dayShifts.map((shift) => <span key={shift.id} className={`wf-shift wf-shift--${shift.status}`} onClick={(event) => { event.stopPropagation(); setEditing(shift); }}><strong>{formatTime(shift.startMs)}–{formatTime(shift.endMs)}</strong><small>{formatHours(shiftMinutes(shift))} · {shift.status === "draft" ? "Kladde" : "Offentliggjort"}</small></span>)}{!dayShifts.length && !leave && <span className="wf-add-shift">＋</span>}</button>; })}
           <div className="wf-hours-cell"><strong>{formatHours(plannedMinutes(shifts, employee.id, week, weekEnd))}</strong><small>planlagt</small></div></Fragment>)}
       </div></div>
     </Card>

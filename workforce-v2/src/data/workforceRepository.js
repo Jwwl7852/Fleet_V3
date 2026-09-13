@@ -1,5 +1,5 @@
 import {
-  addLocalDays, assert, assertPermission, audit, conflictsForLeave, makeId, startOfWeek,
+  addLocalDays, assert, assertPermission, audit, conflictsForLeave, deduplicateShifts, makeId, startOfWeek,
   syncLeaveReservation, validateEmployee, validateShift,
 } from "../domain/workforceDomain.js";
 import { createSeedState } from "./seed.js";
@@ -17,7 +17,7 @@ function normalizedState(state, tenantId) {
   const base = state || createSeedState({ tenantId });
   return {
     ...base, tenantId,
-    employees: base.employees || [], shifts: base.shifts || [], leaves: base.leaves || [],
+    employees: base.employees || [], shifts: deduplicateShifts(base.shifts || []), leaves: base.leaves || [],
     sensitiveLeave: base.sensitiveLeave || {}, skills: base.skills || [], timeEntries: base.timeEntries || [],
     reservations: base.reservations || [], planningAssignments: base.planningAssignments || [], history: base.history || [],
   };

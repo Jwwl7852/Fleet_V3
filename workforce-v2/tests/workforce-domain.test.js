@@ -21,7 +21,7 @@ test("en nattevagt beregnes på den gemte periode og pause", () => {
 
 test("planlagte og faktiske minutter forbliver to forskellige mål", () => {
   const state = createSeedState(); const week = startOfWeek(); const end = addLocalDays(week, 7);
-  const planned = plannedMinutes(state.shifts, "emp-anne", week, end);
+  const planned = plannedMinutes(state.shifts, "emp-anne", week, end, { publishedOnly: true });
   const actual = recordedMinutes(state.timeEntries, "emp-anne", week, end);
   assert.notEqual(planned, actual);
   assert.ok(planned > actual);

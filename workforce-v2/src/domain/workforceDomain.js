@@ -69,6 +69,17 @@ export function shiftMinutes(shift) {
   return Math.max(0, gross - Math.max(0, Number(shift.breakMinutes) || 0));
 }
 
+export function deduplicateShifts(shifts = []) {
+  const unique = new Map();
+  shifts.forEach((shift, index) => unique.set(shift?.id || `__missing-id-${index}`, shift));
+  return [...unique.values()];
+}
+
+export function shiftsStartingInPeriod(shifts, employeeId, fromMs, toMs) {
+  return deduplicateShifts(shifts).filter((shift) => shift.employeeId === employeeId
+    && shift.status !== "cancelled" && shift.startMs >= fromMs && shift.startMs < toMs);
+}
+
 export function validateEmployee(employee) {
   const errors = {};
   if (!String(employee?.name || "").trim()) errors.name = "Navn skal udfyldes.";
@@ -93,7 +104,7 @@ export function validateShift(shift, employee) {
 }
 
 export function plannedMinutes(shifts, employeeId, fromMs, toMs, { publishedOnly = false } = {}) {
-  return shifts.filter((shift) => shift.employeeId === employeeId && shift.status !== "cancelled"
+  return deduplicateShifts(shifts).filter((shift) => shift.employeeId === employeeId && shift.status !== "cancelled"
     && (!publishedOnly || shift.status === "published") && intervalOverlaps(shift, { startMs: fromMs, endMs: toMs }))
     .reduce((sum, shift) => sum + shiftMinutes(shift), 0);
 }
@@ -102,6 +113,43 @@ export function recordedMinutes(entries, employeeId, fromMs, toMs) {
   return entries.filter((entry) => entry.employeeId === employeeId && entry.inMs >= fromMs && entry.inMs < toMs)
     .reduce((sum, entry) => sum + (Number.isFinite(entry.outMs)
       ? Math.max(0, Math.round((entry.outMs - entry.inMs) / MINUTE_MS) - (entry.breakMinutes || 0)) : 0), 0);
+}
+
+export function timeRegistrationSummary(shifts, entries, employeeId, fromMs, toMs, atMs = Date.now()) {
+  const publishedShifts = deduplicateShifts(shifts).filter((shift) => shift.employeeId === employeeId
+    && shift.status === "published" && intervalOverlaps(shift, { startMs: fromMs, endMs: toMs }));
+  const draftMinutes = plannedMinutes(shifts.filter((shift) => shift.status === "draft"), employeeId, fromMs, toMs);
+  const periodEntries = entries.filter((entry) => entry.employeeId === employeeId
+    && intervalOverlaps({ startMs: entry.inMs, endMs: Number.isFinite(entry.outMs) ? entry.outMs : Infinity }, { startMs: fromMs, endMs: toMs }));
+  const open = periodEntries.find((entry) => !Number.isFinite(entry.outMs)) || null;
+  const missingShiftCount = publishedShifts.filter((shift) => shift.endMs <= atMs
+    && !periodEntries.some((entry) => intervalOverlaps(shift, {
+      startMs: entry.inMs, endMs: Number.isFinite(entry.outMs) ? entry.outMs : atMs,
+    }))).length;
+  return {
+    plannedMinutes: publishedShifts.reduce((sum, shift) => sum + shiftMinutes(shift), 0),
+    draftMinutes,
+    actualMinutes: recordedMinutes(periodEntries, employeeId, fromMs, toMs),
+    open,
+    registrationState: open ? "open" : periodEntries.length ? "completed" : "none",
+    missingShiftCount,
+  };
+}
+
+export function staffingSnapshot(state, fromMs, toMs, atMs = Date.now()) {
+  const shifts = deduplicateShifts(state.shifts).filter((shift) => shift.status !== "cancelled"
+    && intervalOverlaps(shift, { startMs: fromMs, endMs: toMs }));
+  const publishedShifts = shifts.filter((shift) => shift.status === "published");
+  const draftShifts = shifts.filter((shift) => shift.status === "draft");
+  const currentlyClockedEmployeeIds = [...new Set(state.timeEntries.filter((entry) => entry.inMs <= atMs
+    && (!Number.isFinite(entry.outMs) || entry.outMs > atMs)).map((entry) => entry.employeeId))];
+  return {
+    publishedShifts,
+    draftShifts,
+    publishedEmployeeCount: new Set(publishedShifts.map((shift) => shift.employeeId)).size,
+    draftEmployeeCount: new Set(draftShifts.map((shift) => shift.employeeId)).size,
+    currentlyClockedEmployeeIds,
+  };
 }
 
 export function requirementResult(skills, requirements, employeeId, atMs) {
