@@ -59,6 +59,9 @@ import {
   valideImportKladde, rensImportKladde, vurderKasse, isoTilUtcMs,
 } from "./delt/unitbooking-import.js";
 import {
+  udtraekUnitDokument, UNIT_LOKAL_UDTRAEK_FILTYPE,
+} from "./unitbooking-document-extraction.js";
+import {
   valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
   talFraMaengde, kanSkifteOrdre, beholdningsNoegle, UDEN_BATCH,
   valideOptaelling, validePlacering, virkningPaaCarrier, kanPlaceres,
@@ -2369,9 +2372,9 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
 /* ══════════════════════════════════════════════════════════════════════
    UNITBOOKING — IMPORT AF MAIL OG BOOKINGSKEMA
 
-   Originalmaterialet bevares på kladden. Tekst/CSV/.eml kan aflæses med den
-   deterministiske parser. PDF, billeder, .msg og .xlsx sendes kun til en
-   ekstern extractor, når UNITBOOKING_EXTRACTION_URL og secret er konfigureret;
+   Originalmaterialet bevares på kladden. .eml, .msg, tekst-PDF, .xlsx og CSV
+   udtrækkes lokalt før den deterministiske fortolkning. Scannede dokumenter og
+   billeder sendes kun til en ekstern extractor, når den er konfigureret;
    ellers står kladden ærligt som manuel. Dokumentindhold udfører aldrig kode.
    ══════════════════════════════════════════════════════════════════════ */
 
@@ -2475,6 +2478,65 @@ async function eksternUnitAflæsning(bytes, metadata) {
   if (!tekst) throw new Error("Extractor returnerede ingen dokumenttekst.");
   const udtræk = data.format === "csv" ? udtraekCsv(tekst) : udtraekBookingtekst(tekst);
   return { ...udtræk, parser: `ekstern-${data.provider || "extractor"}-v1`, connectorStatus: "tilsluttet" };
+}
+
+function lokalKildereference(reference, udtræk) {
+  const match = String(reference || "").match(/^Linje (\d+)$/);
+  if (!match) return reference;
+  return udtræk.linjeReferencer?.[Number(match[1]) - 1] || reference;
+}
+
+function tabelKildereference(reference, tabel) {
+  const match = String(reference || "").match(/^Række (\d+), celle (\d+)$/);
+  if (!match) return `${tabel.reference}: ${reference}`;
+  return tabel.celleReferencer?.[`${match[1]}:${match[2]}`]
+    || `${tabel.reference}, række ${match[1]}, celle ${match[2]}`;
+}
+
+/**
+ * Udtrækning og fortolkning er to adskilte trin. At en celle eller en PDF-side
+ * kan læses, gør ikke dens datoer, mål eller type sikre; de samme forsigtige
+ * domæneregler bruges på både indsat tekst og dokumenttekst.
+ */
+async function lokalUnitAflæsning(bytes, metadata) {
+  const udtræk = await udtraekUnitDokument(bytes, metadata);
+  const basis = udtraekBookingtekst(udtræk.tekst);
+  basis.kilder = basis.kilder.map((k) => ({
+    ...k, reference: lokalKildereference(k.reference, udtræk),
+  }));
+
+  const tabeller = udtræk.tabeller.map((tabel) => {
+    const fortolket = udtraekCsv(tabel.tekst);
+    return {
+      ...fortolket,
+      kilder: fortolket.kilder.map((k) => ({
+        ...k, reference: tabelKildereference(k.reference, tabel),
+      })),
+    };
+  }).filter((tabel) => tabel.linjer?.length);
+
+  const tabelLinjer = tabeller.flatMap((tabel) => tabel.linjer || []);
+  const tabelFelter = Object.assign({}, ...tabeller.map((tabel) => tabel.felter || {}));
+  const aflæsning = {
+    ...basis,
+    felter: { ...basis.felter, ...Object.fromEntries(Object.entries(tabelFelter).filter(([, v]) => v)) },
+    linjer: tabelLinjer.length ? tabelLinjer : basis.linjer,
+    kilder: [...basis.kilder, ...tabeller.flatMap((tabel) => tabel.kilder || [])],
+    advarsler: [...new Set([
+      ...(udtræk.advarsler || []),
+      ...basis.advarsler,
+      ...tabeller.flatMap((tabel) => tabel.advarsler || []),
+    ])],
+    parser: `lokal-${metadata.filtype}-v2`,
+    connectorStatus: "lokal",
+    udtræk: {
+      filtype: metadata.filtype,
+      tekstTegn: udtræk.tekst.length,
+      tabeller: udtræk.tabeller.length,
+      vedhaeftninger: udtræk.vedhaeftninger,
+    },
+  };
+  return { aflæsning, harTekst: Boolean(udtræk.tekst.trim() || tabelLinjer.length) };
 }
 
 export const unitbookingimportopret = onCall({ region: REGION }, async (req) => {
@@ -2589,18 +2651,24 @@ export const unitbookingimportuploadslut = onCall({
   let aflæsning = null;
   let connectorStatus = "ikke-tilsluttet";
   try {
-    if (["eml", "csv"].includes(kladde.original.filtype)) {
-      const tekst = bytes.toString("utf8").slice(0, UNIT_IMPORT_MAKS_TEKST);
-      aflæsning = kladde.original.filtype === "csv" ? udtraekCsv(tekst) : udtraekBookingtekst(tekst);
-      aflæsning = { ...aflæsning, parser: `lokal-${kladde.original.filtype}-v1`, connectorStatus: "lokal" };
-      connectorStatus = "lokal";
+    if (UNIT_LOKAL_UDTRAEK_FILTYPE.includes(kladde.original.filtype)) {
+      const lokal = await lokalUnitAflæsning(bytes, kladde.original);
+      if (lokal.harTekst) {
+        aflæsning = lokal.aflæsning;
+        connectorStatus = "lokal";
+      } else {
+        aflæsning = await eksternUnitAflæsning(bytes, kladde.original);
+        connectorStatus = aflæsning ? "tilsluttet" : "ikke-tilsluttet";
+        if (!aflæsning) aflæsning = lokal.aflæsning;
+      }
     } else {
       aflæsning = await eksternUnitAflæsning(bytes, kladde.original);
       connectorStatus = aflæsning ? "tilsluttet" : "ikke-tilsluttet";
     }
   } catch (fejl) {
     aflæsning = tomUnitImportAflæsning();
-    aflæsning.advarsler = [`Automatisk aflæsning fejlede: ${fejl.message}`, ...aflæsning.advarsler];
+    console.warn("UNIT bookingimport kunne ikke aflæse dokumentet", fejl);
+    aflæsning.advarsler = ["Dokumentet kunne ikke aflæses automatisk. Gennemgå og indtast oplysningerne manuelt.", ...aflæsning.advarsler];
     connectorStatus = "fejl";
   }
   if (!aflæsning) aflæsning = tomUnitImportAflæsning();

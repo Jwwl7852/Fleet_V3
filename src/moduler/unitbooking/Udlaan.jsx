@@ -404,7 +404,7 @@ export default function Udlaan() {
               { key: "id", label: "Kasse", render: (k) => <b>{k.id}</b> },
               { key: "type", label: "Type",
                 render: (k) => typer.find((t) => t.id === k.type)?.navn || k.type },
-              { key: "status", label: "Står nu", render: (k) => (
+              { key: "status", label: "Enhedstilstand og aktuel placering", render: (k) => (
                   <>
                     <Pille tone={KASSE_STATUS[k.status]?.pill || "info"}>
                       {KASSE_STATUS[k.status]?.label || k.status}
@@ -426,7 +426,7 @@ export default function Udlaan() {
               { key: "handling", label: "", render: (k) => (
                   <Knap variant="primaer" disabled={!maaSkrive}
                         title={maaSkrive ? `Reservér ${k.id} i perioden.`
-                          : `Kræver ${PERM.kasseudlaanSkriv} — serveren afviser.`}
+                          : "Du har ikke rettighed til at reservere."}
                         onClick={() => saetReserverer(k)}>
                     Reservér
                   </Knap>
@@ -455,7 +455,7 @@ export default function Udlaan() {
                    onChange={(e) => saetSoeg(e.target.value)} />
           </div>
           <div className="fc-felt">
-            <label htmlFor="uf-tilstand">Tilstand</label>
+            <label htmlFor="uf-tilstand">Bookingstatus</label>
             <select id="uf-tilstand" value={filter}
                     onChange={(e) => saetFilter(e.target.value)}>
               <option value="">Alle tilstande</option>
@@ -490,7 +490,7 @@ export default function Udlaan() {
                   )}
                 </>
               ) },
-            { key: "tilstand", label: "Tilstand", render: (u) => (
+            { key: "tilstand", label: "Bookingstatus", render: (u) => (
                 <Pille tone={UDLAAN_TILSTAND[u.tilstand]?.pill || "info"}>
                   {UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}
                 </Pille>
@@ -507,7 +507,7 @@ export default function Udlaan() {
                   <Knap variant="primaer"
                         disabled={!maaSkrive || arbejder === u.id}
                         title={maaSkrive ? SKIFTEFORKLARING[t]
-                          : `Kræver ${PERM.kasseudlaanSkriv} — serveren afviser.`}
+                          : "Du har ikke rettighed til at ændre bookingen."}
                         onClick={() => skift(u, t)}>
                     {arbejder === u.id ? "…" : SKIFTELABEL[t] || t}
                   </Knap>
@@ -524,7 +524,7 @@ export default function Udlaan() {
                       <Knap key={t}
                             disabled={!maaSkrive || arbejder === u.id}
                             title={maaSkrive ? SKIFTEFORKLARING[t]
-                              : `Kræver ${PERM.kasseudlaanSkriv} — serveren afviser.`}
+                              : "Du har ikke rettighed til at ændre bookingen."}
                             onClick={() => skift(u, t)}>
                         {arbejder === u.id ? "…" : SKIFTELABEL[t] || t}
                       </Knap>

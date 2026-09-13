@@ -1,8 +1,9 @@
 /* Lokal end-to-end runtime-QA mod Auth, Functions og RTDB-emulatorer. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import ExcelJS from "../functions/node_modules/exceljs/excel.js";
 import { DATABASE_NAMESPACE, PROJECT_ID, SYNTHETIC_PASSWORD, TENANTS, TEST_USERS, seedUnitbookingAuthEmulator } from "./unitbooking-auth-emulator-seed.mjs";
 
 const hosts = {
@@ -47,6 +48,8 @@ const tokens = Object.fromEntries(await Promise.all(Object.entries(TEST_USERS).m
 assert.ok(await read(TENANTS.unit, "kasser/AL-101", tokens.unit));
 assert.ok(await read(TENANTS.warehouse, "kasser/AL-101", tokens.warehouse));
 assert.ok(await read(TENANTS.both, "kasser/AL-101", tokens.both));
+assert.equal((await read(TENANTS.unit, "kasser/AL-102", tokens.unit)).status, "klargjort");
+assert.equal((await read(TENANTS.unit, "kasseudlaan/dag-ud", tokens.unit)).tilstand, "klargjort");
 await read(TENANTS.unit, "kasser/AL-101", tokens.foreign, { fail: true });
 await call("unitbookingimportopret", { operationId: "denied-import-01", originalTekst: "Kunde: Afvist" }, tokens.noPerm, { fail: true });
 
@@ -69,28 +72,44 @@ assert.equal(retry.gentaget, true);
 const duplicate = await call("unitbookingimportopret", { operationId: "import-runtime-02", originalTekst: material }, tokens.unit);
 assert.equal(duplicate.kladde.dubletAf, imported.kladde.id);
 
-const emlBytes = Buffer.from(`From: booking@example.invalid\nSubject: Booking NK-2026-EML\nContent-Type: text/plain; charset=utf-8\n\n${material.replace("NK-2026-184", "NK-2026-EML")}`, "utf8");
-const uploadOperation = "upload-eml-runtime-01";
-const uploadStart = await call("unitbookingimportuploadstart", {
-  operationId: uploadOperation,
-  filnavn: "syntetisk-booking.eml",
-  mimeType: "message/rfc822",
-  filtype: "eml",
-  stoerrelse: emlBytes.length,
-  sha256: createHash("sha256").update(emlBytes).digest("hex"),
-}, tokens.unit);
-const uploadResponse = await fetch(uploadStart.uploadUrl, {
-  method: "PUT", headers: { "content-type": uploadStart.mimeType }, body: emlBytes,
-});
-assert.equal(uploadResponse.ok, true, await uploadResponse.text());
-const uploadDone = await call("unitbookingimportuploadslut", {
-  operationId: uploadOperation,
-  kladdeId: uploadStart.kladdeId,
-  dokumentId: uploadStart.dokumentId,
-}, tokens.unit);
-assert.equal(uploadDone.kladde.original.status, "aktiv");
-assert.equal(uploadDone.kladde.aflæsning.connectorStatus, "lokal");
-assert.equal(uploadDone.kladde.kladde.eksternReference, "NK-2026-EML");
+async function uploadDokument({ navn, mimeType, filtype, bytes, operation }) {
+  const start = await call("unitbookingimportuploadstart", {
+    operationId: operation, filnavn: navn, mimeType, filtype, stoerrelse: bytes.length,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+  }, tokens.unit);
+  const response = await fetch(start.uploadUrl, { method: "PUT", headers: { "content-type": start.mimeType }, body: bytes });
+  assert.equal(response.ok, true, await response.text());
+  const done = await call("unitbookingimportuploadslut", {
+    operationId: operation, kladdeId: start.kladdeId, dokumentId: start.dokumentId,
+  }, tokens.unit);
+  assert.equal(done.kladde.original.status, "aktiv");
+  assert.equal(done.kladde.aflæsning.connectorStatus, "lokal");
+  return done;
+}
+
+const csvBytes = Buffer.from("Kunde;Kontaktperson;Sagsnummer;Fra dato;Til dato;Objekt;Længde;Bredde;Højde;Enhed\nMuseum CSV;Ida;CSV-42;21-09-2026;28-09-2026;Relief;100,5;60;80;cm");
+const csvDone = await uploadDokument({ navn: "syntetisk.csv", mimeType: "text/csv", filtype: "csv", bytes: csvBytes, operation: "upload-csv-runtime-01" });
+assert.equal(csvDone.kladde.kladde.eksternReference, "CSV-42");
+assert.equal(csvDone.kladde.kladde.linjer[0].laengdeMm, 1005);
+
+const emlBilag = csvBytes.toString("base64");
+const emlBytes = Buffer.from(["From: booking@example.invalid", "Subject: Booking NK-2026-EML", "MIME-Version: 1.0", 'Content-Type: multipart/mixed; boundary="UNIT"', "", "--UNIT", "Content-Type: text/plain; charset=utf-8", "", material.replace("NK-2026-184", "NK-2026-EML"), "--UNIT", 'Content-Type: text/csv; name="objekter.csv"', 'Content-Disposition: attachment; filename="objekter.csv"', "Content-Transfer-Encoding: base64", "", emlBilag, "--UNIT--", ""].join("\r\n"), "utf8");
+const emlDone = await uploadDokument({ navn: "syntetisk-booking.eml", mimeType: "message/rfc822", filtype: "eml", bytes: emlBytes, operation: "upload-eml-runtime-01" });
+assert.equal(emlDone.kladde.kladde.eksternReference, "CSV-42");
+assert.equal(emlDone.kladde.aflæsning.udtræk.vedhaeftninger[0].status, "udtrukket");
+
+const workbook = new ExcelJS.Workbook();
+const ark = workbook.addWorksheet("Booking");
+ark.addRow(["Kunde", "Kontaktperson", "Sagsnummer", "Fra dato", "Til dato", "Objekt", "Længde", "Bredde", "Højde", "Enhed"]);
+ark.addRow(["Museum XLSX", "Ida", "XLSX-42", "21-09-2026", "28-09-2026", "Relief", "100,5", "60", "80", "cm"]);
+const xlsxDone = await uploadDokument({ navn: "syntetisk.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filtype: "xlsx", bytes: Buffer.from(await workbook.xlsx.writeBuffer()), operation: "upload-xlsx-runtime-01" });
+assert.equal(xlsxDone.kladde.kladde.eksternReference, "XLSX-42");
+assert.ok(xlsxDone.kladde.aflæsning.kilder.some((x) => /celle/.test(x.reference)));
+
+const pdfDone = await uploadDokument({ navn: "tekst.pdf", mimeType: "application/pdf", filtype: "pdf", bytes: await readFile(new URL("../output/pdf/PROCURE-bestilling-senest-dato.pdf", import.meta.url)), operation: "upload-pdf-runtime-01" });
+assert.ok(pdfDone.kladde.aflæsning.udtræk.tekstTegn > 20);
+const msgDone = await uploadDokument({ navn: "mail.msg", mimeType: "application/vnd.ms-outlook", filtype: "msg", bytes: await readFile(new URL("../test/fixtures/unitbooking-msgreader-test2.msg", import.meta.url)), operation: "upload-msg-runtime-01" });
+assert.equal(msgDone.kladde.aflæsning.udtræk.vedhaeftninger[0].status, "udtrukket");
 
 async function prepareCollision(ref, operation) {
   const text = `Kunde: Samtidighedstest\nSagsnummer: ${ref}\nObjekt: Relief\nMål: 100 x 60 x 80 cm\nFra: 01-10-2026\nTil: 05-10-2026`;
@@ -105,20 +124,27 @@ const collisions = await Promise.all([callRaw("unitbookingimportbekraeft", c1, t
 assert.equal(collisions.filter((x) => x.ok).length, 1);
 assert.equal(collisions.filter((x) => !x.ok).length, 1);
 
+await call("kasseudlaanskriv", { handling: "skift", udlaanId: "dag-ud", til: "udlaant", operationId: "status-out-runtime-01" }, tokens.unit);
+assert.equal((await read(TENANTS.unit, "kasser/AL-102", tokens.unit)).status, "udlaant");
+assert.equal((await read(TENANTS.unit, "kasser/AL-102", tokens.unit)).pladsId ?? null, null);
+await call("kasseudlaanskriv", { handling: "skift", udlaanId: "dag-ud", til: "returneret", modtagelsesPladsId: "destination", operationId: "status-return-runtime-01" }, tokens.unit);
+assert.equal((await read(TENANTS.unit, "kasser/AL-102", tokens.unit)).status, "ledig");
+assert.equal((await read(TENANTS.unit, "kasseudlaan/dag-ud", tokens.unit)).tilstand, "returneret");
+
 const returned = await call("kasseudlaanskriv", { handling: "skift", udlaanId: "dag-retur", til: "returneret", modtagelsesPladsId: "modtagelse", operationId: "return-runtime-01" }, tokens.unit);
 assert.equal(returned.gentaget, false);
 const returnedRetry = await call("kasseudlaanskriv", { handling: "skift", udlaanId: "dag-retur", til: "returneret", modtagelsesPladsId: "modtagelse", operationId: "return-runtime-01" }, tokens.unit);
 assert.equal(returnedRetry.gentaget, true);
 assert.equal((await read(TENANTS.unit, "kasser/AL-101", tokens.unit)).pladsId, "modtagelse");
-const moved = await call("unitlagerhandling", { operationId: "move-runtime-0001", unitId: "AL-101", art: "flytning", tilPladsId: "destination", kilde: "unitbooking" }, tokens.unit);
+const moved = await call("unitlagerhandling", { operationId: "move-runtime-0001", unitId: "AL-101", art: "flytning", tilPladsId: "destination", forventetPladsId: "modtagelse", kilde: "unitbooking" }, tokens.unit);
 assert.equal(moved.gentaget, false);
-assert.equal((await call("unitlagerhandling", { operationId: "move-runtime-0001", unitId: "AL-101", art: "flytning", tilPladsId: "destination", kilde: "unitbooking" }, tokens.unit)).gentaget, true);
+assert.equal((await call("unitlagerhandling", { operationId: "move-runtime-0001", unitId: "AL-101", art: "flytning", tilPladsId: "destination", forventetPladsId: "modtagelse", kilde: "unitbooking" }, tokens.unit)).gentaget, true);
 assert.equal((await read(TENANTS.unit, "kasser/AL-101", tokens.unit)).pladsId, "destination");
 assert.equal(Object.keys(await read(TENANTS.unit, "unitbevaegelser", tokens.unit)).filter((id) => ["return-runtime-01", "move-runtime-0001"].includes(id)).length, 2);
 
-const warehouseMove = await call("unitlagerhandling", { operationId: "warehouse-move-01", unitId: "AL-102", art: "flytning", tilPladsId: "modtagelse", kilde: "warehouse" }, tokens.warehouse);
+const warehouseMove = await call("unitlagerhandling", { operationId: "warehouse-move-01", unitId: "AL-102", art: "flytning", tilPladsId: "modtagelse", forventetPladsId: "destination", kilde: "warehouse" }, tokens.warehouse);
 assert.equal(warehouseMove.unit.pladsId, "modtagelse");
-const bothMove = await call("unitlagerhandling", { operationId: "both-move-unit-1", unitId: "AL-102", art: "flytning", tilPladsId: "modtagelse", kilde: "unitbooking" }, tokens.both);
+const bothMove = await call("unitlagerhandling", { operationId: "both-move-unit-1", unitId: "AL-102", art: "flytning", tilPladsId: "modtagelse", forventetPladsId: "destination", kilde: "unitbooking" }, tokens.both);
 assert.equal((await read(TENANTS.both, "kasser/AL-102", tokens.both)).pladsId, bothMove.unit.pladsId);
 assert.equal((await read(TENANTS.both, "unitbevaegelser/both-move-unit-1", tokens.both)).kilde, "unitbooking");
 
@@ -131,14 +157,16 @@ const proof = {
     bookingIds: confirmed.bookingIder,
     duplicateWarning: duplicate.kladde.dubletAf,
     retryIdempotent: retry.gentaget,
-    emlUpload: {
-      draftId: uploadStart.kladdeId,
-      originalRetained: uploadDone.kladde.original.status === "aktiv",
-      connectorStatus: uploadDone.kladde.aflæsning.connectorStatus,
+    formats: {
+      csv: { extraction: "local", interpreted: csvDone.kladde.kladde.eksternReference === "CSV-42", browserUploadEquivalent: true },
+      eml: { extraction: "local", attachments: emlDone.kladde.aflæsning.udtræk.vedhaeftninger.length, browserUploadEquivalent: true },
+      xlsx: { extraction: "local", interpreted: xlsxDone.kladde.kladde.eksternReference === "XLSX-42", browserUploadEquivalent: true },
+      pdf: { extraction: "local", textCharacters: pdfDone.kladde.aflæsning.udtræk.tekstTegn, browserUploadEquivalent: true },
+      msg: { extraction: "local", attachments: msgDone.kladde.aflæsning.udtræk.vedhaeftninger.length, browserUploadEquivalent: true },
     },
   },
   concurrency: { attempts: 2, committed: 1, rejected: 1 },
-  physical: { returnLocation: "modtagelse", laterLocation: "destination", retryMovements: 2, sameQrId: "AL-101" },
+  physical: { statusFlow: ["klargjort", "udlaant", "returneret"], returnLocation: "modtagelse", laterLocation: "destination", retryMovements: 2, sameQrId: "AL-101" },
 };
 await writeFile(path.join(outputDir, "UNITBOOKING_AUTH_FUNCTIONS_QA.json"), `${JSON.stringify(proof, null, 2)}\n`);
 console.log(JSON.stringify(proof, null, 2));

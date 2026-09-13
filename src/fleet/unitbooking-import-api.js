@@ -19,7 +19,7 @@ function fejltekst(fejl) {
   if (kode === "permission-denied") return "Du har ikke adgang til at importere UNIT-bookinger.";
   if (kode === "already-exists") return fejl?.message || "Materialet er allerede importeret.";
   if (kode === "failed-precondition") return fejl?.message || "Oplysningerne skal gennemgås igen.";
-  if (kode === "unavailable") return "Serveren kan ikke nås. Udkastet er ikke bekræftet.";
+  if (kode === "unavailable") return "Tjenesten kan ikke nås. Udkastet er ikke bekræftet.";
   return fejl?.message || "Handlingen kunne ikke gennemføres.";
 }
 

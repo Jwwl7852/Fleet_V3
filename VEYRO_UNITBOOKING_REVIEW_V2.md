@@ -1,206 +1,202 @@
 # Veyro Systems – UNIT Booking review V2
 
 Dato: 13. september 2026
-Status: Implementeret og lokalt verificeret i isoleret worktree. Ingen push,
-merge, deployment eller produktionsdataændring.
+Status: Målrettet rettelsesrunde implementeret og lokalt verificeret i isoleret
+worktree. Ingen push, merge, deployment eller produktionsdataændring.
 
 ## Arbejdsgrundlag
 
 - Worktree:
   `C:\Users\DennisChristensen\.codex\visualizations\2026\09\13\01a09b3e-301f-7a41-9c28-198962368531\Fleet_V3-unitbooking`
 - Branch: `codex/unitbooking-integrated-development`
-- Basis-HEAD: `a0a5414214b0c212e99eff8f00182b1b61339e0e`
-- Hovedcheckoutet på `codex/planning-optimization-v1` var urent med andre
-  arbejdsændringer og er ikke ændret af UNIT-sporet.
-- Læst grundlag: `CLAUDE.md`, `README.md`, `ARKITEKTUR.md`,
-  `docs/VEYRO_MODULUDVIKLINGSSPOR_V1.md` og
-  `VEYRO_UNITBOOKING_STATUS_V1.md` fra status-worktree.
+- Kontrolleret start-HEAD:
+  `81c0fb09a4d8e9217028bd7604149607a3d47b0d`
+- Læst: `CLAUDE.md`, `README.md`, `ARKITEKTUR.md`,
+  `docs/VEYRO_MODULUDVIKLINGSSPOR_V1.md`, denne reviewrapport,
+  `docs/VEYRO_UNIT_WAREHOUSE_CONTRACT_V1.md` og
+  `docs/VEYRO_UNITBOOKING_MIGRATION_V2.md`.
+- Warehouse er fortsat navnet på modulet. Reference for den afstemte
+  Warehouse-leverance:
+  `37bba72ec73e33369479b236454a1a1e913a208c`.
+- Den eksisterende ikke-versionerede, udpakkede mappe
+  `artifacts/unitbooking-v2/VEYRO_UNITBOOKING_REVIEW_V2/` er bevaret urørt.
 
-## Leveret
+## Rettelser
 
-### Bookingassistent
+### Entydig reservationskvittering
 
-- Ny tydelig handling og route: **Importér booking**.
-- Drag-and-drop, normal filvælger og indsat mailtekst.
-- Tilladte filer: `.eml`, `.msg`, PDF, `.xlsx`, `.csv`, PNG og JPEG, højst
-  25 MB. Filnavn/type, størrelse, hash og kendt filsignatur valideres.
-- Serverlagrede, brugerbundne importudkast med bevaret originalmateriale,
-  kildehenvisninger, dubletadvarsel og idempotente operationer.
-- Lokal deterministisk aflæsning af tekst, `.eml` og `.csv`. Ekstern extractor-
-  grænseflade for `.msg`, PDF, `.xlsx` og billeder.
-- Redigerbar side-om-side-gennemgang med særskilte objektlinjer. Mangler,
-  tvetydige datoer, ukendt enhed og modstrid fremhæves.
-- Fire trin: Import → Gennemgang → Forslag → Bekræftelse. Udkastet skaber ingen
-  reservation. Endelig bekræftelse genkontrollerer match og konflikt på serveren.
-- Dokumenttekst behandles kun som data. En indlejret instruks er vist inert i
-  browser-QA.
+Efter succes erstattes hele bekræftelsesfladen af én kvittering med kunde,
+reference, dansk periode, objekt, valgte enheder og booking-id'er. Den gamle
+“Der er endnu ikke oprettet en reservation”-advarsel og bekræftelsesknappen
+findes ikke længere efter succes. Der er direkte handlinger til booking og
+kalender. Samme operation-id genbruges ved retry, og backend-testen viser én
+reservation ved gentagelse.
 
-### Mål, orientering og match
+### AL-102 og de tre statusbegreber
 
-- Historiske/udvendige mål og brugbare indvendige mål er separate felter.
-- Eksisterende mål omfortolkes ikke. Ukendt semantik og manglende indvendige mål
-  kan ikke give et bekræftet størrelsesmatch.
-- Polstring angives pr. side for længde, bredde og højde. 100 × 60 × 80 cm med
-  5 cm pr. side vises og testes som 110 × 70 × 90 cm.
-- Standardorientering bevarer højden; længde/bredde kan byttes. Andre akser
-  kræver et udtrykkeligt valg, og “må ikke vendes” begrænser dem igen.
-- Match er deterministisk: plads, orientering, type/undertype, driftstilstand,
-  hele den inklusive periode og eksisterende bookinger. Gyldige enheder sorteres
-  efter mindst overskydende indvendig volumen.
-- Intet match forklares pr. afvisningsgrund; alternativer vælges ikke automatisk.
+Årsagen var inkonsistente syntetiske seed-data: bookingen `dag-ud` var
+`klargjort`, mens AL-102 var seedet som `ledig`. Seedet sætter nu begge dele
+konsistent. UI benævner bookingens fase **Bookingstatus**, enhedens egnethed/
+drift **Enhedstilstand** og lagerfeltet **Aktuel placering**.
 
-### Fælles enheder, QR og fysisk flow
+Browser-QA verificerede AL-102 som klargjort i kalender, register og
+bookingdetalje, derefter udleveret via udlånslisten, returneret via scanner til
+modtagelse og vist ledig på den faktiske modtagelsesplacering i registeret.
 
-- Samme `kasser/<unitId>`, rå QR-kode, `reolpladser` og `pladsId` bruges i UNIT
-  og Warehouse. Der er ikke oprettet et ekstra register eller QR-format.
-- UNIT har direkte adgang til det fælles enhedsregister samt ny mobil scanner
-  med kamera, tastaturscanner og manuel fallback.
-- Returnering kræver valgt modtagelseslokation. Bookingen afsluttes og faktisk
-  placering samt append-only bevægelse skrives samlet.
-- Senere placering er en ny scan/flytning; hjemplacering er kun et valgfrit
-  forslag og flytter aldrig enheden.
-- Reservation og klargøring flytter ikke enheden. Faktisk udlevering fjerner
-  `pladsId`, men bevarer id og historik.
-- Gentagelser sammenlignes på `operationId` og payload. Samme handling
-  genafspilles uden ny bevægelse; ændret payload afvises.
-- Eksisterende `pladsId` kan ikke længere ændres direkte fra klienten. Stamdata
-  samt egnethed `ledig`/`udeAfDrift` kan fortsat rettes.
-- UNIT-only, Warehouse-only og begge moduler er dækket af fælles læse-/skrive-
-  gates uden at give Warehouse adgang til UNIT-bookinger.
+### Kompakt kalender og mobil
 
-Den normative aftale står i `docs/VEYRO_UNIT_WAREHOUSE_CONTRACT_V1.md`, og den
-additive vej i `docs/VEYRO_UNITBOOKING_MIGRATION_V2.md`. Warehouse-sporets
-afstemte rettelsescommit er
-`37bba72ec73e33369479b236454a1a1e913a208c`. Samlingssporet skal bevare én
-implementation af de delte callables og løse overlap i fælles filer.
+- Dagens arbejde står før statistik og har direkte opgavelinks.
+- Donutdiagrammet er fjernet; fem lave nøgletalskort frigør lodret plads.
+- Kalenderfunktioner, filtre, kontrolleret intern gitterrulning og liste er
+  bevaret.
+- Kommende klargøringer og udlån skifter til mobilkort med alle oplysninger og
+  handlinger.
+- 390×844 og 360×800 er kontrolleret med fulde sidescreenshots, hele feltnavne,
+  ombrudte lokationer, synlige handlinger og navnet på aktivt importtrin.
+- Importens gennemgang, match, intet match og kvittering er kontrolleret på
+  mobil; der skjules ikke side-overflow for at bestå kontrollen.
 
-### Daglig betjening og mobil
+### Gennemgang og intet match
 
-- Kompakte KPI-kort og en synlig “Dagens arbejde”-flade med klargøringer,
-  udleveringer, returer og forsinkelser.
-- Kortere brugerrettet hjælpetekst; tekniske detaljer er flyttet til kode og
-  dokumentation.
-- Mobilvisning ved 390 × 844 er kontrolleret uden vandret side-overflow.
-  Kalenderens brede gitter og mobilnavigation bevarer kontrolleret intern rulning.
-- Browser-QA fandt og førte til rettelser af både kalenderkontrollernes overflow,
-  scannerdetaljens for smalle værdikolonne og en race mellem lokal og
-  serverbaseret importaflæsning.
+Originalmaterialet vises sammen med redigerbare oplysninger. Detaljerede
+kildehenvisninger er sammenfoldelige, og uafklarede mål beskrives som aflæste
+værdier, hvis måleenhed/akse skal bekræftes — ikke som helt manglende.
+Objektmål, type, polstring og orientering er samlet pr. objektlinje.
 
-## Server- og dataintegritet
+“Intet match” viser en kort kategorisammenfatning og en udfoldelig liste pr.
+enhed med konkrete krav, der ikke opfyldes. Bookingkonflikt viser reference og
+periode, når brugeren kan se den. For lille, optaget, ude af drift og ukendte
+indvendige mål adskilles. Alternativer vælges aldrig automatisk.
 
-- `kasseudlaanskriv`, importbekræftelse og `unitlagerhandling` bruger en
-  transaktion på hele `tenants/<tenantId>` for at holde booking, unit og historik
-  atomisk. Callbacken tåler null ved første lokale cacheforsøg og alle
-  forudsætninger evalueres igen ved retry.
-- Fordelen er en enkel tværnode-garanti. Ulempen er, at enhver samtidig skrivning
-  under samme tenant kan udløse retry, og hele tenant-roden læses/skrives i
-  transaktionen. Før arkitekturen ændres skal samlingssporet måle tenantstørrelse,
-  callbackforsøg, varighed og abort-rate. En smallere grænse kræver en fælles
-  låse-/kommandomodel og ændres ikke ensidigt her.
-- Originalmateriale og importindeks kan ikke skrives direkte af klienten.
-- Endelig reservation kører samme almindelige bookingvalidering og den
-  inklusive konfliktregel på serveren.
+### Lokal dokumentudtrækning
+
+Functions har nu lokal, reel udtrækning for:
+
+- `.eml`: mailtekst og relevante understøttede vedhæftninger;
+- `.msg`: mailtekst og relevante understøttede vedhæftninger;
+- tekst-PDF: tekst med sidenumre;
+- `.xlsx`: relevante ark, tabeller og cellereferencer;
+- `.csv`: rækker/celler, danske separatorer og fuldt browseruploadforløb.
+
+Den deterministiske fortolkning udfylder kun entydige, kendte felter. Original,
+hash, udtræk og kilder bevares, og medarbejderen skal gennemgå før reservation.
+Formatstøtten vises før upload. Scannede PDF'er og billeder kræver fortsat den
+aftalte eksterne OCR/AI-extractor; ingen tjeneste eller betaling er oprettet.
+Se `docs/VEYRO_UNITBOOKING_IMPORT_FORMATMATRIX_V2.md`.
+
+### Tekst og fælles shell
+
+Kundeskærme viser ikke længere “atomisk”, “servervalideret reservation”, interne
+serverkontroller eller miljøvariabel-/README-anvisninger. Testbanneret er
+bevaret. Datoer i de ændrede skærme vises dansk.
+
+Den eneste fælles AppShell-nære ændring er tekst i
+`src/fleet/Brugervaelger.jsx`; adgangslogik, claims og navigation er uændret.
+
+## Warehouse-afstemning
+
+UNIT genbruger `kasser/{unitId}`, rå QR-id, `reolpladser`, `pladsId` og fælles
+bevægelseshistorik. Der er ikke oprettet en alternativ identitet eller
+placeringsmodel. UNIT-adapteren sender `forventetPladsId` ved bevægelse, i tråd
+med Warehouse-sporets optimistic-concurrency-aftale. Den fælles
+transaktionsarkitektur er ikke ændret ensidigt.
+
+Den konkrete syvtrins integrationstest, fil-/domæneejerskab og et reproducerbart
+belastningsscenarie for tenant-rodstransaktioner står i
+`docs/VEYRO_UNITBOOKING_SAMLINGSHANDOFF_V2.md`.
 
 ## Verifikation
 
-### Automatiske tests
+### Automatiske domænetests
 
-| Kontrol | Resultat |
-|---|---:|
-| UNIT-domæne | 177/177 bestået |
-| Import, parsing og match | 14/14 bestået |
-| Realtime Database Rules, bevaret + V2 | 29/29 bestået |
-| Auth + Functions + Database + Storage runtime-QA | Bestået |
-| Vite produktionsbuild | Bestået |
-| Afgrænset ESLint på ændrede filer | Bestået |
-| `node --check` på Functions og QA-scripts | Bestået |
-
-Runtime-QA dokumenterer:
-
-- UNIT-only, Warehouse-only og begge moduler;
-- forkert tenant og manglende permission;
-- tekstimport, gemt udkast uden reservation og serverbekræftet booking;
-- rigtig `.eml`-upload via Storage-emulator med hash/signaturkontrol og bevaret
-  original;
-- dubletadvarsel og idempotent genbekræftelse;
-- to samtidige reservationer af samme enhed: præcis én commit og én afvisning;
-- idempotent retur til modtagelse og senere flytning;
-- samme QR-id og fælles placering/historik.
-
-Maskinlæsbar evidens:
-
-- `artifacts/unitbooking-v2/runtime/UNITBOOKING_AUTH_FUNCTIONS_QA.json`
-- `artifacts/unitbooking-v2/screenshots/UNITBOOKING_BROWSER_QA.json`
-
-### Browserforløb
-
-Browser-QA kørte mod lokal Vite samt Auth, Functions, Realtime Database og
-Storage-emulatorer med syntetiske tenants og brugere. Alle 15 full-page captures
-bestod kontrol for side-overflow og handlinger uden for viewport, bortset fra
-de tilsigtede interne scrollområder.
-
-| Fil | Dokumenterer |
-|---|---|
-| `01-desktop-kalender-og-dagens-arbejde.png` | Kalender, kompakte KPI'er og dagens arbejde |
-| `02-desktop-faelles-enhedsregister.png` | Direkte adgang til fælles register og separate mål |
-| `03-desktop-scanning-retur-foer.png` | Scannet enhed og valgt returplacering |
-| `04-desktop-retur-paa-modtagelse.png` | Retur afsluttet på modtagelse |
-| `05-desktop-efterfoelgende-flytning.png` | Senere flytning og historik |
-| `06-desktop-importer-booking.png` | Drag/drop, upload og tekstalternativ |
-| `07-desktop-gennemgang-original-og-felter.png` | Original, kilder, rettelser og 110 × 70 × 90 cm |
-| `08-desktop-korrekt-match.png` | Korrekt, sorteret match med orientering/restplads/lokation |
-| `09-desktop-bekraeftelse-foer-reservation.png` | Intet er reserveret før medarbejderens bekræftelse |
-| `10-desktop-reservation-gemt.png` | Serverbekræftet reservation |
-| `11-desktop-uklare-oplysninger.png` | Tvetydige datoer/mål og inert dokumentinstruks |
-| `12-desktop-intet-match-med-forklaring.png` | Ingen egnet enhed og konkrete grunde |
-| `13-mobile-kalender-listevisning.png` | Mobil kalender og daglig liste |
-| `14-mobile-scanning-og-flytning.png` | Mobil opslag, QR, flytning og historik |
-| `15-mobile-import.png` | Mobil import |
-
-Alle ligger i `artifacts/unitbooking-v2/screenshots/`.
-
-## Ikke markeret som færdigt
-
-- Automatisk OCR/AI for `.msg`, PDF, `.xlsx` og billeder kræver
-  `UNITBOOKING_EXTRACTION_URL` samt secret `UNITBOOKING_EXTRACTION_API_KEY`.
-  Tilslutningspunktet er implementeret, men ingen tjeneste er konfigureret i
-  testmiljøet. UI viser ærligt “ikke tilsluttet”, og manuel gennemgang virker.
-- Den lokale parser aflæser tekst, `.eml` og `.csv`; kun `.eml`-filupload er
-  kørt end-to-end. De øvrige filtyper er allowlist-/størrelsestestet, men deres
-  eksterne ekstraktion er ikke erklæret verificeret.
-- Direkte træk fra Outlook kan kun fungere, hvis browseren leverer en fil.
-  Headlessmiljøet kan ikke simulere Outlooks native drag-payload. Gemt `.eml`
-  og indsat tekst er verificerede alternativer.
-- Kamera og fysisk håndscanner er ikke hardwareverificeret. Kamera-API,
-  tastaturfelt og manuel indtastning er implementeret; manuel/scannet id-flow er
-  verificeret i browseren.
-- Fuld repository-`npm run lint` kan ikke starte i den delte baseline, fordi
-  den linkede dependencyinstallation mangler `facility-v2`-afhængigheden
-  `@eslint/js`. Afgrænset lint af alle ændrede UNIT-/Functions-/testfiler består.
-- Ingen test er kørt mod produktionsdata eller rigtige eksterne tjenester.
-
-## Reproduktion
-
-Start emulatorerne med `firebase.unitbooking-test.json`, seed med
-`scripts/unitbooking-auth-emulator-seed.mjs`, og kør:
+Kommando:
 
 ```powershell
-node scripts/unitbooking-auth-functions-qa.mjs artifacts/unitbooking-v2/runtime
-node scripts/unitbooking-auth-browser-qa.mjs artifacts/unitbooking-v2/screenshots
+node --test test/unitbooking-import.test.mjs test/unitbooking-document-extraction.test.mjs
 ```
 
-Regeltests bruger `firebase.unitbooking-rules-test.json` på port 9001. De
-syntetiske ids, tenants og brugere ligger i seed-scriptet; alle QA-scripts
-afviser ikke-lokale hosts.
+Resultat: **22 bestået, 0 fejlet**. Dækker blandt andet decimalkomma,
+cm-normalisering, flere objektlinjer, uafklarede mål, indvendige mål,
+polstring, orientering, inklusive datokonflikt, kandidatgrunde, EML/MSG/PDF/
+XLSX/CSV og inert dokumenttekst.
+
+### Auth/Functions/Database/Storage
+
+Det isolerede runtimeforløb bestod:
+
+- UNIT-only, Warehouse-only, begge moduler, tenantadskillelse og rettigheder;
+- fem dokumentformater gennem uploadstart, lokal Storage, uploadslut og lagret
+  udkast;
+- originalmateriale, dubletadvarsel og idempotent bekræftelsesretry;
+- to samtidige reservationer af samme enhed: 2 forsøg, 1 commit, 1 afvisning;
+- klargjort → udlånt → returneret, modtagelsesplacering, senere flytning og
+  genforsøg uden dobbeltbevægelse.
+
+Evidens:
+`artifacts/unitbooking-v2-fix/runtime/UNITBOOKING_AUTH_FUNCTIONS_QA.json`.
+
+### Browser-QA
+
+Browseren kørte mod lokal Vite og isolerede Auth, Functions, Realtime Database
+og Storage-emulatorer — ikke demo-datasættet. Indhold og handlinger blev
+assertet, ikke kun billedbredde. Resultat: **24 full-page screenshots**, alle
+med `horizontalOverflow: false`; statusforløb, retur/flytning, CSV-upload,
+reservation, inert dokumentinstruks og mobile importtrin er `true`.
+
+Evidens:
+`artifacts/unitbooking-v2-fix/screenshots/UNITBOOKING_BROWSER_QA.json`.
+
+### Build og lint
+
+- `npm run build`: bestået, 505 moduler. Kun repositoryets kendte
+  chunk-størrelsesadvarsel.
+- Afgrænset ESLint på alle ændrede klient-, Functions-, QA- og testfiler:
+  0 fejl. Den genererede kopi under `functions/delt/` er ignoreret af
+  lintkonfigurationen; kildefilen er lintet.
+- Fuld `npm test` stopper i eksisterende baseline før testene, fordi
+  `facility-v2/eslint.config.js` ikke kan importere `@eslint/js` fra den delte
+  dependencyinstallation. Det er ikke ændret i UNIT-sporet.
+- `npm audit --omit=dev` for Functions rapporterer 12 moderate fund i
+  transitive `qs`/`uuid`-afhængigheder (bl.a. Firebase Admin og ExcelJS).
+  Auto-fix med force ville opgradere Firebase Admin over en breaking major og
+  er derfor ikke udført i denne afgrænsede rettelsesrunde.
+
+## Screenshots
+
+Alle ligger i `artifacts/unitbooking-v2-fix/screenshots/`.
+
+| Nr. | Indhold |
+|---|---|
+| 01 | Kompakt desktopkalender og dagens arbejde |
+| 02–05 | Register, bookingdetalje, scanning, retur og senere flytning |
+| 06–10 | Import, CSV-gennemgang, korrekt match, bekræftelse og entydig kvittering |
+| 11 | Uklare oplysninger og inert dokumenttekst |
+| 12 | Intet match med kandidatspecifikke grunde |
+| 13–18 | 390×844: kalender, scanner og hele importforløbet |
+| 19–22 | 360×800: kalender, uklare oplysninger, intet match og scanner |
+
+Skærmbillederne er full-page og beskærer ikke relevante formularer eller
+handlinger. Den interne kalenderrulning er bevaret med vilje.
+
+## Ikke markeret som færdigverificeret
+
+- OCR/AI for scannede dokumenter og billeder: connectoren findes, men URL/
+  secret og tjenesten mangler i testmiljøet.
+- Direkte native Outlook-drag: afhænger af browserens payload og kan ikke
+  simuleres troværdigt headless. Gemt mail og indsat tekst er alternativer.
+- Fysisk kamera og håndscanner: browser-/tastaturflow er implementeret og
+  kontrolleret, men hardware er ikke testet.
+- Samlet Warehouse→UNIT→Warehouse UI-forløb: UNIT-siden og fælles kontrakt er
+  testet; den tværgående rejse kræver samling med Warehouse-referencen.
+- Ingen produktionsdata eller eksterne betalte tjenester er anvendt.
 
 ## Afleveringsfiler
 
 - `VEYRO_UNITBOOKING_REVIEW_V2.md`
+- `docs/VEYRO_UNITBOOKING_IMPORT_FORMATMATRIX_V2.md`
+- `docs/VEYRO_UNITBOOKING_SAMLINGSHANDOFF_V2.md`
 - `docs/VEYRO_UNIT_WAREHOUSE_CONTRACT_V1.md`
 - `docs/VEYRO_UNITBOOKING_MIGRATION_V2.md`
-- `artifacts/unitbooking-v2/screenshots/`
-- `artifacts/unitbooking-v2/runtime/UNITBOOKING_AUTH_FUNCTIONS_QA.json`
-- `artifacts/unitbooking-v2/VEYRO_UNITBOOKING_REVIEW_V2.zip`
-
-ZIP-filen er dannet efter den endelige testkontrol og indeholder rapport,
-grænsefladeaftale, migrationsvejledning, runtime-evidens og alle 15 screenshots.
+- `artifacts/unitbooking-v2-fix/runtime/UNITBOOKING_AUTH_FUNCTIONS_QA.json`
+- `artifacts/unitbooking-v2-fix/screenshots/`
+- `artifacts/unitbooking-v2-fix/VEYRO_UNITBOOKING_REVIEW_V2_FIX.zip`

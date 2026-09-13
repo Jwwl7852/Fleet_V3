@@ -13,6 +13,8 @@ const dbHost = process.env.FIREBASE_DATABASE_EMULATOR_HOST || "127.0.0.1:9020";
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST || "127.0.0.1:9119";
 for (const value of [baseUrl, `http://${dbHost}`, `http://${authHost}`]) assert.match(value, /^http:\/\/(127\.0\.0\.1|localhost):\d+/, "Browser-QA må kun bruge localhost.");
 await mkdir(outputDir, { recursive: true });
+const csvUploadPath = path.join(outputDir, "syntetisk-browser-upload.csv");
+await writeFile(csvUploadPath, "Kunde;Kontaktperson;Sagsnummer;Fra dato;Til dato;Objekt;Længde;Bredde;Højde;Enhed\nBrowser Museum;Ida Holm;CSV-BROWSER-42;21-09-2026;28-09-2026;Relief;100,5;60;80;cm\nBrowser Museum;Ida Holm;CSV-BROWSER-42;21-09-2026;28-09-2026;Skulptur;120;70;90;cm\n");
 await seedUnitbookingAuthEmulator();
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -59,7 +61,7 @@ async function openBrowser() {
   await sleep(300);
   const targets = await send("Target.getTargets"); const page = targets.targetInfos.find((x) => x.type === "page"); assert.ok(page);
   const { sessionId } = await send("Target.attachToTarget", { targetId: page.targetId, flatten: true });
-  await send("Page.enable", {}, sessionId); await send("Runtime.enable", {}, sessionId); await send("Network.enable", {}, sessionId);
+  await send("Page.enable", {}, sessionId); await send("Runtime.enable", {}, sessionId); await send("Network.enable", {}, sessionId); await send("DOM.enable", {}, sessionId);
   const viewport = async (width, height) => send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width < 700 }, sessionId);
   await viewport(1440, 1200);
   const evaluate = async (expression) => {
@@ -75,6 +77,12 @@ async function openBrowser() {
   const typeValue = async (selector, value) => {
     assert.equal(await evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;el.focus();el.select();return true})()`), true, `Felt mangler: ${selector}`);
     await send("Input.insertText", { text: String(value) }, sessionId);
+  };
+  const uploadFile = async (selector, filePath) => {
+    const { root } = await send("DOM.getDocument", { depth: -1, pierce: true }, sessionId);
+    const { nodeId } = await send("DOM.querySelector", { nodeId: root.nodeId, selector }, sessionId);
+    assert.ok(nodeId, `Filfelt mangler: ${selector}`);
+    await send("DOM.setFileInputFiles", { nodeId, files: [path.resolve(filePath)] }, sessionId);
   };
   const screenshot = async (filename) => {
     const overflow = await evaluate(`(()=>{
@@ -100,7 +108,7 @@ async function openBrowser() {
       await rm(resolved, { recursive: true, force: true, maxRetries: 3 });
     }
   };
-  return { evaluate, waitFor, navigate, screenshot, viewport, typeValue, close };
+  return { evaluate, waitFor, navigate, screenshot, viewport, typeValue, uploadFile, close };
 }
 
 const reactValue = (selector, value, prototype = "HTMLInputElement") => `(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;const set=Object.getOwnPropertyDescriptor(${prototype}.prototype,'value').set;set.call(el,${JSON.stringify(String(value))});el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));return true})()`;
@@ -112,19 +120,41 @@ const noMatch = `Kunde: Fjordby Kulturhus\nSagsnummer: FK-UI-992\nObjekt: Monume
 let browser = await openBrowser();
 const screenshots = []; const checks = {};
 try {
-  await browser.navigate("/unitbooking", "document.querySelector('#fc-email')");
-  await browser.evaluate(reactValue("#fc-email", TEST_USERS.unit.email));
-  await browser.evaluate(reactValue("#fc-kode", SYNTHETIC_PASSWORD));
-  await browser.evaluate("document.querySelector('form button[type=submit]').click()");
+  await browser.navigate("/unitbooking", "document.querySelector('#fc-email') || document.body.innerText.includes('Dagens arbejde')");
+  if (await browser.evaluate("Boolean(document.querySelector('#fc-email'))")) {
+    await browser.evaluate(reactValue("#fc-email", TEST_USERS.unit.email));
+    await browser.evaluate(reactValue("#fc-kode", SYNTHETIC_PASSWORD));
+    await browser.evaluate("document.querySelector('form button[type=submit]').click()");
+  }
   await browser.waitFor("location.pathname==='/unitbooking' && document.body.innerText.includes('Dagens arbejde')", "UNIT-login og kalender");
+  await browser.waitFor("[...document.querySelectorAll('.fc-gk-raekkepar')].some(x=>x.innerText.includes('AL-102'))", "kalenderdata fra emulator");
+  const kalenderRaekker = await browser.evaluate("[...document.querySelectorAll('.fc-gk-raekkepar')].map(x=>x.innerText)");
+  assert.equal(kalenderRaekker.some((tekst) => tekst.includes("AL-102") && tekst.includes("Klargjort")), true, `kalenderen skal vise AL-102s enhedstilstand som klargjort: ${JSON.stringify(kalenderRaekker)}`);
   screenshots.push(await browser.screenshot("01-desktop-kalender-og-dagens-arbejde.png"));
 
   await browser.navigate("/opsaetning/kasser", "document.body.innerText.includes('AL-101') && document.body.innerText.includes('Unitbooking – enhedsregister')");
+  assert.equal(await browser.evaluate("[...document.querySelectorAll('tr')].some(x=>x.innerText.includes('AL-102')&&x.innerText.includes('Klargjort'))"), true, "registeret skal vise AL-102 som klargjort");
   screenshots.push(await browser.screenshot("02-desktop-faelles-enhedsregister.png"));
+
+  await browser.navigate("/unitbooking?booking=dag-ud", "document.body.innerText.includes('Sag DAG-UD · AL-102')");
+  assert.equal(await browser.evaluate("document.body.innerText.includes('Bookingstatus') && document.body.innerText.includes('Klargjort')"), true, "bookingdetaljen skal navngive bookingstatus");
+  await browser.navigate("/unitbooking/udlaan", "[...document.querySelectorAll('tr')].some(x=>x.innerText.includes('AL-102')&&x.innerText.includes('Klargjort'))");
+  assert.equal(await browser.evaluate("(()=>{const row=[...document.querySelectorAll('tr')].find(x=>x.innerText.includes('AL-102')&&x.innerText.includes('DAG-UD'));const b=[...(row?.querySelectorAll('button')||[])].find(x=>x.innerText.includes('Udlevér'));if(!b)return false;b.click();return true})()"), true, "AL-102 skal kunne udleveres fra udlånslisten");
+  await browser.waitFor("[...document.querySelectorAll('tr')].some(x=>x.innerText.includes('AL-102')&&x.innerText.includes('Udlånt'))", 12_000);
+  assert.equal((await read("kasser/AL-102")).status, "udlaant");
+  await browser.navigate("/unitbooking?booking=dag-ud", "document.body.innerText.includes('Sag DAG-UD · AL-102') && document.body.innerText.includes('Udlånt')");
+  screenshots.push(await browser.screenshot("02a-desktop-bookingdetalje-udlaant.png"));
+  await browser.navigate("/unitbooking/scan/AL-102", "document.body.innerText.includes('Aktiv booking · sag DAG-UD')");
+  await browser.evaluate(reactValue("#ub-destination", "modtagelse", "HTMLSelectElement"));
+  await browser.evaluate(clickText("button", "Modtag på valgt lokation"));
+  await browser.waitFor("document.body.innerText.includes('Placering og bevægelseshistorik er opdateret')", "AL-102 retur");
+  assert.deepEqual({ status: (await read("kasser/AL-102")).status, booking: (await read("kasseudlaan/dag-ud")).tilstand }, { status: "ledig", booking: "returneret" });
+  await browser.navigate("/opsaetning/kasser", "[...document.querySelectorAll('tr')].some(x=>x.innerText.includes('AL-102')&&x.innerText.includes('Ledig')&&x.innerText.includes('Reol M01'))");
+  checks.statusViews = true;
 
   await browser.navigate("/unitbooking/scan", "document.querySelector('#ub-unit-kode')");
   await browser.evaluate(reactValue("#ub-unit-kode", "AL-101")); await browser.evaluate(clickText("button", "Slå op"));
-  await browser.waitFor("document.body.innerText.includes('Aktivt udlån · sag DAG-RETUR')", "scannet aktiv retur");
+  await browser.waitFor("document.body.innerText.includes('Aktiv booking · sag DAG-RETUR')", "scannet aktiv retur");
   await browser.evaluate(reactValue("#ub-destination", "modtagelse", "HTMLSelectElement"));
   screenshots.push(await browser.screenshot("03-desktop-scanning-retur-foer.png"));
   await browser.evaluate(clickText("button", "Modtag på valgt lokation"));
@@ -139,6 +169,11 @@ try {
 
   await browser.navigate("/unitbooking/import", "document.querySelector('#ub-mailtekst')");
   screenshots.push(await browser.screenshot("06-desktop-importer-booking.png"));
+  await browser.uploadFile("input[type=file]", csvUploadPath);
+  await browser.waitFor("document.querySelector('#ub-kunde')?.value==='Browser Museum' && document.querySelectorAll('.ub-objektlinje').length===2", "CSV gennem fuldt browser-upload");
+  checks.csvBrowserUpload = await browser.evaluate("document.querySelector('#ub-reference')?.value==='CSV-BROWSER-42' && document.querySelector('#ub-laengdeMm-0')?.value==='100,5'");
+  screenshots.push(await browser.screenshot("06a-desktop-csv-upload-gennemgang.png"));
+  await browser.navigate("/unitbooking/import", "document.querySelector('#ub-mailtekst')");
   await browser.evaluate(reactValue("#ub-mailtekst", correct, "HTMLTextAreaElement"));
   await browser.evaluate(clickText("button", "Aflæs og opret udkast"));
   await browser.waitFor("document.querySelector('#ub-kunde') && document.querySelector('.ub-original-tekst')", "korrekt gennemgang");
@@ -159,6 +194,8 @@ try {
   screenshots.push(await browser.screenshot("09-desktop-bekraeftelse-foer-reservation.png"));
   await browser.evaluate(clickText("button", "Bekræft og reservér"));
   await browser.waitFor("document.body.innerText.includes('Reservation gemt')", "reservation gemt", 600);
+  assert.equal(await browser.evaluate("document.body.innerText.includes('Der er endnu ikke oprettet en reservation')"), false, "forhåndsadvarslen skal være væk efter succes");
+  assert.equal(await browser.evaluate("document.body.innerText.includes('Åbn booking') && document.body.innerText.includes('Åbn kalender')"), true, "kvitteringen skal have begge genveje");
   screenshots.push(await browser.screenshot("10-desktop-reservation-gemt.png"));
   checks.savedBooking = Object.values(await read("kasseudlaan")).some((b) => b.sagsnummer === "NK-UI-2026-184" && b.importKladdeId);
 
@@ -167,10 +204,12 @@ try {
   // opslag. Login gentages bevidst i emulatoren.
   await browser.close();
   browser = await openBrowser();
-  await browser.navigate("/unitbooking", "document.querySelector('#fc-email')");
-  await browser.evaluate(reactValue("#fc-email", TEST_USERS.unit.email));
-  await browser.evaluate(reactValue("#fc-kode", SYNTHETIC_PASSWORD));
-  await browser.evaluate("document.querySelector('form button[type=submit]').click()");
+  await browser.navigate("/unitbooking", "document.querySelector('#fc-email') || document.body.innerText.includes('Dagens arbejde')");
+  if (await browser.evaluate("Boolean(document.querySelector('#fc-email'))")) {
+    await browser.evaluate(reactValue("#fc-email", TEST_USERS.unit.email));
+    await browser.evaluate(reactValue("#fc-kode", SYNTHETIC_PASSWORD));
+    await browser.evaluate("document.querySelector('form button[type=submit]').click()");
+  }
   await browser.waitFor("location.pathname==='/unitbooking' && document.body.innerText.includes('Dagens arbejde')", "nyt UNIT-login");
 
   await browser.navigate("/unitbooking/import?case=unclear", "document.querySelector('#ub-mailtekst')");
@@ -184,19 +223,58 @@ try {
   await browser.waitFor("document.querySelector('#ub-kunde')", "intet-match gennemgang");
   await browser.evaluate(clickText("button", "Gem udkast og find forslag"));
   await browser.waitFor("document.querySelector('.ub-intet-match') && document.body.innerText.includes('Ingen egnet enhed')", "intet match");
+  await browser.evaluate("document.querySelector('.ub-afviste')?.setAttribute('open','')");
+  assert.equal(await browser.evaluate("document.querySelector('.ub-afviste')?.innerText.includes('AL-101')"), true, "afviste kandidater skal vise enheds-id");
   screenshots.push(await browser.screenshot("12-desktop-intet-match-med-forklaring.png"));
 
   await browser.viewport(390, 844);
   await browser.navigate("/unitbooking", "document.body.innerText.includes('Dagens arbejde')");
-  screenshots.push(await browser.screenshot("13-mobile-kalender-listevisning.png"));
+  assert.equal(await browser.evaluate("document.querySelector('.ub-dagens-kort')?.getBoundingClientRect().top < document.querySelector('.fc-kpis')?.getBoundingClientRect().top"), true, "dagens arbejde skal stå før statistik på mobil");
+  assert.ok(await browser.evaluate("document.querySelectorAll('.ub-mobilkort-liste article').length > 0"), "kommende arbejde skal være læsbart som mobilkort");
+  screenshots.push(await browser.screenshot("13-mobile-390x844-kalender-og-opgaver.png"));
   await browser.navigate("/unitbooking/scan/AL-101", "document.body.innerText.includes('Opslag · AL-101')");
-  screenshots.push(await browser.screenshot("14-mobile-scanning-og-flytning.png"));
+  assert.equal(await browser.evaluate("document.body.innerText.includes('Aktuel placering') && document.body.innerText.includes('Hjemplads')"), true, "fulde placeringslabels skal vises");
+  screenshots.push(await browser.screenshot("14-mobile-390x844-scanning-og-flytning.png"));
   await browser.navigate("/unitbooking/import?mobile=1", "document.querySelector('#ub-mailtekst')");
-  screenshots.push(await browser.screenshot("15-mobile-import.png"));
-  checks.mobileNoHorizontalOverflow = screenshots.slice(-3).every((x) => !x.horizontalOverflow);
+  assert.equal(await browser.evaluate("getComputedStyle(document.querySelector('.ub-proces-aktiv b')).display !== 'none'"), true, "aktivt importtrin skal navngives");
+  screenshots.push(await browser.screenshot("15-mobile-390x844-import.png"));
+  const mobileCorrect = correct.replace("NK-UI-2026-184", "NK-MOBILE-390").replace("21-09-2026", "10-10-2026").replace("28-09-2026", "12-10-2026").replace("20-09-2026", "09-10-2026");
+  await browser.evaluate(reactValue("#ub-mailtekst", mobileCorrect, "HTMLTextAreaElement"));
+  await browser.evaluate(clickText("button", "Aflæs og opret udkast"));
+  await browser.waitFor("document.querySelector('#ub-kunde') && document.querySelector('.ub-original-tekst')", "mobil gennemgang");
+  screenshots.push(await browser.screenshot("16-mobile-390x844-gennemgang.png"));
+  await browser.evaluate(clickText("button", "Gem udkast og find forslag"));
+  await browser.waitFor("document.querySelector('.ub-forslag input[type=radio]')", "mobil match");
+  screenshots.push(await browser.screenshot("17-mobile-390x844-match.png"));
+  await browser.evaluate("document.querySelector('.ub-forslag input[type=radio]').click()");
+  await browser.evaluate(clickText("button", "Gennemgå reservation"));
+  await browser.evaluate(clickText("button", "Bekræft og reservér"));
+  await browser.waitFor("document.body.innerText.includes('Reservationen er oprettet')", "mobil kvittering", 600);
+  screenshots.push(await browser.screenshot("18-mobile-390x844-kvittering.png"));
+
+  await browser.viewport(360, 800);
+  await browser.navigate("/unitbooking", "document.body.innerText.includes('Dagens arbejde')");
+  screenshots.push(await browser.screenshot("19-mobile-360x800-kalender-og-opgaver.png"));
+  await browser.navigate("/unitbooking/import?mobile=360", "document.querySelector('#ub-mailtekst')");
+  await browser.evaluate(reactValue("#ub-mailtekst", unclear, "HTMLTextAreaElement"));
+  await browser.evaluate(clickText("button", "Aflæs og opret udkast"));
+  await browser.waitFor("document.querySelector('.ub-advarsel') && document.body.innerText.includes('Mål er aflæst')", "mobil uklar gennemgang");
+  screenshots.push(await browser.screenshot("20-mobile-360x800-uklare-oplysninger.png"));
+  await browser.navigate("/unitbooking/import?mobile=no-match-360", "document.querySelector('#ub-mailtekst')");
+  await browser.evaluate(reactValue("#ub-mailtekst", noMatch.replace("FK-UI-992", "FK-MOBILE-360"), "HTMLTextAreaElement"));
+  await browser.evaluate(clickText("button", "Aflæs og opret udkast"));
+  await browser.waitFor("document.querySelector('#ub-kunde')", "mobil intet-match gennemgang");
+  await browser.evaluate(clickText("button", "Gem udkast og find forslag"));
+  await browser.waitFor("document.querySelector('.ub-intet-match')", "mobil intet match");
+  await browser.evaluate("document.querySelector('.ub-afviste')?.setAttribute('open','')");
+  screenshots.push(await browser.screenshot("21-mobile-360x800-intet-match.png"));
+  await browser.navigate("/unitbooking/scan/AL-102", "document.body.innerText.includes('Opslag · AL-102')");
+  screenshots.push(await browser.screenshot("22-mobile-360x800-scanning.png"));
+  checks.mobileNoHorizontalOverflow = screenshots.slice(12).every((x) => !x.horizontalOverflow);
+  checks.mobileImportStages = screenshots.some((x) => x.filename.includes("gennemgang")) && screenshots.some((x) => x.filename.includes("match")) && screenshots.some((x) => x.filename.includes("kvittering")) && screenshots.some((x) => x.filename.includes("intet-match"));
 
   const evidence = { ok: true, generatedAt: new Date().toISOString(), baseUrl, projectId: PROJECT_ID, checks, screenshots };
-  assert.deepEqual(checks, { returnAndMove: true, savedBooking: true, documentInstructionInert: true, mobileNoHorizontalOverflow: true });
+  assert.deepEqual(checks, { statusViews: true, returnAndMove: true, csvBrowserUpload: true, savedBooking: true, documentInstructionInert: true, mobileNoHorizontalOverflow: true, mobileImportStages: true });
   await writeFile(path.join(outputDir, "UNITBOOKING_BROWSER_QA.json"), `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(JSON.stringify(evidence, null, 2));
 } finally {

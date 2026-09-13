@@ -1,0 +1,64 @@
+{
+  "generatedAt": "2026-09-13T17:52:31.871Z",
+  "projectId": "demo-unitbooking-v2",
+  "environment": "Firebase Auth/Functions/RTDB Emulator Suite",
+  "access": {
+    "unitOnly": true,
+    "warehouseOnly": true,
+    "bothModules": true,
+    "tenantIsolation": true,
+    "permissionDenied": true
+  },
+  "import": {
+    "draftId": "imp-76387113a8094952ef437e4f",
+    "originalRetained": true,
+    "bookingIds": [
+      "-P1QtShB8H4IhX_1mFYC"
+    ],
+    "duplicateWarning": "imp-76387113a8094952ef437e4f",
+    "retryIdempotent": true,
+    "formats": {
+      "csv": {
+        "extraction": "local",
+        "interpreted": true,
+        "browserUploadEquivalent": true
+      },
+      "eml": {
+        "extraction": "local",
+        "attachments": 1,
+        "browserUploadEquivalent": true
+      },
+      "xlsx": {
+        "extraction": "local",
+        "interpreted": true,
+        "browserUploadEquivalent": true
+      },
+      "pdf": {
+        "extraction": "local",
+        "textCharacters": 738,
+        "browserUploadEquivalent": true
+      },
+      "msg": {
+        "extraction": "local",
+        "attachments": 1,
+        "browserUploadEquivalent": true
+      }
+    }
+  },
+  "concurrency": {
+    "attempts": 2,
+    "committed": 1,
+    "rejected": 1
+  },
+  "physical": {
+    "statusFlow": [
+      "klargjort",
+      "udlaant",
+      "returneret"
+    ],
+    "returnLocation": "modtagelse",
+    "laterLocation": "destination",
+    "retryMovements": 2,
+    "sameQrId": "AL-101"
+  }
+}

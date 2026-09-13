@@ -72,7 +72,11 @@ function tenantData(moduler, users, variant) {
       "dag-retur": booking("AL-101", "DAG-RETUR", "2026-09-08", "2026-09-13", "udlaant", { udleveretMs: Date.parse("2026-09-08T09:00:00Z") }),
       "dag-forsinket": booking("TR-201", "DAG-FORSINKET", "2026-09-01", "2026-09-10", "returneret", { returneretMs: Date.parse("2026-09-11T10:00:00Z") }),
     };
-    base.kasser = { ...kasser, "AL-101": { ...kasser["AL-101"], status: "udlaant", pladsId: null } };
+    base.kasser = {
+      ...kasser,
+      "AL-101": { ...kasser["AL-101"], status: "udlaant", pladsId: null },
+      "AL-102": { ...kasser["AL-102"], status: "klargjort" },
+    };
   }
   return base;
 }

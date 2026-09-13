@@ -4,7 +4,7 @@ import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { datoTid } from "../../fleet/format.js";
-import { KASSE_ID_MOENSTER, KASSE_STATUS, pladsnavn } from "../../fleet/unitbooking.js";
+import { KASSE_ID_MOENSTER, KASSE_STATUS, UDLAAN_TILSTAND, pladsnavn } from "../../fleet/unitbooking.js";
 import { skiftUdlaan } from "../../fleet/udlaan.js";
 import { unitlagerhandling } from "../../fleet/unitlager.js";
 import { qrBredde, qrFelter, QR_STILLE_ZONE } from "../../fleet/qrkode.js";
@@ -124,7 +124,7 @@ export default function UnitScanner() {
     saetArbejder(true); saetSvar(null);
     const r = booking
       ? await skiftUdlaan({ udlaanId: booking.id, til: "returneret", modtagelsesPladsId: pladsId, operationId: operationId() })
-      : await unitlagerhandling({ operationId: operationId(), unitId: unit.id, art, tilPladsId: pladsId, kilde: "unitbooking" });
+      : await unitlagerhandling({ operationId: operationId(), unitId: unit.id, art, tilPladsId: pladsId, forventetPladsId: unit.pladsId ?? null, kilde: "unitbooking" });
     saetArbejder(false); saetSvar(r);
     if (r.ok) {
       saetPladsId("");
@@ -143,8 +143,8 @@ export default function UnitScanner() {
             <div className="ub-intet-match" role="alert"><b>Ukendt QR-kode</b><span>Der oprettes ikke automatisk en ny enhed. Kontrollér koden eller gå til enhedsregisteret.</span></div>
           ) : (
             <>
-              <div className="ub-unit-top"><Qr kode={unit.id} /><div><MiniLinje label="Unit-id" vaerdi={<b>{unit.id}</b>} /><MiniLinje label="Type" vaerdi={`${unit.type}${unit.undertype ? ` · ${unit.undertype}` : ""}`} /><MiniLinje label="Tilstand" vaerdi={<Pille tone={KASSE_STATUS[unit.status]?.pill || "info"}>{KASSE_STATUS[unit.status]?.label || unit.status}</Pille>} /><MiniLinje label="Aktuel placering" vaerdi={unit.pladsId ? pladsnavn(pladsMap[unit.pladsId]) : "Ude / ikke placeret"} /><MiniLinje label="Hjemplads (forslag)" vaerdi={pladsnavn(pladsMap[unit.hjemPladsId])} /></div></div>
-              {booking && <div className="ub-advarsel ub-advarsel-info"><b>Aktivt udlån · sag {booking.sagsnummer}</b><span>Modtagelsen afslutter bookingen og registrerer den valgte faktiske placering atomisk.</span></div>}
+              <div className="ub-unit-top"><Qr kode={unit.id} /><div><MiniLinje label="Unit-id" vaerdi={<b>{unit.id}</b>} /><MiniLinje label="Type" vaerdi={`${unit.type}${unit.undertype ? ` · ${unit.undertype}` : ""}`} /><MiniLinje label="Enhedstilstand" vaerdi={<Pille tone={KASSE_STATUS[unit.status]?.pill || "info"}>{KASSE_STATUS[unit.status]?.label || unit.status}</Pille>} /><MiniLinje label="Aktuel placering" vaerdi={unit.pladsId ? pladsnavn(pladsMap[unit.pladsId]) : "Ude / ikke placeret"} /><MiniLinje label="Hjemplads" vaerdi={pladsnavn(pladsMap[unit.hjemPladsId])} /></div></div>
+              {booking && <div className="ub-advarsel ub-advarsel-info"><b>Aktiv booking · sag {booking.sagsnummer}</b><span>Bookingstatus: {UDLAAN_TILSTAND[booking.tilstand]?.label || booking.tilstand}. Modtagelsen afslutter bookingen på den valgte faktiske placering.</span></div>}
               <div className="ub-scan-handling">
                 <label htmlFor="ub-destination">{art === "flytning" ? "Ny placering" : "Modtagelseslokation"}</label>
                 <select id="ub-destination" value={pladsId} onChange={(e) => saetPladsId(e.target.value)}><option value="">Vælg eller scan destination …</option>{pladser.filter((p) => p.id !== unit.pladsId).map((p) => <option key={p.id} value={p.id}>{pladsnavn(p)}</option>)}</select>

@@ -40,7 +40,7 @@ import {
 } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap, Faner,
-  Formularsvar, Donut, Gitter, MiniLinje, Raekke, Felt, Feltraekke, Formular,
+  Formularsvar, Gitter, MiniLinje, Raekke, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
@@ -290,7 +290,7 @@ export default function Kalender() {
      hentet, hver gang man trykkede paa noget. */
   const [hentetMs, setHentetMs] = useState(() => Date.now());
   /* Det valgte udlaan — planchens klik-kort. */
-  const [valgtId, setValgtId] = useState(null);
+  const [valgtId, setValgtId] = useState(() => params.get("booking") || null);
   /* ⚠ PERMISSIONEN, IKKE ROLLEN — og kun til at tegne knappen. Serveren
      spørger om den samme, og `kasseudlaan` er `.write: false`. */
   const { bruger } = useFleet();
@@ -364,7 +364,7 @@ export default function Kalender() {
          kolonne; se noten i 6.23. */
       under: [typeNavn(k.type), ...nuvaerendeSag(k.id)].join(" · "),
       pille: (
-        <Pille tone={KASSE_STATUS[k.status]?.pill || "info"}>
+        <Pille tone={KASSE_STATUS[k.status]?.pill || "info"} title="Enhedstilstand">
           {KASSE_STATUS[k.status]?.label || k.status}
         </Pille>
       ),
@@ -472,7 +472,6 @@ export default function Kalender() {
   /* ⚠ ALLE AF LISTER SKÆRMEN ALLEREDE HENTER, ikke af `kpi/`. De er afledte,
      og et gemt afledt tal driver fra sit grundlag — fejlen i `bemanding.ledig`.
      Se undtagelsen i CLAUDE.md. */
-  const antalMedStatus = (s) => kasser.filter((k) => k.status === s).length;
   const antalUdlaant = udlaan.filter((u) => u.tilstand === "udlaant").length;
   const bel = kassebelaegning(kasser);
   const klargoer = klargoeresSnart(udlaan, nu);
@@ -495,17 +494,22 @@ export default function Kalender() {
 
   return (
     <div className="fc-grid ub-kalender" style={{ gap: 16 }}>
-      <div className="ub-sidehoved">
-        <div>
-          <h1>UNIT arbejdsflade</h1>
-          <p>Bookingaftaler, dagens opgaver og den fysiske placering holdes adskilt.</p>
-        </div>
+      <div className="ub-sidehoved ub-kalender-genveje">
+        <p>Bookingstatus, enhedstilstand og fysisk placering vises som adskilte oplysninger.</p>
         <div className="fc-row">
           <Knap onClick={() => navigate("/unitbooking/scan")}>Scan og flyt</Knap>
           <Knap onClick={() => navigate("/opsaetning/kasser")}>Enhedsregister</Knap>
           <Knap variant="primaer" onClick={() => navigate("/unitbooking/import")}>Importér booking</Knap>
         </div>
       </div>
+      <Kort titel="Dagens arbejde" className="ub-dagens-kort">
+        <div className="ub-dagligt">
+          <a href={dagens.klargoeringer[0] ? `/unitbooking?booking=${encodeURIComponent(dagens.klargoeringer[0].id)}` : "/unitbooking/udlaan?status=booket"}><strong>{num(dagens.klargoeringer.length)}</strong><b>Klargøringer</b><span>{dagens.klargoeringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span><em>Åbn opgave</em></a>
+          <a href={dagens.udleveringer[0] ? `/unitbooking?booking=${encodeURIComponent(dagens.udleveringer[0].id)}` : "/unitbooking/udlaan?status=klargjort"}><strong>{num(dagens.udleveringer.length)}</strong><b>Udleveringer</b><span>{dagens.udleveringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span><em>Åbn opgave</em></a>
+          <a href={dagens.returneringer[0] ? `/unitbooking?booking=${encodeURIComponent(dagens.returneringer[0].id)}` : "/unitbooking/udlaan?status=udlaant"}><strong>{num(dagens.returneringer.length)}</strong><b>Returer</b><span>{dagens.returneringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span><em>Åbn opgave</em></a>
+          <a href={dagens.forsinkelser[0] ? `/unitbooking?booking=${encodeURIComponent(dagens.forsinkelser[0].id)}` : "/unitbooking/udlaan"}><strong className={dagens.forsinkelser.length ? "fc-bad" : ""}>{num(dagens.forsinkelser.length)}</strong><b>Forsinkelser</b><span>{dagens.forsinkelser.slice(0, 3).map((u) => u.kasseId).join(", ") || "Alt er til tiden"}</span><em>Åbn opgave</em></a>
+        </div>
+      </Kort>
       {/* ⚠ PLANCHENS FEM NØGLETAL. Skærmen havde fire andre — Ud denne uge,
           Hjem denne uge, Bagud, Kasser i spil — og de svarede på ugen frem for
           på lageret.
@@ -525,16 +529,6 @@ export default function Kalender() {
           note={bel.udeAfDrift
             ? `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare · ${num(bel.udeAfDrift)} ude af drift`
             : `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare`}
-          ekstra={
-            <Donut
-              dele={[
-                { navn: "Udlånt", antal: antalMedStatus("udlaant") },
-                { navn: "Klargjort", antal: antalMedStatus("klargjort") },
-                { navn: "Ledige", antal: antalMedStatus("ledig") },
-              ]}
-              midteTekst={pct(bel.pct)}
-            />
-          }
         />
         <KpiKort label="Kommende klargøringer" vaerdi={num(klargoer.antal)}
                  note={[
@@ -555,15 +549,6 @@ export default function Kalender() {
                     "af 500" en total ud af et udsnit — beslutning 96. */
                  note={`af ${mindst(kasser.length, kasserAfkortet)} i de viste ${num(vindueDage)} dage`} />
       </KpiRaekke>
-
-      <Kort titel="Dagens arbejde">
-        <div className="ub-dagligt">
-          <a href="/unitbooking/udlaan"><strong>{num(dagens.klargoeringer.length)}</strong><b>Klargøringer</b><span>{dagens.klargoeringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span></a>
-          <a href="/unitbooking/udlaan"><strong>{num(dagens.udleveringer.length)}</strong><b>Udleveringer</b><span>{dagens.udleveringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span></a>
-          <a href="/unitbooking/udlaan"><strong>{num(dagens.returneringer.length)}</strong><b>Returer</b><span>{dagens.returneringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span></a>
-          <a href="/unitbooking/udlaan"><strong className={dagens.forsinkelser.length ? "fc-bad" : ""}>{num(dagens.forsinkelser.length)}</strong><b>Forsinkelser</b><span>{dagens.forsinkelser.slice(0, 3).map((u) => u.kasseId).join(", ") || "Alt er til tiden"}</span></a>
-        </div>
-      </Kort>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
@@ -825,7 +810,7 @@ export default function Kalender() {
             { key: "sag", label: "Sag", render: (h) => h.sagsnummer },
             { key: "besk", label: "Beskrivelse",
               render: (h) => <span className="fc-hint">{h.beskrivelse || "—"}</span> },
-            { key: "tilstand", label: "Tilstand", render: (h) => (
+            { key: "tilstand", label: "Bookingstatus", render: (h) => (
                 <Pille tone={UDLAAN_TILSTAND[h.tilstand]?.pill || "info"}>
                   {UDLAAN_TILSTAND[h.tilstand]?.label || h.tilstand}
                 </Pille>
@@ -840,6 +825,12 @@ export default function Kalender() {
           raekker={liste}
           tom="Ingen kasser er lovet væk. Reservationer oprettes under Udlån."
         />
+        <div className="ub-mobilkort-liste">
+          {liste.map((h) => {
+            const k = kasser.find((x) => x.id === h.kasseId);
+            return <article key={h.id}><div><b>{h.kasseId} · {h.sagsnummer}</b><Pille tone={h.art === "ud" ? "warn" : "ok"}>{h.art === "ud" ? "Udlevering" : "Retur"}</Pille></div><span><b>Dato:</b> {dato(h.naar)}</span><span><b>Bookingstatus:</b> {UDLAAN_TILSTAND[h.tilstand]?.label || h.tilstand}</span><span><b>Hjemplads:</b> {pladsnavn(pladsMap[k?.hjemPladsId])}</span><Knap onClick={() => setValgtId(h.id.replace(/-(?:ud|hjem)$/, ""))}>Åbn booking</Knap></article>;
+          })}
+        </div>
         <p className="fc-hint" style={{ marginTop: 10 }}>
           Et udlån står ved både udlevering og forventet retur. Når enheden er
           udleveret, vises kun den tilbageværende returhandling.
@@ -1008,7 +999,7 @@ function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }
                       disabled={!maaSkrive || !til || arbejder === u.id}
                       title={maaSkrive
                         ? SKIFTEFORKLARING[til]
-                        : `Kræver ${PERM.kasseudlaanSkriv} — reglerne afviser.`}
+                        : "Du har ikke rettighed til at klargøre enheden."}
                       onClick={() => skift(u)}
                     >
                       {SKIFTELABEL[til] || "—"}
@@ -1019,6 +1010,9 @@ function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }
             raekker={klargoer.poster}
             tom="Ingen kasser skal klargøres inden for de næste syv dage."
           />
+          <div className="ub-mobilkort-liste">
+            {klargoer.poster.map((u) => <article key={u.id}><div><b>{u.kasseId} · {u.sagsnummer}</b><span className={u.klargoerSenest < nu ? "fc-bad" : ""}>{dato(u.klargoerSenest)}</span></div><span><b>Hjemplads:</b> {hjemplads(u.kasseId)}</span><span><b>Bookingstatus:</b> {UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}</span><Knap variant="primaer" disabled={!maaSkrive || arbejder === u.id} onClick={() => skift(u)}>{SKIFTELABEL[naesteSkift(u.tilstand)] || "—"}</Knap></article>)}
+          </div>
 
           <Formularsvar svar={svar} okTekst="Kassen er klargjort." />
 
@@ -1120,7 +1114,7 @@ function Udlaanskort({ udlaan: u, kasse, typeNavn, pladsMap, maaSkrive, onLuk, p
             <MiniLinje label="Hjemplads" vaerdi={pladsnavn(pladsMap[kasse.hjemPladsId])} />
           )}
           <MiniLinje
-            label="Tilstand"
+            label="Bookingstatus"
             vaerdi={
               <Pille tone={UDLAAN_TILSTAND[u.tilstand]?.pill || "info"}>
                 {UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}
@@ -1165,7 +1159,7 @@ function Udlaanskort({ udlaan: u, kasse, typeNavn, pladsMap, maaSkrive, onLuk, p
             <Knap
               disabled={!maaSkrive || !kanRettes}
               title={!maaSkrive
-                ? `Kræver ${PERM.kasseudlaanSkriv} — reglerne afviser.`
+                ? "Du har ikke rettighed til at redigere bookingen."
                 : kanRettes
                   ? "Ret sagsnummer, kunde, periode og klargøringsfrist."
                   : "Kun en reservation der endnu er booket, kan rettes. Se nedenfor."}
@@ -1177,7 +1171,7 @@ function Udlaanskort({ udlaan: u, kasse, typeNavn, pladsMap, maaSkrive, onLuk, p
               disabled={!maaSkrive || !kanSkifteUdlaan(u.tilstand, "annulleret") || arbejder}
               title={maaSkrive
                 ? SKIFTEFORKLARING.annulleret
-                : `Kræver ${PERM.kasseudlaanSkriv} — reglerne afviser.`}
+                : "Du har ikke rettighed til at annullere bookingen."}
               onClick={annuller}
             >
               Annullér booking
@@ -1191,18 +1185,11 @@ function Udlaanskort({ udlaan: u, kasse, typeNavn, pladsMap, maaSkrive, onLuk, p
               ⚠ <b>Kun en reservation der endnu er booket, kan rettes.</b> Er
               kassen klargjort, står den pakket til en bestemt periode; er den
               udlånt, er den hos kunden. At flytte datoerne bagefter ville
-              beskrive noget andet end det der skete. Serveren afviser det —
-              det er ikke en manglende rettighed.
+              beskrive noget andet end det der skete. Opret i stedet en ny
+              reservation, hvis perioden skal ændres.
             </p>
           )}
 
-          <p className="fc-hint" style={{ marginTop: 10 }}>
-            ⚠ <b>Ingen mails og fotos endnu.</b> Planchens „Relateret indhold“ er{" "}
-            <b>beslutning 20</b>, og den er fase 0: <code>sager/</code> står ikke
-            i <b>firebase.rules.json</b>, så der er hverken en node at læse fra
-            eller en regel der giver adgang. Et afsnit der sagde „3 mails“ uden
-            at kunne åbne dem, ville være en attrap.
-          </p>
         </>
       )}
     </Kort>

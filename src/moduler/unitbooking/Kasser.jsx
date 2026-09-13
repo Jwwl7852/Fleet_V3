@@ -194,14 +194,14 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
               havde den. Reglerne afviser det også; det er ikke kun formularen
               der er pæn. */}
           {SELVVALGT_KASSE_STATUS.includes(f.status) ? (
-            <Felt id="k-status" label="Status" kraevet vaerdi={f.status} saet={saet("status")}
+            <Felt id="k-status" label="Enhedstilstand" kraevet vaerdi={f.status} saet={saet("status")}
                   fejl={vis("status")}
                   valgmuligheder={SELVVALGT_KASSE_STATUS.map((s) => ({
                     vaerdi: s, label: KASSE_STATUS[s].label,
                   }))}
                   hint="Ude af drift, når kassen er i stykker. Den bliver stående." />
           ) : (
-            <Felt id="k-status" label="Status" readOnly
+            <Felt id="k-status" label="Enhedstilstand" readOnly
                   vaerdi={KASSE_STATUS[f.status]?.label || f.status}
                   hint="Kommer fra et udlån og ændres under Udlån — ikke her." />
           )}
@@ -419,7 +419,7 @@ export default function Kasser() {
         handling={
           <Knap variant="primaer" disabled={!maaSkrive || !typer.length || !pladser.length}
                 onClick={() => saetNy(true)}
-                title={!maaSkrive ? `Kræver ${PERM.kasserSkriv} — reglerne afviser.`
+                title={!maaSkrive ? "Du har ikke rettighed til at oprette enheder."
                   : !typer.length ? "Opret en kassetype først."
                   : !pladser.length ? "Opret en reolplads først."
                   : "Opret en kasse."}>
@@ -435,10 +435,10 @@ export default function Kasser() {
                    onChange={(e) => { saetSoeg(e.target.value); saetSide(1); }} />
           </div>
           <div className="fc-felt">
-            <label htmlFor="kf-status">Status</label>
+            <label htmlFor="kf-status">Enhedstilstand</label>
             <select id="kf-status" value={status}
                     onChange={(e) => { saetStatus(e.target.value); saetSide(1); }}>
-              <option value="">Alle statusser</option>
+              <option value="">Alle enhedstilstande</option>
               {ALLE_KASSE_STATUS.map((v) => (
                 <option key={v} value={v}>{KASSE_STATUS[v].label}</option>
               ))}
@@ -480,7 +480,7 @@ export default function Kasser() {
           <Tom>
             En kasse skal have en <b>type</b> og en <b>hjemplads</b>. Opret dem
             under Reolpladser først — ellers ville kassen pege på noget der ikke
-            findes, og reglerne afviser den.
+            findes.
           </Tom>
         ) : (
           <>
@@ -513,14 +513,14 @@ export default function Kasser() {
                     </span>
                   );
                 } },
-                { key: "status", label: "Status", render: (k) => (
+                { key: "status", label: "Enhedstilstand", render: (k) => (
                     <Pille tone={KASSE_STATUS[k.status]?.pill || "info"}>
                       {KASSE_STATUS[k.status]?.label || k.status}
                     </Pille>
                   ) },
                 /* ⚠ EN STREG, IKKE "Udlånt hos kunde". Kassen står ingen
                    steder — det er ikke en plads med et navn. */
-                { key: "plads", label: "Står nu", render: (k) => (
+                { key: "plads", label: "Aktuel placering", render: (k) => (
                     k.pladsId ? pladsnavn(pladsMap[k.pladsId])
                               : <span className="fc-neutral">— ude</span>
                   ) },

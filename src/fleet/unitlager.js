@@ -6,7 +6,7 @@ export const UNITLAGERFUNKTION = "unitlagerhandling";
 /** Klientadapter til den fælles UNIT/WAREHOUSE-kontrakt. Kilden er eksplicit,
  * men tenant, bruger, fra-lokation og tidspunkt udledes altid på serveren. */
 export async function unitlagerhandling({
-  operationId, unitId, art, tilPladsId, bookingId, reference,
+  operationId, unitId, art, tilPladsId, bookingId, reference, forventetPladsId,
   kilde = "unitbooking",
 }) {
   try {
@@ -15,6 +15,7 @@ export async function unitlagerhandling({
       tilPladsId: tilPladsId || undefined,
       bookingId: bookingId || undefined,
       reference: reference || undefined,
+      forventetPladsId: forventetPladsId ?? null,
     });
     return { ok: true, art: UDLAANSSVAR.ok, besked: null, data: svar?.data ?? null };
   } catch (fejl) {

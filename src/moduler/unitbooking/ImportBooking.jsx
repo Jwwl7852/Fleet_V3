@@ -6,10 +6,11 @@ import { harPerm, PERM } from "../../fleet/permissions.js";
 import { DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN } from "../../fleet/demo-unitbooking.js";
 import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
 import { pladsnavn } from "../../fleet/unitbooking.js";
+import { dato } from "../../fleet/format.js";
 import {
   filtypeFraNavn, foreslaaKasser, mmTilCmTekst, maalTilMm, pladskrav,
   udtraekBookingtekst, udtraekCsv, valideImportFil, valideImportKladde,
-  isoTilUtcMs,
+  isoTilUtcMs, UNIT_IMPORT_FORMATMATRIX,
 } from "../../fleet/unitbooking-import.js";
 import {
   bekraeftImportkladde, gemImportkladde, opretTekstimport, uploadImportfil,
@@ -57,6 +58,7 @@ const tomLinje = (nr) => ({
 const fraAflæsning = (a) => ({ ...a.felter, linjer: a.linjer });
 const operationId = () => crypto.randomUUID();
 const maalTekst = (m) => m ? `${mmTilCmTekst(m.laengdeMm)} × ${mmTilCmTekst(m.breddeMm)} × ${mmTilCmTekst(m.hoejdeMm)} cm` : "—";
+const datoIso = (iso) => isoTilUtcMs(iso) ? dato(isoTilUtcMs(iso)) : "—";
 
 function Proces({ trin }) {
   const navne = ["Import", "Gennemgang", "Forslag", "Bekræftelse"];
@@ -85,7 +87,7 @@ function Original({ original }) {
       <Ikon navn="dokument" />
       <b>{original.filnavn}</b>
       <span>{original.filtype?.toUpperCase()} · originalen er bevaret på udkastet</span>
-      <span>Forhåndsvisning af dette format kræver den tilsluttede dokumentextractor.</span>
+      <span>Den udtrukne tekst og kildehenvisninger vises ved de aflæste oplysninger.</span>
     </div>
   );
 }
@@ -110,6 +112,10 @@ function ImportTrin({ tekst, saetTekst, onTekst, onFil, arbejder, svar, demo }) 
           <input ref={filRef} className="ub-skjult" type="file"
                  accept=".eml,.msg,.pdf,.xlsx,.csv,.png,.jpg,.jpeg"
                  onChange={(e) => haandter(e.target.files)} />
+        </div>
+        <div className="ub-formatstatus" aria-label="Understøttede importformater">
+          <div><b>Kan aflæses nu</b><span>{UNIT_IMPORT_FORMATMATRIX.filter((x) => x.status === "lokal").map((x) => x.label).join(", ")}</span></div>
+          <div><b>Kræver OCR</b><span>Scannet PDF, PNG og JPEG</span></div>
         </div>
         <p className="fc-hint">
           Træk direkte fra Outlook virker kun, hvis browseren afleverer en rigtig fil.
@@ -223,12 +229,12 @@ function Gennemgang({ original, kladde, saetKladde, aflæsning, typer, paaTilbag
           <Felt id="ub-klar" label="Klargøres senest" type="date" vaerdi={kladde.klargoerDato || ""} saet={saet("klargoerDato")} fejl={fejl.klargoerDato} />
         </Feltraekke>
         <Felt id="ub-haandtering" label="Håndtering og orientering" vaerdi={kladde.haandtering || ""} saet={saet("haandtering")} />
-        <div className="ub-kilder">
-          <b>Kildehenvisninger</b>
+        <details className="ub-kilder">
+          <summary>Kildehenvisninger ({aflæsning?.kilder?.length || 0})</summary>
           {aflæsning?.kilder?.length
-            ? aflæsning.kilder.map((k, i) => <span key={`${k.felt}-${i}`}><code>{k.reference}</code> {k.udsnit}</span>)
-            : <span>Ingen automatiske kildehenvisninger. Alle felter skal kontrolleres manuelt.</span>}
-        </div>
+            ? aflæsning.kilder.map((k, i) => <span key={`${k.felt}-${i}`} className={k.sikker === false ? "ub-kilde-uafklaret" : ""}><code>{k.reference}</code> {k.udsnit}</span>)
+            : <span>Ingen kildehenvisninger. Alle felter skal kontrolleres manuelt.</span>}
+        </details>
         <div className="ub-linjer">
           {kladde.linjer.map((linje, i) => (
             <LinjeEditor key={linje.id} linje={linje} index={i} typer={typer}
@@ -264,7 +270,12 @@ function Forslag({ kladde, saetKladde, kasser, udlaan, pladser, paaTilbage, paaV
     <div className="ub-forslagsliste">
       {kladde.linjer.map((linje, i) => {
         const resultat = resultater[i];
-        const grunde = [...new Set(resultat.afviste.map((x) => x.vurdering.grund))].slice(0, 5);
+        const kategorier = [...new Set(resultat.afviste.flatMap((x) => x.vurdering.afvisninger || []).map((x) => x.kode))];
+        const kategoriTekst = kategorier.map((kode) => ({
+          "for-lille": "for lille", optaget: "optaget", "indvendige-maal": "indvendige mål ikke bekræftet",
+          "ude-af-drift": "ude af drift", type: "forkert type", undertype: "forkert undertype",
+          objektmaal: "objektmål ikke bekræftet", periode: "periode ikke bekræftet",
+        }[kode] || kode));
         return (
           <Kort key={linje.id} titel={`Objekt ${i + 1} · ${linje.objekt}`}>
             <div className="ub-kravlinje"><b>Nødvendig plads:</b> {maalTekst(pladskrav(linje))}</div>
@@ -286,8 +297,19 @@ function Forslag({ kladde, saetKladde, kasser, udlaan, pladser, paaTilbage, paaV
             ) : (
               <div className="ub-intet-match" role="alert">
                 <b>Ingen egnet enhed</b>
-                <p>Ingen enhed opfylder alle bekræftede krav og hele perioden.</p>
-                <ul>{grunde.map((g) => <li key={g}>{g}</li>)}</ul>
+                <p>Afviste kandidater: {kategoriTekst.join(", ") || "ingen gyldige kandidater"}.</p>
+                <details className="ub-afviste">
+                  <summary>Se {resultat.afviste.length} afviste kandidater</summary>
+                  {resultat.afviste.map(({ kasse, vurdering }) => (
+                    <div key={kasse.id}>
+                      <b>{kasse.id}</b>
+                      <ul>{(vurdering.grunde || [vurdering.grund]).map((g) => <li key={g}>{g}</li>)}</ul>
+                      {(vurdering.bookingKonflikter || []).map((konflikt, n) => (
+                        <span key={`${kasse.id}-konflikt-${n}`}>Konflikt {konflikt.sagsnummer ? `· ${konflikt.sagsnummer} ` : ""}· {dato(konflikt.fra)} – {dato(konflikt.til)}</span>
+                      ))}
+                    </div>
+                  ))}
+                </details>
                 <p className="fc-hint">Alternative typer eller perioder skal vurderes særskilt og vælges aldrig automatisk.</p>
               </div>
             )}
@@ -302,17 +324,36 @@ function Forslag({ kladde, saetKladde, kasser, udlaan, pladser, paaTilbage, paaV
   );
 }
 
-function Bekraeftelse({ kladde, kasser, paaTilbage, paaBekraeft, arbejder, resultat, demo }) {
+function Bekraeftelse({ kladde, kasser, paaTilbage, paaBekraeft, arbejder, resultat, demo, paaAabnBooking, paaAabnKalender }) {
+  if (resultat?.ok) {
+    return (
+      <Kort titel="Reservation gemt" className="ub-bekraeft ub-kvittering">
+        <div className="ub-succes" role="status"><b>Reservationen er oprettet</b><span>{resultat.besked}</span></div>
+        <dl className="ub-resume">
+          <div><dt>Kunde</dt><dd>{kladde.kunde}</dd></div>
+          <div><dt>Reference</dt><dd>{kladde.eksternReference}</dd></div>
+          <div><dt>Periode</dt><dd>{datoIso(kladde.fraDato)} – {datoIso(kladde.tilDato)}</dd></div>
+        </dl>
+        <div className="ub-bekraeft-linjer">
+          {kladde.linjer.map((l, i) => <div key={l.id}><b>{l.objekt}</b><span>{l.valgtKasseId} · booking {resultat.bookingIder?.[i] || "gemt"}</span></div>)}
+        </div>
+        <div className="ub-handlinger">
+          <Knap onClick={paaAabnKalender}>Åbn kalender</Knap>
+          <Knap variant="primaer" onClick={paaAabnBooking}>Åbn booking</Knap>
+        </div>
+      </Kort>
+    );
+  }
   return (
     <Kort titel="Bekræft reservationen" className="ub-bekraeft">
       <div className="ub-advarsel ub-advarsel-info">
         <b>Der er endnu ikke oprettet en reservation</b>
-        <span>Serveren genkontrollerer mål, orientering, driftstilstand og hele den inklusive periode, når du bekræfter.</span>
+        <span>Kontrollér valget. Reservationen oprettes først, når du bekræfter.</span>
       </div>
       <dl className="ub-resume">
         <div><dt>Kunde</dt><dd>{kladde.kunde}</dd></div>
         <div><dt>Reference</dt><dd>{kladde.eksternReference}</dd></div>
-        <div><dt>Periode</dt><dd>{kladde.fraDato} – {kladde.tilDato} · begge datoer tæller med</dd></div>
+        <div><dt>Periode</dt><dd>{datoIso(kladde.fraDato)} – {datoIso(kladde.tilDato)} · begge datoer tæller med</dd></div>
       </dl>
       <div className="ub-bekraeft-linjer">
         {kladde.linjer.map((l, i) => {
@@ -327,12 +368,10 @@ function Bekraeftelse({ kladde, kasser, paaTilbage, paaBekraeft, arbejder, resul
         </Knap>
       </div>
       {resultat && (
-        <div className={resultat.ok ? "ub-succes" : "ub-intet-match"}>
-          <b>{resultat.ok ? "Reservation gemt" : "Reservation ikke oprettet"}</b>
+        <div className="ub-intet-match">
+          <b>Reservation ikke oprettet</b>
           <span>{resultat.besked}</span>
-          {resultat.bookingIder?.length ? <span>Booking-id: {resultat.bookingIder.join(", ")}</span> : null}
-          {resultat.ok && <Knap onClick={() => location.assign("/unitbooking")}>Åbn kalender</Knap>}
-          {!resultat.ok && demo && <span>Start den isolerede Auth/Functions/Database-emulator for at gemme. Gennemgangen ovenfor er kun UI-verifikation.</span>}
+          {!resultat.ok && demo && <span>I testvisningen kan oplysningerne gennemgås, men reservationen bliver ikke gemt.</span>}
         </div>
       )}
     </Kort>
@@ -362,6 +401,7 @@ export default function ImportBooking() {
   const [svar, saetSvar] = useState(null);
   const [resultat, saetResultat] = useState(null);
   const objektUrl = useRef(null);
+  const bekraeftOperationRef = useRef(operationId());
   const maaSkrive = harPerm(bruger?.perms, PERM.kasseudlaanSkriv);
   const { data: kasser, henter, tilstand, genindlaes } = useListe("kasser", { graense: 1000, demo: DEMO_KASSER });
   const { data: udlaan } = useListe("kasseudlaan", { graense: 2000, demo: DEMO_KASSEUDLAAN });
@@ -370,6 +410,7 @@ export default function ImportBooking() {
 
   useEffect(() => () => { if (objektUrl.current) URL.revokeObjectURL(objektUrl.current); }, []);
   const brugAflæsning = (a, o, id = null) => {
+    bekraeftOperationRef.current = operationId();
     saetAflæsning(a); saetKladde(fraAflæsning(a)); saetOriginal(o); saetKladdeId(id); saetTrin(2);
   };
   const importerTekst = async () => {
@@ -429,7 +470,7 @@ export default function ImportBooking() {
       saetResultat({ ok: false, besked: "Demo-tilstand: udkastet er gennemgået, men ingen reservation blev oprettet." });
       saetArbejder(false); return;
     }
-    const r = await bekraeftImportkladde({ kladdeId, kladde: kladdeRef.current || kladde, operationId: operationId() });
+    const r = await bekraeftImportkladde({ kladdeId, kladde: kladdeRef.current || kladde, operationId: bekraeftOperationRef.current });
     saetArbejder(false);
     saetResultat(r.ok
       ? { ok: true, besked: `${r.data.bookingIder.length} reservation(er) er gemt. Originalmaterialet er bevaret på importudkastet.`, bookingIder: r.data.bookingIder }
@@ -442,7 +483,7 @@ export default function ImportBooking() {
   return (
     <div className="fc-grid ub-side">
       <div className="ub-sidehoved">
-        <div><h1>{titel}</h1><p>Mail eller bookingskema → gennemgået udkast → servervalideret reservation.</p></div>
+        <div><h1>{titel}</h1><p>Importér materialet, kontrollér oplysningerne, vælg en enhed og bekræft.</p></div>
         <Knap onClick={() => navigate("/unitbooking")}>Luk assistent</Knap>
       </div>
       <Proces trin={trin} />
@@ -450,7 +491,7 @@ export default function ImportBooking() {
       {trin === 1 && <ImportTrin tekst={tekst} saetTekst={saetTekst} onTekst={importerTekst} onFil={importerFil} arbejder={arbejder} svar={svar} demo={demo} />}
       {trin === 2 && kladde && <Gennemgang original={original} kladde={kladde} saetKladde={saetKladde} aflæsning={aflæsning} typer={typer} paaTilbage={() => saetTrin(1)} paaForslag={findForslag} arbejder={arbejder} svar={svar} />}
       {trin === 3 && kladde && <Forslag kladde={kladde} saetKladde={saetKladde} kasser={kasser} udlaan={udlaan} pladser={pladser} paaTilbage={() => saetTrin(2)} paaVidere={() => saetTrin(4)} />}
-      {trin === 4 && kladde && <Bekraeftelse kladde={kladde} kasser={kasser} paaTilbage={() => saetTrin(3)} paaBekraeft={bekraeft} arbejder={arbejder} resultat={resultat} demo={demo} />}
+      {trin === 4 && kladde && <Bekraeftelse kladde={kladde} kasser={kasser} paaTilbage={() => saetTrin(3)} paaBekraeft={bekraeft} arbejder={arbejder} resultat={resultat} demo={demo} paaAabnBooking={() => navigate(`/unitbooking?booking=${encodeURIComponent(resultat?.bookingIder?.[0] || "")}`)} paaAabnKalender={() => navigate("/unitbooking")} />}
     </div>
   );
 }

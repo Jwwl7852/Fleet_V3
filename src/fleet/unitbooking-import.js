@@ -23,6 +23,15 @@ export const UNIT_IMPORT_TILLADTE_ENDELSER = Object.freeze([
   ".eml", ".msg", ".pdf", ".xlsx", ".csv", ".png", ".jpg", ".jpeg",
 ]);
 
+export const UNIT_IMPORT_FORMATMATRIX = Object.freeze([
+  { filtype: "eml", label: ".eml", udtraek: "Mailtekst og understøttede vedhæftninger", status: "lokal" },
+  { filtype: "msg", label: ".msg", udtraek: "Mailtekst og understøttede vedhæftninger", status: "lokal" },
+  { filtype: "pdf", label: "PDF med tekst", udtraek: "Tekst med sidehenvisninger", status: "lokal" },
+  { filtype: "xlsx", label: ".xlsx", udtraek: "Ark og celleværdier", status: "lokal" },
+  { filtype: "csv", label: ".csv", udtraek: "Kolonner og rækker", status: "lokal" },
+  { filtype: "scan", label: "Scannet PDF eller billede", udtraek: "Kræver tilsluttet OCR", status: "kraever-ocr" },
+]);
+
 export const UNIT_IMPORT_MAKS_BYTES = 25 * 1024 * 1024;
 export const UNIT_IMPORT_MAKS_TEKST = 200_000;
 export const UNIT_IMPORT_MAKS_LINJER = 50;
@@ -140,6 +149,12 @@ const HEADER_ALIASES = Object.freeze({
   type: ["type", "kassetype", "enhedstype"],
   undertype: ["undertype", "subtype"],
   orientering: ["orientering", "håndtering", "haandtering"],
+  kunde: ["kunde", "customer"],
+  kontaktperson: ["kontaktperson", "kontakt", "contact"],
+  eksternReference: ["sagsnummer", "sag", "bookingreference", "reference"],
+  fraDato: ["fra dato", "fradato", "startdato", "from"],
+  tilDato: ["til dato", "tildato", "slutdato", "to"],
+  klargoerDato: ["klargøringsfrist", "klargoeringsfrist", "klargørdato", "klargoerdato", "ready by"],
 });
 
 function headerNoegle(v) {
@@ -149,14 +164,23 @@ function headerNoegle(v) {
 
 export function udtraekCsv(tekst) {
   const raekker = String(tekst || "").replace(/^\uFEFF/, "").split(/\r?\n/).filter((x) => trim(x));
-  if (raekker.length < 2) return { linjer: [], kilder: [], advarsler: ["CSV-filen indeholder ingen datarækker."] };
+  if (raekker.length < 2) return { felter: {}, linjer: [], kilder: [], advarsler: ["CSV-filen indeholder ingen datarækker."] };
   const separator = (raekker[0].match(/;/g) || []).length >= (raekker[0].match(/,/g) || []).length ? ";" : ",";
   const headers = delLinje(raekker[0], separator).map(headerNoegle);
   const linjer = [];
   const kilder = [];
+  const felter = {};
   for (let r = 1; r < raekker.length && linjer.length < UNIT_IMPORT_MAKS_LINJER; r += 1) {
     const celler = delLinje(raekker[r], separator);
     const post = Object.fromEntries(headers.map((h, i) => [h, celler[i]]).filter(([h]) => h));
+    if (r === 1) {
+      for (const navn of ["kunde", "kontaktperson", "eksternReference"]) {
+        if (post[navn]) felter[navn] = tekstEllerNull(post[navn], navn === "eksternReference" ? 80 : 160);
+      }
+      for (const navn of ["fraDato", "tilDato", "klargoerDato"]) {
+        if (post[navn]) felter[navn] = sikkerDato(post[navn]).iso;
+      }
+    }
     const enhed = trim(post.enhed);
     const maal = ["laengde", "bredde", "hoejde"].map((a) => maalTilMm(post[a], enhed));
     const id = `linje-${r}`;
@@ -183,7 +207,13 @@ export function udtraekCsv(tekst) {
   if (!headers.includes("laengde") || !headers.includes("bredde") || !headers.includes("hoejde")) {
     advarsler.push("CSV mangler en eller flere målkolonner.");
   }
-  return { linjer, kilder, advarsler };
+  for (const navn of ["fraDato", "tilDato", "klargoerDato"]) {
+    const kolonne = headers.indexOf(navn);
+    if (kolonne >= 0 && delLinje(raekker[1], separator)[kolonne] && !felter[navn]) {
+      advarsler.push(`${navn === "fraDato" ? "Fra-dato" : navn === "tilDato" ? "Til-dato" : "Klargøringsfristen"} skal bekræftes.`);
+    }
+  }
+  return { felter, linjer, kilder, advarsler };
 }
 
 function findFelt(tekst, navne) {
@@ -199,6 +229,13 @@ function findMaal(tekst) {
   if (!m) return null;
   const linje = String(tekst).slice(0, m.index).split(/\r?\n/).length;
   return { vaerdier: [m[1], m[2], m[3]], enhed: m[4].toLowerCase(), reference: `Linje ${linje}`, udsnit: m[0] };
+}
+
+function findUafklaretMaal(tekst) {
+  const m = String(tekst || "").match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)(?!\s*(?:mm|cm|m)\b)/i);
+  if (!m) return null;
+  const linje = String(tekst).slice(0, m.index).split(/\r?\n/).length;
+  return { reference: `Linje ${linje}`, udsnit: m[0] };
 }
 
 /** Forsigtig, deterministisk aflæsning af indsat mailtekst eller .eml-tekst. */
@@ -218,6 +255,7 @@ export function udtraekBookingtekst(tekst) {
     haandtering: findFelt(original, ["håndtering", "haandtering", "orientering", "handling"]),
   };
   const maal = findMaal(original);
+  const uafklaretMaal = maal ? null : findUafklaretMaal(original);
   const fra = felter.fraDato ? sikkerDato(felter.fraDato.vaerdi) : { iso: null, fejl: "Fra-dato mangler." };
   const til = felter.tilDato ? sikkerDato(felter.tilDato.vaerdi) : { iso: null, fejl: "Til-dato mangler." };
   const klar = felter.klargoerDato ? sikkerDato(felter.klargoerDato.vaerdi) : { iso: null, fejl: null };
@@ -250,7 +288,10 @@ export function udtraekBookingtekst(tekst) {
   if (!felter.eksternReference) advarsler.push("Sagsnummer eller ekstern reference mangler.");
   if (fra.fejl) advarsler.push(fra.fejl);
   if (til.fejl) advarsler.push(til.fejl);
-  if (!maal) advarsler.push("Objektets længde, bredde og højde mangler.");
+  if (!maal && uafklaretMaal) {
+    kilder.push(kilde("linje-1.maal", uafklaretMaal.udsnit, uafklaretMaal.reference, false));
+    advarsler.push("Mål er aflæst, men måleenhed og målaksers betydning skal bekræftes.");
+  } else if (!maal) advarsler.push("Objektets længde, bredde og højde mangler.");
   if (felter.antal && antalLinjer === 1 && danskTal(felter.antal.vaerdi) !== 1) {
     advarsler.push("Antallet er uklart. Opret de enkelte objekter som separate linjer.");
   }
@@ -309,18 +350,26 @@ function indvendigeMaal(kasse = {}) {
 function volum(mm = {}) { return mm.laengdeMm * mm.breddeMm * mm.hoejdeMm; }
 
 export function vurderKasse(linje, kasse, udlaan = [], periode = {}) {
+  const afvist = (kode, tekst, ekstra = {}) => ({
+    gyldig: false, grund: tekst, grunde: [tekst], afvisninger: [{ kode, tekst, ...ekstra }], ...ekstra,
+  });
   const krav = pladskrav(linje);
-  if (!krav) return { gyldig: false, grund: "Objektets mål eller polstring er ikke bekræftet." };
+  if (!krav) return afvist("objektmaal", "Objektets mål eller polstring er ikke bekræftet.");
   const indvendig = indvendigeMaal(kasse);
-  if (!indvendig) return { gyldig: false, grund: "Enheden har ikke bekræftede indvendige mål." };
-  if (kasse.status === "udeAfDrift") return { gyldig: false, grund: "Enheden er ude af drift." };
-  if (linje.type && kasse.type !== linje.type) return { gyldig: false, grund: `Enheden er type ${kasse.type}, ikke ${linje.type}.` };
-  if (linje.undertype && kasse.undertype !== linje.undertype) return { gyldig: false, grund: "Enhedens undertype opfylder ikke kravet." };
+  if (!indvendig) return afvist("indvendige-maal", "Enheden har ikke bekræftede indvendige mål.");
+  if (kasse.status === "udeAfDrift") return afvist("ude-af-drift", "Enheden er ude af drift.");
+  if (linje.type && kasse.type !== linje.type) return afvist("type", `Type ${kasse.type || "ukendt"} opfylder ikke kravet ${linje.type}.`);
+  if (linje.undertype && kasse.undertype !== linje.undertype) return afvist("undertype", "Enhedens undertype opfylder ikke kravet.");
   if (!Number.isFinite(periode.fra) || !Number.isFinite(periode.til)) {
-    return { gyldig: false, grund: "Perioden er ikke bekræftet." };
+    return afvist("periode", "Perioden er ikke bekræftet.");
   }
   const stoed = konflikter(udlaan, { kasseId: kasse.id, fra: periode.fra, til: periode.til });
-  if (stoed.length) return { gyldig: false, grund: `Optaget i perioden af sag ${stoed[0].sagsnummer}.` };
+  if (stoed.length) {
+    const bookingKonflikter = stoed.map((x) => ({
+      bookingId: x.id || null, sagsnummer: x.sagsnummer || null, fra: x.fra, til: x.til,
+    }));
+    return afvist("optaget", "Optaget i hele eller dele af perioden.", { bookingKonflikter });
+  }
   for (const o of tilladteOrienteringer(linje)) {
     const anvendt = orienter(krav, o);
     const rest = {
@@ -336,7 +385,7 @@ export function vurderKasse(linje, kasse, udlaan = [], periode = {}) {
       };
     }
   }
-  return { gyldig: false, grund: "Den nødvendige plads passer ikke i de tilladte orienteringer." };
+  return afvist("for-lille", "Den nødvendige plads passer ikke i de tilladte orienteringer.");
 }
 
 export function foreslaaKasser(linje, kasser = [], udlaan = [], periode = {}) {

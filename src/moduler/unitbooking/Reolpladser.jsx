@@ -206,7 +206,7 @@ export default function Reolpladser() {
               )}
               <Knap variant="primaer" disabled={!maaSkrive} onClick={() => saetNyPlads(true)}
                     title={maaSkrive ? "Opret en reolplads."
-                                     : `Kræver ${PERM.kasserSkriv} — reglerne afviser.`}>
+                                     : "Du har ikke rettighed til at oprette enheder."}>
                 Ny plads
               </Knap>
             </span>

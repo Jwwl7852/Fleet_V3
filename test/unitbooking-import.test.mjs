@@ -70,6 +70,22 @@ describe("forsigtig aflæsning", () => {
     assert.ok(r.kilder.some((k) => k.reference === "Række 3, celle 1"));
   });
 
+  it("aflæser bookingfelter gennem CSV-forløbet", () => {
+    const r = udtraekCsv("Kunde;Kontaktperson;Sagsnummer;Fra dato;Til dato;Objekt;Længde;Bredde;Højde;Enhed\nMuseum Nord;Ida Holm;MN-42;21-09-2026;28-09-2026;Relief;100,5;60;80;cm");
+    assert.equal(r.felter.kunde, "Museum Nord");
+    assert.equal(r.felter.kontaktperson, "Ida Holm");
+    assert.equal(r.felter.eksternReference, "MN-42");
+    assert.equal(r.felter.fraDato, "2026-09-21");
+    assert.equal(r.linjer[0].laengdeMm, 1005);
+  });
+
+  it("skelner uafklarede mål fra helt manglende mål", () => {
+    const r = udtraekBookingtekst("Kunde: Museum\nSagsnummer: 42\nFra: 21-09-2026\nTil: 22-09-2026\nObjekt: Relief\nMål: 100 x 60 x 80");
+    assert.ok(r.advarsler.some((x) => /Mål er aflæst/.test(x)));
+    assert.ok(!r.advarsler.some((x) => /længde, bredde og højde mangler/.test(x)));
+    assert.equal(r.kilder.find((x) => x.felt === "linje-1.maal")?.sikker, false);
+  });
+
   it("giver samme dubletnøgle for samme tekst på tværs af linjeslut", () => {
     assert.equal(
       kanoniskImportMateriale({ originalTekst: "Kunde: A\r\nSag: 1" }),
@@ -125,6 +141,18 @@ describe("forslag og reservation", () => {
     assert.equal(r.forslag.length, 0);
     assert.ok(r.afviste.some((x) => /passer ikke/.test(x.vurdering.grund)));
     assert.ok(r.afviste.some((x) => /indvendige mål/.test(x.vurdering.grund)));
+    assert.ok(r.afviste.every((x) => x.vurdering.afvisninger?.[0]?.kode));
+  });
+
+  it("bevarer konfliktens booking og periode som kandidatdetalje", () => {
+    const r = vurderKasse(linje(), kasse("AL-1", 1300, 900, 1100), [{
+      id: "booking-7", kasseId: "AL-1", sagsnummer: "SAG-7", tilstand: "booket",
+      fra: periode.fra, til: periode.til,
+    }], periode);
+    assert.equal(r.afvisninger[0].kode, "optaget");
+    assert.deepEqual(r.bookingKonflikter[0], {
+      bookingId: "booking-7", sagsnummer: "SAG-7", fra: periode.fra, til: periode.til,
+    });
   });
 
   it("kræver gennemgang før et udkast er klar", () => {
