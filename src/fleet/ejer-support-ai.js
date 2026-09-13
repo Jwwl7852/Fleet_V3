@@ -26,17 +26,39 @@ export function supportSagFakta(traad = {}) {
   const oplysninger = poster(traad.sagsOplysninger);
   const find = (...id) => oplysninger.find((post) => id.includes(post.id));
   const vaerdi = (post) => post?.tilstand === "mangler" ? "Ukendt" : tekst(post?.vaerdi, 1_000) || "Ukendt";
+  const versionPost = find("version", "produktversion");
+  const afsender = tekst(senesteKundebesked.fra, 300) || "Ukendt mailafsender";
+  const kontakt = tekst(traad.kontaktEmail, 300) || "Ukendt registreret kontakt";
+  const version = tekst(support.version || support.kendtVersion, 80) || vaerdi(versionPost);
   return {
     sagId: tekst(traad.id, 160), nummer: tekst(support.nummer, 80) || "Nummer ikke tildelt",
     kunde: tekst(traad.virksomhedsnavn || traad.kontaktNavn || traad.kontaktEmail, 300) || "Ukendt kunde",
-    kontakt: tekst(traad.kontaktEmail, 300) || "Ukendt kontakt",
+    kundeKilde: traad.links?.virksomhedId ? "CRM-kobling" : "Sagsmetadata · CRM-kobling ikke registreret",
+    kontaktNavn: tekst(traad.kontaktNavn, 200) || "Navn ikke registreret",
+    kontakt,
+    kontaktKilde: traad.links?.kontaktId ? "CRM-kontakt" : "Sagsmetadata · CRM-kontakt ikke registreret",
+    afsender,
+    afsenderKilde: "Seneste indgående besked",
     modul: tekst(support.modul, 80) || "Ukendt",
-    version: tekst(support.version || support.kendtVersion, 80) || vaerdi(find("version", "produktversion")),
+    version,
+    versionKilde: tekst(support.versionKilde || versionPost?.kilde, 300) || "Kilde ikke registreret",
+    versionErSyntetisk: /syntetisk|fixture|testværdi|testdata/i.test(`${support.versionKilde || ""} ${versionPost?.kilde || ""}`),
     problem: tekst(support.problem || senesteKundebesked.tekst, 3_000) || "Problemet er ikke beskrevet.",
     fejltekst: tekst(support.fejltekst, 1_000) || vaerdi(find("fejltekst", "fejl")),
     forsoegt: tekst(support.forsoegt, 2_000) || vaerdi(find("forsoegt", "fejlsoegning")),
     senesteAktivitetMs: Number(traad.senesteAktivitetMs || 0),
   };
+}
+
+export function supportVersionMatcher(relevanteVersioner, version) {
+  const krav = tekst(relevanteVersioner, 200).toLowerCase();
+  const aktuel = tekst(version, 80).toLowerCase();
+  if (!krav || krav === "ikke afgrænset" || krav === "alle") return true;
+  if (!aktuel || aktuel === "ukendt") return false;
+  return krav.split(/[,;]/).map((post) => post.trim()).filter(Boolean).some((post) => {
+    if (post.endsWith(".x")) return aktuel.startsWith(post.slice(0, -1));
+    return aktuel === post || aktuel.startsWith(`${post}.`);
+  });
 }
 
 function scoreKilde(kilde, fakta) {
@@ -53,6 +75,8 @@ export function findSupportKilder(traad, viden) {
     .filter((post) => post.godkendt && post.vidensstatus === "godkendt" && post.titel && post.indhold && post.kilde)
     .map((post) => ({ ...post, relevans: scoreKilde(post, fakta) }))
     .filter((post) => post.relevans >= 3)
+    .map((post) => ({ ...post, versionsrelevant: supportVersionMatcher(post.relevanteVersioner, fakta.version) }))
+    .filter((post) => post.versionsrelevant)
     .sort((a, b) => b.relevans - a.relevans || b.aktuelVersion - a.aktuelVersion || a.titel.localeCompare(b.titel, "da"))
     .slice(0, 5);
 }
