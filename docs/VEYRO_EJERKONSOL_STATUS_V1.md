@@ -754,3 +754,31 @@ ingen klargjort Veyro-post er rapporteret som bogført.
   bilagsmail er fortsat **Ikke tilsluttet**.
 - Ingen push, merge, deployment, produktionsændring, eksternt AI-kald eller
   rigtig mailafsendelse er udført.
+
+## V8.1 — Support-afstemning — 2026-09-13
+
+- Udgangspunktet var branch `codex/ejer-integrated-development` ved
+  `29b8b0252384cc111e58b3bfe279a18e56046642`. Ejerrettelserne er gemt i det
+  lokale implementeringscommit `2c25c196ae980995849a12b06f805551c98f9f63`.
+- Supporthovedet er komprimeret, statusbetegnelser er afstemt mellem kø,
+  detalje og Mail, og tildelt triage vises som **Faglig afklaring** frem for
+  **Skal fordeles**.
+- Svarudkast åbner på den faktiske kundetekst. Måling viser 7,49 synlige
+  tekstlinjer ved 1440×900 og 4,44 ved 360×800. Samtale og alle tre
+  højrepaneler har bevist uafhængig rulning; mobiltekst bevares ved faneskift.
+- Versionsrelevante kilder, syntetisk versionsproveniens og forskellen mellem
+  CRM-kontakt og mailafsender er synlig. Kendt og ukendt AI-forløb er testet
+  uden eksternt AI-kald.
+- Ejeradapteren følger `veyro.support.v1.1`, bruger de kanoniske
+  `supportEjer*`-operationer, sender sags- og kladderevision og transporterer
+  via `supportEjerSvarTransporter`. Intern portal-AI fejler lukket, fordi
+  kontrakten endnu ikke leverer en færdig operation.
+- Lokal verifikation består: 7/7 V8.1-tests, 11/11 designtests, målrettet
+  ESLint, emulatoraccept E1–E6 og Vite-build med 540 moduler. Normalt login,
+  reload, overtagelse og samme status i Support/Mail er bevist i Edge.
+- R1–R6 er lokalt bestået. R7 og den fælles del af R8 afventer en
+  samlingsbuild, hvor ejer- og kunde-UI bruger samme isolerede backend på
+  9198/9290/5099; to separate demoer er ikke kaldt fælles integration.
+- Microsoft 365, OpenAI, Dinero, OCR og bilagsmail står fortsat som **Ikke
+  tilsluttet**. Ingen push, merge, deployment, produktionsændring, eksternt
+  AI-kald eller rigtig mailafsendelse er udført.
