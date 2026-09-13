@@ -14,7 +14,9 @@ Fra repositoryroden:
 
 Åbn `http://127.0.0.1:5205/`. Den lokale integrationsdatabase er IndexedDB
 med navnet `veyro-workforce-v2-integration-v1`. Brug vælgeren “Vis som” til at
-afprøve leder- og medarbejderforløb. Ændringer overlever genindlæsning.
+forhåndsvise leder- og medarbejderflader i den isolerede prototype. Vælgeren
+ændrer ikke autentifikation eller rettigheder og må ikke indgå i den
+integrerede version. Ændringer overlever genindlæsning.
 
 ## Kontroller
 

@@ -69,6 +69,29 @@ vagter, fravær, kompetencer eller stemplinger.
 
 ## Acceptscenarier for samlingen
 
+### Påkrævet tværsessionsforløb
+
+Afprøv fraværsflowet mellem **to separate, samtidigt autentificerede
+sessioner** mod den fælles backend. “Vis som” i standalone-prototypen er kun
+et previewværktøj og kan ikke bruges som bevis for claims, tenant-isolation
+eller rettighedskontrol.
+
+1. Session A er autentificeret som en medarbejder med
+   `brugere/<uid>/personId` og indsender en frihedsanmodning.
+2. Session B er autentificeret som en anden bruger med den relevante
+   godkendelsespermission og godkender anmodningen med et svar.
+3. Session A modtager/læser den gemte afgørelse og svaret efter genindlæsning
+   fra den fælles backend.
+4. PLANNING læser den ændrede tilgængelighed fra samme backend og afviser
+   eller markerer en tildeling i fraværsperioden uden at kende den følsomme
+   årsag.
+5. Gentag godkendelseskaldet og kontrollér, at der fortsat kun findes én
+   fraværspost og én reservation med id afledt af fraværets id.
+
+Dokumentér begge uid'er, deres forskellige claims/permissions, det fælles
+`tenantId`, fraværs-id, reservations-id og PLANNING-resultatet. Brug ikke
+screenshots med tokens eller følsomme fraværsnoter.
+
 1. Deaktivér alle driftsmoduler undtagen WORKFORCE; register, vagtplan,
    fravær, kompetencer, timer og selvbetjening skal fortsat virke.
 2. Opret en medarbejder uden `uid`; vælg samme `personId` i FLEET, WMS,
