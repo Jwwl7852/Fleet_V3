@@ -1,5 +1,14 @@
 # Veyro – integrationsforberedelse V2
 
+> **Opdatering 13. september 2026:** Afsnittene om manglende checkpoints er
+> historisk forberedelsesstatus. De præcise leverancer er nu modtaget og
+> lokalt integreret: PROCURE `eef500ae834d159c8aaf5a3e6b878170bf2571e5`,
+> Support `aae761d18e8835cc2c572316068f8f51e50aaee8` og hele Ejerkonsollen
+> `f4683049a68fac5265e31ceafb22d6684f736a34`, inklusive permanent adapter
+> `f7325ea94044a577a9660b323270f965ae4ac8a7`. Afstande og slutgate fremgår af
+> `VEYRO_INTEGRATION_AFSLUTNING_V2.md`; denne fil omskrives ikke bagud, fordi
+> den dokumenterer beslutningsgrundlaget før sammenlægningen.
+
 Dato: 13. september 2026
 
 Modtagerside: `codex/veyro-integration-v1`

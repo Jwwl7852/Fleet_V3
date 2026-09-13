@@ -1,8 +1,21 @@
 # Veyro integrationsplan V1
 
-Status: forberedelse, ingen modulmerge udført
+Status: samlet lokal integrationsrunde; slutgate dokumenteres i V2-afslutningsrapporten
 
 Dato: 9. september 2026
+
+## Afsluttet integrationsrunde 13. september 2026
+
+PROCURE, kundens Support og hele Ejerkonsollen er efter baselinekontrol
+integreret som tre eksplicitte merge-commits. De efterfølgende tilpasninger er
+holdt i særskilte commits. Den fælles sluttilstand, konfliktbeslutninger,
+emulatorporte, browserbeviser og åbne pilotpunkter er dokumenteret i
+`VEYRO_INTEGRATION_AFSLUTNING_V2.md`. Fælles design- og betjeningsregler samt
+den ærlige skærmstatus findes i `VEYRO_FAELLES_UX_STANDARD_V1.md`.
+
+Dette ændrer ikke milepælsgrænsen nedenfor: den samlede brugerflade og de
+emulatorafprøvede serverfunktioner er ikke en produktionstilslutning eller en
+erstatning for Milepæl B.
 
 Integrationsbranch: `codex/veyro-integration-v1`
 
