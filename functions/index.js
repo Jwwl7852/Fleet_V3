@@ -188,6 +188,19 @@ import {
   matchForslag as braendstofMatchForslag, afgørAutomatch, kanMatcheBraendstof,
 } from "./delt/braendstofmatch.js";
 
+/* Fælles supportsag ejes af integrations-/supportsporet. Selve handlerne
+   ligger separat, så ejerchatten kan koble UI på uden at oprette parallelle
+   endpoints eller redigere den store platformfil. */
+export {
+  supportSamtaleStart, supportSamtalerList, supportSamtaleHent,
+  supportBeskedSend, supportEskaler, supportSagLoes, supportSagGenaabn,
+  supportEjerKoelist, supportEjerSagHent, supportEjerOvertag,
+  supportEjerStatusOpdater, supportEjerSvarKladdeGem,
+  supportEjerAiForslagGem, supportEjerBaggrundGem,
+  supportEjerSvarGodkend, supportEjerSvarTransporter,
+  supportEjerSvarSend, supportEjerNoteSkriv,
+} from "./support-endpoints.js";
+
 const lokalStorageBucket = process.env.FUNCTIONS_EMULATOR === "true" && process.env.GCLOUD_PROJECT
   ? `${process.env.GCLOUD_PROJECT}.appspot.com`
   : null;

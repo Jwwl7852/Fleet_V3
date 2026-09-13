@@ -639,12 +639,12 @@ export const NAV = [
     ],
   },
   {
-    key: "support", sti: "/support", label: "Hjælp", titel: "Hjælp & Support",
-    under: "Kom videre selv, eller find ud af hvordan I får fat i FleetControl.",
+    key: "support", sti: "/support", label: "Hjælp", titel: "Hjælp og support",
+    under: "Få hjælp til Veyro, og følg dine supportsager.",
     gruppe: "hjaelp",
     born: [
-      { key: "hjaelp", sti: "/support", label: "Hjælp & Support",
-        titel: "Hjælp & Support", under: "Kom videre selv, eller find ud af hvordan I får fat i FleetControl." },
+      { key: "hjaelp", sti: "/support", label: "Hjælp og support",
+        titel: "Hjælp og support", under: "Få hjælp til Veyro, og følg dine supportsager." },
       /* Vores egne to. De SKJULES ikke for en kunde — de viser en "din rolle
          har ikke adgang"-tilstand, som Medarbejdere gør. Nav-filtrering på
          permission er en selvstændig ændring. */

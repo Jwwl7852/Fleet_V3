@@ -1,0 +1,16 @@
+{
+  "projekt": "demo-veyro-support-samling",
+  "kundeUrl": "http://127.0.0.1:5216/support",
+  "ejerUrl": "http://127.0.0.1:5215/main/support",
+  "sagId": "-P1Pq9RWrwESVAb79EhO",
+  "supportnummer": "SUP-2026-00001",
+  "sammeSagBeggeUI": true,
+  "portalSvarSetAfKunde": true,
+  "internBaggrundLaekketTilKunde": false,
+  "internVidenLaekketTilKunde": false,
+  "internAiInstruktionLaekketTilKunde": false,
+  "nyeKonsolfejl": 0,
+  "eksternAi": false,
+  "mailtransport": false,
+  "ejerKompositPermanent": false
+}

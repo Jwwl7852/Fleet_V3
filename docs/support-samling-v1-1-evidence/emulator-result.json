@@ -1,0 +1,28 @@
+{
+  "gate": "VEYRO support samling V1.1",
+  "date": "2026-09-13",
+  "projectId": "demo-veyro-support-samling",
+  "codeCommit": "1ba18d529093322f4442b04791aeb97a219eb0f4",
+  "transientSyntheticCase": {
+    "sagId": "-P1P8L8bSam7b_uIJL3T",
+    "nummer": "SUP-2026-00001"
+  },
+  "results": {
+    "kundeTilEjerTilKunde": true,
+    "sammeSagId": true,
+    "ejerprojektionKunRead": true,
+    "direkteSvarAfvist": true,
+    "aendringEfterGodkendelseAfvist": true,
+    "kladdeGodkendTransport": true,
+    "idempotentTransportRetry": true,
+    "internNoteIkkeKundesynlig": true,
+    "kundesvarGenstarterIkkeAi": true,
+    "loesOgGenaabnSammeSag": true,
+    "andenBrugerSammeTenantAfvist": true,
+    "andenTenantAfvist": true,
+    "anonymAfvist": true,
+    "eksternAi": false,
+    "mail": false
+  },
+  "note": "Sagen og brugerne fandtes kun i de isolerede emulatorer og blev fjernet ved nedlukning. Filen indeholder ingen adgangstokens eller passwords."
+}

@@ -1,3 +1,8 @@
+/* ⚠ KOPI — REDIGÉR IKKE HER.
+ * Kilden er src/fleet/support.js. Filen lægges af
+ * scripts/kopier-delt.mjs, fordi Firebase kun deployer functions/-mappen.
+ * test/functions-delt.test.mjs fejler hvis de to ikke er identiske.
+ */
 /* src/fleet/support.js
  * Support. BESLUTNING 23, korrigeret af BESLUTNING 24.
  *

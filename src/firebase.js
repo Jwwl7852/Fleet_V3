@@ -30,9 +30,21 @@ const lokalVaert =
   typeof window !== "undefined"
   && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
 const emulatorerAnmodet = import.meta.env.VITE_FIREBASE_EMULATORS === "true";
-const databaseEmulatorPort = Number(import.meta.env.VITE_FB_DATABASE_EMULATOR_PORT || 9000);
-const authEmulatorPort = Number(import.meta.env.VITE_FB_AUTH_EMULATOR_PORT || 9099);
-const funktionerEmulatorPort = Number(import.meta.env.VITE_FB_FUNCTIONS_EMULATOR_PORT || 5001);
+const databaseEmulatorPort = Number(
+  import.meta.env.VITE_FIREBASE_DATABASE_PORT
+  || import.meta.env.VITE_FB_DATABASE_EMULATOR_PORT
+  || 9000,
+);
+const authEmulatorPort = Number(
+  import.meta.env.VITE_FIREBASE_AUTH_PORT
+  || import.meta.env.VITE_FB_AUTH_EMULATOR_PORT
+  || 9099,
+);
+const funktionerEmulatorPort = Number(
+  import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT
+  || import.meta.env.VITE_FB_FUNCTIONS_EMULATOR_PORT
+  || 5001,
+);
 const emulatorPreviewAnmodet =
   emulatorerAnmodet
   && import.meta.env.VITE_FIREBASE_EMULATOR_PREVIEW === "true";
@@ -95,8 +107,8 @@ if (!demoMode) {
        europe-west1 er både langsommere og en dataoverførsel ud af EU. */
     _funktioner = firebase.app().functions("europe-west1");
     if (brugerLokaleEmulatorer) {
-      for (const [name, port] of [["Database", databaseEmulatorPort], ["Auth", authEmulatorPort], ["Functions", funktionerEmulatorPort]]) {
-        if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error(`VITE_FB_${name.toUpperCase()}_EMULATOR_PORT er ugyldig.`);
+      for (const [navn, port] of [["database", databaseEmulatorPort], ["auth", authEmulatorPort], ["functions", funktionerEmulatorPort]]) {
+        if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error(`${navn}-emulatoren har en ugyldig lokal port.`);
       }
       _db.useEmulator("127.0.0.1", databaseEmulatorPort);
       _auth.useEmulator(`http://127.0.0.1:${authEmulatorPort}`, { disableWarnings: true });

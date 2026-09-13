@@ -1,0 +1,16 @@
+{
+  "package": "VEYRO_SUPPORT_SAMLING_REVIEW_V1_1",
+  "date": "2026-09-13",
+  "supportBranch": "codex/support-kundeplatform-development",
+  "productCommit": "aa269edc0e757ff6b5c2f2beddd628c643057c71",
+  "ownerProductCommit": "2c25c196ae980995849a12b06f805551c98f9f63",
+  "ownerReadOnlyHead": "7fa23cdd7f189e9adec8e56fb36168ad2d547fc3",
+  "caseId": "-P1Pq9RWrwESVAb79EhO",
+  "supportNumber": "SUP-2026-00001",
+  "screenshotsCommitted": false,
+  "screenshotReason": "Afslutningstilstande blev optaget i Codex-sessionen; repositoriebeviset gemmer kun ikke-følsomme observationer og resultater.",
+  "externalAi": false,
+  "mailTransport": false,
+  "productionData": false,
+  "ownerCompositeCommitted": false
+}
