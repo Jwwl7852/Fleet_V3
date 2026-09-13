@@ -163,6 +163,15 @@ describe("den fælles fysiske unit", () => {
     await assertFails(set(ref(db, t(KUN_WMS, "kassetyper/ny")), { navn: "Ny type" }));
   });
 
+  it("lukker UNIT-klientens direkte vej til fysisk placering og serverstatus", async () => {
+    const db = som(KUN_TB);
+    await assertFails(update(ref(db, t(KUN_TB, "kasser/UNIT-101")), { pladsId: "p2" }));
+    await assertFails(update(ref(db, t(KUN_TB, "kasser/UNIT-101")), { status: "udlaant" }));
+    await assertSucceeds(update(ref(db, t(KUN_TB, "kasser/UNIT-101")), {
+      note: "Syntetisk stamdatarettelse uden fysisk flytning.",
+    }));
+  });
+
   it("holder den fysiske historik append-only for alle klienter", async () => {
     for (const tenant of [KUN_WMS, KUN_TB, BEGGE]) {
       const db = som(tenant);

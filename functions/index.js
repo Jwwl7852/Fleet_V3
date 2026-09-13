@@ -4676,6 +4676,20 @@ async function kraevUnitlagerskriv(req, kilde) {
 /** Saldoposten som den ser ud efter en ændring — eller null hvis den ikke findes. */
 const saldoAf = (snap) => (snap.exists() ? snap.val()?.antal ?? 0 : 0);
 
+async function transaktionMedVarmTenantCache(tenantRef, callback) {
+  let klar;
+  let fejl;
+  const vent = new Promise((resolve, reject) => { klar = resolve; fejl = reject; });
+  const cacheKlar = () => klar();
+  tenantRef.on("value", cacheKlar, fejl);
+  await vent;
+  try {
+    return await tenantRef.transaction(callback);
+  } finally {
+    tenantRef.off("value", cacheKlar);
+  }
+}
+
 export const unitlageropret = onCall({ region: REGION }, async (req) => {
   const d = req.data || {};
   const kilde = kortStreng(d.kilde, 20);
@@ -4696,7 +4710,15 @@ export const unitlageropret = onCall({ region: REGION }, async (req) => {
   let afvisning = null;
   let resultat = null;
 
-  const tx = await rod.transaction((aktuel) => {
+  /* Admin SDK kan kalde en parent-transaction med tom lokal cache først.
+     En før-læsning henter den autoritative tenant uden at flytte selve
+     valideringen eller skrivningen ud af den atomiske transaktion. */
+  const unitlagerOpretFoer = await rod.once("value");
+  if (!unitlagerOpretFoer.exists()) {
+    throw new HttpsError("not-found", "Virksomhedens lagerdata findes ikke.");
+  }
+
+  const tx = await transaktionMedVarmTenantCache(rod, (aktuel) => {
     afvisning = null;
     resultat = null;
     if (!aktuel) {
@@ -4816,12 +4838,20 @@ export const unitlagerhandling = onCall({ region: REGION }, async (req) => {
   const tilPladsId = art === "udlevering" ? null : kortStreng(d.tilPladsId, 80);
   const bookingId = kortStreng(d.bookingId, 60);
   const reference = kortStreng(d.reference, 60);
+  const harForventetPlads = Object.prototype.hasOwnProperty.call(d, "forventetPladsId");
+  const forventetPladsId = d.forventetPladsId == null ? null : kortStreng(d.forventetPladsId, 80);
   const tidspunktMs = Date.now();
   const rod = db.ref(`tenants/${tenantId}`);
   let afvisning = null;
   let resultat = null;
 
-  const tx = await rod.transaction((aktuel) => {
+  /* Se unitlageropret: varm Admin SDK-cachen før parent-transactionen. */
+  const unitlagerHandlingFoer = await rod.once("value");
+  if (!unitlagerHandlingFoer.exists()) {
+    throw new HttpsError("not-found", "Virksomhedens lagerdata findes ikke.");
+  }
+
+  const tx = await transaktionMedVarmTenantCache(rod, (aktuel) => {
     afvisning = null;
     resultat = null;
     if (!aktuel) {
@@ -4865,6 +4895,13 @@ export const unitlagerhandling = onCall({ region: REGION }, async (req) => {
     }
 
     const fraPladsId = unit.pladsId || null;
+    if (kilde === "warehouse" && (!harForventetPlads || forventetPladsId !== fraPladsId)) {
+      afvisning = {
+        kode: "aborted",
+        tekst: "Unitten er flyttet siden opslaget. Opdatér QR-opslaget og prøv igen.",
+      };
+      return;
+    }
     const fejl = valideUnitBevaegelse({
       operationId, unitId, art, fraPladsId, tilPladsId,
       bookingId: bookingId || null, reference: reference || null,

@@ -216,7 +216,11 @@ describe("formen på en enhed", () => {
   });
 
   it("de påkrævede felter er der", () => {
-    assert.ok(blok.includes("newData.hasChildren(['vareId', 'kundeId', 'tilstand'])"));
+    assert.ok(blok.includes("newData.hasChildren(['vareId', 'tilstand'])"));
+    assert.ok(blok.includes("newData.child('ejerforhold').val() === 'egen'"));
+    assert.ok(blok.includes("newData.hasChild('kundeId')"));
+    /* Kunde-id er betinget: kundegods kræver og validerer det, mens en egen
+       vare udtrykkeligt ikke må bære en fremmed kunde. */
     /* ⚠ carrierId er IKKE påkrævet — en afsendt enhed har ingen. Kravet
        "i huset ⇒ beholder" står i valideEnhed() og håndhæves af funktionen;
        reglerne kan ikke se enhedens tilstand og carrierId i samme udtryk uden

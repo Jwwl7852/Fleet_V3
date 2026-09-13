@@ -39,6 +39,7 @@ en anden payload afvises.
   tilPladsId?,
   bookingId?,
   reference?,
+  forventetPladsId: string | null,
   kilde: "warehouse" | "unitbooking"
 }
 ```
@@ -51,6 +52,11 @@ Svaret er:
 
 Hele tenant-roden er transaktionsgrænse, så unit, placering, event og en eventuel
 bookingafslutning enten gemmes samlet eller slet ikke.
+
+WAREHOUSE-kald binder handlingen til `forventetPladsId` fra det seneste
+QR-opslag. Hvis unitten er flyttet siden opslaget, afvises handlingen inde i
+transaktionen. Det gør samtidige, modstridende handlinger sikre uden at ændre
+idempotent genforsøg med samme `operationId`.
 
 ## Adgang og kombinationer
 

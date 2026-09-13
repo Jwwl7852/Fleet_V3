@@ -140,6 +140,7 @@ const UDEN_KRAEVERPERM = {
   facilityPlanlagt: "`leverandoerer.laes`, som alle seks roller har — samme "
     + "opslag som Servicekalenderen bruger til at navngive en udførende.",
   kasseudlaan: "`kunder.laes`, som alle seks roller har.",
+  warehouseOverblik: "`kunder.laes`, som alle seks roller har; opslaget bruges kun til ejernavne.",
   warehouseVarer: "`kunder.laes`, som alle seks roller har.",
   warehousePluk: "samme: `kunder.laes`.",
   warehouseLabels: "`booking.laes` og `kunder.laes` — begge hos alle seks.",

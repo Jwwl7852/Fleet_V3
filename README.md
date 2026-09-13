@@ -304,7 +304,7 @@ et tal ingen prøve kan holde, hører ikke i et dokument der bliver læst som
 en kendsgerning.
 
 **Kernen er på plads.** Byggeklodserne i `fleet/` er i brug på tværs af
-skærme, og **209 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
+skærme, og **210 prøvefiler** kører via `npm test`. `.githooks/pre-commit`
 gør dem obligatoriske dér hvor de hører til: regeltestene når
 `firebase.rules.json` ændres, designtestene når `src/` ændres.
 **Sikkerhedsrækkefølgen punkt 0–6 er lukket** — se Låst rækkefølge nedenfor.
@@ -531,7 +531,7 @@ Demo-mode er den tilstand **kunden** ser i en salgsdemo.
 læsning". Den regel gælder `naegtet` og er urørt. `demo` sættes kun når der slet
 ikke er en database at spørge — og opdigtede tal findes netop kun dér.
 
-### Skærmene: 114 i alt, og alle har indhold
+### Skærmene: 117 i alt, og alle har indhold
 
 ⚠ **Overskriften sagde "27 af 30" mens tabellen under den sagde "Bygget
 (29)".** To tal om det samme, i to linjer med et blankt mellemrum imellem,
@@ -561,12 +561,12 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Fleet | 21 | FLEET v2-checkpointets arbejdsflader er monteret under `/fleet-v2/*` i den fælles AppShell med synlige underpunkter for Overblik, Enheder, Indberetninger, Arbejdskø, Værksted, Service, Dokumenter, Leasing, Livekort, Mobil indberetning og Økonomi. Tre detaljeruter er skjulte. De syv tidligere `/flaade/*`-skærme bevares som skjulte ruteopslag og er ikke overskrevet. FLEET v2 bruger lokal tenant-afgrænset prototypelagring; dette er ikke fælles serverlagring |
 | Facility | 22 | FACILITY v2-checkpointets arbejdsflader er monteret under `/facility-v2/*` i den fælles AppShell med synlige underpunkter for Overblik, Ejendomme, Installationer, Indberetninger, Arbejdskø, Opgaver, Kalender, Service, Ejendomskort, Dokumenter, Mobil indberetning og Økonomi. Fire profil-/detaljeruter er skjulte. De seks tidligere `/facility/*`-skærme bevares som skjulte ruteopslag og er ikke overskrevet. FACILITY v2 bruger lokal tenant-afgrænset prototype- og Blob-lagring; dette er ikke fælles serverlagring eller fakturaintegration |
 | Procure | 12 | PROCURE v2 har Overblik, Varekatalog, Godkendelser, én samlet Bestillinger-arbejdsflade, Modtagelser, Lager og Forbrug i AppShell. Match & kontantkøb og det tidligere Varelager-link er skjulte kontekstruter; Leverandører og Fakturacenter forbliver fælles platformskærme. Mobilbestilling, varegruppeanalyse og Procure-opsætning er skjulte kontekstruter; mobilens interne Varer/Kurv/Mine indkøb er fortsat ét ruteopslag. |
-| Warehouse | 11 | modulet med flest skærme |
+| WAREHOUSE | 14 | modulet med flest skærme |
 | Unitbooking | 4 | Kalender, Udlån, Historik, Reolpladser |
 | Workforce | 10 | WORKFORCE v2 er monteret under `/workforce-v2/*` med Overblik, Medarbejdere, Bemanding, Ferie & fravær, Kompetencer, Timer og Min arbejdsdag; de tre tidligere `/bemanding*`-ruter bevares skjult |
 | Opsætning | 10 | heraf Kundepriser pr. kunde og Integrationer som skjulte detaljeruter (V1: LATER). Kunder er flyttet til Fælles. Godkendelsesregler er ny (Procure TARGET trin 4) — administrations-UI'et for Procures godkendelsesregler, flyttet ud af Godkendelser.jsx |
 | Hjælp | 3 | heraf Supportoverblik og Supportsag som skjulte detaljeruter |
-| **I alt** | **114** | **74 i menuen, 40 skjulte detaljeruter** |
+| **I alt** | **117** | **77 i menuen, 40 skjulte detaljeruter** |
 
 | | |
 |---|---|

@@ -41,7 +41,8 @@ export async function opretWarehouseUnit({
 }
 
 export async function skrivUnitLagerhandling({
-  unitId, art, tilPladsId, bookingId, reference, operationId: valgtOperationId,
+  unitId, art, tilPladsId, bookingId, reference, forventetPladsId,
+  operationId: valgtOperationId,
 }) {
   const id = valgtOperationId || operationId();
   try {
@@ -52,6 +53,7 @@ export async function skrivUnitLagerhandling({
       tilPladsId: tilPladsId || undefined,
       bookingId: bookingId || undefined,
       reference: reference?.trim() || undefined,
+      forventetPladsId: forventetPladsId ?? null,
       operationId: id,
     });
     return { ok: true, data: svar?.data || null, operationId: id };

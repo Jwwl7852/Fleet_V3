@@ -339,8 +339,9 @@ export default function Modtagelse() {
           {/* ⚠ KUNDENS FASTE OMRÅDE MANGLER, OG DET STÅR HER FREM FOR AT BLIVE
               OPDAGET. Se hovedet. */}
           <p className="fc-hint" style={{ marginTop: 10 }}>
-            <b>Vælg altid den konkrete plads, hvor godset sættes.</b> Et generelt
-            kundeområde kan ikke bruges som placering endnu.
+            <b>Kundens faste område kan ikke vælges endnu.</b> Vælg altid den
+            konkrete plads, hvor godset sættes; modellen har endnu ikke
+            kundezonereservationer eller kapacitetsmål.
           </p>
         </Kort>
       )}

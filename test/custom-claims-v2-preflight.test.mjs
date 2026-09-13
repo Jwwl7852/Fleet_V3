@@ -16,7 +16,9 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   // PROCURE-godkendelseskøen bruger samme tidsbegrænsede dual-read som de
   // øvrige læsbare noder under claims-migreringen.
   // Ejerens tenantløse udbydergrænse bruger ikke legacy-tenantallowlisten.
-  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 101);
+  // WAREHOUSEs fælles unitbevægelseshistorik tilføjer én tenantbundet
+  // dual-read, så den målte migrationskontrakt er 101 → 102.
+  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 102);
   // 166 → 168: den læsbare PROCURE-godkendelseskø har både den kompakte
   // indkoeb.laes-gate og den tidsbegrænsede legacy-permission; kladde og
   // opsætning er fortsat helt serverlukkede.
@@ -26,9 +28,13 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   // snævert loft, så senere ukontrolleret vækst fortsat opdages.
   // Git kan checke filen ud med CRLF på Windows. Loftet måler den
   // versionsstyrede regelkilde (LF), ikke arbejdsplatformens linjeender.
-  // Den samlede PROCURE- og ejerregelmodel udvider kilden kontrolleret.
-  assert.ok(Buffer.byteLength(rules.replace(/\r\n/g, "\n"), "utf8") < 460_000);
-  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 248);
+  // Den samlede PROCURE-, ejer-, WORKFORCE- og WAREHOUSE-regelmodel udvider
+  // kilden kontrolleret. WAREHOUSEs serverstyrede unit-/bevægelseskontrakt
+  // løfter den målte LF-normaliserede kilde til 463.047 byte.
+  assert.ok(Buffer.byteLength(rules.replace(/\r\n/g, "\n"), "utf8") < 470_000);
+  // WAREHOUSEs nye læseregel kontrollerer både revocationens eksistens og
+  // tidspunkt og løfter derfor den målte forekomst 248 → 250.
+  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 250);
   assert.match(rules, /"authRevocations"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /"legacyClaimsAllowlist"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /child\('tenant'\)\.val\(\) === auth\.token\.tenant/);

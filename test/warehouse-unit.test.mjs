@@ -140,7 +140,7 @@ test("callable binder unit, historik og eventuel booking i én transaktion", () 
   const start = kilde.indexOf("export const unitlagerhandling");
   const slut = kilde.indexOf("export const bevaegelseskriv", start);
   const blok = kilde.slice(start, slut);
-  assert.ok(blok.includes("rod.transaction("));
+  assert.ok(blok.includes("transaktionMedVarmTenantCache(rod"));
   assert.ok(blok.includes("ny.unitbevaegelser"));
   assert.ok(blok.includes("ny.kasser"));
   assert.ok(blok.includes("ny.kasseudlaan"));
@@ -148,6 +148,8 @@ test("callable binder unit, historik og eventuel booking i én transaktion", () 
   assert.ok(blok.includes("kraevUnitlagerskriv(req, kilde)"));
   assert.ok(blok.includes("fraPladsId: eksisterende.fraPladsId ?? null"),
     "et retry må ikke erstatte hændelsens null med unitens nye aktuelle placering");
+  assert.ok(blok.includes("forventetPladsId !== fraPladsId"),
+    "WAREHOUSE-handlingen skal bindes til den placering brugeren slog op");
   assert.ok(!blok.includes("req.data?.tenant"));
   assert.ok(!blok.includes("req.data?.uid"));
 });
@@ -157,7 +159,7 @@ test("unitoprettelse registrerer identitet og faktisk modtagelse atomisk", () =>
   const start = kilde.indexOf("export const unitlageropret");
   const slut = kilde.indexOf("export const unitlagerhandling", start);
   const blok = kilde.slice(start, slut);
-  assert.ok(blok.includes("rod.transaction("));
+  assert.ok(blok.includes("transaktionMedVarmTenantCache(rod"));
   assert.ok(blok.includes("ny.kasser"));
   assert.ok(blok.includes("ny.kassetyper"));
   assert.ok(blok.includes("ny.unitbevaegelser"));
@@ -175,11 +177,12 @@ test("unitvisningen adskiller lager, klargøring og reservation med sag og perio
   assert.ok(kilde.includes('label="Klargøringsstatus"'));
   assert.ok(kilde.includes("Bookingreservation"));
   assert.ok(kilde.includes("booking.sagsnummer"));
+  assert.ok(kilde.includes("forventetPladsId: unit.pladsId || null"));
   assert.ok(kilde.includes("dato(booking.fra)"));
   assert.ok(kilde.includes("dato(booking.til)"));
   assert.ok(kilde.includes("&& modtagelsesPladsId"));
   assert.ok(!kilde.includes("&& hjemPladsId && modtagelsesPladsId"));
-  assert.ok(kilde.includes('label="Foreslået hjemplads"\n'));
+  assert.match(kilde, /label="Foreslået hjemplads"\r?\n/);
   assert.ok(!kilde.includes('label="Status" vaerdi={KASSE_STATUS'));
 });
 

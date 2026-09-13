@@ -329,13 +329,16 @@ describe("Hvor mange noder står åbne", () => {
        serverlukkede, mens `procureGodkendelsessager` læses med det kompakte
        signerede `|07|`-claim og derfor ikke genkendes af denne navneparser.
        34 → 38: WORKFORCEs fire serverinterne noder og den serverprojekterede
-       vagtplan er helt lukkede for direkte klientlæsning. */
+       vagtplan er helt lukkede for direkte klientlæsning. 38 → 39:
+       WAREHOUSEs `unitbevaegelser` er en serverstyret, tenantafgrænset
+       historik; klienten kan læse den med signeret adgang, men aldrig skrive. */
     const uden = NODER.filter((n) => !n.perms.length);
-    assert.ok(uden.length <= 38,
+    assert.ok(uden.length <= 39,
       `${uden.length} noder kræver ingen læse-permission — det var 39 før `
       + `beslutning 104, 29 efter, 30 fra Skive 2B, 31 med den lukkede `
-      + `PROCURE QR-node, 34 med de serverstyrede PROCURE-noder og 38 med `
-      + `WORKFORCEs serverprojektion og interne noder. Er en `
+      + `PROCURE QR-node, 34 med de serverstyrede PROCURE-noder, 38 med `
+      + `WORKFORCEs serverprojektion og interne noder og 39 med WAREHOUSEs `
+      + `serverstyrede unitbevægelseshistorik. Er en `
       + `node blevet åbnet igen?\n  `
       + uden.map((n) => n.sti).join("\n  "));
   });

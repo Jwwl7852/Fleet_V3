@@ -3966,7 +3966,7 @@
             // ⚠ EN KASSE SLETTES ALDRIG. Der haenger udlaanshistorik paa
             // id'et; en kasse der gaar i stykker, faar status udeAfDrift.
             // Samme regel som en solgt bil (beslutning 18).
-            ".validate": "newData.hasChildren(['type', 'status'])",
+            ".validate": "newData.hasChildren(['type', 'status']) && (!data.exists() || newData.child('pladsId').val() === data.child('pladsId').val())",
             "type": { ".validate": "newData.isString() && root.child('tenants').child($tenantId).child('kassetyper').child(newData.val()).exists()" },
             // ⚠ UNDERTYPEN SKAL HOERE TIL KASSENS EGEN TYPE. Uden det sidste
             // led kunne en alukasse faa en traekasses undertype, og filtret

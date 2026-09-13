@@ -3,7 +3,7 @@
  * ikke kan komme ud af sync.
  */
 import { lazy, Suspense, useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { FleetProvider } from "./fleet/FleetContext.jsx";
 import AppShell from "./fleet/AppShell.jsx";
 import VeyroLogo from "./fleet/VeyroLogo.jsx";
@@ -13,6 +13,7 @@ import { dato } from "./fleet/format.js";
 import { auth, db, demoMode, miljoe, hentBrugerContext } from "./firebase.js";
 
 import { permStrengFraRolle } from "./fleet/permissions.js";
+import { harModul } from "./fleet/moduler.js";
 import Login from "./moduler/Login.jsx";
 import DevTesterVaelger from "./moduler/DevTesterVaelger.jsx";
 
@@ -153,6 +154,25 @@ const DEMO_BRUGER = {
   rolle: "admin", rolleLabel: "Administrator", tenant: "demo",
   perms: permStrengFraRolle("admin"),
 };
+
+/**
+ * Rutelukning for de klassiske moduler, som endnu ikke har en samlet
+ * integrationskomponent. Navigationen skjuler allerede fravalgte moduler,
+ * men et dybt link skal heller ikke indlæse modulets skærm eller lokale data.
+ * Den egentlige dataadgang håndhæves fortsat i Rules og Functions.
+ */
+function ModulRute({ moduler, modul, label }) {
+  if (!harModul(moduler, modul)) {
+    return (
+      <section className="fc-card" aria-labelledby={`${modul}-adgang-afvist`}>
+        <h1 id={`${modul}-adgang-afvist`}>Ingen adgang til {label}</h1>
+        <p>Tenantens abonnement omfatter ikke {label}.</p>
+        <p>Et direkte link indlæser ikke modulets data.</p>
+      </section>
+    );
+  }
+  return <Outlet />;
+}
 
 /**
  * Låseskærmen. Vises når kundens abonnement ikke er aktivt.
@@ -670,26 +690,32 @@ export default function App() {
             <Route path="indkoeb/varelager" element={<Navigate to="/indkoeb/lager" replace />} />
 
             {/* Kalenderen er modulets forside; kasselisten er stamdata og
-                ligger under Opsaetning. Se nav.js og REDIRECTS. */}
-            <Route path="unitbooking" element={<Unitbookingkalender />} />
-            <Route path="unitbooking/udlaan" element={<Kasseudlaan />} />
-            <Route path="opsaetning/kasser" element={<UnitbookingKasser />} />
-            <Route path="unitbooking/historik" element={<Unitbookinghistorik />} />
-            <Route path="unitbooking/reolpladser" element={<Reolpladser />} />
-            <Route path="warehouse" element={<WmsOverblik />} />
-            <Route path="warehouse/varer" element={<Wmsvarer />} />
-            <Route path="warehouse/units" element={<Wmsunits />} />
-            <Route path="warehouse/scan" element={<Wmsunits />} />
-            <Route path="warehouse/lokationer" element={<Wmslokationer />} />
-            <Route path="warehouse/bevaegelser" element={<Wmsbevaegelser />} />
-            <Route path="warehouse/pluk" element={<Wmspluk />} />
-            <Route path="warehouse/optaelling" element={<Wmsoptaelling />} />
-            <Route path="warehouse/carriers" element={<Wmscarriers />} />
-            <Route path="warehouse/labels" element={<Wmslabels />} />
-            <Route path="warehouse/modtagelse" element={<Wmsmodtagelse />} />
-            <Route path="warehouse/afregning" element={<Wmsafregning />} />
-            <Route path="warehouse/sporbarhed" element={<Wmssporbarhed />} />
-            <Route path="warehouse/volumen" element={<Wmsvolumen />} />
+                ligger under Opsaetning. Se nav.js og REDIRECTS. Begge
+                modulgrupper lukkes før skærmene indlæses, så skjult navigation
+                og dybe links følger samme abonnementsgrænse. */}
+            <Route element={<ModulRute moduler={moduler} modul="unitbooking" label="UNITBOOKING" />}>
+              <Route path="unitbooking" element={<Unitbookingkalender />} />
+              <Route path="unitbooking/udlaan" element={<Kasseudlaan />} />
+              <Route path="opsaetning/kasser" element={<UnitbookingKasser />} />
+              <Route path="unitbooking/historik" element={<Unitbookinghistorik />} />
+              <Route path="unitbooking/reolpladser" element={<Reolpladser />} />
+            </Route>
+            <Route element={<ModulRute moduler={moduler} modul="warehouse" label="WAREHOUSE" />}>
+              <Route path="warehouse" element={<WmsOverblik />} />
+              <Route path="warehouse/varer" element={<Wmsvarer />} />
+              <Route path="warehouse/units" element={<Wmsunits />} />
+              <Route path="warehouse/scan" element={<Wmsunits />} />
+              <Route path="warehouse/lokationer" element={<Wmslokationer />} />
+              <Route path="warehouse/bevaegelser" element={<Wmsbevaegelser />} />
+              <Route path="warehouse/pluk" element={<Wmspluk />} />
+              <Route path="warehouse/optaelling" element={<Wmsoptaelling />} />
+              <Route path="warehouse/carriers" element={<Wmscarriers />} />
+              <Route path="warehouse/labels" element={<Wmslabels />} />
+              <Route path="warehouse/modtagelse" element={<Wmsmodtagelse />} />
+              <Route path="warehouse/afregning" element={<Wmsafregning />} />
+              <Route path="warehouse/sporbarhed" element={<Wmssporbarhed />} />
+              <Route path="warehouse/volumen" element={<Wmsvolumen />} />
+            </Route>
 
 
             <Route path="oekonomi" element={<Oekonomi />} />

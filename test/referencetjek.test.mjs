@@ -121,6 +121,9 @@ const UDEN_TJEK = {
   "optaellinger/$optaellingId/bevaegelseId":
     "`optaellingskriv` skriver optællingen OG bevægelsen i én opdatering; "
     + "bevægelsen findes fordi den lige er skrevet.",
+  "unitbevaegelser/$operationId/operationId":
+    "lig $operationId og dermed postens egen idempotensnøgle, ikke en reference "
+    + "til en fremmed databasepost; serverfunktionen binder værdien til stien.",
   "forbrugsvarebevaegelser/$bevaegelseId/modtagelseId":
     "modtagelsesfunktionen sætter feltet fra den modtagelse, den opretter i samme "
     + "tenanttransaktion; bevægelsesnoden er lukket for klientskrivning.",

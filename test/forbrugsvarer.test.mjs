@@ -3,9 +3,9 @@
  *
  * ⚠ HVAD DEN HER PRØVE HOLDER FAST I:
  *
- *   1. **Det er ikke Warehouses `varer`.** Dér er godset KUNDENS, med et
- *      påkrævet `kundeId`. Blandede vi dem, ville Procure bede os bestille
- *      noget en kunde mangler.
+ *   1. **Det er ikke Warehouses `varer`.** Dér kan varen være kundegods med
+ *      `kundeId` eller lagerets egen vare med `ejerforhold: "egen"`.
+ *      Blandede vi dem, ville Procure kunne bestille ud fra kundegods.
  *   2. **Retningen kommer af ARTEN, ikke af et fortegn.** Et minus på et
  *      forbrug ville trække to gange.
  *   3. **En optælling SÆTTER, den lægger ikke til.** `antal` er det talte.
@@ -62,9 +62,16 @@ describe("Forbrugsvarer er ikke Warehouses varer", () => {
       assert.equal(v.kundeId, undefined,
         `${v.id} bærer et kundeId — så er det kundens gods, ikke vores`);
     }
-    /* Og omvendt: Warehouses varer bærer det ALLE. De to sæt kan ikke byttes. */
+    /* Omvendt har Warehouse en eksplicit ejermodel: kundegods bærer kundeId,
+       egne varer gør ikke. De to kataloger kan stadig ikke byttes. */
     for (const v of DEMO_VARER) {
-      assert.ok(v.kundeId, `${v.id} mangler kundeId — Warehouse er 3PL`);
+      if (v.ejerforhold === "egen") {
+        assert.equal(v.kundeId, undefined,
+          `${v.id} er egen vare, men bærer et kundeId`);
+      } else {
+        assert.ok(v.kundeId,
+          `${v.id} er kundegods, men mangler kundeId`);
+      }
     }
   });
 

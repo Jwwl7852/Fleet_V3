@@ -443,8 +443,8 @@
 .warehouse-hero .fc-hint{color:#cbd5e1; margin:0}
 .warehouse-eyebrow{margin:0; color:var(--bc-accent); font-size:var(--fc-t-xs);
   font-weight:700; letter-spacing:.08em; text-transform:uppercase}
-.warehouse-hero-actions,.warehouse-card-action{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
-.warehouse-card-action{margin-top:12px}
+.warehouse-hero-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.warehouse-card-action{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px}
 .warehouse-overview-grid,.warehouse-unit-layout{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px}
 .warehouse-task-list{display:grid; gap:8px}
 .warehouse-task-row{display:flex; align-items:center; justify-content:space-between; gap:12px;

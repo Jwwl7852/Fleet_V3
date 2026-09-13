@@ -276,6 +276,8 @@ export default function Afregning() {
 
         <p className="fc-hint" style={{ marginTop: 12 }}>
           <b>Et grundlag er ikke en faktura.</b> Det oprettes som kladde og
+          databasen er <code>.write: false for alle</code> klienter; den
+          nummererede kladde oprettes derfor gennem serverfunktionen. Det
           godkendes under Økonomi → Fakturering. Efter godkendelse er
           grundlaget låst, så den afsendte dokumentation bevares.
         </p>

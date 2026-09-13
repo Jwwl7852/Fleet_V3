@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-09-13T18:08:42.910Z",
+  "projectId": "demo-veyro-warehouse-integration-test",
+  "environment": "isolated Firebase Emulator Suite",
+  "identities": {
+    "warehouseOnly": "53tMYm5fvy1b6olqT0KTnmQwlrBx",
+    "unitOnly": "hWE3Pd8Lp5zApDSkjNEQsk4rsVcC",
+    "bothModules": "zQOxe1z5nQR2fFjdIUrYnyOy0423",
+    "foreignTenant": "br4yrdtuRJ9mKJuk0O0Xzt9LA2yr"
+  },
+  "sharedContract": {
+    "sameQrAndUnitId": true,
+    "sameLocations": true,
+    "unitOnlyCallableMove": true,
+    "warehouseReturnClosedBooking": true,
+    "retryProducedOneMovement": true
+  },
+  "security": {
+    "missingPermissionDenied": true,
+    "foreignTenantDenied": true,
+    "directPladsIdDenied": true,
+    "directPhysicalStatusDenied": true,
+    "directMovementDenied": true,
+    "nonPhysicalNoteAllowed": true
+  },
+  "concurrency": {
+    "oneWinner": true,
+    "fulfilled": 1,
+    "rejected": 1
+  },
+  "transactionRiskSample": {
+    "syntheticRows": 1200,
+    "tenantBytes": 69772,
+    "createDurationMs": 52,
+    "note": "Én lokal måling er ikke en produktionskapacitetsgaranti; hele tenant-roden er fortsat risikogrænsen."
+  },
+  "limitation": "Bookingens serverstyrede udlevering og det komplette browserforløb afventer et eksplicit UNIT-checkpoint; en udlånt syntetisk booking blev seedet som afgrænset indgang til WAREHOUSE-retur."
+}

@@ -220,6 +220,7 @@ export default function WarehouseUnits() {
       tilPladsId: art === "udlevering" ? null : tilPladsId,
       bookingId: art === "retur" ? aktivBooking?.id : null,
       reference,
+      forventetPladsId: unit.pladsId || null,
       operationId,
     });
     saetArbejder(false);
