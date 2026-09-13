@@ -12,17 +12,19 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   assert.match(klient, /permStrengFraClaims/);
   assert.match(functions, /\.\/delt\/permissions\.js/);
   assert.equal(rules.split("auth.token.perms.matches").length - 1, 0);
-  assert.equal(rules.split("auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains").length - 1, 84);
+  // UNIT/Warehouse-dual-write samler to tidligere dublerede permissionled,
+  // mens importlæseren tilføjer sin egen kompakte kasseudlaan-gate.
+  assert.equal(rules.split("auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains").length - 1, 82);
   // PROCURE-godkendelseskøen bruger samme tidsbegrænsede dual-read som de
   // øvrige læsbare noder under claims-migreringen.
   // Ejerens tenantløse udbydergrænse bruger ikke legacy-tenantallowlisten.
   // WAREHOUSEs fælles unitbevægelseshistorik tilføjer én tenantbundet
-  // dual-read, så den målte migrationskontrakt er 101 → 102.
-  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 102);
+  // dual-read. UNIT-importens læsbare kladde løfter den videre til 103.
+  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 103);
   // 166 → 168: den læsbare PROCURE-godkendelseskø har både den kompakte
   // indkoeb.laes-gate og den tidsbegrænsede legacy-permission; kladde og
   // opsætning er fortsat helt serverlukkede.
-  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 168);
+  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 174);
   // PROCUREs serverlukkede kladder/opsætning, linjespor og læsbare
   // godkendelseskø udvider den målte regelkontrakt med ca. 3 kB. Bevar et
   // snævert loft, så senere ukontrolleret vækst fortsat opdages.
@@ -33,8 +35,8 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   // løfter den målte LF-normaliserede kilde til 463.047 byte.
   assert.ok(Buffer.byteLength(rules.replace(/\r\n/g, "\n"), "utf8") < 470_000);
   // WAREHOUSEs nye læseregel kontrollerer både revocationens eksistens og
-  // tidspunkt og løfter derfor den målte forekomst 248 → 250.
-  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 250);
+  // tidspunkt. UNIT-importens læser løfter den målte forekomst videre til 252.
+  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 252);
   assert.match(rules, /"authRevocations"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /"legacyClaimsAllowlist"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /child\('tenant'\)\.val\(\) === auth\.token\.tenant/);

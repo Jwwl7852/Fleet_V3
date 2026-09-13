@@ -250,6 +250,21 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(functions, /procureBudgetGem[\s\S]*?perm:\s*"brugere\.skriv"/);
         continue;
       }
+      if (["unitbookingImport", "unitbookingScan"].includes(p.key)) {
+        /* Import og scanner læser fælles UNIT-stamdata, men deres ændringer
+           går gennem callables. Den smallere skrivningsgate skal derfor
+           efterprøves i skærmen og Functions, ikke udledes af useListe. */
+        const module = readFileSync(
+          p.key === "unitbookingImport"
+            ? "src/moduler/unitbooking/ImportBooking.jsx"
+            : "src/moduler/unitbooking/UnitScanner.jsx",
+          "utf8",
+        );
+        const functions = readFileSync("functions/index.js", "utf8");
+        assert.match(module, /harPerm\(bruger\?\.perms, PERM\.kasseudlaanSkriv\)/);
+        assert.match(functions, /kraevUdlaansskriv/);
+        continue;
+      }
       assert.ok(kraevet.includes(p.kraeverPerm),
         `${p.key} bærer kraeverPerm "${p.kraeverPerm}", men ${p.sti} læser ingen `
         + `node der kræver den (den læser: ${kraevet.join(", ") || "ingen spærrede"})`);

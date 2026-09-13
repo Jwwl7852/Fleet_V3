@@ -191,6 +191,12 @@ const UDEN_TJEK = {
   "fakturaer/$fakturaId/linjer/$linjeId/vareId":
     "et historisk varesnapshot må overleve sletning eller omgruppering i kataloget; "
     + "backend kopierer id'et fra ordrelinjen, men kræver ikke fortsat katalogeksistens.",
+  "kasseudlaan/$udlaanId/importKladdeId":
+    "serverafledt proveniens til UNIT-importkladden. kasseudlaan er direkte "
+    + "klientlukket, og bekræftelsesfunktionen har hentet kladden før den atomiske skrivning.",
+  "kasseudlaan/$udlaanId/importLinjeId":
+    "serverafledt id for linjen i den allerede verificerede UNIT-importkladde; "
+    + "det er historisk proveniens og ikke en klientvalgt tværnode-reference.",
 
   /* ---- Polymorf reference: typen afgør målet, ikke feltet selv --------- */
   "sager/$sagId/objektId":

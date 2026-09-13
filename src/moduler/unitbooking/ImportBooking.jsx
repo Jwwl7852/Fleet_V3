@@ -270,6 +270,7 @@ function Forslag({ kladde, saetKladde, kasser, udlaan, pladser, paaTilbage, paaV
     <div className="ub-forslagsliste">
       {kladde.linjer.map((linje, i) => {
         const resultat = resultater[i];
+        const forslag = resultat.forslag;
         const kategorier = [...new Set(resultat.afviste.flatMap((x) => x.vurdering.afvisninger || []).map((x) => x.kode))];
         const kategoriTekst = kategorier.map((kode) => ({
           "for-lille": "for lille", optaget: "optaget", "indvendige-maal": "indvendige mål ikke bekræftet",
@@ -279,9 +280,9 @@ function Forslag({ kladde, saetKladde, kasser, udlaan, pladser, paaTilbage, paaV
         return (
           <Kort key={linje.id} titel={`Objekt ${i + 1} · ${linje.objekt}`}>
             <div className="ub-kravlinje"><b>Nødvendig plads:</b> {maalTekst(pladskrav(linje))}</div>
-            {resultat.forslag.length ? (
+            {forslag.length ? (
               <div className="ub-forslag-grid">
-                {resultat.forslag.slice(0, 6).map(({ kasse, vurdering }) => (
+                {forslag.slice(0, 6).map(({ kasse, vurdering }) => (
                   <label key={kasse.id} className={`ub-forslag ${linje.valgtKasseId === kasse.id ? "ub-forslag-valgt" : ""}`}>
                     <input type="radio" name={`forslag-${i}`} checked={linje.valgtKasseId === kasse.id}
                            onChange={() => vaelg(i, kasse.id)} />

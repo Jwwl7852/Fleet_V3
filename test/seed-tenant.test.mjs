@@ -84,9 +84,15 @@ describe("Modulet læses ud af reglerne", () => {
    */
   test("⚠ PROVISIONERENS OPSLAG ER ENIGT MED NODE_MODUL", () => {
     const uenige = [];
+    const serverinterne = new Set(["unitbookingImportHashes", "unitbookingImportOperationer"]);
     for (const [node, modul] of Object.entries(NODE_MODUL)) {
       const fraRegler = modulForNode(node, REGLER);
       const forventet = Array.isArray(modul) ? modul : [modul];
+      if (serverinterne.has(node)) {
+        assert.equal(fraRegler, null, `${node} skal forblive direkte klientlukket`);
+        assert.ok(forventet.includes("unitbooking"), `${node} skal ejes af UNIT ved provisionering`);
+        continue;
+      }
       if (!forventet.includes(fraRegler)) {
         uenige.push(`${node}: tabellen siger ${forventet.join("/")}, reglerne ${fraRegler}`);
       }

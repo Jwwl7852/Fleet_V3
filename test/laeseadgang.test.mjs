@@ -331,14 +331,17 @@ describe("Hvor mange noder står åbne", () => {
        34 → 38: WORKFORCEs fire serverinterne noder og den serverprojekterede
        vagtplan er helt lukkede for direkte klientlæsning. 38 → 39:
        WAREHOUSEs `unitbevaegelser` er en serverstyret, tenantafgrænset
-       historik; klienten kan læse den med signeret adgang, men aldrig skrive. */
+       historik; klienten kan læse den med signeret adgang, men aldrig skrive.
+       39 → 41: UNIT-importens hash- og operationsregistre er serverinterne og
+       helt lukkede for direkte klientadgang. */
     const uden = NODER.filter((n) => !n.perms.length);
-    assert.ok(uden.length <= 39,
-      `${uden.length} noder kræver ingen læse-permission — det var 39 før `
+    assert.ok(uden.length <= 41,
+      `${uden.length} noder kræver ingen læse-permission — det var 41 efter `
       + `beslutning 104, 29 efter, 30 fra Skive 2B, 31 med den lukkede `
       + `PROCURE QR-node, 34 med de serverstyrede PROCURE-noder, 38 med `
-      + `WORKFORCEs serverprojektion og interne noder og 39 med WAREHOUSEs `
-      + `serverstyrede unitbevægelseshistorik. Er en `
+      + `WORKFORCEs serverprojektion og interne noder, 39 med WAREHOUSEs `
+      + `serverstyrede unitbevægelseshistorik og 41 med UNIT-importens to `
+      + `serverinterne registre. Er en `
       + `node blevet åbnet igen?\n  `
       + uden.map((n) => n.sti).join("\n  "));
   });

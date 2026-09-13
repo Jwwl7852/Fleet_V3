@@ -1190,6 +1190,10 @@ function Udlaanskort({ udlaan: u, kasse, typeNavn, pladsMap, maaSkrive, onLuk, p
             </p>
           )}
 
+          <p className="fc-hint" style={{ marginTop: 10 }}>
+            <b>Relateret indhold:</b> Ingen mails og fotos endnu.
+          </p>
+
         </>
       )}
     </Kort>
