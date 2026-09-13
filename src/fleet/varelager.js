@@ -58,6 +58,14 @@ export async function gemForbrugsvare(post = {}) {
     varenummer: post.varenummer || undefined,
     note: post.note || undefined,
     leverandoerId: post.leverandoerId || undefined,
+    varegruppe: post.varegruppe || undefined,
+    standardAfdelingId: post.standardAfdelingId || undefined,
+    aktiv: post.aktiv !== false,
+    lagerfoert: post.lagerfoert === true,
+    grundenhed: post.grundenhed || post.enhed || undefined,
+    bestillingsenhed: post.bestillingsenhed || post.enhed || undefined,
+    antalPrBestillingsenhed: Number.isFinite(post.antalPrBestillingsenhed)
+      ? post.antalPrBestillingsenhed : undefined,
     /* null sendes MED — det er svaret "ingen grænse". undefined betyder
        "rør den ikke". De to må ikke smelte sammen. */
     minimumBeholdning: post.minimumBeholdning === null

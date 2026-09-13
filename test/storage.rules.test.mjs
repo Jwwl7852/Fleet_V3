@@ -45,6 +45,10 @@ const dokPath = (tenant, fakturaId, dokumentId) =>
   `tenants/${tenant}/fakturaer/${fakturaId}/dokumenter/${dokumentId}`;
 const opgaveDokPath = (tenant, opgaveId, dokumentId) =>
   `tenants/${tenant}/opgaver/${opgaveId}/dokumenter/${dokumentId}`;
+const procureDokPath = (tenant, ordreId, modtagelseId, dokumentId) =>
+  `tenants/${tenant}/indkoebsordrer/${ordreId}/modtagelser/${modtagelseId}/dokumenter/${dokumentId}`;
+const procurePdfPath = (tenant, ordreId, revision) =>
+  `tenants/${tenant}/indkoebsordrer/${ordreId}/revisioner/${revision}/ordre.pdf`;
 const OPGAVE = "op-1";
 
 const NOGLE_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
@@ -170,5 +174,23 @@ describe("⚠ F.2 — TENANT A KAN IKKE FÅ ADGANG TIL TENANT B's OPGAVEDOKUMENT
     const storage = somMed("uid-op-tenant-a-laes", ALLE_PERMS, T);
     const fil = storageRef(storage, opgaveDokPath(ANDEN_TENANT, OPGAVE, "do-op-1"));
     await assertFails(getBytes(fil));
+  });
+});
+
+describe("PROCURE — ingen direkte adgang til modtagelsesbilag eller ordre-PDF", () => {
+  it("afviser direkte upload og download selv med alle permissions", async () => {
+    const storage = somMed("uid-procure", ALLE_PERMS);
+    const receipt = storageRef(storage, procureDokPath(T, "ordre-1", "receipt-1", "doc-1"));
+    const pdf = storageRef(storage, procurePdfPath(T, "ordre-1", 3));
+    await assertFails(uploadBytes(receipt, NOGLE_BYTES, { contentType: "application/pdf" }));
+    await assertFails(getBytes(receipt));
+    await assertFails(uploadBytes(pdf, NOGLE_BYTES, { contentType: "application/pdf" }));
+    await assertFails(getBytes(pdf));
+  });
+
+  it("afviser også Tenant A på Tenant B's Procure-stier", async () => {
+    const storage = somMed("uid-procure-a", ALLE_PERMS, T);
+    await assertFails(getBytes(storageRef(storage, procureDokPath(ANDEN_TENANT, "ordre-1", "receipt-1", "doc-1"))));
+    await assertFails(getBytes(storageRef(storage, procurePdfPath(ANDEN_TENANT, "ordre-1", 3))));
   });
 });

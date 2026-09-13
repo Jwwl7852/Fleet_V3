@@ -1,0 +1,66 @@
+# PROCURE — sporbarhed for samlet udviklingsrunde
+
+Dato: 2026-09-12
+
+Grundlaget er hele `VEYRO PROCURE – samlet instruks til næste udviklingsrunde`,
+inklusive afsnit 0–15, webshopadgang, firmakort, mobil/QR og bilag A–B. Tabellen
+skelner mellem færdig kode, faktisk lokal afprøvning og ekstern tilslutning.
+
+| Krav | Relevant kode/backend | Implementeret adfærd | Faktisk afprøvning | Resterende |
+| --- | --- | --- | --- | --- |
+| 0. Sikkert udviklingsspor | Git-worktree og denne dokumentation | Arbejde kun på `codex/procure-integrated-development`; ingen push, merge eller deploy | Mappe, branch, HEAD, status og Git-operationer kontrolleret lokalt; lokale commits oprettet | Intet pushes |
+| 1. Ny bestilling og samlet overblik | `ProcurementWorkspaceScreen.jsx`, `MobileOrderScreen.jsx`, mobilkladde-callables | Samlet liste med kladde/behov/ordre, statusfaner, søgning, sortering, detalje og ny bestilling; flere leverandører giver særskilte PO'er | Desktop-browser ved 1440 px; mobil ved 360/390 px; leverandøropdeling og idempotens | Ingen ekstern ordre blev oprettet |
+| 2. Faner, dialoger og navigation | `ProcurementWorkspaceScreen.jsx`, `ProcureScreens.jsx`, React Router | URL-bevarede filtre/faner, naturlig Tilbage, fokusretur og ESC uden sideeffekt | Browserkontrol af Tilbage, ESC, reload og overflow | Ingen kendt kodemangel |
+| 3. Afdelinger, varekategorier og leveringssteder | `ProcureSetupScreen.jsx`, `procureOpsaetningHent`, `procureStamdataGem` | Separate stabile id'er, omdøbning/deaktivering, revision/historik og servervalidering; aktive afdelinger/steder bruges i mobilflowet | Domæne-/kontrakttest og Auth-emulator med syntetiske stamdata | Kundens rigtige stamdata skal konfigureres |
+| 4. Fælles design | `AppShell`, `procure-v2.css`, fælles tokens | Én fælles shell, afgrænsede styles, semantiske tokens, responsivt layout og store mobile trykflader; nye opsætnings- og afgørelsesfelter bruger fælles kontrolgeometri | Designtest 11/11; computed styles viste 8 px radius, 8/11 px padding og Inter/systemfallback; screenshots ved 360, 390 og 1440 px uden vandret sideoverflow | Visuel hardwarekontrol på fysisk telefon mangler |
+| 5. Leverandørens bestillingsmetode | fælles `leverandoerer.js`, leverandørformular, normalisering | Mail/webshop/begge, ordre-mail, HTTPS-webshop, kundenummer og ansvarlige indkøbere på fælles stamdata | Validerings- og referencekontrakter i tests | Kundespecifikke leverandørdata mangler lokalt |
+| 6. Mail og PDF | `ordreMailSend`, `ordrePdfHent`, `procure-pdf.js` | Aktiv Send-handling, revisionslås, kanonisk PDF, arkiv, faktisk multipart-vedhæftning, SHA-256 og status `ukendt` ved tvetydig timeout. Nye leverandør-PDF'er har ingen pris og ingen modtagelses-QR; ældre arkiver ændres ikke. | Skabelon v4: flersideeksempel på 42 linjer/4 sider, SHA-256 `db634ff7…624a`, bestillingsnummer og gentaget tabelhoved på alle sider. Tidligere QR-hash er historisk bevis for en ældre arkiveret revision, ikke den aktuelle skabelon. | Rigtige Mailgun-/kundecredentials ikke tilsluttet |
+| 7. Webshop og beskyttet adgang | `procureWebshopCredentialGem/Hent`, `procureWebshopBestillingRegistrer`, AES-GCM-modul | Tenantafgrænset, serverkrypteret legitimation; kun administrator/ansvarlig indkøber; kortlivet svar uden browserlagring; revisions- og idempotenskontrol | Autoriseret desktopbrowser åbnede webshopfanen uden statusændring og registrerede derefter syntetisk leverandørreference og beløb; backendprøven dækkede krypteret roundtrip, køberafvisning, audit og retry | Ingen rigtig webshop eller leverandørkonto afprøvet |
+| 8. Firmakort og Fakturacenter | `procureWebshopBestillingRegistrer`, fælles `fakturaer`, Fakturacenter-link | Firmakort registreres uden kortnummer/CVV, lagerflow kan afsluttes mens økonomistatus forbliver `afventerDokumentation`; fakturaer forbliver fælles | Autoriseret browser registrerede firmakortkøb på 240 kr., afsluttede lageret, bevarede økonomistatus og viste den godkendte faktura på samme ordre; rapportgrundlaget var 240 kr. uden dobbelttælling | Ingen bank-, kort- eller bogføringsintegration; ingen betaling udført |
+| 9. Tilbage til rettelse og fysisk retur | linjeafgørelser, `procureVareReturneringRegistrer`, fælles ordretilstandsmaskine, modtagelseskorrigering | Udskydelse/retur/afvisning kræver begrundelse; fysisk retur og kreditnota er adskilte hændelser. Prisafvigelseskredit er begrænset af oprindelig afvigelse; returkredit kræver registreret retur og er begrænset af returværdien | Faktisk emulatorflow: fysisk retur af 1 rulle, dubletværn, tilknyttet/godkendt returkredit og netto 8.856 kr.; fokuseret regression låser begge kreditgrene | Fysisk returtransport og kortrefundering/tilbagebetaling er ikke implementeret eller afprøvet |
+| 10. Leveringsdatoer | ordre-/mobilmodeller, workspace og mail/PDF | Ønsket dato eller hurtigst muligt bevares; faktisk modtagelsesdato og leverandørbekræftelse holdes adskilt | Browser- og PDF-test | Automatisk leverandør-ETA findes ikke uden leverandørintegration |
+| 11. Mobilmodtagelse | `MobileReceiptScreen.jsx`, fem modtagelses-/filcallables, Storage-regler | Flere delleverancer, rest, beskadiget/afvist, korrektion, flere dokumenter, type/størrelse/magic-bytes, tenantadgang og genåbning. Nye leverandør-PDF'er indeholder ikke modtagelses-QR; ordre findes via PO/leverandørsøgning eller et internt, adgangskontrolleret link. | Lagerrettelsen: almindeligt Firebase-login, +10 modtagelse, genåbning i session 2, 68→68 og 68→66 optællinger, retry uden dublet, stale revision afvist og fremmed tenant afvist. Den tidligere PDF-QR-test gælder kun den historiske skabelonrevision. | OCR og fysisk kamerafotografering ikke afprøvet |
+| 12. Forbrug og indkøbsanalyse | `ConsumptionScreen`, `GroupConsumptionScreen`, budget-callables | Fakturaforbrug, åbne ordrer og manglende dokumentation adskilles; periode/afdeling/kategori/vare/leverandør/sted/tilknytning, budget og CSV-eksport | Desktop-browser, beløbs-/kreditnota-/enheds- og budgettests | Regnearksformat ud over filtreret CSV er ikke implementeret |
+| 13. Enheder og priser | ordrelinjesnapshots og `orderUnitSummary`/normalisering | Bestillingsenhed, grundenhed, pakningsfaktor, prisbasis og varegruppe følger linjen; uforenelige enheder summeres ikke | Domænetests og mobilbrowser med tydelige pakningsmængder | Manglende kildedata vises som ikke sammenlignelig |
+| 14. Verifikation og aflevering | tests, browserscripts og rapporterne | Lint, build, design, fokuserede tests, fuld regel-/regressionssuite, Auth/Functions/Database-emulator og screenshots | Lagerrettelsen: 70/70 målrettede, 11/11 design og 4.349/4.349 platform/regler; ti autoriserede browser-screenshots og faktisk CSV. Se `PROCURE_LAGER_VERIFIKATION_2026-09-12.md`. | Deployment er bevidst ikke udført |
+| 15. Mobil og QR | `MobileOrderScreen.jsx`, `QrLabelScreen.jsx`, QR-callables | Servergemt kurv, søgning/favoritter/tidligere køb, aktiv QR-tilføjelse, stabile mærkater, flerudskrift, ukendt/deaktiveret kode, login-retur og ingen autoafsendelse | To autoriserede browsersessioner; passiv scan 0→0, aktiv Tilføj 0→1; fremmed tenant afvist | Fysisk mobilkamera ikke tilgængeligt og derfor ikke afprøvet |
+| Efterfølgende linjedeling | `procureMobilKladdeDelIndsend`, `procureGodkendelseslinjerAfgor`, domænefunktioner | Valgte linjer/mængder sendes videre; rest bliver i serverkladden; godkend/udskyd/retur/afvis pr. linje; kun godkendte mængder bliver ordrer; hele listen er godkendelsesgrundlag | 10 linjer i to autoriserede sessioner; 5 sendt/5 bevaret. Godkender godkendte 6/10 tape og udskød en anden linje med grund; backend endte med 8 bestilt/2 ventende og ét idempotent ordreoutput | Ingen kendt kodemangel |
+
+## Rettelser efter rapport- og billedgennemgang
+
+| Reviewkrav | Komponent/backend | Implementeret og faktisk afprøvet | Resterende |
+| --- | --- | --- | --- |
+| Tydeligt 5/10-valg | `MobileOrderScreen.jsx`, mobilkladde-callables | Ingen linje er forvalgt. Hver linje viser `På listen`, aktivt valg, `Send nu` og `Bliver på listen`; browseren indsendte 5/10 og genåbnede de sidste 5 | Ingen kendt kodemangel |
+| Entydige enheder og levering | `procure-v2-domain.js`, mobilkurv, ordre-PDF | Korrekt ental/flertal og kanoniske labels som `1 pakke = 6 ruller`; `Hurtigst muligt` og en konkret dato er gensidigt udelukkende | Ingen kendt kodemangel |
+| Forhåndsvisning af linjeafgørelser | `ApprovalsScreen`, `procureGodkendelseslinjerAfgor` | Resumé viser de valgte handlinger før gem; udskyd/retur/afvis kræver grund; screenshot og to-sessionstest dokumenterer 6/10 | Ingen kendt kodemangel |
+| Kort og sand kvittering | mobilens `Mine indkøb`/kvittering | Kvitteringen bygges fra den aktuelle indsendelse, ikke historikkens første ordre. Demo-browseren viste 5 sendt, 0 rest, tom kurv og præcis to nye PO'er med 4+1 linjer | Ingen kendt kodemangel |
+| Fjern tekniske id'er/revisioner og dobbelt titel | `AppShell`, workspace, opsætning, mailvisning, approval-normalisering | Én sidetitel; rækker er klikbare uden redundant Åbn-knap; brugerfladen skjuler uid, stabile stamdata-id'er, revisioner og hashes, mens backend bevarer dem | Ingen kendt kodemangel |
+| Sandfærdige grafer og budget | `ConsumptionScreen`, `GroupConsumptionScreen` | Nul tegnes som nul, manglende grundlag som `Mangler data`, budget som `Ikke opsat`, og ønsket dato kaldes ikke leverandørforsinkelse | Browser-screenshot bruger syntetiske data; kundens rigtige budgetter/data skal konfigureres |
+| Webshop og firmakort som virkelige flows | credential- og webshop-callables | Faktisk krypteret roundtrip, afvist uautoriseret bruger, audit uden hemmelighed, åbning uden ordrestatusskift, firmakortordre og retry uden dublet | Ekstern webshop, kortudbyder og betaling ikke tilsluttet |
+| Hylde-QR til bestilling | QR-mærkat-callables og mobilscan | Passiv scanning ændrer ikke antal; kun aktivt `Tilføj` lægger varen i den bevarede kurv | Fysisk kamera ikke afprøvet |
+| Historisk ordre-PDF-QR til modtagelse | Ældre arkiveret `procure-pdf.js`-revision, `ordrePdfHent`, `MobileReceiptScreen.jsx` | Den tidligere QR-test dokumenterer en bevaret historisk dokumentrevision. Nye leverandør-PDF'er har ikke QR; interne adgangskontrollerede links kan fortsat åbne mobilmodtagelsen. | Fysisk kamera ikke afprøvet; den gamle softwareafkodning er ikke aktuelt bevis for skabelon v4 |
+| Modtagelse, faktura og fysisk retur | Storage-/faktura-/returcallables | To aktive bilag kan genåbnes; lager og økonomi holdes adskilt; prisafvigelseskredit og returkredit spores med forskellige grænser | Fysisk returtransport og betaling/refundering ikke afprøvet |
+
+## Forenklet Varelager og allerede foretaget køb – 12. september 2026
+
+| Krav | Relevant kode/backend | Implementeret og faktisk afprøvet | Resterende |
+| --- | --- | --- | --- |
+| Varelager pr. varenummer | `InventoryScreen.jsx`, `procure-inventory-domain.js` | Én række pr. lagerført varenummer, kompatible placeringer summeres, ukendt beholdning er “Ikke optalt”, genbestillingsniveau/status, statusdato og forbrugsgrundlag. Autoriseret desktopbrowser uden global overflow. | Fysisk telefon ikke afprøvet. |
+| Beregnet forbrug | `calculatedConsumptionIntervals` | Modtagelse, nettoflytning, retur, registreret udtag, øvrige korrektioner og slutoptælling indgår én gang. 10 + 6 − 12 = 4 er låst i test; manglende/delvis dækning og negativt resultat vises ærligt. | Ingen kendt kodemangel. |
+| Vareopsætning og kundeafdelinger | katalogeditor, mobil-/behovs-/ordrelinjer, eksisterende `procureOpsaetning` | Lagerstyring, genbestillingsniveau, enheder/pakningsfaktor og standardafdeling. Kundens aktive afdelinger bruges pr. linje; runtimeordre bevarede både Administration og Varemodtagelse. | Kundens produktionsstamdata skal opsættes. |
+| Ny bestilling / allerede foretaget køb | `NewPurchaseScreen.jsx`, `procureKoebRegistrer` | Samme indgang giver leverandørflow eller registrering uden mail/betaling. Firmakortstatus er ikke bogført/godkendt. Lagerført linje øger lager én gang; ikke-lagerført linje gør ikke. | Ekstern kort-/bogføringsintegration ikke tilsluttet. |
+| Kvittering og Forbrug | bilagscallables, Storage-regler, `ConsumptionScreen` | Faktiske bilagsbytes blev genåbnet i session 2 med identisk SHA-256. Forbrug viser beregnet mellem optællinger eller indkøbt mængde; faktisk CSV viste 12 liter i september. | OCR og fysisk kamera ikke afprøvet. |
+| Mobilkvittering og talafstemning | `NewPurchaseScreen`, `MobileReceiptScreen` | Ingen intern UUID vises. Købskvittering ved 360/390 px og lagerkvittering 66 ruller er browserbevis; det særskilte længere backendflow ender på 64 ruller efter efterfølgende bevægelser. | Ingen kendt kodemangel. |
+
+Detaljer og konkrete hashes findes i `PROCURE_VARELAGER_KOEB_VERIFIKATION_2026-09-12.md`.
+
+## Kontrollerede lokale miljøer
+
+- Visuel syntetisk preview: `http://127.0.0.1:5205/indkoeb/mobil`.
+- Autoriseret preview: `http://127.0.0.1:5207/indkoeb/mobil` mod lokale
+  Auth-, Functions-, Database- og Storage-emulatorer.
+- Auth-previewen bruger almindeligt Firebase-login med syntetiske brugere og
+  signerede tenant-, rolle- og permission-claims. Den bruger ikke demo-login,
+  rollevælger eller et rettighedsbypass.
+- Der er ikke sendt mail til leverandører, købt varer, udført betaling,
+  pushet, merget eller deployet.

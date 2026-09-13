@@ -292,8 +292,8 @@ describe("Udkastet er et udkast", () => {
   test("⚠ NUMMERET STÅR I EMNET OG I TEKSTEN", () => {
     const u = mailudkast(ORDRE, { leverandoer: LEV });
     assert.ok(u.emne.includes(ORDRE.nummer), "emnet bærer ikke bestillingsnummeret");
-    assert.match(u.brodtekst, new RegExp(`Angiv venligst bestillingsnummer ${ORDRE.nummer}`),
-      "teksten beder ikke om nummeret på fakturaen");
+    assert.match(u.brodtekst, new RegExp(`Angiv vores bestillingsnummer ${ORDRE.nummer} på følgesedlen og fakturaen`),
+      "teksten beder ikke om nummeret på følgesedlen og fakturaen");
   });
 
   test("hver linje står i teksten med antal og vare", () => {
@@ -313,7 +313,7 @@ describe("Udkastet er et udkast", () => {
       nummer: "BST-2026-00099",
       linjer: { a: { vare: "Presenning", antal: 2, enhed: "stk" } },
     }, {});
-    assert.match(u.brodtekst, /pris ikke oplyst/);
+    assert.ok(!/pris|kr\.|moms|total|i alt/i.test(u.brodtekst));
     assert.ok(!/0,00 kr\./.test(u.brodtekst), "en manglende pris blev til nul kroner");
   });
 

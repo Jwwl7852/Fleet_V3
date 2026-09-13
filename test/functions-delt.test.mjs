@@ -19,6 +19,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
+import { posix } from "node:path";
 
 import { DELTE_FILER, kildeSti, kopiSti, kropAf } from "../scripts/kopier-delt.mjs";
 
@@ -67,7 +68,7 @@ test("En delt fil importerer kun andre delte filer", () => {
     const stier = [...kilde.matchAll(/^\s*(?:import|export)[^;]*?from\s+["']([^"']+)["']/gm)]
       .map((m) => m[1]);
     for (const sti of stier) {
-      const fil = sti.replace(/^\.\//, "");
+      const fil = posix.normalize(posix.join(posix.dirname(navn), sti));
       assert.ok(DELTE_FILER.includes(fil),
         `src/fleet/${navn} importerer "${sti}", som ikke er en delt fil. ` +
         `Den ville ikke være kopieret med, og funktionen ville fejle i skyen.`);

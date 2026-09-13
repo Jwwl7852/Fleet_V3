@@ -223,6 +223,32 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(gate, /PERM\.bookingLaes/);
         continue;
       }
+      if (["indkoebOversigt", "indkoebBehov", "indkoebKatalog",
+        "indkoebGodkendelser", "bestillinger", "indkoebModtagelser",
+        "indkoebForbrug", "indkoebLager", "indkoebMobil", "indkoebAnalyseVaregrupper", "varelager"].includes(p.key)) {
+        /* PROCURE v2 samler de syv routes i én integreret router. Wrapperen
+           skal pege på den fælles implementation, og implementationen skal
+           både læse tenant-scopede noder og lukke direkte URL-adgang på den
+           samme indkoeb.laes-permission som menuen. */
+        const wrapper = readFileSync("src/moduler/indkoeb/ProcureModule.jsx", "utf8");
+        const module = readFileSync("src/fleet/procure-v2/ProcureModule.jsx", "utf8");
+        assert.match(wrapper, /fleet\/procure-v2\/ProcureModule/);
+        assert.match(module, /useListe\("indkoebsbehov"/);
+        assert.match(module, /useListe\("indkoebsordrer"/);
+        assert.match(module, /harPerm\(bruger\?\.perms, PERM\.indkoebLaes\)/);
+        continue;
+      }
+      if (p.key === "indkoebOpsaetning") {
+        /* Opsætningen må gerne læses i Procure, men alle ændringer går gennem
+           callables med brugere.skriv. Menuens snævre gate spejles derfor i
+           routerens canAdmin og Functions — ikke i en klientskrivbar node. */
+        const module = readFileSync("src/fleet/procure-v2/ProcureModule.jsx", "utf8");
+        const functions = readFileSync("functions/index.js", "utf8");
+        assert.match(module, /canAdmin\s*=\s*harPerm\(bruger\?\.perms, PERM\.brugereSkriv\)/);
+        assert.match(functions, /procureStamdataGem[\s\S]*?perm:\s*"brugere\.skriv"/);
+        assert.match(functions, /procureBudgetGem[\s\S]*?perm:\s*"brugere\.skriv"/);
+        continue;
+      }
       assert.ok(kraevet.includes(p.kraeverPerm),
         `${p.key} bærer kraeverPerm "${p.kraeverPerm}", men ${p.sti} læser ingen `
         + `node der kræver den (den læser: ${kraevet.join(", ") || "ingen spærrede"})`);
@@ -331,8 +357,12 @@ describe("Menuen er ikke spærringen", () => {
     const brugte = [...new Set(ALLE.map((p) => p.kraeverPerm).filter(Boolean))];
     assert.ok(brugte.length >= 3, `kun ${brugte.length} permissions i brug i nav`);
     const iRegler = JSON.stringify(REGLER);
+    const functions = readFileSync("functions/index.js", "utf8");
     for (const perm of brugte) {
-      assert.ok(iRegler.includes(`|${perm}|`),
+      const serverhaandhaevetProcureOpsaetning = perm === "brugere.skriv"
+        && /procureStamdataGem[\s\S]*?perm:\s*"brugere\.skriv"/.test(functions)
+        && /procureBudgetGem[\s\S]*?perm:\s*"brugere\.skriv"/.test(functions);
+      assert.ok(iRegler.includes(`|${perm}|`) || serverhaandhaevetProcureOpsaetning,
         `nav skjuler et punkt på "${perm}", som ingen regel spørger om — `
         + "det ville være en pæn knap");
     }

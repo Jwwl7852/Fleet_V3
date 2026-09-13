@@ -66,12 +66,7 @@ const FacilityPlanlagt = lazy(() => import("./moduler/facility/Planlagt.jsx"));
 const FacilityStatistik = lazy(() => import("./moduler/facility/Statistik.jsx"));
 const Klima = lazy(() => import("./moduler/facility/Klima.jsx"));
 const FacilityV2Module = lazy(() => import("./moduler/facility/FacilityV2Module.jsx"));
-const IndkoebOversigt = lazy(() => import("./moduler/indkoeb/Oversigt.jsx"));
-const Bestillinger = lazy(() => import("./moduler/indkoeb/Bestillinger.jsx"));
-const IndkoebVarer = lazy(() => import("./moduler/indkoeb/Varer.jsx"));
-const IndkoebArkiv = lazy(() => import("./moduler/indkoeb/Arkiv.jsx"));
-const IndkoebStatistik = lazy(() => import("./moduler/indkoeb/Statistik.jsx"));
-const Varelager = lazy(() => import("./moduler/indkoeb/Varelager.jsx"));
+const ProcureModule = lazy(() => import("./moduler/indkoeb/ProcureModule.jsx"));
 const Fakturaer = lazy(() => import("./moduler/indkoeb/Fakturaer.jsx"));
 const Leverandoerer = lazy(() => import("./moduler/indkoeb/Leverandoerer.jsx"));
 const ProcureGodkendelsesregler = lazy(() => import("./moduler/opsaetning/ProcureGodkendelsesregler.jsx"));
@@ -643,14 +638,11 @@ export default function App() {
             <Route path="facility/statistik" element={<FacilityStatistik />} />
             <Route path="facility/klima" element={<Klima />} />
 
-            <Route path="indkoeb" element={<IndkoebOversigt />} />
-            <Route path="indkoeb/bestillinger" element={<Bestillinger />} />
-            <Route path="indkoeb/varer" element={<IndkoebVarer />} />
-            <Route path="indkoeb/arkiv" element={<IndkoebArkiv />} />
-            <Route path="indkoeb/statistik" element={<IndkoebStatistik />} />
+            <Route path="indkoeb" element={<ProcureModule />} />
+            <Route path="indkoeb/*" element={<ProcureModule />} />
             <Route path="indkoeb/fakturaer" element={<Fakturaer />} />
             <Route path="indkoeb/leverandoerer" element={<Leverandoerer />} />
-            <Route path="indkoeb/varelager" element={<Varelager />} />
+            <Route path="indkoeb/varelager" element={<Navigate to="/indkoeb/lager" replace />} />
 
             {/* Kalenderen er modulets forside; kasselisten er stamdata og
                 ligger under Opsaetning. Se nav.js og REDIRECTS. */}

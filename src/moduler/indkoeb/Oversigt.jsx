@@ -250,7 +250,7 @@ export default function IndkoebOversigt() {
         />
         <p className="fc-hint" style={{ marginTop: 10 }}>
           Afsluttede behov og bestillinger (modtaget, afvist, annulleret) står i{" "}
-          <Link className="fc-a" to="/indkoeb/arkiv">Arkiv</Link>, ikke her.
+          <Link className="fc-a" to="/indkoeb/bestillinger?status=afsluttet">Arkiv</Link>, ikke her.
         </p>
       </Kort>
 
@@ -272,7 +272,7 @@ export default function IndkoebOversigt() {
         </p>
         <div className="fc-genveje">
           <Link className="fc-a" to="/indkoeb/leverandoerer">Leverandørkartotek</Link>
-          <Link className="fc-a" to="/indkoeb/varer">Varer</Link>
+          <Link className="fc-a" to="/indkoeb/katalog">Varer</Link>
           <Link className="fc-a" to="/indkoeb/fakturaer">Match &amp; kontantkøb</Link>
           <Link className="fc-a" to="/oekonomi/fakturacenter?destination=procure">Fakturaer &amp; bilag</Link>
         </div>

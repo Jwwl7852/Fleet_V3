@@ -15,18 +15,21 @@ export const MAIL_STATUS = {
   anmodet: "anmodet",
   accepteret: "accepteret",
   fejlet: "fejlet",
+  ukendt: "ukendt",
 };
 
 export const MAIL_STATUS_LABEL = {
   anmodet: "Anmodet",
   accepteret: "Sendt til udbyder",
   fejlet: "Fejlet",
+  ukendt: "Resultat skal kontrolleres",
 };
 
 export const MAIL_STATUS_TONE = {
   anmodet: "warn",
   accepteret: "ok",
   fejlet: "bad",
+  ukendt: "warn",
 };
 
 /* "accepteret" ER IKKE "leveret". Vi ved kun at udbyderen har taget imod

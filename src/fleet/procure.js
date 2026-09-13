@@ -72,10 +72,12 @@ export const PRIORITET = { lav: "Lav", mellem: "Mellem", hoej: "Høj" };
 export const ORDRESTATUS = {
   kladde: { label: "Kladde", tone: "info" },
   afventerGodkendelse: { label: "Afventer godkendelse", tone: "warn" },
-  godkendt: { label: "Godkendt", tone: "ok" },
+  tilbageTilRettelse: { label: "Tilbage til rettelse", tone: "warn" },
+  godkendt: { label: "Godkendt — klar til bestilling", tone: "ok" },
   afvist: { label: "Afvist", tone: "bad" },
-  sendt: { label: "Sendt", tone: "ok" },
-  modtaget: { label: "Modtaget", tone: "ok" },
+  sendt: { label: "Bestilt", tone: "ok" },
+  modtaget: { label: "Fuldt modtaget", tone: "ok" },
+  afsluttet: { label: "Afsluttet", tone: "ok" },
   annulleret: { label: "Annulleret", tone: "bad" },
 };
 export const ALLE_ORDRESTATUS = Object.keys(ORDRESTATUS);
@@ -344,12 +346,31 @@ export function grupperPaaLeverandoer(linjer = []) {
    systemet påstår.
 */
 
-/** Beløb i hele øre → "1.250,00 kr." Kun til udkastets tekst. */
-function kr(oere) {
-  if (!Number.isInteger(oere)) return "—";
-  return `${(oere / 100).toLocaleString("da-DK", {
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
-  })} kr.`;
+function formatOrdreDato(value) {
+  if (!value) return "";
+  const date = new Date(`${String(value).slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("da-DK", {
+    day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC",
+  }).format(date);
+}
+
+const somFakturalinjer = (...values) => [...new Set(values.flatMap((value) => {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") return Object.values(value);
+  return String(value ?? "").split(/\r?\n/);
+}).map((value) => String(value ?? "").trim()).filter(Boolean))];
+
+export function ordreFaktureringsdata(ordre = {}, virksomhed = {}) {
+  return {
+    email: [virksomhed.fakturaModtagelse, virksomhed.fakturamodtagelse,
+      virksomhed.fakturaEmail, virksomhed.invoiceEmail]
+      .map((value) => String(value ?? "").trim()).find(Boolean) || "",
+    instruktioner: somFakturalinjer(
+      ordre.faktureringsInstruktioner, ordre.fakturaInstruktioner, ordre.invoiceInstructions,
+      virksomhed.faktureringsInstruktioner, virksomhed.fakturaInstruktioner, virksomhed.invoiceInstructions,
+    ),
+  };
 }
 
 /**
@@ -360,23 +381,23 @@ function kr(oere) {
  * fakturaen kan matchet i trin 5 kun gættes ud fra beløb og leverandør — og
  * to bestillinger til samme firma i samme uge ser så ens ud.
  *
- * ⚠ OG TEKSTEN INDEHOLDER INGEN PRISER UDEN GRUNDLAG. En linje uden pris
- * skriver "—", ikke 0: en bestilling der beder om noget til nul kroner, er
- * en aftale ingen har indgået.
+ * ⚠ LEVERANDØRUDKASTET INDEHOLDER INGEN PRISER. Prisgrundlaget bliver i den
+ * interne ordre til godkendelse, budget, analyse og fakturamatch.
  */
-export function mailudkast(ordre, { leverandoer } = {}) {
+export function mailudkast(ordre, { leverandoer, virksomhed } = {}) {
   const linjer = linjeListe(ordre);
-  const sum = ordreSumOere(ordre);
   const nummer = ordre?.nummer || "(uden nummer)";
   const navn = leverandoer?.navn || "leverandøren";
+  const fakturering = ordreFaktureringsdata(ordre, virksomhed);
 
   const punkter = linjer.map((l) => {
     const antal = Number.isFinite(l.antal) ? l.antal : "?";
     const enhed = l.enhed ? ` ${l.enhed}` : "";
-    const pris = Number.isInteger(l.prisPrEnhedOere)
-      ? ` — ${kr(l.prisPrEnhedOere)} pr. ${l.enhed || "stk"}` : " — pris ikke oplyst";
-    return `  • ${antal}${enhed} × ${l.vare}${pris}`;
+    return `  • ${antal}${enhed} × ${l.vare}`;
   });
+  const levering = ordre?.hurtigstMuligt
+    ? "Hurtigst muligt"
+    : `Senest ${formatOrdreDato(ordre?.oensketDato)}`;
 
   return {
     tilEmail: leverandoer?.ordreEmail || leverandoer?.kontaktEmail || null,
@@ -388,11 +409,14 @@ export function mailudkast(ordre, { leverandoer } = {}) {
       "",
       ...punkter,
       "",
-      `I alt (ekskl. moms): ${sum > 0 ? kr(sum) : "—"}`,
+      `Levering: ${levering}`,
+      "Mellem 7.00-15.00",
+      "(lagerets åbningstider)",
       "",
-      /* ⚠ DEN VIGTIGSTE LINJE I MAILEN. Uden nummeret på fakturaen kan
-         matchet i trin 5 kun gættes. */
-      `Angiv venligst bestillingsnummer ${nummer} på fakturaen.`,
+      "Fakturering",
+      `Send faktura til: ${fakturering.email}`,
+      `Angiv vores bestillingsnummer ${nummer} på følgesedlen og fakturaen.`,
+      ...fakturering.instruktioner,
       "",
       "Med venlig hilsen",
     ].join("\n"),
@@ -411,28 +435,33 @@ export function mailudkast(ordre, { leverandoer } = {}) {
    deler kode med Indkøbslinjens valideIndkoeb().
 
    ⚠ SAMME TO REGLER SOM mailudkast(): bestillingsnummeret ligger i emnet
-   (matchet i trin 5 kan kun gættes uden det), og en linje uden pris skriver
-   teksten for "ikke oplyst" — aldrig 0, som ville være et løfte om en gratis
-   vare.
+   (matchet i trin 5 kan kun gættes uden det), og alle priser forbliver i den
+   interne ordre. Leverandørmailen bærer kun varer, mængder, levering og PO.
    ══════════════════════════════════════════════════════════════════════════ */
 
 const ORDREMAIL_TEKST = {
   da: {
     til: "Til", bestiller: "Vi bestiller hermed følgende under ordrenummer",
-    ialt: "I alt (ekskl. moms)", prisIkkeOplyst: "pris ikke oplyst",
-    angiv: "Angiv venligst bestillingsnummer", paaFakturaen: "på fakturaen.",
+    levering: "Levering", hurtigst: "Hurtigst muligt", senest: "Senest",
+    aabning: "Mellem 7.00-15.00", aabningNote: "(lagerets åbningstider)",
+    fakturering: "Fakturering", sendFakturaTil: "Send faktura til",
+    angiv: "Angiv vores bestillingsnummer", paaFakturaen: "på følgesedlen og fakturaen.",
     hilsen: "Med venlig hilsen", leverandoeren: "leverandøren",
   },
   sv: {
     til: "Till", bestiller: "Vi beställer härmed följande under beställningsnummer",
-    ialt: "Totalt (exkl. moms)", prisIkkeOplyst: "pris ej angivet",
-    angiv: "Ange gärna beställningsnumret", paaFakturaen: "på fakturan.",
+    levering: "Leverans", hurtigst: "Så snart som möjligt", senest: "Senast",
+    aabning: "Mellan 7.00-15.00", aabningNote: "(lagrets öppettider)",
+    fakturering: "Fakturering", sendFakturaTil: "Skicka faktura till",
+    angiv: "Ange vårt beställningsnummer", paaFakturaen: "på följesedeln och fakturan.",
     hilsen: "Med vänlig hälsning", leverandoeren: "leverantören",
   },
   en: {
     til: "To", bestiller: "We hereby place the following order under order number",
-    ialt: "Total (excl. VAT)", prisIkkeOplyst: "price not stated",
-    angiv: "Please state order number", paaFakturaen: "on the invoice.",
+    levering: "Delivery", hurtigst: "As soon as possible", senest: "No later than",
+    aabning: "Between 7.00-15.00", aabningNote: "(warehouse opening hours)",
+    fakturering: "Invoicing", sendFakturaTil: "Send invoice to",
+    angiv: "Please state our order number", paaFakturaen: "on the delivery note and invoice.",
     hilsen: "Kind regards", leverandoeren: "the supplier",
   },
 };
@@ -449,20 +478,27 @@ const ORDREMAIL_TEKST = {
  * dette kaldes — faldet her er et sidste værn, ikke den primære kontrol, og
  * en render-funktion der kaster på et skævt input, er en dårlig sidste linje.
  */
-export function ordreMailIndhold(ordre, { leverandoer, sprog } = {}) {
+export function ordreMailIndhold(ordre, { leverandoer, sprog, virksomhed } = {}) {
   const t = ORDREMAIL_TEKST[erGyldigtSprog(sprog) ? sprog : STANDARD_SPROG];
   const linjer = linjeListe(ordre);
-  const sum = ordreSumOere(ordre);
   const nummer = ordre?.nummer || "(uden nummer)";
   const navn = leverandoer?.navn || t.leverandoeren;
+  const fakturering = ordreFaktureringsdata(ordre, virksomhed);
+  const faktureringsblok = [
+    t.fakturering,
+    `${t.sendFakturaTil}: ${fakturering.email}`,
+    `${t.angiv} ${nummer} ${t.paaFakturaen}`,
+    ...fakturering.instruktioner,
+  ].join("\n");
 
   const punkter = linjer.map((l) => {
     const antal = Number.isFinite(l.antal) ? l.antal : "?";
     const enhed = l.enhed ? ` ${l.enhed}` : "";
-    const pris = Number.isInteger(l.prisPrEnhedOere)
-      ? ` — ${kr(l.prisPrEnhedOere)} pr. ${l.enhed || "stk"}` : ` — ${t.prisIkkeOplyst}`;
-    return `  • ${antal}${enhed} × ${l.vare}${pris}`;
+    return `  • ${antal}${enhed} × ${l.vare}`;
   });
+  const levering = ordre?.hurtigstMuligt
+    ? t.hurtigst
+    : `${t.senest} ${formatOrdreDato(ordre?.oensketDato)}`;
 
   return {
     tilEmail: leverandoer?.ordreEmail || leverandoer?.kontaktEmail || null,
@@ -474,12 +510,15 @@ export function ordreMailIndhold(ordre, { leverandoer, sprog } = {}) {
       "",
       ...punkter,
       "",
-      `${t.ialt}: ${sum > 0 ? kr(sum) : "—"}`,
+      `${t.levering}: ${levering}`,
+      t.aabning,
+      t.aabningNote,
       "",
-      `${t.angiv} ${nummer} ${t.paaFakturaen}`,
+      faktureringsblok,
       "",
       t.hilsen,
     ].join("\n"),
+    faktureringsblok,
   };
 }
 
@@ -662,10 +701,15 @@ export const ORDRE_OVERGANGE = {
   ],
   afventerGodkendelse: [
     { til: "godkendt", label: "Godkend", perm: "indkoeb.godkend" },
+    { til: "tilbageTilRettelse", label: "Send tilbage til rettelse", perm: "indkoeb.godkend", kraeverBegrundelse: true },
     /* ⚠ EN AFVISNING KRÆVER EN GRUND. Uden den er den en tavshed, og den
        samme bestilling bliver lagt igen i næste uge — nøjagtig som et afvist
        behov (beslutning 80). */
     { til: "afvist", label: "Afvis", perm: "indkoeb.godkend", kraeverBegrundelse: true },
+  ],
+  tilbageTilRettelse: [
+    { til: "afventerGodkendelse", label: "Send til godkendelse igen", perm: "indkoeb.skriv" },
+    { til: "annulleret", label: "Annullér", perm: "indkoeb.skriv", kraeverBegrundelse: true },
   ],
   godkendt: [
     /* ⚠ "SEND ORDRE" STÅR IKKE HER, MED VILJE — se noten ovenfor. */
@@ -677,6 +721,7 @@ export const ORDRE_OVERGANGE = {
   ],
   afvist: [],
   modtaget: [],
+  afsluttet: [],
   annulleret: [],
 };
 
@@ -727,7 +772,7 @@ export function kanSkifteIndkoebsordre(ordre, til, { perms = "", regler, uid } =
    * og skærmen skriver "godkendt af den der bestilte". En fire-øjne-regel der
    * ikke kan opfyldes, er værre end en selvgodkendelse man kan se.
    */
-  if (til === "godkendt" || til === "afvist") {
+  if (til === "godkendt" || til === "afvist" || til === "tilbageTilRettelse") {
     const udpeget = regler?.overBeloeb?.godkenderUid;
     if (udpeget && uid && udpeget !== uid) {
       return {
@@ -780,11 +825,19 @@ export function ordreOpdatering(ordre, til, { uid, nu, begrundelse, regler } = {
   const ud = {};
 
   if (til === "afventerGodkendelse") {
+    if (ordre?.status === "tilbageTilRettelse") {
+      ud.revision = (Number.isInteger(ordre.revision) ? ordre.revision : 1) + 1;
+      ud.godkendtRevision = null;
+      ud.godkendtAf = null;
+      ud.godkendtMs = null;
+      ud.godkendtAutomatisk = null;
+    }
     const krav = kraeverGodkendelse(ordre, regler);
     if (!krav.kraever) {
       ud.status = "godkendt";
       ud.godkendtMs = nu;
       ud.godkendtAutomatisk = true;
+      ud.godkendtRevision = ud.revision || ordre?.revision || 1;
       return ud;
     }
     ud.status = "afventerGodkendelse";
@@ -796,12 +849,18 @@ export function ordreOpdatering(ordre, til, { uid, nu, begrundelse, regler } = {
     ud.godkendtAf = uid;
     ud.godkendtMs = nu;
     ud.godkendtAutomatisk = false;
+    ud.godkendtRevision = ordre?.revision || 1;
     /* ⚠ SELVGODKENDELSE MARKERES. Se noten i kanSkifteIndkoebsordre(). */
     if (ordre?.oprettetAf && ordre.oprettetAf === uid) ud.selvgodkendt = true;
   }
   if (til === "afvist") {
     ud.afvistAf = uid;
     ud.afvistMs = nu;
+  }
+  if (til === "tilbageTilRettelse") {
+    ud.returneretAf = uid;
+    ud.returneretMs = nu;
+    ud.returneringsbegrundelse = begrundelse;
   }
   if (til === "sendt") ud.sendtMs = nu;
   if (til === "modtaget") ud.modtagetMs = nu;

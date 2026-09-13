@@ -12,11 +12,21 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   assert.match(klient, /permStrengFraClaims/);
   assert.match(functions, /\.\/delt\/permissions\.js/);
   assert.equal(rules.split("auth.token.perms.matches").length - 1, 0);
-  assert.equal(rules.split("auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains").length - 1, 82);
-  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 105);
-  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 164);
-  assert.ok(Buffer.byteLength(rules, "utf8") < 450_000);
-  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 210);
+  assert.equal(rules.split("auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains").length - 1, 84);
+  // PROCURE-godkendelseskøen bruger samme tidsbegrænsede dual-read som de
+  // øvrige læsbare noder under claims-migreringen.
+  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 107);
+  // 166 → 168: den læsbare PROCURE-godkendelseskø har både den kompakte
+  // indkoeb.laes-gate og den tidsbegrænsede legacy-permission; kladde og
+  // opsætning er fortsat helt serverlukkede.
+  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 168);
+  // PROCUREs serverlukkede kladder/opsætning, linjespor og læsbare
+  // godkendelseskø udvider den målte regelkontrakt med ca. 3 kB. Bevar et
+  // snævert loft, så senere ukontrolleret vækst fortsat opdages.
+  assert.ok(Buffer.byteLength(rules, "utf8") < 455_000);
+  // To nye servervaliderede PROCURE-regler (godkendelseskø og ordrespor)
+  // genbruger fortsat den fælles revocation-gate.
+  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 214);
   assert.match(rules, /"authRevocations"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /"legacyClaimsAllowlist"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /child\('tenant'\)\.val\(\) === auth\.token\.tenant/);

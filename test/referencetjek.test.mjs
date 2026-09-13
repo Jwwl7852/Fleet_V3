@@ -80,6 +80,21 @@ const UDEN_TJEK = {
   "indkoebsordrer/$ordreId/leverandoerId":
     "`ordreskriv` slår leverandøren op og afviser med not-found. Noden er "
     + "`.write: false`, så `.validate` kan ikke nås af en klient.",
+  "indkoebsordrer/$ordreId/godkendelsessagId":
+    "`indkoebsordrer` er `.write: false`; procureGodkendelseslinjerAfgor bygger "
+    + "ordren direkte fra den tenantafgrænsede sag i samme serveropdatering.",
+  "indkoebsordrer/$ordreId/afdelingId":
+    "serveren kopierer det historiske snapshot fra godkendelsessagen. "
+    + "procureMobilKladdeGem har først valideret den aktive stabile stamdata-id.",
+  "indkoebsordrer/$ordreId/leveringsstedId":
+    "samme lukkede vej og historiske snapshot som afdelingId; en senere "
+    + "deaktivering må ikke gøre den gamle ordre ugyldig.",
+  "indkoebsordrer/$ordreId/linjer/$linjeId/vareId":
+    "procureGodkendelseslinjerAfgor bygger linjen fra katalogopslaget i den "
+    + "signerede tenant; fritekstlinjer har bevidst null.",
+  "indkoebsordrer/$ordreId/linjer/$linjeId/kildeGodkendelseslinjeId":
+    "serveren sætter id'et fra den aktuelle godkendelsessags egne linjer og "
+    + "skriver ordren gennem den lukkede Admin SDK-vej.",
   "indkoebsordrer/$ordreId/linjer/$linjeId/behovId":
     "samme lukkede vej; linjen skrives sammen med sit behov.",
   "sensitive/sager/$sagId/beskeder/$id/partId":
@@ -88,9 +103,32 @@ const UDEN_TJEK = {
     + "invalid-argument hvis det ikke findes, før noget skrives. Skive 3D.",
   "indkoebsordrer/$ordreId/linjer/$linjeId/forbrugsvareId":
     "samme lukkede vej — `ordreskriv` kender varen.",
+  "indkoebsordrer/$ordreId/modtagelser/$modtagelseId/linjer/$linjeId/ordrelinjeId":
+    "`indkoebsordrer` er lukket; procureModtagelseRegistrer validerer linjen mod "
+    + "den tenant-afgrænsede ordre og skriver modtagelsen i en transaktion.",
+  "indkoebsordrer/$ordreId/modtagelser/$modtagelseId/dokumenter/$dokumentId/dokumentId":
+    "lig $dokumentId, ikke en fremmed reference. Uploadbekræftelsen bygger "
+    + "posten fra den verificerede Storage-fil under samme tenant, ordre og modtagelse.",
+  "indkoebsordrer/$ordreId/sendtMail/sendRequestId":
+    "idempotensnøglen peger på samme ordres lukkede mail-record; ordreMailSend "
+    + "reserverer den med transaction før transport og arkiverer den efter accept.",
+  "fakturaer/$fakturaId/kreditererFakturaId":
+    "fakturaer er lukket for klientskrivning; procureFakturaImport slår den oprindelige "
+    + "faktura op og kræver samme tenant, ordre, leverandør og fakturatype.",
+  "fakturaer/$fakturaId/linjer/$linjeId/ordrelinjeId":
+    "procureFakturaImport bygger linjen fra den tenant-afgrænsede ordres egne linjer "
+    + "og afviser mængder over den godkendte modtagelse.",
   "optaellinger/$optaellingId/bevaegelseId":
     "`optaellingskriv` skriver optællingen OG bevægelsen i én opdatering; "
     + "bevægelsen findes fordi den lige er skrevet.",
+  "forbrugsvarebevaegelser/$bevaegelseId/modtagelseId":
+    "modtagelsesfunktionen sætter feltet fra den modtagelse, den opretter i samme "
+    + "tenanttransaktion; bevægelsesnoden er lukket for klientskrivning.",
+  "forbrugsvarebevaegelser/$bevaegelseId/ordrelinjeId":
+    "modtagelsesfunktionen slår linjen op i den tenantafgrænsede ordre før den lukkede skrivning.",
+  "forbrugsvarebevaegelser/$bevaegelseId/flytningId":
+    "et internt idempotens-id der binder to serveroprettede modbevægelser sammen; det peger "
+    + "ikke på en selvstændig databasepost.",
   /* ⚠ SKIVE 4C — DE TO HER PEGER IKKE PÅ EN ANDEN SAMLING, DE ER LÅST TIL
      DERES EGET PATH-WILDCARD. `dokumentId` skal være lig $dokumentId, og
      `fakturaId` skal være lig $fakturaId — en existence-tjek mod en
@@ -141,6 +179,15 @@ const UDEN_TJEK = {
     "SAMME FELT SOM ovenfor, samme grund — et opakt id UDBYDEREN tildeler en "
     + "accepteret ordremail (functions/mail/), ikke en reference til en post "
     + "i denne database. Skive 4D.",
+  "indkoebsordrer/$ordreId/sendtMail/providerId":
+    "samme opake transportudbyder-id som mail-recorden; det findes kun hos "
+    + "mailudbyderen og kan derfor ikke slås op i RTDB.",
+  "fakturaer/$fakturaId/importRequestId":
+    "en klientgenereret idempotensnøgle for importkaldet, ikke en reference til en "
+    + "anden post; backend bruger den som stabil faktura-id.",
+  "fakturaer/$fakturaId/linjer/$linjeId/vareId":
+    "et historisk varesnapshot må overleve sletning eller omgruppering i kataloget; "
+    + "backend kopierer id'et fra ordrelinjen, men kræver ikke fortsat katalogeksistens.",
 
   /* ---- Polymorf reference: typen afgør målet, ikke feltet selv --------- */
   "sager/$sagId/objektId":

@@ -41,6 +41,7 @@ import {
   kladdelinjer, grupperPaaLeverandoer, mailudkast, ordreSumOere,
   linjeListe, ORDRESTATUS, ventendeOrdrer, GODKENDELSESGRUND, kraeverGodkendelse,
   tilgaengeligeOrdreHandlinger, STANDARD_GODKENDELSESREGLER, ordreMailIndhold,
+  ordreFaktureringsdata,
 } from "../../fleet/procure.js";
 import { SPROG, ALLE_SPROG, STANDARD_SPROG, erGyldigtSprog } from "../../fleet/sprog.js";
 import { meldBehov, afvisBehov } from "../../fleet/behov.js";
@@ -104,6 +105,10 @@ export default function Bestillinger() {
      ÆNDRET i Opsætning → Procure → Godkendelsesregler. */
   const regelPost = usePost(null, "godkendelsesregler", { demo: DEMO_GODKENDELSESREGLER });
   const regler = regelPost.post || STANDARD_GODKENDELSESREGLER;
+  const virksomhedPost = usePost(null, "virksomhed", { demo: {
+    navn: "Fjordholm Drift A/S", fakturaModtagelse: "faktura@fjordholm.example",
+  } });
+  const virksomhed = virksomhedPost.post || {};
 
   const henterNoget = behov.henter || ordrer.henter;
   if (henterNoget) return <Henter hvad="bestillinger" />;
@@ -480,7 +485,7 @@ export default function Bestillinger() {
         {!kladder.length ? (
           <Tom>Ingen bestillinger i kladde. Vælg varer ovenfor og bestil dem — så står udkastet her.</Tom>
         ) : kladder.map((o) => {
-          const udkast = mailudkast(o, { leverandoer: levFor(o.leverandoerId) });
+          const udkast = mailudkast(o, { leverandoer: levFor(o.leverandoerId), virksomhed });
           return (
             <div key={o.id} className="fc-udkast">
               <div className="fc-row" style={{ justifyContent: "space-between" }}>
@@ -655,6 +660,7 @@ export default function Bestillinger() {
         <SendOrdreDialog
           ordre={sender}
           leverandoer={levFor(sender.leverandoerId)}
+          virksomhed={virksomhed}
           onLuk={() => setSender(null)}
           onSendt={() => { setSender(null); ordrer.genindlaes(); }}
         />
@@ -669,7 +675,7 @@ export default function Bestillinger() {
  * ⚠ FORHÅNDSVISNINGEN VISER, DEN ÆNDRER IKKE. `ordreMailIndhold()` er den
  * samme rene funktion serveren selv bygger af det server-hentede ordre.
  */
-function SendOrdreDialog({ ordre, leverandoer, onLuk, onSendt }) {
+function SendOrdreDialog({ ordre, leverandoer, virksomhed, onLuk, onSendt }) {
   const [sprog, setSprog] = useState(
     erGyldigtSprog(leverandoer?.sprog) ? leverandoer.sprog : STANDARD_SPROG
   );
@@ -681,7 +687,8 @@ function SendOrdreDialog({ ordre, leverandoer, onLuk, onSendt }) {
       : `srq-${Date.now()}-${Math.random().toString(36).slice(2)}`
   ));
 
-  const indhold = ordreMailIndhold(ordre, { leverandoer, sprog });
+  const fakturering = ordreFaktureringsdata(ordre, virksomhed);
+  const indhold = ordreMailIndhold(ordre, { leverandoer, sprog, virksomhed });
 
   const send = async () => {
     setArbejder(true);
@@ -697,7 +704,7 @@ function SendOrdreDialog({ ordre, leverandoer, onLuk, onSendt }) {
             under="Sendes via den delte mailtransport til den mailadresse leverandøren har i kartoteket."
             onLuk={onLuk}
             handling={
-              <Knap variant="primaer" disabled={!indhold.tilEmail || arbejder} onClick={send}>
+              <Knap variant="primaer" disabled={!indhold.tilEmail || !fakturering.email || arbejder} onClick={send}>
                 Send ordre
               </Knap>
             }>
@@ -705,6 +712,11 @@ function SendOrdreDialog({ ordre, leverandoer, onLuk, onSendt }) {
         <p className="fc-hint fc-bad" style={{ marginTop: 0 }}>
           Leverandøren har ingen mailadresse i kartoteket. Tilføj en under
           Leverandører, før ordren kan sendes.
+        </p>
+      ) : !fakturering.email ? (
+        <p className="fc-hint fc-bad" style={{ marginTop: 0 }}>
+          Virksomheden mangler en fakturamail. Tilføj den i virksomhedens
+          stamdata, før ordren kan sendes.
         </p>
       ) : (
         <>

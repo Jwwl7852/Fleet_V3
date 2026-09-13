@@ -45,6 +45,18 @@ service firebase.storage {
       allow read, write: if false;
     }
 
+    // PROCURE: både den revisionslåste ordre-PDF og modtagelsesbilag åbnes
+    // udelukkende gennem de tenant-/permission-gated Cloud Functions.
+    match /tenants/{tenantId}/indkoebsordrer/{ordreId}/revisioner/{revision}/ordre.pdf {
+      allow read, write: if false;
+    }
+    match /tenants/{tenantId}/indkoebsordrer/{ordreId}/modtagelser/{modtagelseId}/dokumenter/{dokumentId} {
+      allow read, write: if false;
+    }
+    match /tenants/{tenantId}/procureKoeb/{koebId}/dokumenter/{dokumentId} {
+      allow read, write: if false;
+    }
+
     // Alt andet er lukket. Ingen andre stier er bygget endnu.
     match /{allPaths=**} {
       allow read, write: if false;

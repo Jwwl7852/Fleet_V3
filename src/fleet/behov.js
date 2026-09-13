@@ -28,7 +28,7 @@ async function kald(nyttelast) {
     if (kode.includes("permission-denied")) {
       return { ok: false, art: "naegtet", besked: e?.message || "Du må ikke det her.", data: null };
     }
-    if (kode.includes("invalid-argument") || kode.includes("failed-precondition")) {
+    if (kode.includes("invalid-argument") || kode.includes("failed-precondition") || kode.includes("already-exists")) {
       return { ok: false, art: "afvist", besked: e?.message || "Behovet blev afvist.", data: null };
     }
     if (kode.includes("not-found")) {
@@ -79,6 +79,7 @@ export async function meldBehov(post = {}) {
     varenummer: post.varenummer || undefined,
     anmoderId: post.anmoderId || undefined,
     leverandoerId: post.leverandoerId || undefined,
+    requestId: post.requestId || undefined,
   });
 }
 

@@ -20,15 +20,16 @@
  * MAIL_STATUS-noten i mailtransport.js.
  */
 
-export async function sendMail(adapter, { til, emne, tekst }) {
+export async function sendMail(adapter, { til, cc, emne, tekst, attachments = [] }) {
   if (!adapter || typeof adapter.send !== "function") {
     return { status: "fejlet", fejlAarsag: "Ingen mail-adapter konfigureret." };
   }
   try {
-    const res = await adapter.send({ til, emne, tekst });
-    return { status: "accepteret", providerId: res?.providerId || null };
+    const res = await adapter.send({ til, cc, emne, tekst, attachments });
+    return { status: "accepteret", providerId: res?.providerId || null, afsender: res?.afsender || null,
+      ...(res?.transportKvittering ? { transportKvittering: res.transportKvittering } : {}) };
   } catch (e) {
-    return { status: "fejlet", fejlAarsag: kortFejl(e) };
+    return { status: e?.resultatUkendt === true ? "ukendt" : "fejlet", fejlAarsag: kortFejl(e) };
   }
 }
 

@@ -24,7 +24,7 @@ const FUNKTION = "ordreskriv";
  *
  * ⚠ KASTER ALDRIG. En afvisning er et SVAR, ikke en nedbrudt forbindelse.
  */
-export async function opretBestilling({ leverandoerId, linjer = [], bestillerId, note } = {}) {
+export async function opretBestilling({ leverandoerId, linjer = [], bestillerId, note, requestId } = {}) {
   if (!leverandoerId) {
     return { ok: false, art: "afvist", besked: "Vælg en leverandør.", data: null };
   }
@@ -44,6 +44,7 @@ export async function opretBestilling({ leverandoerId, linjer = [], bestillerId,
       })),
       bestillerId: bestillerId || undefined,
       note: note || undefined,
+      requestId: requestId || undefined,
     });
     return { ok: true, art: "ok", besked: null, data: svar?.data ?? svar ?? null };
   } catch (e) {
@@ -54,7 +55,7 @@ export async function opretBestilling({ leverandoerId, linjer = [], bestillerId,
     /* ⚠ `failed-precondition` ER IKKE EN FEJL I FORMEN. "Varen er allerede
        bestilt" er et svar om VERDEN, ikke om det brugeren skrev — og han skal
        kunne læse forskellen frem for at rette i en formular der er rigtig. */
-    if (kode.includes("failed-precondition")) {
+    if (kode.includes("failed-precondition") || kode.includes("already-exists") || kode.includes("aborted")) {
       return { ok: false, art: "afvist", besked: e?.message || "Det kan ikke lade sig gøre nu.", data: null };
     }
     if (kode.includes("invalid-argument") || kode.includes("not-found")) {

@@ -92,6 +92,23 @@ export async function skiftFaktura({ fakturaId, til, begrundelse } = {}) {
   }, "Skiftet blev afvist.");
 }
 
+/** Autoriseret oprettelses-/importvej for en Procure-faktura. Beløb og
+ * afvigelser genberegnes af backend mod den aktuelle PO-revision. */
+export async function importerProcureFaktura({ ordreId, ordreRevision, requestId, invoiceNumber, invoiceDate, type = "invoice", lines = [], creditsInvoiceId, source = "upload" } = {}) {
+  if (!ordreId || !requestId || !invoiceNumber || !invoiceDate || !lines.length) {
+    return { ok: false, art: "afvist", besked: "Ordre, importreference, fakturanummer, dato og linjer er påkrævet.", data: null };
+  }
+  return kald("procureFakturaImport", {
+    ordreId, ordreRevision, requestId, invoiceNumber, invoiceDate, type, source,
+    creditsInvoiceId: creditsInvoiceId || undefined,
+    lines: lines.map((line) => ({
+      orderLineId: line.orderLineId,
+      quantity: Number(line.quantity),
+      unitPriceOere: Number(line.unitPriceOere),
+    })),
+  }, "Fakturaimporten blev afvist.");
+}
+
 /**
  * saetDestination({ fakturaId, art, id, begrundelse }) → { ok, … }
  *

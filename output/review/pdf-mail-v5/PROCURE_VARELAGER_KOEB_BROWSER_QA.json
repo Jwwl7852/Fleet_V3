@@ -1,0 +1,168 @@
+{
+  "ok": true,
+  "baseUrl": "http://127.0.0.1:5208",
+  "ordinaryFirebaseLogin": true,
+  "checks": {
+    "mailProposal": "Til Nordisk Materialehandel A/S\n\nVi bestiller hermed følgende under ordrenummer BST-2026-00043:\n\n  • 10 ruller × Pakketape, klar 48 mm\n\nLevering: Hurtigst muligt\nMellem 7.00-15.00\n(lagerets åbningstider)\n\nFakturering\nSend faktura til: faktura@fjordholm.example\nAngiv vores bestillingsnummer BST-2026-00043 på følgesedlen og fakturaen.\nFakturaen skal være i PDF-format.\n\nMed venlig hilsen",
+    "mobileSuccess": "✓\nKøbet er gemt\n\nReference KOB-20260912-BEA213\n\nAfventer udgiftsgodkendelse · ikke bogført\nVarelinjer\n1\nBetalingsform\nFirmakort\nBeløb\n144,00 kr.\nKvittering\nVedhæftet\nIngen leverandørbestilling er sendt\nRegistreringen har ikke udløst mail, ny betaling eller ekstra lagerbevægelse ved genindlæsning.\nÅbn købet\nTilbage til bestillinger",
+    "reopenedReceipt": {
+      "ok": true,
+      "size": 68,
+      "sha256": "431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460"
+    },
+    "secondAuthorizedSession": true,
+    "csv": {
+      "filename": "procure-materialeforbrug-2026-09.csv",
+      "sha256": "df3e3e4212b779d99f5054da8d20331bdb2441f828a71229ebc09c07500f5b2d",
+      "period": "2026-09-01–2026-09-30",
+      "milkQuantity": 12,
+      "unit": "liter"
+    }
+  },
+  "screenshots": [
+    {
+      "filename": "01-desktop-varelager.png",
+      "viewport": 1440,
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141
+      },
+      "outside": []
+    },
+    {
+      "filename": "12-desktop-mailforslag-fakturering.png",
+      "viewport": 1440,
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "root": {
+        "left": 276,
+        "right": 1365,
+        "width": 1089
+      },
+      "outside": []
+    },
+    {
+      "filename": "02-desktop-vareopsaetning.png",
+      "viewport": 1440,
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "root": {
+        "left": 222.5,
+        "right": 1202.5,
+        "width": 980
+      },
+      "outside": []
+    },
+    {
+      "filename": "03-desktop-ny-bestilling-to-valg.png",
+      "viewport": 1440,
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141
+      },
+      "outside": []
+    },
+    {
+      "filename": "04-mobil-ny-bestilling-390.png",
+      "viewport": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "root": {
+        "left": 24,
+        "right": 366,
+        "width": 342
+      },
+      "outside": []
+    },
+    {
+      "filename": "05-mobil-ny-bestilling-360.png",
+      "viewport": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "root": {
+        "left": 24,
+        "right": 336,
+        "width": 312
+      },
+      "outside": []
+    },
+    {
+      "filename": "06-mobil-koeb-med-kvittering-390.png",
+      "viewport": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "root": {
+        "left": 24,
+        "right": 366,
+        "width": 342
+      },
+      "outside": []
+    },
+    {
+      "filename": "07-mobil-kontroller-koeb-390.png",
+      "viewport": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "root": {
+        "left": 24,
+        "right": 366,
+        "width": 342
+      },
+      "outside": []
+    },
+    {
+      "filename": "08-mobil-koeb-registreret-390.png",
+      "viewport": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "root": {
+        "left": 24,
+        "right": 366,
+        "width": 342
+      },
+      "outside": []
+    },
+    {
+      "filename": "09-mobil-koeb-registreret-360.png",
+      "viewport": 360,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "root": {
+        "left": 24,
+        "right": 336,
+        "width": 312
+      },
+      "outside": []
+    },
+    {
+      "filename": "10-desktop-koeb-genaabnet-med-kvittering.png",
+      "viewport": 1440,
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141
+      },
+      "outside": []
+    },
+    {
+      "filename": "11-desktop-forbrug-med-koebsgrundlag.png",
+      "viewport": 1440,
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141
+      },
+      "outside": []
+    }
+  ]
+}

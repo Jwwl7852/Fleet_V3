@@ -265,7 +265,8 @@ describe("Bevægelsen og beholdningen skrives sammen", () => {
   test("⚠ forbrugsvareskriv SÆTTER IKKE BEHOLDNINGEN PÅ EN RETTELSE", () => {
     const blok = funktion("forbrugsvareskriv");
     /* Kun ved OPRETTELSE sættes den, og da til nul. */
-    assert.match(blok, /post\.beholdning = 0;/);
+    assert.doesNotMatch(blok, /post\.beholdning = 0;/,
+      "en ny lagerført vare må ikke fremstille ukendt beholdning som et bekræftet nul");
     assert.ok(!/d\.beholdning/.test(blok),
       "beholdningen kan sættes fra klienten — det er en usporet rettelse");
     assert.ok(!/beholdning/.test(KLIENT),

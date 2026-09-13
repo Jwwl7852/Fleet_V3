@@ -74,13 +74,16 @@ export async function skiftOrdre({ ordreId, til, begrundelse } = {}) {
  * sagplan.js. Genereres af kalderen og skal være DEN SAMME på tværs af et
  * dobbeltklik eller en netværks-retry.
  */
-export async function sendOrdreMail({ ordreId, sendRequestId, sprog } = {}) {
+export async function sendOrdreMail({ ordreId, sendRequestId, sprog, cc, emne, ledsagetekst } = {}) {
   if (!ordreId) return { ok: false, art: "afvist", besked: "Vælg en bestilling.", data: null };
   if (!sendRequestId) return { ok: false, art: "afvist", besked: "Mangler et afsendelses-id.", data: null };
   return kald("ordreMailSend", {
     ordreId,
     sendRequestId,
     sprog: sprog || undefined,
+    cc: cc || undefined,
+    emne: emne || undefined,
+    ledsagetekst: ledsagetekst || undefined,
   }, "Ordren blev ikke sendt.");
 }
 

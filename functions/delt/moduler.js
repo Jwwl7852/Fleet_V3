@@ -338,6 +338,7 @@ export const NODE_MODUL = {
      Procure har hverken behov at melde ind eller ordrer at sende. */
   indkoebsbehov: "indkoeb",
   indkoebsordrer: "indkoeb",
+  procureGodkendelsessager: "indkoeb",
   godkendelsesregler: "indkoeb",
   forbrugsvarer: "indkoeb",
   forbrugsvarebevaegelser: "indkoeb",
@@ -347,6 +348,10 @@ export const NODE_MODUL = {
      at vedligeholde. */
   indkoebsvarer: "indkoeb",
   leverandoervarer: "indkoeb",
+  /* Kvoten til modtagelsesbilag er en Procure-ejet undernode. Den fælles
+     dokumentkvote-beholder har også Fakturacenterets bilag og kan derfor
+     ikke gates samlet, men denne gren må ikke kunne læses uden Procure. */
+  "dokumentkvote/procureBilag": "indkoeb",
   /* ⚠ G.2 — braendstofmatch HØRER TIL indkoeb, SAMME MODUL SOM DEN
      FAKTURALINJE DEN MATCHER. En kunde uden Procure har ingen
      indkøbslinjer at matche mod en tankning. */

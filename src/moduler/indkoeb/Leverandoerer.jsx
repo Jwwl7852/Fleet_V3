@@ -49,7 +49,7 @@ import {
   LEVERANDOER_KATEGORI, ALLE_KATEGORIER, AFTALETYPE,
   beregnNoegletal, prisafvigelseTone, MINDSTE_GRUNDLAG, maalTekst,
   gaeldendePrisliste, kommendePriser, indkoebBeloebOere, leverandoerFraDb,
-  valideLeverandoer, byggLeverandoer,
+  valideLeverandoer, byggLeverandoer, BESTILLINGSMETODE, ALLE_BESTILLINGSMETODER,
 } from "../../fleet/leverandoerer.js";
 import { SPROG, ALLE_SPROG, STANDARD_SPROG } from "../../fleet/sprog.js";
 import { DEMO_FAKTURAER } from "../../fleet/demo-indkoeb.js";
@@ -646,6 +646,7 @@ function Portaladgang({ l, path, maaSkrive, paaAendret }) {
 const tomLeverandoer = () => ({
   navn: "", kategori: "", cvr: "", adresse: "", kontaktperson: "",
   kontaktEmail: "", ordreEmail: "", kontaktTelefon: "", aktiv: true,
+  bestillingsmetode: "mail", webshopUrl: "", kundenummer: "", aftalevilkaar: "",
   /* ⚠ SKIVE 4D — EKSPLICIT VALGT, IKKE BROWSERENS SPROG. Se sprog.js. */
   sprog: STANDARD_SPROG,
 });
@@ -704,6 +705,25 @@ function Leverandoerformular({ leverandoer, sti, paaGemt, paaLuk }) {
                 fejl={vis("navn")} />
           <Felt id="lv-kategori" label="Kategori" kraevet valgmuligheder={kategorivalg}
                 vaerdi={f.kategori} saet={saet("kategori")} fejl={vis("kategori")} />
+        </Feltraekke>
+        <Feltraekke>
+          <Felt id="lv-metode" label="Tilladt bestillingsmetode"
+                valgmuligheder={ALLE_BESTILLINGSMETODER.map((vaerdi) => ({ vaerdi, label: BESTILLINGSMETODE[vaerdi] }))}
+                vaerdi={f.bestillingsmetode || "mail"} saet={saet("bestillingsmetode")}
+                fejl={vis("bestillingsmetode")}
+                hint="Åbning af webshop ændrer aldrig bestillingens status." />
+          <Felt id="lv-kundenummer" label="Kundenummer hos leverandøren"
+                vaerdi={f.kundenummer} saet={saet("kundenummer")} fejl={vis("kundenummer")} />
+        </Feltraekke>
+        {["webshop", "begge"].includes(f.bestillingsmetode) && <Feltraekke>
+          <Felt id="lv-webshop" label="Webshopadresse" kraevet vaerdi={f.webshopUrl}
+                saet={saet("webshopUrl")} fejl={vis("webshopUrl")}
+                hint="Kun https. Loginoplysninger gemmes separat som en beskyttet serverhemmelighed." />
+        </Feltraekke>}
+        <Feltraekke>
+          <Felt id="lv-vilkaar" label="Aftale og bestillingsvilkår" vaerdi={f.aftalevilkaar}
+                saet={saet("aftalevilkaar")} fejl={vis("aftalevilkaar")}
+                hint="Fx fragtgrænse, rabat eller betalingsbetingelser." />
         </Feltraekke>
         <Feltraekke>
           <Felt id="lv-cvr" label="CVR" vaerdi={f.cvr} saet={saet("cvr")}

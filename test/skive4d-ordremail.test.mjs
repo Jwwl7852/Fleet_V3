@@ -47,10 +47,12 @@ describe("§15.1 — klienten kan ikke sende til en vilkårlig adresse", () => {
     assert.match(b, /const tilEmail = ordreEmail \|\| kontaktEmail/);
   });
 
-  it("⚠ INGEN to/cc/bcc/adresse/modtager LÆSES FRA req.data NOGEN STEDER", () => {
-    for (const felt of ["d.til", "d.to", "d.cc", "d.bcc", "d.modtager", "d.modtagere", "d.adresse", "d.email"]) {
+  it("⚠ INGEN fri primær modtager/bcc/adresse LÆSES FRA req.data NOGEN STEDER", () => {
+    for (const felt of ["d.til", "d.to", "d.bcc", "d.modtager", "d.modtagere", "d.adresse", "d.email"]) {
       assert.ok(!b.includes(felt), `${felt} læses fra klientens payload`);
     }
+    assert.match(b, /cc\.some\(\(mail\) => !erGyldigMail\(mail\)\)/,
+      "den valgfri Cc-liste valideres ikke server-side");
   });
 
   it("⚠ KLIENTENS KALDSFLADE (godkendelse.js) HAR INTET ADRESSEFELT", () => {
@@ -58,9 +60,10 @@ describe("§15.1 — klienten kan ikke sende til en vilkårlig adresse", () => {
     const start = godkendelse.indexOf("export async function sendOrdreMail");
     assert.ok(start >= 0, "sendOrdreMail() findes ikke i godkendelse.js");
     const kald = godkendelse.slice(start, start + 500);
-    for (const felt of ["til:", "to:", "cc:", "bcc:", "adresse:", "email:", "modtager"]) {
+    for (const felt of ["til:", "to:", "bcc:", "adresse:", "email:", "modtager"]) {
       assert.ok(!kald.includes(felt), `sendOrdreMail() sender ${felt} — en fri adresse`);
     }
+    assert.ok(kald.includes("cc"), "den brugerredigerbare, servervaliderede Cc mangler");
   });
 });
 
@@ -142,7 +145,7 @@ describe("§15.5/§15.6 — en ordre kan kun sendes fra status \"godkendt\"", ()
    ══════════════════════════════════════════════════════════════════════════ */
 describe("§15.7 — mailindholdet bygges af den server-hentede ordre", () => {
   it("⚠ ordreMailIndhold() KALDES MED DEN SERVER-HENTEDE ordre, IKKE ET KLIENTOBJEKT", () => {
-    assert.match(b, /ordreMailIndhold\(ordre, \{ leverandoer: lev, sprog \}\)/);
+    assert.match(b, /ordreMailIndhold\(ordre, \{ leverandoer: lev, sprog, virksomhed \}\)/);
   });
 
   it("⚠ INGEN d.linjer/d.ordrelinjer/d.varer LÆSES NOGEN STEDER", () => {
@@ -151,11 +154,15 @@ describe("§15.7 — mailindholdet bygges af den server-hentede ordre", () => {
     }
   });
 
-  it("⚠ ordreMailIndhold() ER EN REN FUNKTION DER IKKE GÆTTER EN PRIS", () => {
+  it("⚠ ordreMailIndhold() ER EN REN FUNKTION UDEN LEVERANDØRPRISER", () => {
     const ordre = { nummer: "BST-2026-00001", linjer: { l1: { vare: "Skruer", antal: 10 } } };
-    const indhold = ordreMailIndhold(ordre, { leverandoer: { navn: "Test A/S", kontaktEmail: "t@a.dk" }, sprog: "da" });
-    assert.match(indhold.brodtekst, /pris ikke oplyst/);
-    assert.ok(!indhold.brodtekst.includes("0,00 kr."), "en linje uden pris skriver 0,00 — et løfte om en gratis vare");
+    const indhold = ordreMailIndhold(ordre, { leverandoer: { navn: "Test A/S", kontaktEmail: "t@a.dk" }, sprog: "da", virksomhed: { fakturaModtagelse: "faktura@example.invalid", faktureringsInstruktioner: ["Vedhæft én PDF pr. faktura."] } });
+    assert.match(indhold.brodtekst, /10 × Skruer/);
+    assert.match(indhold.brodtekst, /Fakturering\nSend faktura til: faktura@example\.invalid/);
+    assert.match(indhold.brodtekst, /Levering:[\s\S]*\(lagerets åbningstider\)\n\nFakturering\n/,
+      "Fakturering skal stå umiddelbart efter mailens Levering-sektion");
+    assert.match(indhold.brodtekst, /Vedhæft én PDF pr\. faktura\./);
+    assert.ok(!/kr\.|pris|moms|total|i alt/i.test(indhold.brodtekst), "leverandørmailen afslører interne prisfelter");
   });
 });
 
@@ -294,8 +301,9 @@ describe("§15.13 — en override for ÉN mail ændrer ikke leverandørens gemte
    HEADER-INJEKTION — samme værn som sagMailSend (Gate A punkt 6)
    ══════════════════════════════════════════════════════════════════════════ */
 describe("Emnet går gennem samme sanering som sagMailSend", () => {
-  it("⚠ saniterHeaderFelt() KALDES PÅ indhold.emne", () => {
-    assert.match(b, /const emne = saniterHeaderFelt\(indhold\.emne, 250\)/);
+  it("⚠ både brugerønske og endeligt emne går gennem saniterHeaderFelt()", () => {
+    assert.match(b, /const emneOenske = saniterHeaderFelt\(d\.emne, 250\)/);
+    assert.match(b, /saniterHeaderFelt\(`\$\{emneOenske \|\| indhold\.emne\}/);
   });
 });
 
@@ -335,12 +343,13 @@ describe("Genbrug af Skive 3D's mailtransport — ingen Procure-egen transport",
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
-   §13 — INGEN VEDHÆFTNINGER I 4D
+   §13 — DEN GODKENDTE ORDRE-PDF ER DEN FAKTISKE VEDHÆFTNING
    ══════════════════════════════════════════════════════════════════════════ */
-describe("§13 — ingen vedhæftninger", () => {
-  it("⚠ ordreMailSend NÆVNER INGEN VEDHÆFTNING/PDF/FIL", () => {
-    assert.ok(!/vedhaeftning|attachment|\bpdf\b|dokumentId/i.test(b),
-      "ordreMailSend rører en vedhæftning — 4D er ren HTML/tekst, ingen fil");
+describe("§13 — revisionslåst PDF-vedhæftning", () => {
+  it("⚠ samme pdf.bytes sendes som attachment efter sikrOrdrePdf", () => {
+    assert.match(b, /const pdf = await sikrOrdrePdf\(/);
+    assert.match(b, /attachments:\s*\[\{[\s\S]{0,180}bytes: pdf\.bytes/);
+    assert.match(b, /pdfSha256: pdf\.sha256/);
   });
 
   it("⚠ Send ordre-DIALOGEN HAR INGEN FIL-INPUT", () => {
@@ -373,12 +382,12 @@ describe("⚠ UI'ET PÅSTÅR ALDRIG \"LEVERET\"", () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
-   KOBLINGEN TIL SKIVE 4C — DOKUMENTLAGERET RØRES IKKE
+   ARKIVKOBLINGEN — PDF-STIEN KOMMER FRA DEN SERVER-EJEDE GENERATOR
    ══════════════════════════════════════════════════════════════════════════ */
-describe("⚠ 4C's DOKUMENTLAGER OG 4D's MAIL ER IKKE KOBLET", () => {
-  it("⚠ ordreMailSend IMPORTERER INTET FRA dokumenter.js OG KALDER INGEN dokument*-FUNKTION", () => {
-    assert.ok(!/dokumentUploadInitier|dokumentUploadBekraeft|dokumentDownloadLink|from ".\/delt\/dokumenter\.js"/.test(kilde.slice(
-      kilde.indexOf("export const ordreMailSend"), kilde.indexOf("export const ordreMailSend") + 6000
-    )));
+describe("ordre-PDF arkiveres og sendes fra én serverejet fil", () => {
+  it("⚠ den kanoniske revisionssti og SHA-256 gemmes", () => {
+    assert.match(kilde, /ordrePdfStoragePath\(tenantId, ordreId, revision\)/);
+    assert.match(kilde, /createHash\("sha256"\)\.update\(bytes\)/);
+    assert.match(kilde, /pdfArkiv\/\$\{revision\}/);
   });
 });
