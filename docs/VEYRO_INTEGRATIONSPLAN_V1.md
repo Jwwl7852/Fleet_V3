@@ -911,3 +911,35 @@ WAREHOUSE kan derfor markeres selvstændigt backend-verificeret. Den fulde
 booking → udlevering → retur → modtagelsesplads → slutplacering på tværs af
 begge nyere moduler afventer fortsat et særskilt brugerautoriseret UNIT-merge.
 Detaljerne står i `docs/VEYRO_WAREHOUSE_INTEGRATIONSRESULTAT_V1.md`.
+
+## 17. UNIT Booking V2 integreret — 2026-09-13
+
+Det præcise rettelsescheckpoint
+`77c3ccabed2b342b067e45ed15a3927c63e74dce` er integreret med fuld historik i
+merge-commit `4f9bdf46cbc2cb2c7f3bf1542a364204b6f2254d`. Det tidligere UNIT-checkpoint
+`81c0fb09…` følger med leverancens egen historik og er ikke dubleret.
+
+Konflikterne mod den nyere WAREHOUSE-integration er løst ved at bevare den
+strengere fælles fysiske unitmodel, `forventetPladsId`, idempotens før
+precondition, append-only bevægelser og direkte regelbeskyttelse. UNITs
+booking-, import-, dokumentudtræks- og scannerruter er samtidig monteret
+lazy-loadet under `/unitbooking/*` i den fælles AppShell. Importen skelner
+ærligt mellem lokalt understøttede formater og OCR-krævende billeder/scannede
+PDF'er.
+
+Root lint, produktionsbuild, Functions-paritet og emulatoruafhængige UNIT-/
+WAREHOUSE-/platformregressioner bestod. Den afsluttende Rules-gate kunne
+derimod ikke starte: den lokale Firebase Database-emulators Java/Netty-proces
+fejlede før testindlæsning med manglende loopback-forbindelse på både den
+proceslokale Temurin 21.0.12.1 og 21.0.11. Derfor er det tværgående
+WAREHOUSE/UNIT-backendforløb, slutproduktets tenant-/permissionprøver og det
+realistiske tenantrod-belastningsscenarie fortsat blokeret og må ikke regnes
+som bestået.
+
+Den samlede app er visuelt kontrolleret på `http://127.0.0.1:5197/` med én
+AppShell, skift mellem WAREHOUSE og UNIT, direkte ruter, reload, tilbage/frem,
+scanner og syntetisk tekstimport til gennemgang. Den kørende version er
+bevidst en lokal demo-/UI-tilstand uden Firebase- eller
+produktionstilslutning. Det fulde test- og konfliktbevis samt resterende
+produktionsarbejde står i
+`docs/VEYRO_UNITBOOKING_INTEGRATIONSRESULTAT_V1.md`.
