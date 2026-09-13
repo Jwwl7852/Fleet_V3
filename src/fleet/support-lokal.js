@@ -21,13 +21,31 @@ import {
 import { lokaltSupportAiSvar } from "./support-ai.js";
 
 const tomTilstand = () => ({
-  sager: {}, beskeder: {}, interneNoter: {}, internAi: {}, idempotens: {},
+  sager: {}, beskeder: {}, interneNoter: {}, internAi: {}, svarKladder: {}, idempotens: {},
 });
 
 const kopi = (v) => JSON.parse(JSON.stringify(v));
 const sorter = (poster) => [...poster].sort((a, b) =>
   Number(a.oprettetMs || 0) - Number(b.oprettetMs || 0)
   || String(a.id).localeCompare(String(b.id), "da"));
+
+const kladdeGrundlag = (kladde = {}) => JSON.stringify({
+  kanal: kladde.kanal || SUPPORT_KANAL.portal,
+  tilUid: kladde.tilUid || "",
+  tekst: kladde.tekst || "",
+  signatur: kladde.signatur || "",
+  vedhaeftninger: kladde.vedhaeftninger || [],
+  basisSagRevision: Number(kladde.basisSagRevision || 0),
+});
+
+function lokaltFingeraftryk(kladde) {
+  let hash = 2166136261;
+  for (const tegn of kladdeGrundlag(kladde)) {
+    hash ^= tegn.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
 
 function fejl(kode, besked) {
   const e = new Error(besked);
@@ -194,6 +212,9 @@ export function opretSupportHukommelseslager({
         state.idempotens[idem] = { operation: "send", sagId };
         sag.revision += 1;
         sag.opdateretMs = nu();
+        if (sag.ansvarstype === SUPPORT_ANSVAR.ejer) {
+          sag.status = sag.ansvarligUid ? "underBehandling" : "afventerSupport";
+        }
         opdaterIndeks(state, sag);
         gem(state);
         if (sag.ansvarstype === SUPPORT_ANSVAR.ejer || sag.status !== "aiDialog") return svarTilKunde(state, sag);
@@ -251,6 +272,7 @@ export function opretSupportHukommelseslager({
         sag: kopi(sag), beskeder: sorter(Object.values(state.beskeder[sagId] || {})),
         interneNoter: sorter(Object.values(state.interneNoter[sagId] || {})),
         internAi: sorter(Object.values(state.internAi[sagId] || {})),
+        svarKladder: sorter(Object.values(state.svarKladder[sagId] || {})),
       };
     };
     const api = {
@@ -268,18 +290,50 @@ export function opretSupportHukommelseslager({
         state.idempotens[idem] = { operation: "overtag", sagId }; opdaterIndeks(state, sag); gem(state);
         return hentEjer(sagId);
       },
-      async svar({ sagId, anmodningId, forventetRevision, tekst }) {
+      async gemSvarKladde({ sagId, anmodningId, id = "portal", forventetRevision = 0, forventetSagRevision, tekst, signatur = "", vedhaeftninger = [], kanal = SUPPORT_KANAL.portal }) {
         const state = laes(); const sag = sagForEjer(state, bruger, sagId);
         const idem = idempotensNoegle({ uid: `ejer_${bruger.uid}` }, anmodningId);
         if (state.idempotens[idem]) return hentEjer(sagId);
-        if (sag.revision !== forventetRevision) throw fejl("aborted", "Sagen er ændret. Hent den igen.");
-        if (sag.ansvarligUid !== bruger.uid || sag.ansvarstype !== SUPPORT_ANSVAR.ejer) throw fejl("permission-denied", "Overtag sagen før du svarer.");
+        if (sag.revision !== forventetSagRevision) throw fejl("aborted", "Sagen er ændret. Hent den igen.");
+        if (sag.ansvarligUid !== bruger.uid || sag.ansvarstype !== SUPPORT_ANSVAR.ejer) throw fejl("permission-denied", "Overtag sagen før du gemmer et svar.");
+        if (kanal !== SUPPORT_KANAL.portal || vedhaeftninger.length) throw fejl("failed-precondition", "Kun portal uden vedhæftninger er aktiveret i denne lokale samling.");
         const renTekst = renSupportTekst(tekst);
         if (!renTekst) throw fejl("invalid-argument", "Svaret er tomt eller for langt.");
-        gemBesked(state, sag, { id: `m_${anmodningId}`, anmodningId, afsenderType: SUPPORT_AFSENDER.ejer, afsenderUid: bruger.uid, tekst: renTekst });
-        sag.status = "afventerKunde"; sag.opdateretMs = nu(); sag.revision += 1;
-        state.idempotens[idem] = { operation: "svar", sagId }; opdaterIndeks(state, sag); gem(state);
+        state.svarKladder[sagId] ||= {};
+        const foer = state.svarKladder[sagId][id];
+        if (Number(foer?.revision || 0) !== forventetRevision) throw fejl("aborted", "Svarudkastet blev ændret samtidigt.");
+        const post = { id, kanal, tilUid: sag.oprettetAfUid, tekst: renTekst, signatur: renSupportTekst(signatur, 4_000) || "", vedhaeftninger: [], basisSagRevision: sag.revision, status: "kladde", revision: forventetRevision + 1, oprettetMs: foer?.oprettetMs || nu(), opdateretMs: nu(), opdateretAf: bruger.uid };
+        post.indholdHash = lokaltFingeraftryk(post);
+        state.svarKladder[sagId][id] = post;
+        state.idempotens[idem] = { operation: "gemSvarKladde", sagId, kladdeId: id }; gem(state);
         return hentEjer(sagId);
+      },
+      async godkendSvar({ sagId, anmodningId, id = "portal", forventetRevision }) {
+        const state = laes(); const sag = sagForEjer(state, bruger, sagId);
+        const idem = idempotensNoegle({ uid: `ejer_${bruger.uid}` }, anmodningId);
+        if (state.idempotens[idem]) return hentEjer(sagId);
+        const kladde = state.svarKladder[sagId]?.[id];
+        if (!kladde || kladde.status !== "kladde" || kladde.revision !== forventetRevision || kladde.basisSagRevision !== sag.revision || kladde.indholdHash !== lokaltFingeraftryk(kladde)) throw fejl("aborted", "Svarudkastet eller sagen er ændret siden gennemgangen.");
+        if (sag.ansvarligUid !== bruger.uid) throw fejl("permission-denied", "Kun den ansvarlige ejer kan godkende svaret.");
+        Object.assign(kladde, { status: "godkendt", godkendtIndholdHash: kladde.indholdHash, godkendtAf: bruger.uid, godkendtMs: nu(), revision: kladde.revision + 1 });
+        state.idempotens[idem] = { operation: "godkendSvar", sagId, kladdeId: id }; gem(state);
+        return hentEjer(sagId);
+      },
+      async transporterSvar({ sagId, anmodningId, id = "portal", forventetRevision }) {
+        const state = laes(); const sag = sagForEjer(state, bruger, sagId);
+        const idem = idempotensNoegle({ uid: `ejer_${bruger.uid}` }, anmodningId);
+        if (state.idempotens[idem]) return hentEjer(sagId);
+        const kladde = state.svarKladder[sagId]?.[id];
+        if (!kladde || kladde.status !== "godkendt" || kladde.revision !== forventetRevision || kladde.basisSagRevision !== sag.revision || kladde.godkendtIndholdHash !== lokaltFingeraftryk(kladde)) throw fejl("failed-precondition", "Svaret er ikke en aktuel, konkret godkendt portalkladde.");
+        if (sag.ansvarligUid !== bruger.uid) throw fejl("permission-denied", "Kun den ansvarlige ejer kan transportere svaret.");
+        gemBesked(state, sag, { id: `m_${anmodningId}`, anmodningId, afsenderType: SUPPORT_AFSENDER.ejer, afsenderUid: bruger.uid, tekst: [kladde.tekst, kladde.signatur].filter(Boolean).join("\n\n") });
+        Object.assign(kladde, { status: "transporteret", transporteretAf: bruger.uid, transporteretMs: nu(), transportAnmodningId: anmodningId, revision: kladde.revision + 1 });
+        sag.status = "afventerKunde"; sag.opdateretMs = nu(); sag.revision += 1;
+        state.idempotens[idem] = { operation: "transporterSvar", sagId, kladdeId: id, beskedId: `m_${anmodningId}` }; opdaterIndeks(state, sag); gem(state);
+        return hentEjer(sagId);
+      },
+      async svar() {
+        throw fejl("failed-precondition", "Direkte ejersvar er lukket. Gem, godkend og transportér en portalkladde.");
       },
       async internNote({ sagId, anmodningId, tekst }) {
         const state = laes(); sagForEjer(state, bruger, sagId);

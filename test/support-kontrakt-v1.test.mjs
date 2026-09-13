@@ -5,6 +5,7 @@ import {
   maaKundeLaeseSupportSag,
   maaPublicereSupportAi,
   kundesynligeSupportBeskeder,
+  supportSagTilEjerTraad,
 } from "../src/fleet/support.js";
 import { DEMO_SUPPORT_VIDEN } from "../src/fleet/demo-support-viden.js";
 import { kundeGodkendtViden, lokaltSupportAiSvar } from "../src/fleet/support-ai.js";
@@ -56,7 +57,11 @@ test("S3: kunde → eskalering → ejer → svar bruger samme sag og annullerer 
   const overtaget = await ejer.overtag({ sagId: start.sag.id, anmodningId: "overtag_race_01", forventetRevision: eskaleret.sag.revision });
   const sentAi = s.aiPublicer(start.aiKladde, "ai_race_00000001");
   assert.equal(sentAi.publiceret, false);
-  const besvaret = await ejer.svar({ sagId: start.sag.id, anmodningId: "ejer_svar_race1", forventetRevision: overtaget.sag.revision, tekst: "Jeg har overtaget sagen. Hvilket lokalt test-id ser du?" });
+  const gemt = await ejer.gemSvarKladde({ sagId: start.sag.id, anmodningId: "kladde_gem_race1", id: "portal", forventetRevision: 0, forventetSagRevision: overtaget.sag.revision, kanal: "portal", tekst: "Jeg har overtaget sagen. Hvilket lokalt test-id ser du?", signatur: "Venlig hilsen\nVeyro Support" });
+  const kladde = gemt.svarKladder.find((post) => post.id === "portal");
+  const godkendt = await ejer.godkendSvar({ sagId: start.sag.id, anmodningId: "kladde_godkend_1", id: "portal", forventetRevision: kladde.revision });
+  const godkendtKladde = godkendt.svarKladder.find((post) => post.id === "portal");
+  const besvaret = await ejer.transporterSvar({ sagId: start.sag.id, anmodningId: "ejer_svar_race1", id: "portal", forventetRevision: godkendtKladde.revision });
   assert.equal(besvaret.sag.status, "afventerKunde");
   const kundevisning = await kunde.hent(start.sag.id);
   assert.equal(kundevisning.beskeder.at(-1).afsenderType, "ejer");
@@ -97,11 +102,38 @@ test("kunden løser og genåbner udtrykkeligt samme sag", async () => {
 });
 
 test("AI-politikken kræver kundegodkendelse og aktuel revision", () => {
-  assert.equal(kundeGodkendtViden([{ ...DEMO_SUPPORT_VIDEN[0], kundeGodkendt: false }]).length, 0);
+  assert.equal(kundeGodkendtViden([{ ...DEMO_SUPPORT_VIDEN[0], publikum: "intern" }]).length, 0);
+  assert.equal(kundeGodkendtViden([{ ...DEMO_SUPPORT_VIDEN[0], vidensstatus: "kladde", godkendt: true, kundeGodkendt: true }]).length, 0, "legacy-flag må ikke gøre en kladde kundesynlig");
+  assert.equal(kundeGodkendtViden([{ ...DEMO_SUPPORT_VIDEN[0], vidensstatus: "foraeldet" }]).length, 0);
+  assert.equal(kundeGodkendtViden([{ ...DEMO_SUPPORT_VIDEN[0], leveringsstatus: "utilgaengelig" }]).length, 0);
+  assert.equal(kundeGodkendtViden([{ ...DEMO_SUPPORT_VIDEN[0], aktuelVersion: 0 }]).length, 0);
+  assert.equal(kundeGodkendtViden([{ ...DEMO_SUPPORT_VIDEN[0], relevanteVersioner: "2.x" }], { modul: "FAKTURACENTER", programversion: "3.0.0" }).length, 0);
+  assert.equal(kundeGodkendtViden([{ ...DEMO_SUPPORT_VIDEN[0], relevanteVersioner: "3.x" }], { modul: "FAKTURACENTER", programversion: "3.0.0" }).length, 1);
   assert.equal(lokaltSupportAiSvar({ tekst: "faktura kontrol", viden: [], kontekst: {} }).eskaler, true);
   assert.equal(maaPublicereSupportAi({ status: "aiDialog", ansvarstype: "ai", ansvarligUid: null, revision: 4 }, 4), true);
   assert.equal(maaPublicereSupportAi({ status: "underBehandling", ansvarstype: "ejer", ansvarligUid: "x", revision: 5 }, 4), false);
   assert.deepEqual(kundesynligeSupportBeskeder({ a: { synlighed: "kunde", afsenderType: "kunde" }, b: { synlighed: "intern", afsenderType: "ejer" } }), { a: { synlighed: "kunde", afsenderType: "kunde" } });
+});
+
+test("V8-adapteren bruger samme sag-id og en beregnet, delt tråd", () => {
+  const sag = { id: "sup_samme_1", kontraktVersion: "veyro.support.v1.1", nummer: "SUP-2026-00001", tenantId: "kunde-a", oprettetAfUid: "kunde-a-bruger", status: "afventerSupport", ansvarstype: "ejer", ansvarligUid: null, emne: "Samme sag", modul: "FLEET", revision: 3, oprettetMs: 1, opdateretMs: 2 };
+  const traad = supportSagTilEjerTraad({ sag, beskeder: { k: { afsenderType: "kunde", synlighed: "kunde", tekst: "Hjælp", oprettetMs: 1 } } });
+  assert.equal(traad.id, sag.id);
+  assert.equal(traad.traadId, sag.id);
+  assert.equal(traad.support.status, "triage");
+  assert.equal(traad.beskeder.k.retning, "indgaaende");
+  assert.equal(traad.kilde.adapter, "veyro.support.v1.1");
+});
+
+test("direkte ejersvar er lukket og godkendelse forældes ved ny kundebesked", async () => {
+  const s = system(); const kunde = s.kunde(kundeA); const ejer = s.ejer(dennis);
+  const start = await kunde.start({ anmodningId: "start_stale_001", emne: "Ukendt", tekst: "zyxw skal undersøges", kontekst: { modul: "FLEET" } });
+  const overtaget = await ejer.overtag({ sagId: start.sag.id, anmodningId: "overtag_stale1", forventetRevision: start.sag.revision });
+  const gemt = await ejer.gemSvarKladde({ sagId: start.sag.id, anmodningId: "kladde_stale_01", id: "portal", forventetRevision: 0, forventetSagRevision: overtaget.sag.revision, kanal: "portal", tekst: "Første udkast" });
+  const kladde = gemt.svarKladder[0];
+  await kunde.send({ sagId: start.sag.id, anmodningId: "kunde_ny_stale1", tekst: "Ny oplysning efter kladden" });
+  await assert.rejects(() => ejer.godkendSvar({ sagId: start.sag.id, anmodningId: "godkend_stale_01", id: "portal", forventetRevision: kladde.revision }), /ændret/i);
+  await assert.rejects(() => ejer.svar({ sagId: start.sag.id, anmodningId: "direkte_svar_01", tekst: "må ikke" }), /Direkte ejersvar er lukket/);
 });
 
 test("arkitekturen bruger callable servervej og én fælles supportfil", () => {
@@ -109,7 +141,8 @@ test("arkitekturen bruger callable servervej og én fælles supportfil", () => {
   const endpoints = readFileSync("functions/support-endpoints.js", "utf8");
   const hjaelp = readFileSync("src/moduler/support/Hjaelp.jsx", "utf8");
   assert.doesNotMatch(adapter, /\.ref\s*\(/, "kundeadapteren må ikke skrive direkte i RTDB");
-  for (const navn of ["supportSamtaleStart", "supportSamtaleHent", "supportBeskedSend", "supportEskaler", "supportEjerOvertag", "supportEjerSvarSend"]) assert.match(endpoints, new RegExp(`export const ${navn}`));
+  for (const navn of ["supportSamtaleStart", "supportSamtaleHent", "supportBeskedSend", "supportEskaler", "supportEjerOvertag", "supportEjerSvarKladdeGem", "supportEjerSvarGodkend", "supportEjerSvarTransporter"]) assert.match(endpoints, new RegExp(`export const ${navn}`));
+  assert.match(endpoints, /Direkte ejersvar er lukket/);
   assert.match(hjaelp, /Kontakt support/);
   assert.match(hjaelp, /Ingen ekstern AI eller mail/);
 });

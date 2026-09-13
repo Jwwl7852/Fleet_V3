@@ -92,8 +92,15 @@ if (!demoMode) {
        europe-west1 er både langsommere og en dataoverførsel ud af EU. */
     _funktioner = firebase.app().functions("europe-west1");
     if (brugerLokaleEmulatorer) {
-      _db.useEmulator("127.0.0.1", 9000);
-      _auth.useEmulator("http://127.0.0.1:9099", { disableWarnings: true });
+      const databasePort = Number(import.meta.env.VITE_FIREBASE_DATABASE_PORT || 9000);
+      const authPort = Number(import.meta.env.VITE_FIREBASE_AUTH_PORT || 9099);
+      const functionsPort = Number(import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT || 5001);
+      for (const [navn, vaerdi] of [["database", databasePort], ["auth", authPort], ["functions", functionsPort]]) {
+        if (!Number.isInteger(vaerdi) || vaerdi < 1 || vaerdi > 65535) throw new Error(`${navn}-emulatoren har en ugyldig lokal port.`);
+      }
+      _db.useEmulator("127.0.0.1", databasePort);
+      _auth.useEmulator(`http://127.0.0.1:${authPort}`, { disableWarnings: true });
+      _funktioner.useEmulator("127.0.0.1", functionsPort);
     }
   } catch (e) {
     console.warn("Firebase kunne ikke starte. Kører demo-mode.", e);

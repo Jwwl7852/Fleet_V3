@@ -178,6 +178,8 @@ export {
   supportSamtaleStart, supportSamtalerList, supportSamtaleHent,
   supportBeskedSend, supportEskaler, supportSagLoes, supportSagGenaabn,
   supportEjerKoelist, supportEjerSagHent, supportEjerOvertag,
+  supportEjerStatusOpdater, supportEjerSvarKladdeGem,
+  supportEjerSvarGodkend, supportEjerSvarTransporter,
   supportEjerSvarSend, supportEjerNoteSkriv,
 } from "./support-endpoints.js";
 

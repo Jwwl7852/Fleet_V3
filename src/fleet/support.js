@@ -293,7 +293,7 @@ export const SUPPORT_NUMMER = /^SUP-\d{4}-\d{5}$/;
 
 /* ---- Fælles kunde-/ejerkontrakt V1 ----------------------------------- */
 
-export const SUPPORT_KONTRAKT_VERSION = "veyro.support.v1";
+export const SUPPORT_KONTRAKT_VERSION = "veyro.support.v1.1";
 
 export const SUPPORT_SAMTALE_STATUS = Object.freeze({
   aiDialog: "AI-dialog",
@@ -307,6 +307,23 @@ export const SUPPORT_ANSVAR = Object.freeze({ ai: "ai", ejer: "ejer" });
 export const SUPPORT_AFSENDER = Object.freeze({ kunde: "kunde", ai: "ai", ejer: "ejer" });
 export const SUPPORT_SYNLIGHED = Object.freeze({ kunde: "kunde", intern: "intern" });
 export const SUPPORT_KANAL = Object.freeze({ portal: "portal", mail: "mail" });
+
+/* V8/V8.1 bruger disse statusnavne i ejerarbejdsfladen. De er en adapter-
+ * visning, ikke et andet statusfelt der kan drive fra supportsagen. */
+export const SUPPORT_EJER_STATUS = Object.freeze({
+  aiDialog: "ny",
+  afventerSupport: "triage",
+  underBehandling: "afventer_os",
+  afventerKunde: "afventer_kunden",
+  loest: "loest",
+});
+
+export const SUPPORT_PORTAL_STATUS_FRA_EJER = Object.freeze({
+  triage: "afventerSupport",
+  afventer_os: "underBehandling",
+  afventer_kunden: "afventerKunde",
+  loest: "loest",
+});
 
 export const SUPPORT_GRAENSER = Object.freeze({
   emne: 140,
@@ -324,6 +341,95 @@ export function gyldigtSupportAnmodningId(id) {
 export function renSupportTekst(tekst, maks = SUPPORT_GRAENSER.tekst) {
   const vaerdi = typeof tekst === "string" ? tekst.trim() : "";
   return vaerdi && vaerdi.length <= maks ? vaerdi : null;
+}
+
+/**
+ * Ejerens vidensbase har ét autoritativt godkendelsessnit. Ældre boolske
+ * felter kan eksistere i historikken, men de kan aldrig i sig selv gøre en
+ * post kundesynlig. Den aktuelle post og dens aktuelle version skal både
+ * være identificerbare og udtrykkeligt godkendt til kunder.
+ */
+export function erKundegodkendtSupportViden(post = {}) {
+  return Boolean(
+    post.vidensstatus === "godkendt"
+    && post.publikum === "kunde_godkendt"
+    && post.titel
+    && post.indhold
+    && post.kilde
+    && Number(post.aktuelVersion) > 0
+    && (!post.leveringsstatus || post.leveringsstatus === "tilgaengelig")
+  );
+}
+
+export function ejerStatusFraSupportSag(sag = {}) {
+  return SUPPORT_EJER_STATUS[sag.status] || "triage";
+}
+
+export function supportStatusFraEjer(status) {
+  return SUPPORT_PORTAL_STATUS_FRA_EJER[status] || null;
+}
+
+/**
+ * Read-projektion til ejerens eksisterende V8/V8.1-komponenter. Der skrives
+ * aldrig en kopi under udbyder/salgsindbakke/traade. Alle mutationer går
+ * tilbage gennem supportEjer*-operationerne til den autoritative supportsag.
+ */
+export function supportSagTilEjerTraad({ sag, beskeder = {}, noter = {}, internAi = {}, svarKladder = {} } = {}) {
+  if (!sag) return null;
+  const ejerBeskeder = Object.fromEntries(Object.entries(beskeder).map(([id, post]) => [id, {
+    id,
+    retning: post?.afsenderType === SUPPORT_AFSENDER.kunde ? "indgaaende" : "udgaaende",
+    fra: post?.afsenderType === SUPPORT_AFSENDER.kunde ? (sag.kontaktEmail || sag.oprettetAfUid) : "portal@veyro.invalid",
+    til: post?.afsenderType === SUPPORT_AFSENDER.kunde ? "Veyro Support" : (sag.kontaktEmail || sag.oprettetAfUid),
+    emne: sag.emne,
+    tekst: post?.tekst || "",
+    sendtMs: Number(post?.oprettetMs || 0),
+    kanal: SUPPORT_KANAL.portal,
+    synlighed: post?.synlighed,
+    kilde: post?.kilde || null,
+    sagsbehandlerNavn: post?.afsenderType === SUPPORT_AFSENDER.ejer ? "Veyro Support" : undefined,
+  }]));
+  const ejerNoter = Object.fromEntries(Object.entries(noter).map(([id, post]) => [id, {
+    id, tekst: post?.tekst || "", oprettetAf: post?.oprettetAfUid || "",
+    oprettetMs: Number(post?.oprettetMs || 0), intern: true,
+  }]));
+  return {
+    id: sag.id,
+    traadId: sag.id,
+    kontraktVersion: sag.kontraktVersion,
+    sagstype: "support",
+    delingsstatus: "delt",
+    kilde: { art: "kundeportal", adapter: "veyro.support.v1.1" },
+    emne: sag.emne,
+    status: ejerStatusFraSupportSag(sag),
+    ansvarligUid: sag.ansvarligUid || "",
+    revision: Number(sag.revision || 0),
+    oprettetMs: Number(sag.oprettetMs || 0),
+    opdateretMs: Number(sag.opdateretMs || 0),
+    senesteAktivitetMs: Number(sag.opdateretMs || 0),
+    kontaktNavn: sag.kontaktNavn || "",
+    kontaktEmail: sag.kontaktEmail || "",
+    virksomhedsnavn: sag.virksomhedsnavn || sag.tenantId || "",
+    links: {
+      tenantId: sag.tenantId,
+      ...(sag.virksomhedId ? { virksomhedId: sag.virksomhedId } : {}),
+    },
+    support: {
+      nummer: sag.nummer,
+      type: sag.type || "andet",
+      status: ejerStatusFraSupportSag(sag),
+      prioritet: sag.prioritet || "normal",
+      modul: sag.modul || "",
+      fristMs: sag.fristMs || null,
+      problem: sag.problemResume || "",
+      version: sag.programversion || "",
+      forsoegt: Array.isArray(sag.afproevedeTrin) ? sag.afproevedeTrin.join("\n") : "",
+    },
+    beskeder: ejerBeskeder,
+    noter: ejerNoter,
+    aiArbejdsrum: internAi || {},
+    svarKladder: svarKladder || {},
+  };
 }
 
 /** V1 deler kun brugerens egne sager. Rollen udvider ikke dette snit. */
@@ -373,7 +479,7 @@ export function kundesynligSupportSag(sag) {
     oprettetMs, opdateretMs, eskaleretMs, overtagetMs, loestMs,
   } = sag;
   return {
-    kontraktVersion, id, nummer, tenantId, oprettetAfUid, status,
+    kontraktVersion, id, traadId: id, nummer, tenantId, oprettetAfUid, status,
     ansvarstype, emne, problemResume, modul, programversion, side,
     afproevedeTrin: Array.isArray(afproevedeTrin) ? afproevedeTrin : [],
     anvendteKilder: Array.isArray(anvendteKilder) ? anvendteKilder : [],

@@ -1,5 +1,11 @@
 # Veyro Support – kundeplatform, implementering V1
 
+> Historisk V1-rapport. Ejerinputtet, som denne rapport beskrev som manglende,
+> er efterfølgende afstemt på ejer-HEAD
+> `29b8b0252384cc111e58b3bfe279a18e56046642`. Den aktuelle kontrakt og
+> adaptergrænse findes i `VEYRO_SUPPORT_KONTRAKT_V1.md` (V1.1) og
+> `VEYRO_SUPPORT_AFSTEMNING_V1_1.md`.
+
 Status: lokal, isoleret udviklingsleverance. Ingen push, merge, deployment, ekstern AI, rigtig mail eller produktionsdata.
 
 ## Grundlag

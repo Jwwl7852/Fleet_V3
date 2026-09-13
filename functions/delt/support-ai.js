@@ -4,20 +4,33 @@
  * test/functions-delt.test.mjs fejler hvis de to ikke er identiske.
  */
 /* Kundevendt support-AI. Ren og delt med serveren; ingen netværkskald. */
-import { SUPPORT_ANSVAR } from "./support.js";
+import { SUPPORT_ANSVAR, erKundegodkendtSupportViden } from "./support.js";
 
 export const SUPPORT_AI_ADAPTER = "lokal-testadapter-v1";
 
 const ord = (tekst) => new Set(String(tekst || "").toLocaleLowerCase("da-DK")
   .split(/[^a-z0-9æøå]+/u).filter((v) => v.length > 2));
 
+/* Samme, konservative versionssyntaks som ejerens V8: kommaseparerede eller
+ * semikolonseparerede versioner og et enkelt `.x`-wildcard. Fritekst matcher
+ * ikke ved et tilfælde, og en afgrænset kilde kræver en kendt produktversion. */
+export function supportVersionMatcher(relevanteVersioner, version) {
+  const krav = String(relevanteVersioner || "").trim().toLocaleLowerCase("da-DK");
+  const aktuel = String(version || "").trim().toLocaleLowerCase("da-DK");
+  if (!krav || krav === "ikke afgrænset" || krav === "alle") return true;
+  if (!aktuel || aktuel === "ukendt") return false;
+  return krav.split(/[,;]/).map((post) => post.trim()).filter(Boolean).some((post) => {
+    if (post.endsWith(".x")) return aktuel.startsWith(post.slice(0, -1));
+    return aktuel === post || aktuel.startsWith(`${post}.`);
+  });
+}
+
 export function kundeGodkendtViden(poster = [], { modul, programversion } = {}) {
   return poster.filter((post) => {
-    if (post?.godkendt !== true || post?.kundeGodkendt !== true) return false;
-    if (!post.titel || !post.indhold || !post.kilde || !post.aktuelVersion) return false;
-    if (post.leveringsstatus && post.leveringsstatus !== "tilgaengelig") return false;
-    if (post.modul && modul && post.modul !== modul) return false;
+    if (!erKundegodkendtSupportViden(post)) return false;
+    if (post.modul && modul && String(post.modul).toLocaleLowerCase("da-DK") !== String(modul).toLocaleLowerCase("da-DK")) return false;
     if (post.programversion && programversion && post.programversion !== programversion) return false;
+    if (!supportVersionMatcher(post.relevanteVersioner, programversion)) return false;
     return true;
   });
 }

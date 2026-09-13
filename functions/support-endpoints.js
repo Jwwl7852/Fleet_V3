@@ -4,6 +4,7 @@
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getDatabase } from "firebase-admin/database";
+import { createHash } from "node:crypto";
 import {
   SUPPORT_AFSENDER,
   SUPPORT_ANSVAR,
@@ -17,6 +18,8 @@ import {
   kundesynligeSupportBeskeder,
   maaPublicereSupportAi,
   renSupportTekst,
+  supportSagTilEjerTraad,
+  supportStatusFraEjer,
   supportStatusskift,
 } from "./delt/support.js";
 import { lokaltSupportAiSvar } from "./delt/support-ai.js";
@@ -94,17 +97,78 @@ function besked({ id, anmodningId, afsenderType, afsenderUid, tekst, kilde = nul
   };
 }
 
+function stabilJson(vaerdi) {
+  if (Array.isArray(vaerdi)) return `[${vaerdi.map(stabilJson).join(",")}]`;
+  if (vaerdi && typeof vaerdi === "object") {
+    return `{${Object.keys(vaerdi).sort().map((key) => `${JSON.stringify(key)}:${stabilJson(vaerdi[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(vaerdi);
+}
+
+function verificeretTransaktionsstart(foer) {
+  let foersteKald = true;
+  return (lokalVaerdi) => {
+    const vaerdi = foersteKald && lokalVaerdi == null ? foer : lokalVaerdi;
+    foersteKald = false;
+    return vaerdi;
+  };
+}
+
+function svarIndholdHash(post = {}) {
+  return createHash("sha256").update(stabilJson({
+    kanal: post.kanal || "",
+    tilUid: post.tilUid || "",
+    tekst: post.tekst || "",
+    signatur: post.signatur || "",
+    vedhaeftninger: post.vedhaeftninger || [],
+    basisSagRevision: Number(post.basisSagRevision || 0),
+  })).digest("hex");
+}
+
+async function ejerTraad(db, sag) {
+  const [beskeder, noter, internAi, svarKladder] = await Promise.all([
+    db.ref(`support/beskeder/${sag.id}`).once("value"),
+    db.ref(`support/interneNoter/${sag.id}`).once("value"),
+    db.ref(`support/internAi/${sag.id}`).once("value"),
+    db.ref(`support/svarKladder/${sag.id}`).once("value"),
+  ]);
+  return supportSagTilEjerTraad({
+    sag,
+    beskeder: beskeder.val() || {},
+    noter: noter.val() || {},
+    internAi: internAi.val() || {},
+    svarKladder: svarKladder.val() || {},
+  });
+}
+
+async function verificeretKundeMetadata(db, bruger, req) {
+  const [indeks, virksomhed] = await Promise.all([
+    db.ref(`udbyder/kunder/${bruger.tenant}`).once("value"),
+    db.ref(`tenants/${bruger.tenant}/virksomhed`).once("value"),
+  ]);
+  return {
+    kontaktNavn: renSupportTekst(req.auth?.token?.name, 160) || "",
+    kontaktEmail: renSupportTekst(req.auth?.token?.email, 320) || "",
+    virksomhedsnavn: renSupportTekst(virksomhed.val()?.navn, 300) || bruger.tenant,
+    /* tenantId er et signeret claim. CRM-id'et tilføjes kun, når ejerens
+       eksisterende kundeindeks bekræfter præcis samme nøgle. */
+    virksomhedId: indeks.exists() ? bruger.tenant : null,
+  };
+}
+
 async function publicerLokalAi(db, sagId, tekst, startRevision) {
   const viden = Object.values((await db.ref("udbyder/vidensbase/poster").once("value")).val() || {});
   const sagFoer = (await db.ref(`support/sager/${sagId}`).once("value")).val();
   const ai = lokaltSupportAiSvar({ tekst, viden, kontekst: sagFoer });
   const nu = Date.now();
   const ref = db.ref(`support/sager/${sagId}`);
+  const transaktionsstart = verificeretTransaktionsstart(sagFoer);
   const transaktion = await ref.transaction((sag) => {
-    if (!maaPublicereSupportAi(sag, startRevision)) return;
-    const naeste = { ...sag, revision: sag.revision + 1, opdateretMs: nu };
+    const aktuel = transaktionsstart(sag);
+    if (!maaPublicereSupportAi(aktuel, startRevision)) return;
+    const naeste = { ...aktuel, revision: aktuel.revision + 1, opdateretMs: nu };
     if (ai.kilde) naeste.anvendteKilder = [ai.kilde];
-    if (ai.eskaler) Object.assign(naeste, supportStatusskift(sag, "eskaler"), {
+    if (ai.eskaler) Object.assign(naeste, supportStatusskift(aktuel, "eskaler"), {
       eskaleringsaarsag: ai.eskaleringsaarsag, eskaleretMs: nu,
     });
     return naeste;
@@ -135,15 +199,19 @@ export const supportSamtaleStart = onCall(options, async (req) => {
   let sag = (await db.ref(`support/sager/${sagId}`).once("value")).val();
   if (!sag) {
     const nu = Date.now(); const kontekst = kontekstFilter(d.kontekst || {}).tilladt;
+    const kundeMetadata = await verificeretKundeMetadata(db, bruger, req);
     const nummer = await naesteNummer(db, () => "", SUPPORT_SERIE);
     sag = {
       kontraktVersion: SUPPORT_KONTRAKT_VERSION, id: sagId, nummer,
       tenantId: bruger.tenant, oprettetAfUid: bruger.uid,
+      ...kundeMetadata,
       status: "aiDialog", ansvarstype: SUPPORT_ANSVAR.ai, ansvarligUid: null,
       emne, problemResume: tekst, modul: kontekst.modul || null,
       programversion: kontekst.version || null, side: kontekst.side || null,
       kontekst, afproevedeTrin: [], anvendteKilder: [], eskaleringsaarsag: null,
-      mailTraadId: null, revision: 1, oprettetMs: nu, opdateretMs: nu,
+      /* Portalens stabile ejeridentitet er samme nøgle. Der oprettes ingen
+         selvstændigt redigerbar tråd under salgsindbakken. */
+      traadId: sagId, mailTraadId: null, revision: 1, oprettetMs: nu, opdateretMs: nu,
       eskaleretMs: null, overtagetMs: null, loestMs: null,
     };
     const opret = await db.ref(`support/sager/${sagId}`).transaction((aktuel) => aktuel || sag);
@@ -183,11 +251,17 @@ export const supportBeskedSend = onCall(options, async (req) => {
   const beskedId = `m_${d.anmodningId}`;
   if (reservation.ny || !(await db.ref(`support/beskeder/${sag.id}/${beskedId}`).once("value")).exists()) {
     const nu = Date.now();
+    const transaktionsstart = verificeretTransaktionsstart(sag);
     const tx = await db.ref(`support/sager/${sag.id}`).transaction((aktuel) => {
+      aktuel = transaktionsstart(aktuel);
       if (!aktuel || aktuel.tenantId !== bruger.tenant || aktuel.oprettetAfUid !== bruger.uid) return;
       if (aktuel.operationer?.[d.anmodningId]) return;
       return {
-        ...aktuel, revision: aktuel.revision + 1, opdateretMs: nu,
+        ...aktuel,
+        ...(aktuel.ansvarstype === SUPPORT_ANSVAR.ejer
+          ? { status: aktuel.ansvarligUid ? "underBehandling" : "afventerSupport" }
+          : {}),
+        revision: aktuel.revision + 1, opdateretMs: nu,
         operationer: { ...(aktuel.operationer || {}), [d.anmodningId]: { art: "send", ms: nu } },
       };
     });
@@ -207,7 +281,9 @@ async function kundestatus(req, handling) {
   const sag = await hentKundesag(db, bruger, d.sagId);
   await reservérIdempotens(db, bruger.uid, d.anmodningId, handling, sag.id);
   const nu = Date.now();
+  const transaktionsstart = verificeretTransaktionsstart(sag);
   const tx = await db.ref(`support/sager/${sag.id}`).transaction((aktuel) => {
+    aktuel = transaktionsstart(aktuel);
     if (!aktuel || aktuel.tenantId !== bruger.tenant || aktuel.oprettetAfUid !== bruger.uid) return;
     if (aktuel.operationer?.[d.anmodningId]) return;
     const skift = supportStatusskift(aktuel, handling);
@@ -230,64 +306,153 @@ export const supportSagLoes = onCall(options, (req) => kundestatus(req, "loes"))
 export const supportSagGenaabn = onCall(options, (req) => kundestatus(req, "genaabn"));
 
 export const supportEjerKoelist = onCall(options, async (req) => {
-  ejerIdentitet(req); const sager = Object.values((await getDatabase().ref("support/sager").once("value")).val() || {});
-  return sager.sort((a, b) => Number(b.opdateretMs) - Number(a.opdateretMs));
+  ejerIdentitet(req); const db = getDatabase();
+  const sager = Object.values((await db.ref("support/sager").once("value")).val() || {})
+    .filter((sag) => sag?.ansvarstype === SUPPORT_ANSVAR.ejer || (sag?.status === "loest" && sag?.overtagetMs))
+    .sort((a, b) => Number(b.opdateretMs) - Number(a.opdateretMs));
+  const traade = await Promise.all(sager.map((sag) => ejerTraad(db, sag)));
+  return { traade: Object.fromEntries(traade.map((traad) => [traad.id, traad])) };
 });
 
 export const supportEjerSagHent = onCall(options, async (req) => {
   ejerIdentitet(req); const db = getDatabase(); const sag = await hentEjersag(db, req.data?.sagId);
-  const [beskeder, interneNoter, internAi] = await Promise.all([
-    db.ref(`support/beskeder/${sag.id}`).once("value"), db.ref(`support/interneNoter/${sag.id}`).once("value"), db.ref(`support/internAi/${sag.id}`).once("value"),
-  ]);
-  return { sag, beskeder: beskeder.val() || {}, interneNoter: interneNoter.val() || {}, internAi: internAi.val() || {} };
+  return { traad: await ejerTraad(db, sag) };
 });
 
 async function ejerSkift(req, handling) {
   const ejer = ejerIdentitet(req); const d = req.data || {}; const db = getDatabase();
   const sag = await hentEjersag(db, d.sagId); kraevAnmodningId(d.anmodningId);
-  await reservérIdempotens(db, `ejer_${ejer.uid}`, d.anmodningId, handling, sag.id);
-  const tx = await db.ref(`support/sager/${sag.id}`).transaction((aktuel) => {
-    if (!aktuel || aktuel.revision !== d.forventetRevision) return;
-    if (aktuel.operationer?.[d.anmodningId]) return;
-    const skift = supportStatusskift(aktuel, handling); if (!skift) return;
-    const nu = Date.now();
-    return {
-      ...aktuel, ...skift, ansvarligUid: ejer.uid, revision: aktuel.revision + 1,
-      opdateretMs: nu, overtagetMs: nu,
-      operationer: { ...(aktuel.operationer || {}), [d.anmodningId]: { art: handling, ms: nu } },
-    };
+  let konflikt = ""; const idemBruger = `ejer_${ejer.uid}`; const nu = Date.now();
+  const supportRef = db.ref("support");
+  const transaktionsstart = verificeretTransaktionsstart((await supportRef.once("value")).val() || {});
+  const tx = await supportRef.transaction((rod) => {
+    const aktuelRod = transaktionsstart(rod) || {}; const aktuel = aktuelRod.sager?.[sag.id];
+    const tidligere = aktuelRod.idempotens?.[idemBruger]?.[d.anmodningId];
+    if (tidligere) {
+      if (tidligere.operation !== handling || tidligere.sagId !== sag.id) konflikt = "anmodningId er brugt til en anden handling.";
+      return konflikt ? undefined : aktuelRod;
+    }
+    if (!aktuel || Number(aktuel.revision) !== Number(d.forventetRevision)) { konflikt = "Sagen er ændret. Hent den igen."; return; }
+    const skift = supportStatusskift(aktuel, handling);
+    if (!skift) { konflikt = "Kun en sag der afventer support kan overtages."; return; }
+    aktuelRod.sager ||= {}; aktuelRod.idempotens ||= {}; aktuelRod.idempotens[idemBruger] ||= {};
+    aktuelRod.sager[sag.id] = { ...aktuel, ...skift, ansvarligUid: ejer.uid, revision: Number(aktuel.revision) + 1, opdateretMs: nu, overtagetMs: nu };
+    aktuelRod.idempotens[idemBruger][d.anmodningId] = { operation: handling, sagId: sag.id, revision: Number(aktuel.revision) + 1, ms: nu };
+    return aktuelRod;
   });
-  if (!tx.committed && !tx.snapshot.val()?.operationer?.[d.anmodningId]) {
-    throw new HttpsError("aborted", "Sagen er ændret eller kan ikke overtages. Hent den igen.");
-  }
-  return tx.snapshot.val();
+  if (!tx.committed || konflikt) throw new HttpsError("aborted", konflikt || "Sagen kunne ikke overtages.");
+  const gemt = tx.snapshot.val()?.sager?.[sag.id];
+  return { traad: await ejerTraad(db, gemt) };
 }
 
 export const supportEjerOvertag = onCall(options, (req) => ejerSkift(req, "overtag"));
 
-export const supportEjerSvarSend = onCall(options, async (req) => {
+export const supportEjerStatusOpdater = onCall(options, async (req) => {
   const ejer = ejerIdentitet(req); const d = req.data || {}; const db = getDatabase();
   const sag = await hentEjersag(db, d.sagId); kraevAnmodningId(d.anmodningId);
-  await reservérIdempotens(db, `ejer_${ejer.uid}`, d.anmodningId, "ejerSvar", sag.id);
-  const tekst = renSupportTekst(d.tekst); if (!tekst) throw new HttpsError("invalid-argument", "Svaret er tomt eller for langt.");
-  if (sag.revision !== d.forventetRevision || sag.ansvarligUid !== ejer.uid || sag.ansvarstype !== SUPPORT_ANSVAR.ejer) throw new HttpsError("aborted", "Overtag og genhent sagen før svar.");
-  const nu = Date.now(); const beskedId = `m_${d.anmodningId}`;
-  const tx = await db.ref(`support/sager/${sag.id}`).transaction((aktuel) => {
-    if (!aktuel || aktuel.revision !== d.forventetRevision || aktuel.ansvarligUid !== ejer.uid) return;
-    if (aktuel.operationer?.[d.anmodningId]) return;
-    return {
-      ...aktuel, status: "afventerKunde", revision: aktuel.revision + 1, opdateretMs: nu,
-      operationer: { ...(aktuel.operationer || {}), [d.anmodningId]: { art: "ejerSvar", ms: nu } },
-    };
+  const portalStatus = supportStatusFraEjer(d.status);
+  if (!portalStatus) throw new HttpsError("invalid-argument", "Ejerstatus kan ikke anvendes på en portalsag.");
+  if (sag.ansvarligUid !== ejer.uid) throw new HttpsError("permission-denied", "Overtag sagen før status ændres.");
+  let konflikt = ""; const idemBruger = `ejer_${ejer.uid}`; const nu = Date.now();
+  const supportRef = db.ref("support");
+  const transaktionsstart = verificeretTransaktionsstart((await supportRef.once("value")).val() || {});
+  const tx = await supportRef.transaction((rod) => {
+    const aktuelRod = transaktionsstart(rod) || {}; const aktuel = aktuelRod.sager?.[sag.id];
+    const tidligere = aktuelRod.idempotens?.[idemBruger]?.[d.anmodningId];
+    if (tidligere) return tidligere.operation === "status" && tidligere.sagId === sag.id ? aktuelRod : undefined;
+    if (!aktuel || Number(aktuel.revision) !== Number(d.forventetRevision) || aktuel.ansvarligUid !== ejer.uid) { konflikt = "Sagen er ændret. Hent den igen."; return; }
+    aktuelRod.idempotens ||= {}; aktuelRod.idempotens[idemBruger] ||= {};
+    aktuelRod.sager[sag.id] = { ...aktuel, status: portalStatus, ansvarstype: SUPPORT_ANSVAR.ejer, revision: Number(aktuel.revision) + 1, opdateretMs: nu, ...(portalStatus === "loest" ? { loestMs: nu } : {}) };
+    aktuelRod.idempotens[idemBruger][d.anmodningId] = { operation: "status", sagId: sag.id, revision: Number(aktuel.revision) + 1, ms: nu };
+    return aktuelRod;
   });
-  if (!tx.committed && !tx.snapshot.val()?.operationer?.[d.anmodningId]) {
-    throw new HttpsError("aborted", "Sagen er ændret. Hent den igen.");
-  }
-  await db.ref().update({
-    [`support/beskeder/${sag.id}/${beskedId}`]: besked({ id: beskedId, anmodningId: d.anmodningId, afsenderType: SUPPORT_AFSENDER.ejer, afsenderUid: ejer.uid, tekst, nu }),
-    [`tenants/${sag.tenantId}/supportsager/${sag.id}`]: { oprettetAfUid: sag.oprettetAfUid, status: "afventerKunde", opdateretMs: nu },
+  if (!tx.committed || konflikt) throw new HttpsError("aborted", konflikt || "Status blev ikke ændret.");
+  const gemt = tx.snapshot.val()?.sager?.[sag.id];
+  await db.ref(`tenants/${gemt.tenantId}/supportsager/${gemt.id}`).set({ oprettetAfUid: gemt.oprettetAfUid, status: gemt.status, opdateretMs: gemt.opdateretMs });
+  return { traad: await ejerTraad(db, gemt) };
+});
+
+export const supportEjerSvarKladdeGem = onCall(options, async (req) => {
+  const ejer = ejerIdentitet(req); const d = req.data || {}; const db = getDatabase();
+  const sag = await hentEjersag(db, d.sagId); kraevAnmodningId(d.anmodningId);
+  const id = kraevId(d.id || "portal", "kladdeId"); const tekst = renSupportTekst(d.tekst);
+  const signatur = renSupportTekst(d.signatur || "", 4_000) || "";
+  const vedhaeftninger = Array.isArray(d.vedhaeftninger) ? d.vedhaeftninger : [];
+  if (!tekst) throw new HttpsError("invalid-argument", "Svaret er tomt eller for langt.");
+  if (d.kanal !== SUPPORT_KANAL.portal || vedhaeftninger.length) throw new HttpsError("failed-precondition", "Kun portal uden vedhæftninger er aktiveret i denne samling.");
+  if (sag.ansvarstype !== SUPPORT_ANSVAR.ejer || sag.ansvarligUid !== ejer.uid) throw new HttpsError("permission-denied", "Overtag sagen før du gemmer et svar.");
+  let konflikt = ""; const idemBruger = `ejer_${ejer.uid}`; const nu = Date.now();
+  const supportRef = db.ref("support");
+  const transaktionsstart = verificeretTransaktionsstart((await supportRef.once("value")).val() || {});
+  const tx = await supportRef.transaction((rod) => {
+    const aktuelRod = transaktionsstart(rod) || {}; const aktuelSag = aktuelRod.sager?.[sag.id]; const foer = aktuelRod.svarKladder?.[sag.id]?.[id];
+    const tidligere = aktuelRod.idempotens?.[idemBruger]?.[d.anmodningId];
+    if (tidligere) return tidligere.operation === "kladdeGem" && tidligere.sagId === sag.id && tidligere.kladdeId === id ? aktuelRod : undefined;
+    if (!aktuelSag || Number(aktuelSag.revision) !== Number(d.forventetSagRevision) || aktuelSag.ansvarligUid !== ejer.uid) { konflikt = "Sagen er ændret. Hent den igen."; return; }
+    if (Number(foer?.revision || 0) !== Number(d.forventetRevision || 0)) { konflikt = "Svarudkastet blev ændret samtidigt."; return; }
+    const post = { id, kanal: SUPPORT_KANAL.portal, tilUid: aktuelSag.oprettetAfUid, tekst, signatur, vedhaeftninger: [], basisSagRevision: Number(aktuelSag.revision), status: "kladde", revision: Number(foer?.revision || 0) + 1, oprettetMs: foer?.oprettetMs || nu, oprettetAf: foer?.oprettetAf || ejer.uid, opdateretMs: nu, opdateretAf: ejer.uid };
+    post.indholdHash = svarIndholdHash(post);
+    aktuelRod.svarKladder ||= {}; aktuelRod.svarKladder[sag.id] ||= {}; aktuelRod.svarKladder[sag.id][id] = post;
+    aktuelRod.idempotens ||= {}; aktuelRod.idempotens[idemBruger] ||= {}; aktuelRod.idempotens[idemBruger][d.anmodningId] = { operation: "kladdeGem", sagId: sag.id, kladdeId: id, revision: post.revision, ms: nu };
+    return aktuelRod;
   });
-  return tx.snapshot.val();
+  if (!tx.committed || konflikt) throw new HttpsError("aborted", konflikt || "Svarudkastet blev ikke gemt.");
+  return { traad: await ejerTraad(db, tx.snapshot.val()?.sager?.[sag.id]) };
+});
+
+export const supportEjerSvarGodkend = onCall(options, async (req) => {
+  const ejer = ejerIdentitet(req); const d = req.data || {}; const db = getDatabase();
+  const sag = await hentEjersag(db, d.sagId); kraevAnmodningId(d.anmodningId); const id = kraevId(d.id, "kladdeId");
+  let konflikt = ""; const idemBruger = `ejer_${ejer.uid}`; const nu = Date.now();
+  const supportRef = db.ref("support");
+  const transaktionsstart = verificeretTransaktionsstart((await supportRef.once("value")).val() || {});
+  const tx = await supportRef.transaction((rod) => {
+    const aktuelRod = transaktionsstart(rod) || {}; const aktuelSag = aktuelRod.sager?.[sag.id]; const kladde = aktuelRod.svarKladder?.[sag.id]?.[id];
+    const tidligere = aktuelRod.idempotens?.[idemBruger]?.[d.anmodningId];
+    if (tidligere) return tidligere.operation === "svarGodkend" && tidligere.sagId === sag.id && tidligere.kladdeId === id ? aktuelRod : undefined;
+    if (!aktuelSag || aktuelSag.ansvarligUid !== ejer.uid) { konflikt = "Kun den ansvarlige ejer kan godkende svaret."; return; }
+    if (!kladde || kladde.status !== "kladde" || Number(kladde.revision) !== Number(d.forventetRevision) || Number(kladde.basisSagRevision) !== Number(aktuelSag.revision) || kladde.indholdHash !== svarIndholdHash(kladde)) { konflikt = "Svarudkastet eller sagen er ændret siden gennemgangen."; return; }
+    aktuelRod.svarKladder[sag.id][id] = { ...kladde, status: "godkendt", godkendtIndholdHash: kladde.indholdHash, godkendtAf: ejer.uid, godkendtMs: nu, revision: Number(kladde.revision) + 1 };
+    aktuelRod.idempotens ||= {}; aktuelRod.idempotens[idemBruger] ||= {}; aktuelRod.idempotens[idemBruger][d.anmodningId] = { operation: "svarGodkend", sagId: sag.id, kladdeId: id, revision: Number(kladde.revision) + 1, ms: nu };
+    return aktuelRod;
+  });
+  if (!tx.committed || konflikt) throw new HttpsError(conflictCode(konflikt), konflikt || "Svaret blev ikke godkendt.");
+  return { traad: await ejerTraad(db, tx.snapshot.val()?.sager?.[sag.id]) };
+});
+
+export const supportEjerSvarTransporter = onCall(options, async (req) => {
+  const ejer = ejerIdentitet(req); const d = req.data || {}; const db = getDatabase();
+  const sag = await hentEjersag(db, d.sagId); kraevAnmodningId(d.anmodningId); const id = kraevId(d.id, "kladdeId");
+  let konflikt = ""; const idemBruger = `ejer_${ejer.uid}`; const nu = Date.now(); const beskedId = `m_${d.anmodningId}`;
+  const supportRef = db.ref("support");
+  const transaktionsstart = verificeretTransaktionsstart((await supportRef.once("value")).val() || {});
+  const tx = await supportRef.transaction((rod) => {
+    const aktuelRod = transaktionsstart(rod) || {}; const aktuelSag = aktuelRod.sager?.[sag.id]; const kladde = aktuelRod.svarKladder?.[sag.id]?.[id];
+    const tidligere = aktuelRod.idempotens?.[idemBruger]?.[d.anmodningId];
+    if (tidligere) return tidligere.operation === "svarTransporter" && tidligere.sagId === sag.id && tidligere.kladdeId === id ? aktuelRod : undefined;
+    if (!aktuelSag || aktuelSag.ansvarligUid !== ejer.uid) { konflikt = "Kun den ansvarlige ejer kan transportere svaret."; return; }
+    if (!kladde || kladde.kanal !== SUPPORT_KANAL.portal || kladde.status !== "godkendt" || Number(kladde.revision) !== Number(d.forventetRevision) || Number(kladde.basisSagRevision) !== Number(aktuelSag.revision) || kladde.godkendtIndholdHash !== svarIndholdHash(kladde)) { konflikt = "Svaret er ikke en aktuel, konkret godkendt portalkladde."; return; }
+    aktuelRod.beskeder ||= {}; aktuelRod.beskeder[sag.id] ||= {};
+    aktuelRod.beskeder[sag.id][beskedId] = besked({ id: beskedId, anmodningId: d.anmodningId, afsenderType: SUPPORT_AFSENDER.ejer, afsenderUid: ejer.uid, tekst: [kladde.tekst, kladde.signatur].filter(Boolean).join("\n\n"), nu });
+    aktuelRod.svarKladder[sag.id][id] = { ...kladde, status: "transporteret", transporteretAf: ejer.uid, transporteretMs: nu, transportAnmodningId: d.anmodningId, revision: Number(kladde.revision) + 1 };
+    aktuelRod.sager[sag.id] = { ...aktuelSag, status: "afventerKunde", ansvarstype: SUPPORT_ANSVAR.ejer, revision: Number(aktuelSag.revision) + 1, opdateretMs: nu };
+    aktuelRod.idempotens ||= {}; aktuelRod.idempotens[idemBruger] ||= {}; aktuelRod.idempotens[idemBruger][d.anmodningId] = { operation: "svarTransporter", sagId: sag.id, kladdeId: id, beskedId, revision: Number(aktuelSag.revision) + 1, ms: nu };
+    return aktuelRod;
+  });
+  if (!tx.committed || konflikt) throw new HttpsError(conflictCode(konflikt), konflikt || "Svaret blev ikke transporteret.");
+  const gemt = tx.snapshot.val()?.sager?.[sag.id];
+  await db.ref(`tenants/${gemt.tenantId}/supportsager/${gemt.id}`).set({ oprettetAfUid: gemt.oprettetAfUid, status: gemt.status, opdateretMs: gemt.opdateretMs });
+  return { traad: await ejerTraad(db, gemt), beskedId };
+});
+
+function conflictCode(besked) {
+  return /ansvarlige ejer/i.test(besked) ? "permission-denied" : "failed-precondition";
+}
+
+/* Bevares kun som en eksplicit fail-closed overgang for ældre adaptere. */
+export const supportEjerSvarSend = onCall(options, async (req) => {
+  ejerIdentitet(req);
+  throw new HttpsError("failed-precondition", "Direkte ejersvar er lukket. Gem, godkend og transportér den konkrete portalkladde.");
 });
 
 export const supportEjerNoteSkriv = onCall(options, async (req) => {

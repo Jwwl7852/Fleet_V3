@@ -319,8 +319,8 @@
 .fc-support-traad{display:grid;gap:10px;max-height:54vh;overflow-y:auto;padding:14px 4px}
 .fc-support-besked{display:grid;gap:6px;max-width:min(78ch,88%);padding:11px 13px;border:1px solid var(--bc-line);border-radius:10px;background:var(--bc-card)}
 .fc-support-besked-kunde{justify-self:start;background:var(--bc-bg)}
-.fc-support-besked-ai,.fc-support-besked-ejer{justify-self:start}
-.fc-support-besked-ai{background:var(--fc-info-bg)}
+.fc-support-besked-ai{justify-self:start; background:var(--fc-info-bg)}
+.fc-support-besked-ejer{justify-self:start}
 .fc-support-besked header{display:flex;justify-content:space-between;gap:16px;color:var(--bc-muted);font-size:var(--fc-t-s)}
 .fc-support-besked p{margin:0;white-space:pre-wrap}
 .fc-support-besked small{color:var(--bc-muted)}

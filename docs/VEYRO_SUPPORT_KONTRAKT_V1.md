@@ -1,163 +1,192 @@
-# Veyro Support Contract V1
+# Veyro Support Contract V1.1
 
-Status: kanonisk lokal integrationskontrakt, 12. september 2026. Kontrakten er
-fastlagt i `codex/support-kundeplatform-development` fra base
-`6e164c9a0987096f1491a1d64c1846535b14683a`. Den er ikke deployet.
+Status: kanonisk lokal kontrakt, 13. september 2026. Ikke deployet.
 
-Ejerchattens planlagte inputfil
-`docs/VEYRO_EJER_SUPPORT_KONTRAKT_INPUT_V1.md` findes ikke på den kontrollerede
-ejer-HEAD `47c06020af5e00c302ea9b01ef316b10cbbd74fe`. Felter mærket
-**ejeradapter** skal derfor bekræftes mod det input før en senere samling.
+Dokumentrevision: `veyro.support.v1.1`. V1.1 erstatter V1 for nye portalsager,
+fordi ejersvar nu er bundet til en konkret kladde, indholdshash, menneskelig
+godkendelse og separat portaltransport. Eksisterende mail-/supportsager i
+ejerens V8-model migreres ikke i denne runde.
 
-## Formål og ejerskab
+Afstemt mod:
 
-Kontrakten forbinder én kundesamtale med én supportsag. Eskalering, reload,
-modulskift og kanalskift opretter ikke en ny sag. Mail er en alternativ kanal,
-ikke identiteten; mailadresse eller virksomhedsnavn må aldrig bruges som sikker
-sagskobling.
+- supportsporets base `404b20b43fbd690429c19224988af797d41e30cd`;
+- ejerens V8-input på `29b8b0252384cc111e58b3bfe279a18e56046642`;
+- `docs/VEYRO_EJER_SUPPORT_KONTRAKT_INPUT_V1.md` i ejer-worktreeet.
+
+## Ejerskab
 
 | Område | Eneste kodeejer |
 | --- | --- |
-| Kontrakten, `src/fleet/support.js`, delte serverkopier, support-endpoints og regler for `support/` | Integrations-/supportsporet |
-| Kundens `/support`, kundevendt lokal AI-adapter og kundeprøver | Integrations-/supportsporet |
-| Ejerkonsollens Support, interne noter, intern AI og svararbejdsflade | Ejerchatten |
-| Fælles AppShell, login, claims, tema og root-dependencies | Integrationschatten |
+| Kontrakt, fælles supportmodel, serverfunktioner, Rules og delte supportpolitikker | Integrations-/supportsporet |
+| Kundens `/support`, kundeadapter og kundevendt lokal AI | Integrations-/supportsporet |
+| Ejerens V8 Support/Mail-præsentation, intern AI-arbejdsflade og klientadapter | Ejerchatten |
+| AppShell, login, claims, fælles tema og root-dependencies | Integrationschatten |
 
-Ejerchatten må implementere en adapter mod denne kontrakt, men opretter ikke
-parallelle offentlige endpoints eller en anden fælles sagsnode. Ændringsbehov i
-de fælles filer afleveres med konkret commit, felt og begrundelse.
+Ejeradapteren må kun kalde de fælles `supportEjer*`-operationer for nye
+portalsager. Den må ikke skrive direkte i `support/` eller vedligeholde en
+redigerbar kopi under `udbyder/salgsindbakke/traade`.
 
-## Identitet og lagring
+## Identitet og autoritativ lagring
 
-Den autoritative sag ligger i `support/sager/<sagId>` og bærer `tenantId` og
-`oprettetAfUid`. Kundens liste findes gennem
-`tenants/<tenantId>/supportsager/<sagId>`. Kundesynlige beskeder ligger i
-`support/beskeder/<sagId>/<beskedId>`. Interne noter og intern AI ligger i hver
-sin serverbeskyttede samling og returneres aldrig fra kundeoperationer.
+For en ny portalsag gælder altid `sagId === traadId`. Supportnummeret er kun
+visning og må ikke bruges som fremmednøgle. Reload, eskalering, overtagelse,
+modulskift, løsning og genåbning bevarer samme id.
 
 ```text
-support/sager/<sagId>
-support/beskeder/<sagId>/<beskedId>
-support/interneNoter/<sagId>/<noteId>
-support/internAi/<sagId>/<postId>
-support/idempotens/<uid>/<anmodningId>
-tenants/<tenantId>/supportsager/<sagId>
+support/sager/<sagId>                    autoritativ sag, status og ansvar
+support/beskeder/<sagId>/<beskedId>      kundesynlig dialog
+support/interneNoter/<sagId>/<noteId>    kun ejer
+support/internAi/<sagId>/...             kun ejer; V8-projektionens aiArbejdsrum
+support/svarKladder/<sagId>/<kladdeId>   kladde, godkendelse og transportstatus
+support/idempotens/<aktor>/<anmodningId> serverreservation
+tenants/<tenantId>/supportsager/<sagId>  afledt minimalt kundeindeks
 ```
 
-En sag har mindst:
+`supportEjerKoelist` og `supportEjerSagHent` beregner en V8-kompatibel
+read-projektion. Projektionen har `id`, `traadId`, `sagstype: support`,
+`beskeder`, `noter`, `aiArbejdsrum`, `svarKladder`, `support`, `links`,
+`revision` og `senesteAktivitetMs`; den gemmes ikke som en salgstråd.
+
+Eksisterende V8-mail-/supportsager forbliver autoritative i
+`udbyder/salgsindbakke/traade`. De bruger deres eksisterende adapter og private
+synlighedsregler. En senere migration eller entydig serverkobling er en separat
+reviewopgave. `mailTraadId` oprettes ikke ud fra navn, mailadresse eller
+kundepayload.
+
+En portalsag indeholder mindst:
 
 ```js
 {
-  kontraktVersion: "veyro.support.v1",
-  id, tenantId, oprettetAfUid,
+  kontraktVersion: "veyro.support.v1.1",
+  id, traadId, nummer,
+  tenantId, oprettetAfUid,
+  kontaktNavn, kontaktEmail, virksomhedsnavn,
+  virksomhedId, // kun når udbyder/kunder/<tenantId> bekræfter relationen
   status, ansvarstype, ansvarligUid,
   emne, problemResume, modul, programversion, side,
-  afproevedeTrin: [], anvendteKilder: [], eskaleringsaarsag,
-  mailTraadId: null, // ejeradapter; kun verificeret intern id-kobling
+  afproevedeTrin, anvendteKilder, eskaleringsaarsag,
   revision, oprettetMs, opdateretMs, eskaleretMs, overtagetMs, loestMs
 }
 ```
 
-V1-kundeadgang er bevidst **egne sager**: både tenant og
-`oprettetAfUid === auth.uid` skal passe. Administratorrollen giver ikke i sig
-selv adgang til kollegers sager. En senere virksomhedsdelt visning kræver en
-ny, serverhåndhævet kontraktversion og kan ikke udledes af rollen i klienten.
-Ejere har ingen tenant og må kun bruge ejeroperationerne med det signerede
-`udbyder === true`-claim.
+## Adgang og indholdsgrænser
 
-## Beskedtyper og synlighed
+- Kunden identificeres kun fra serversessionens `uid` og `tenant`.
+- V1.1-kunden kan kun læse egne sager, hvor både tenant og `oprettetAfUid`
+  matcher. En administrator får ikke automatisk adgang til kollegers sager.
+- Ejeroperationer kræver det signerede claim `udbyder === true`.
+- Portalsager er delt i ejerens supportkø. De fælles endpoints åbner aldrig
+  ejerens private mail-/salgstråde.
+- Browser-SDK'et har ingen direkte læse- eller skriveadgang til `support/`.
+- Kunden ser kun beskeder med `synlighed: kunde` og afsender `kunde`, `ai`
+  eller `ejer`. Interne noter og intern AI returneres aldrig fra kunde-API'et.
+- Kundepayload kan ikke markere tekst som AI-/ejersvar eller som godkendt viden.
 
-Kundens tråd indeholder kun `synlighed: "kunde"` og en afsender af typen
-`kunde`, `ai` eller `ejer`. En AI-besked bærer den anvendte kundegodkendte
-kilde og vidensversion. Interne noter og intern AI har ingen kundesynlig
-variant og må ikke dukke op i kundelæsning, kundesøgning eller notifikationer.
+Kontekst filtreres på serveren. Modul, version, side og ufølsomme tekniske
+felter kan medtages. Tokens, passwords, vilkårlige objekter og automatisk
+skærmoptagelse fjernes.
 
-Vedhæftninger refereres med serverudstedt id, navn, MIME-type, størrelse og
-status. Filindhold må ikke ligge i samtaleposten. Download kræver samme
-tenant-/brugerprøve som sagen og en kortlivet serverudstedt URL. Den lokale V1
-viser filvalget og metadata, men den fælles Storage-transport er en åben
-afhængighed og må ikke foregive upload.
+## Status og V8-mapping
 
-Kontekst filtreres servermæssigt gennem allowlisten i `support.js`: aktuel
-side, modul, programversion, browser/app-version, bruger-id, tidspunkt og
-eventuelt fejl-id. Tokens, passwords, automatisk skærmoptagelse og vilkårlige
-feltværdier er forbudt. Kunden skal kunne se konteksten før afsendelse.
-
-## Status og ansvar
-
-| Status | Ansvar | Tilladt automatisk kundesvar |
+| Portalstatus | Ansvar | V8-status |
 | --- | --- | --- |
-| `aiDialog` | `ai` | Ja, hvis revision og ansvar stadig matcher ved publicering |
-| `afventerSupport` | `ejer` | Nej |
-| `underBehandling` | én `ansvarligUid` | Nej |
-| `afventerKunde` | én `ansvarligUid` | Nej |
-| `loest` | ingen automatisk aktivitet | Nej; kunden kan genåbne samme sag |
+| `aiDialog` | lokal kundebot | `ny` |
+| `afventerSupport` | fælles ejerkø | `triage` |
+| `underBehandling` | én `ansvarligUid` | `afventer_os` |
+| `afventerKunde` | én `ansvarligUid` | `afventer_kunden` |
+| `loest` | ingen automatisk aktivitet | `loest` |
 
-`Kontakt support`, utilstrækkelig viden, manglende fremgang og alvorlig drift
-fører til `afventerSupport`. Overtagelse kræver forventet revision og gør én
-ejer ansvarlig. AI-publicering gentjekker på serveren, at sagen stadig står i
-`aiDialog`, at `ansvarstype === "ai"`, og at revisionen er den samme som ved
-genereringsstart. Ellers bortfalder svaret. En kundebesked efter overtagelse
-går til samme sag og starter ikke botten igen.
+V8 må skrive `triage`, `afventer_os`, `afventer_kunden` og `loest` gennem
+`supportEjerStatusOpdater`. `ny` og `lukket` er ikke skrivbare mappinger for en
+portalsag. Overtagelse kræver forventet sagsrevision og sætter atomisk
+`ansvarstype: ejer`, `ansvarligUid` og ny revision.
 
-`Det løste problemet` sætter `loest` efter en udtrykkelig kundehandling.
-`Jeg har stadig brug for hjælp` genåbner samme sag til `afventerSupport`; det
-opretter ikke en ny sag. Stilhed eller et AI-svar løser aldrig en sag.
+AI-publicering kontrollerer umiddelbart før write, at sagen fortsat er i
+`aiDialog`, har AI-ansvar, ingen menneskelig ansvarlig og samme revision som
+ved genereringsstart. Et forsinket resultat bortfalder efter eskalering eller
+overtagelse. En kundebesked efter overtagelse fortsætter samme sag og starter
+ikke kundebotten igen.
 
-## Operationer
+## Vidensgodkendelse
 
-Alle skriveoperationer kræver `anmodningId` og returnerer `sagId`, `revision`
-og det effektive resultat. Et genforsøg med samme bruger, operation og
-`anmodningId` returnerer samme resultat. Konkurrerende tilstandsændringer
-kræver `forventetRevision` og afvises som `aborted` ved mismatch.
+Kundeadapteren læser ejerens vedligeholdte model under
+`udbyder/vidensbase/poster`. En post kan kun levere kundevendt løsningsindhold,
+når alle følgende er sande:
 
-Kundeoperationer udleder tenant og uid fra den verificerede serversession:
+```js
+post.vidensstatus === "godkendt"
+post.publikum === "kunde_godkendt"
+post.aktuelVersion > 0
+post.titel && post.indhold && post.kilde
+post.leveringsstatus er tom eller "tilgaengelig"
+```
 
-- `supportSamtaleStart`: start en samtale eller returnér den allerede oprettede.
-- `supportSamtalerList`: list kun den aktuelle brugers egne sager via tenantindekset.
-- `supportSamtaleHent`: hent sag og kun kundesynlige beskeder.
-- `supportBeskedSend`: tilføj kundebesked til samme sag.
-- `supportAiSvarPublicer`: publicér kun efter ansvar/revisionskontrollen.
-- `supportEskaler`: stop automatisk svar og overdrag samme sag.
-- `supportSagLoes` og `supportSagGenaabn`: udtrykkelige kundeskift.
-- `supportVedhaeftningInitier`, `supportVedhaeftningBekraeft` og
-  `supportVedhaeftningHent`: kontraktfastlagt, men fælles Storage-transport er
-  ikke implementeret i denne lokale runde.
+Ældre `godkendt`/`kundeGodkendt`-booleans er ikke autoritative og giver aldrig
+alene kundeadgang. Kladde, intern, forældet, utilgængelig eller modstridende
+metadata udelukkes. AI-beskeden gemmer den konkrete kilde og version. En ny
+artikelrevision skal gennemgås og mærkes igen; godkendelse arves ikke gennem
+et ekstra lokalt flag.
 
-Ejeroperationer kræver `udbyder === true`:
+## Kundeoperationer
 
-- `supportEjerKoelist` og `supportEjerSagHent`.
-- `supportEjerOvertag` med forventet revision.
-- `supportEjerSvarSend` med forventet revision og kundesynlig kanal `portal`.
-- `supportEjerNoteSkriv` og `supportEjerAiSkriv`, som aldrig returneres til kunden.
+Alle writes kræver et 8–80 tegn langt `anmodningId`.
 
-**Ejeradapter:** `mailTraadId`, eksisterende ejerstatusnavne og den konkrete
-transport fra ejerens godkendte svarhandling skal mappes, når ejerinputtet
-foreligger. Portal er direkte dialog. Rigtig mail og dobbeltafsendelse er ikke
-aktiveret.
+- `supportSamtaleStart({ anmodningId, emne, tekst, kontekst })`
+- `supportSamtalerList()`
+- `supportSamtaleHent({ sagId })`
+- `supportBeskedSend({ sagId, anmodningId, tekst, vedhaeftninger: [] })`
+- `supportEskaler({ sagId, anmodningId, aarsag })`
+- `supportSagLoes({ sagId, anmodningId })`
+- `supportSagGenaabn({ sagId, anmodningId })`
 
-## Kundevendt AI og vidensbase
+Kundesvar er `{ sag, beskeder }`; `sag.id` og `sag.traadId` er identiske.
+Servervedhæftninger afvises, indtil Storage-, scanning-, retention- og
+downloadkontrakten er implementeret.
 
-Kundebotten er kun vejledning, fejlsøgning og eskalering. Den må ikke ændre
-driftsdata, roller, licenser, betaling eller kode. Kundeinput og filer er data,
-ikke instruktioner om at udvide adgang.
+## Ejeroperationer og godkendelsesbinding
 
-Den fælles læseadapter bruger ejerens eksisterende
-`udbyder/vidensbase/poster`-model og medtager kun poster, der både er
-`godkendt === true`, `kundeGodkendt === true`, har understøttet modul/version
-og en synlig kilde. Manglende eller modstridende viden giver et
-opklaringsspørgsmål eller eskalering, ikke et gæt. Den lokale prøve injicerer
-mærkede syntetiske poster i samme kontraktform; ingen ekstern model kaldes.
+- `supportEjerKoelist()` → `{ traade: { [sagId]: V8Traad } }`
+- `supportEjerSagHent({ sagId })` → `{ traad: V8Traad }`
+- `supportEjerOvertag({ sagId, anmodningId, forventetRevision })`
+- `supportEjerStatusOpdater({ sagId, anmodningId, status, forventetRevision })`
+- `supportEjerNoteSkriv({ sagId, anmodningId, tekst })`
+- `supportEjerSvarKladdeGem({ sagId, anmodningId, id, kanal: "portal",
+  tekst, signatur, vedhaeftninger: [], forventetSagRevision,
+  forventetRevision })`
+- `supportEjerSvarGodkend({ sagId, anmodningId, id, forventetRevision })`
+- `supportEjerSvarTransporter({ sagId, anmodningId, id,
+  forventetRevision })`
 
-## Sikkerhed og senere aktivering
+Kladdehashen binder kanal, modtager-uid, tekst, separat signatur, valgte
+vedhæftninger og sagens grundrevision. Godkendelsen binder den præcise hash til
+den godkendende ejer. Transport kræver samme ansvarlige ejer, samme sag,
+samme godkendte kladde, samme hash og samme sagsgrundlag. Nyt kundeinput eller
+ændret kladde kræver ny gennemgang.
 
-Klient-SDK'et har ingen direkte skriveadgang til `support/`. De fælles Cloud
-Functions er den eneste produktionsvej og ejes af integrationssporet. Hver
-operation gentager identitets-, tenant-, ejer-, synligheds- og
-revisionskontrollen. En ændret sag-id eller vedhæftnings-id må derfor ikke
-udvide adgang. Mindst to syntetiske tenants prøves servermæssigt.
+`supportEjerSvarSend` er bevaret som en fail-closed overgang og returnerer
+altid `failed-precondition`. V8-adapterens eksisterende metode `svarSend` skal
+mappe til `supportEjerSvarTransporter`, aldrig til dette legacy-navn.
 
-Denne kontrakt etablerer ikke drift: ingen functions/rules er deployet, ingen
-ekstern AI er aktiveret, ingen mail sendes, og ingen produktionsdata bruges.
-Før samling skal ejerinputtet afstemmes, Storage-transporten implementeres og
-rules-/function-emulatorprøverne køres på det præcise samlede commit.
+I den lokale V1.1-prøve er `portal` den eneste transport. Den skriver præcis
+én kundesynlig besked og samler signaturen én gang. Samme transport-
+`anmodningId` kan genforsøges og returnerer samme `beskedId`. Rigtig mail og
+implicit dobbeltlevering er ikke aktiveret.
+
+## Fejlkontrakt
+
+- `unauthenticated`: ingen verificeret session.
+- `permission-denied`: forkert tenant/bruger, manglende ejerclaim eller forkert
+  ansvarlig ejer.
+- `invalid-argument`: ugyldigt id, tom tekst, kanal eller payload.
+- `aborted`: forventet revision matcher ikke; hent sagen igen.
+- `failed-precondition`: ikke-godkendt/forældet svar, direkte send,
+  vedhæftning eller anden endnu ikke aktiveret funktion.
+- `already-exists`: et `anmodningId` er genbrugt til en anden operation.
+
+## Ikke del af V1.1-aktiveringen
+
+Kontrakten er lokal prototypekode. Der er ingen deployment, produktionsdata,
+ekstern AI, rigtig mail, fælles filupload eller historisk migration. Ejerens
+interne AI-/oplysningsfunktioner for en ny portalprojektion kræver fortsat en
+klient-/endpointafstemning i ejerchatten; de må ikke falde tilbage til at skrive
+en parallel salgstråd.
