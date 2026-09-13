@@ -1,0 +1,22 @@
+{
+  "database": { "rules": "firebase.rules.json" },
+  "storage": { "rules": "storage.rules" },
+  "emulators": {
+    "auth": { "port": 9119 },
+    "database": { "port": 9020 },
+    "functions": { "port": 5022 },
+    "storage": { "port": 9229 },
+    "hub": { "port": 4412 },
+    "logging": { "port": 4512 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs20",
+      "ignore": ["node_modules", ".git", "*.log"]
+    }
+  ]
+}

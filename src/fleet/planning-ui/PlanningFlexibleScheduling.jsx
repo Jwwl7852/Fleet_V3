@@ -67,7 +67,7 @@ function FloatingTaskWindow({ task, placement, pending, findings, maximized, act
   </section>;
 }
 
-export default function PlanningFlexibleScheduling({ state, setState, onOpenLive, onReset, calendarOnly = false, createLocalUrl = null }) {
+export default function PlanningFlexibleScheduling({ state, setState, onOpenLive, onReset, calendarOnly = false, createLocalUrl = null, availabilityCheck = null }) {
   const [view, setView] = useState("rute");
   const [weekStart, setWeekStart] = useState(state.weekStart);
   const [activeTaskId, setActiveTaskId] = useState(() => state.selectedTaskId || (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("taskId")));
@@ -115,7 +115,34 @@ export default function PlanningFlexibleScheduling({ state, setState, onOpenLive
   const makeDraft = (taskId, date, resource) => { const task = state.tasks.find((item) => item.id === taskId); const existing = state.placements.find((item) => item.taskId === taskId); if (!task) return null; const target = resource || state.resources.find((item) => item.type === view); return { taskId, date: date || existing?.date || weekStart, resourceType: target?.type || existing?.resourceType || view, resourceId: target?.id || existing?.resourceId || "", resourceLabel: target?.label || state.resources.find((item) => item.id === existing?.resourceId)?.label || "Vælg kalenderfelt", startTime: existing?.startTime || task.timeWindow?.from || task.requestPeriod?.tid || task.requestPeriod?.fra || "09:00", durationMin: existing?.durationMin || task.durationMin, ...(existing ? { placementId: existing.id } : {}) }; };
   const openTask = (taskId, tab = "placering") => { chooseTask(taskId, tab); setPlacementDrafts((current) => current[taskId] ? current : { ...current, [taskId]: makeDraft(taskId) }); setFindingsByTask((current) => ({ ...current, [taskId]: [] })); setWindowPosition((position) => clampWindow(position)); };
   const beginPlacement = (taskId, date, resource, point) => { chooseTask(taskId, "placering"); setPlacementDrafts((current) => ({ ...current, [taskId]: makeDraft(taskId, date, resource) })); setFindingsByTask((current) => ({ ...current, [taskId]: [] })); setMaximized(false); if (point) setWindowPosition(clampWindow({ x: point.x + 14, y: point.y + 14 })); setMobilePane("calendar"); };
-  const confirmPlacement = () => { if (!pending) return; let number = 1; const ids = new Set(state.placements.map((item) => item.id)); while (ids.has(`week-placement-${number}`)) number += 1; const result = placerForeloebigt(state, pending, { placementId: pending.placementId || `week-placement-${number}`, timestamp: "13.09.2032 · 09:42" }); setFindingsByTask((current) => ({ ...current, [pending.taskId]: result.findings })); if (!result.ok) return; update(result.state); setPlacementDrafts((current) => ({ ...current, [pending.taskId]: { ...pending, placementId: result.placement.id } })); setMessage(result.findings.length ? "Placeret som lokalt alternativ; bestillerens ønske er bevaret." : "Opgaven er placeret foreløbigt i den lokale ugeplan."); };
+  const confirmPlacement = async () => {
+    if (!pending) return;
+    const task = state.tasks.find((item) => item.id === pending.taskId);
+    if (pending.resourceType === "medarbejder" && availabilityCheck) {
+      const startMs = new Date(`${pending.date}T${pending.startTime}:00`).getTime();
+      const result = await availabilityCheck({
+        employeeId: pending.resourceId,
+        startMs,
+        endMs: startMs + Number(pending.durationMin || 0) * 60_000,
+        requirements: task?.requiredSkill ? [task.requiredSkill] : [],
+      }).catch((error) => ({ available: false, reason: error?.message || "WORKFORCE-kontrollen kunne ikke gennemføres." }));
+      if (!result?.available) {
+        const workforceFinding = { code: "WORKFORCE_UNAVAILABLE", level: "BLOCKER", text: result?.reason || "Medarbejderen er ikke tilgængelig i WORKFORCE." };
+        setFindingsByTask((current) => ({ ...current, [pending.taskId]: [workforceFinding] }));
+        setMessage("Placeringen blev afvist af WORKFORCE. Ingen lokal plan blev ændret.");
+        return;
+      }
+    }
+    let number = 1;
+    const ids = new Set(state.placements.map((item) => item.id));
+    while (ids.has(`week-placement-${number}`)) number += 1;
+    const result = placerForeloebigt(state, pending, { placementId: pending.placementId || `week-placement-${number}`, timestamp: "13.09.2032 · 09:42" });
+    setFindingsByTask((current) => ({ ...current, [pending.taskId]: result.findings }));
+    if (!result.ok) return;
+    update(result.state);
+    setPlacementDrafts((current) => ({ ...current, [pending.taskId]: { ...pending, placementId: result.placement.id } }));
+    setMessage(result.findings.length ? "Placeret som lokalt alternativ; bestillerens ønske er bevaret." : "Opgaven er placeret foreløbigt i den lokale ugeplan.");
+  };
   const cancelPending = () => { if (!activeTaskId) return; setPlacementDrafts((current) => { const next = { ...current }; if (activePlacement) next[activeTaskId] = makeDraft(activeTaskId, activePlacement.date, state.resources.find((item) => item.id === activePlacement.resourceId)); else delete next[activeTaskId]; return next; }); setFindingsByTask((current) => ({ ...current, [activeTaskId]: [] })); };
   const removePlacement = () => { if (!activePlacement) return; update(fjernPlacering(state, activePlacement.id)); setMessage("Placeringen er fjernet. Opgaven er tilbage i planlægningskøen."); };
   const movePlacement = () => { if (!activePlacement) return; const resource = state.resources.find((item) => item.id === activePlacement.resourceId); setPlacementDrafts((current) => ({ ...current, [activeTaskId]: makeDraft(activeTaskId, activePlacement.date, resource) })); setActiveTab("placering"); };

@@ -38,8 +38,8 @@ describe("custom claims v2", () => {
     assert.throws(() => testClaimsV2({ rolle: "superadmin" }), /Ukendt testrolle/);
   });
 
-  it("round-tripper alle 58 permissions, alle roller og tenanttilpassede roller", () => {
-    assert.equal(ALLE_PERMS.length, 58);
+  it("round-tripper alle 62 permissions, alle roller og tenanttilpassede roller", () => {
+    assert.equal(ALLE_PERMS.length, 62);
     const lister = [...Object.entries(ROLLE_PERMS), ["tenant-alle", ALLE_PERMS]];
     for (const [navn, perms] of lister) {
       const rolle = navn === "tenant-alle" ? "disponent" : navn;
@@ -142,9 +142,13 @@ describe("custom claims v2", () => {
       "sag.mailSend": "1j",
       "retention.laes": "1k",
       "retention.skriv": "1l",
+      "vagter.laes": "1m",
+      "vagter.skriv": "1n",
+      "stemplinger.laesAlle": "1o",
+      "stemplinger.rette": "1p",
     });
-    assert.equal(Object.keys(FROSSET_KODEKATALOG).length, 58,
-      "58 permissions forventet — ramte du dette, er en ny permission tilføjet uden at snapshottet blev udvidet");
+    assert.equal(Object.keys(FROSSET_KODEKATALOG).length, 62,
+      "62 permissions forventet — ramte du dette, er en ny permission tilføjet uden at snapshottet blev udvidet");
     assert.deepEqual(PERM_KODE, FROSSET_KODEKATALOG,
       "PERM_KODE er ikke længere identisk med det frosne snapshot — en kode er byttet, genbrugt, tilføjet eller fjernet. " +
       "Er ændringen bevidst (en NY permission med en NY, ubrugt kode), opdater FROSSET_KODEKATALOG i denne prøve. " +
@@ -188,7 +192,7 @@ describe("custom claims v2", () => {
       eksisterende: { udbyder: true, devTester: true } });
     const bytes = Buffer.byteLength(JSON.stringify(claims), "utf8");
     assert.equal(customClaimsBytes(claims), bytes);
-    assert.equal(bytes, 294);
+    assert.equal(bytes, 306);
     assert.ok(bytes <= CUSTOM_CLAIMS_BUDGET_BYTES);
     assert.ok(FIREBASE_CUSTOM_CLAIMS_MAX_BYTES - CUSTOM_CLAIMS_BUDGET_BYTES >= 250);
     assert.deepEqual(Object.keys(claims).sort(), ["devTester", "perms", "pv", "rolle", "tenant", "udbyder"]);

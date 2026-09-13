@@ -24,19 +24,35 @@
  * godkendt; tre ansøgninger om den samme uge ville ellers spærre manden tre
  * gange for en frihed han ikke har fået. Beslutning 59's figur.
  */
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { useListe } from "../../fleet/useListe.js";
-import { gem, nyId } from "../../fleet/skriv.js";
-import { AUDIT } from "../../fleet/audit-regler.js";
 import { dato, msTilIso } from "../../fleet/format.js";
 import { Pille, Tom } from "../../fleet/ui.jsx";
 import {
   ANSOEGNING, ANSOEGBARE_ARTER, FRAVAER_ART, byggAnsoegning, valideAnsoegning,
   varighedDage, sidsteDag,
 } from "../../fleet/fravaer.js";
-import { DEMO_FRAVAER } from "../../fleet/demo-fravaer.js";
+import {
+  createFirebaseWorkforceRepository,
+  workforceV2ActorFromUser,
+} from "../../fleet/workforce-v2-integration.js";
+
+const ANSOEGNING_TIL_WORKFORCE = Object.freeze({
+  ferie: "vacation",
+  feriefridag: "personal",
+  afspadsering: "timeOff",
+});
+const WORKFORCE_TIL_ANSOEGNING = Object.freeze(Object.fromEntries(
+  Object.entries(ANSOEGNING_TIL_WORKFORCE).map(([platform, workforce]) => [workforce, platform]),
+));
+const WORKFORCE_STATUS = Object.freeze({
+  pending: "ansoegt",
+  approved: "godkendt",
+  rejected: "afvist",
+  cancelled: "annulleret",
+});
 
 /**
  * "2026-10-09" → midnat den dag, eventuelt n dage senere.
@@ -68,7 +84,7 @@ function midnat(iso, plusDage = 0) {
 }
 
 export default function Frihed() {
-  const { path: sti, bruger } = useFleet();
+  const { bruger } = useFleet();
   const [oensket, setOensket] = useState(ANSOEGBARE_ARTER[0]);
   const [fra, setFra] = useState("");
   const [til, setTil] = useState("");
@@ -76,20 +92,45 @@ export default function Frihed() {
   const [gemmer, setGemmer] = useState(false);
   const [kvittering, setKvittering] = useState(null);
   const [fejl, setFejl] = useState(null);
+  const [henterFravaer, setHenterFravaer] = useState(true);
+  const [mine, setMine] = useState([]);
+  const repository = useMemo(() => createFirebaseWorkforceRepository(), []);
 
   const brugerListe = useListe("brugere", { vindue: "alle", graense: 500 });
   const minPersonId = brugerListe.data.find((b) => b.id === bruger?.uid)?.personId || null;
 
-  const fravaer = useListe("fravaer", {
-    ordnPaa: "fra", vindue: "alle", graense: 500, demo: DEMO_FRAVAER,
-  });
+  const actor = useMemo(
+    () => workforceV2ActorFromUser(bruger, minPersonId),
+    [bruger, minPersonId],
+  );
+  const hentMine = useCallback(async () => {
+    if (!minPersonId) {
+      setMine([]);
+      setHenterFravaer(false);
+      return;
+    }
+    setHenterFravaer(true);
+    try {
+      const state = await repository.getState();
+      setMine((state?.leaves || []).map((leave) => ({
+        id: leave.id,
+        personId: leave.employeeId,
+        fra: leave.fromMs,
+        til: leave.toMs,
+        ansoegning: leave.direct ? null : {
+          status: WORKFORCE_STATUS[leave.status] || leave.status,
+          oensket: WORKFORCE_TIL_ANSOEGNING[leave.requestedType] || null,
+          svar: leave.response || "",
+        },
+      })).sort((a, b) => (b.fra || 0) - (a.fra || 0)));
+    } catch (error) {
+      setFejl(error?.message || "Frihedsansøgningerne kunne ikke hentes.");
+    } finally {
+      setHenterFravaer(false);
+    }
+  }, [minPersonId, repository]);
 
-  /* ⚠ KUN HANS EGNE. Reglen lader ham LÆSE hele listen — `fravaer.laes` har
-     alle seks roller — men det er hans egne ansøgninger han skal se svaret på.
-     Kollegaens ferie hører ikke her. */
-  const mine = fravaer.data
-    .filter((f) => f.personId === minPersonId)
-    .sort((a, b) => (b.fra || 0) - (a.fra || 0));
+  useEffect(() => { hentMine(); }, [hentMine]);
 
   async function send() {
     setFejl(null);
@@ -111,28 +152,26 @@ export default function Frihed() {
     const problemer = valideAnsoegning(post, { nu });
     if (problemer.length) { setFejl(problemer.join(" ")); return; }
 
-    const id = nyId("frv");
     setGemmer(true);
-    const r = await gem({
-      sti: sti(`fravaer/${id}`),
-      data: post,
-      objekt: "fravaer",
-      objektId: id,
-      handling: AUDIT.opret,
-      note: `ansøgning om ${FRAVAER_ART[oensket].label.toLowerCase()}`,
-    });
-    setGemmer(false);
-
-    if (r.ok) {
+    try {
+      await repository.requestLeave(actor, {
+        employeeId: minPersonId,
+        fromMs: post.fra,
+        toMs: post.til,
+        requestedType: ANSOEGNING_TIL_WORKFORCE[oensket],
+        employeeNote: note,
+      });
       setKvittering("Ansøgningen er sendt. Du får svar her i appen.");
       setFra(""); setTil(""); setNote("");
-      fravaer.genindlaes();
-    } else {
-      setFejl(r.besked);
+      await hentMine();
+    } catch (error) {
+      setFejl(error?.message || "Ansøgningen kunne ikke sendes.");
+    } finally {
+      setGemmer(false);
     }
   }
 
-  if (brugerListe.henter) return <p className="fc-hint">Henter …</p>;
+  if (brugerListe.henter || henterFravaer) return <p className="fc-hint">Henter …</p>;
 
   if (!minPersonId) {
     return (

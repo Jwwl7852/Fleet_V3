@@ -851,3 +851,35 @@ og Fakturacenterets lokale kontrolflow er bevaret. Resultatet afslutter
 samlingen af de fire moduler i milepæl A. Milepæl B med fælles varig
 serverlagring, serverhåndhævede modulforbindelser og liveintegrationer er ikke
 påbegyndt.
+
+## 15. WORKFORCE v2 integreret — 2026-09-13
+
+Det præcise checkpoint `86e3c5e66af6a3678e1d119833bac27970a01f8c`
+blev integreret fra den fælles produktbase `989dbb87db639efed0ba1b5a1e271560f7659a0c`
+med fuld historik i merge-commit
+`cfab078dc43f3ea6ad72211ece743542460e5a41`. Kildeworktreeets to utrackede
+screenshotartefakter blev ikke medtaget eller ændret.
+
+WORKFORCE er lazy-loadet på `/workforce-v2/*` i den fælles AppShell. Fælles
+medarbejderidentitet bruges i WORKFORCE, chaufførens Frihed-side og PLANNING.
+Vagter, fravær, kompetencer, timer og tilgængelighed håndteres gennem nye
+server-callables med fail-closed claims-v2-, revocation-, tenant-, abonnement-
+og permissionkontrol. Følsomme oplysninger filtreres i serverprojektionen,
+direkte adgang til serverinterne noder er lukket, og PLANNING får kun et
+tilgængelighedssvar.
+
+Den fulde Rules-gate bestod 4.512/4.512 med proceslokal Temurin 21.0.12.1.
+WORKFORCEs domæne-/repositorysuite bestod 22/22, designkontrollen 11/11,
+root- og målrettet lint bestod, og produktionsbuilden transformerede 723
+moduler. Separat Auth/Functions-QA og faktiske browserforløb dokumenterede
+medarbejderansøgning, lederafgørelse, svar tilbage, idempotens, samtidighed,
+tenant-/permissionafvisning samt PLANNING-blokering på godkendt fravær.
+Detaljer og maskinlæsbart bevis findes i
+`docs/VEYRO_WORKFORCE_INTEGRATIONSRESULTAT_V1.md` og
+`artifacts/workforce-v2/runtime/WORKFORCE_AUTH_FUNCTIONS_BEVIS.json`.
+
+Godkendelsesomfang og egen godkendelse afvises fortsat uden eksplicit
+autorisation og afventer produktbeslutning. Certifikat-upload er ikke
+implementeret i checkpointet. Integrationen er emulatorverificeret Milepæl A
+med udvalgte serverfunktioner; den er ikke en deployment eller en tilslutning
+til eksterne løn-, mail- eller certifikattjenester.

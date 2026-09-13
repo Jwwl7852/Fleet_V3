@@ -5,6 +5,7 @@ import "../../fleet/planning-ui/planning-demo.css";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harModul } from "../../fleet/moduler.js";
 import { harPerm } from "../../fleet/permissions.js";
+import { workforcePlanningCheck } from "../../fleet/workforce-v2-integration.js";
 import {
   PLANNING_V2_INTEGRATION_ENVIRONMENT,
   planningV2ChannelName,
@@ -51,6 +52,7 @@ export default function PlanningV2Module() {
         createLocalUrl={planningV2LocalUrl}
         embedded
         onNavigate={(view) => navigate(planningV2PathForView(view))}
+        workforceAvailabilityCheck={workforcePlanningCheck}
         syncChannelName={syncChannelName}
       />
     </section>

@@ -12,7 +12,7 @@ Nye rolleclaims bygges kun gennem `byggRolleClaims()`. Builderen overskriver
 `tenant`, `rolle`, `pv` og `perms`, bevarer kun boolske `udbyder` og
 `devTester`, og stopper med en stabil fejlkode ved ukendte/reserverede claims.
 Der trunkeres aldrig. Hele JSON-objektets UTF-8-længde måles og afvises over
-750 bytes. Worst case-testen (58 permissions, 40-tegns tenant og begge flags)
+750 bytes. Worst case-testen (62 permissions, 40-tegns tenant og begge flags)
 er 294 bytes mod Firebases 1.000-byte-grænse.
 
 Legacy accepterer kun de former den gamle server faktisk udstedte: den gamle

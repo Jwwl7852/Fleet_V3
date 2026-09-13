@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-09-13T17:06:58.566Z",
+  "projectId": "demo-veyro-workforce-test",
+  "environment": "isolated Firebase Emulator Suite",
+  "identities": {
+    "employeeUid": "353amZQFbxOW5Jjkl3mLXv5hlr0e",
+    "managerUid": "FXmNT3BSJubfS02lxpWuESl16v73",
+    "sharedTenantId": "workforce-auth-a",
+    "separateAuthenticatedSessions": true
+  },
+  "leave": {
+    "id": "wf-leave-wf-auth-request-one",
+    "reservationId": "res-wf-leave-wf-auth-request-one",
+    "requestRetryDidNotDuplicate": true,
+    "decisionRetryDidNotDuplicate": true,
+    "employeeSawReply": true,
+    "managerProjectionRedactedSensitiveFields": true,
+    "overlapRecalculatedOnCancellation": true,
+    "oldReservationRemovedAfterEmployeeAndPeriodChange": true
+  },
+  "security": {
+    "outOfScopeDenied": true,
+    "missingPermissionDenied": true,
+    "foreignTenantDenied": true,
+    "serverInternalNodesDenied": true,
+    "oneConcurrentDecisionAccepted": true
+  },
+  "planning": {
+    "sameBackendLeaveBlockedAssignment": true,
+    "reasonNotDisclosed": true,
+    "publishedShiftIsNotAConflict": true,
+    "skillCheckedAtAssignmentTime": true
+  },
+  "moduleGate": {
+    "commonPersonnelWithoutWorkforce": true,
+    "workforceWriteWithoutSubscriptionDenied": true
+  },
+  "certificateUpload": {
+    "verified": false,
+    "limitation": "Checkpointet indeholder kun dokumentreference; egentlig Storage-upload er ikke implementeret."
+  }
+}

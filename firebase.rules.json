@@ -1166,6 +1166,14 @@
         // stillet og ikke besvaret, saa der skrives ingen koordinater — og
         // felterne staar heller ikke her, for et felt reglen tillader og
         // ingen skriver, kan fyldes med hvad som helst.
+        // WORKFORCE v2 serverprojekterer vagter og holder mutationsledger,
+        // revisioner, godkendelsesomfang og hændelser bag callables.
+        "vagter": { ".read": false, ".write": false },
+        "workforceGodkendelsesomfang": { ".read": false, ".write": false },
+        "_workforceAnmodninger": { ".read": false, ".write": false },
+        "_workforceVersioner": { ".read": false, ".write": false },
+        "workforceEvents": { ".read": false, ".write": false },
+
         "stemplinger": {
           "$personId": {
             ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('bemanding').val() === true) && (root.child('tenants').child($tenantId).child('brugere').child(auth.uid).child('personId').val() === $personId || (auth.token.perms != null && (auth.token.perms != null && (((auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains('|12|')) || (auth.token.pv == null && auth.token.perms != null && auth.token.perms.contains('|personale.laes|')))))))",

@@ -196,6 +196,10 @@ const UDEN_LAES = {
   kompetencer:
     "et kørekort og et ADR-bevis med en udløbsdato. `tjekDisponering()` slår "
     + "op i dem, og en chauffør skal kunne se hvornår hans eget bevis udløber.",
+  stemplinger:
+    "egne stemplinger læses via personId i stien, mens lederens tværgående "
+    + "serverprojektion bruger den snævre `stemplinger.laesAlle`; den kan ikke "
+    + "hedde blot `.laes`, fordi egen og alle medarbejderes tid er to adgange.",
   brugere:
     "⚠ KAN IKKE LUKKES SOM DET ER. Noden er det ene sted et navn kan slås op "
     + "på et uid — auditloggen, godkendervælgeren og Brugere & roller læser "
@@ -291,8 +295,8 @@ describe("De øvrige domæner står åbne — med en grund", () => {
    * ⚠ HULLET SKAL VÆRE TÆLLELIGT. Tallet står i README, og det er dét der
    * gør forskellen på et hul nogen har set og et ingen har.
    */
-  it("⚠ TALLET ER TOLV — og det skal ned, ikke op", () => {
-    assert.equal(Object.keys(UDEN_LAES).length, 12,
+  it("⚠ TALLET ER TRETTEN — og det skal ned, ikke op", () => {
+    assert.equal(Object.keys(UDEN_LAES).length, 13,
       "listen har ændret længde. Er et domæne lukket, hører linjen væk og "
       + "tallet i README ned. Er et NYT domæne åbnet, er det en beslutning "
       + "der skal skrives ned.");
@@ -323,12 +327,15 @@ describe("Hvor mange noder står åbne", () => {
        stigning i noder uden læse-permission, ikke en åbning. 31 → 34:
        `procureMobilKladder` og `procureOpsaetning` er på samme måde helt
        serverlukkede, mens `procureGodkendelsessager` læses med det kompakte
-       signerede `|07|`-claim og derfor ikke genkendes af denne navneparser. */
+       signerede `|07|`-claim og derfor ikke genkendes af denne navneparser.
+       34 → 38: WORKFORCEs fire serverinterne noder og den serverprojekterede
+       vagtplan er helt lukkede for direkte klientlæsning. */
     const uden = NODER.filter((n) => !n.perms.length);
-    assert.ok(uden.length <= 34,
+    assert.ok(uden.length <= 38,
       `${uden.length} noder kræver ingen læse-permission — det var 39 før `
       + `beslutning 104, 29 efter, 30 fra Skive 2B, 31 med den lukkede `
-      + `PROCURE QR-node og 34 med de serverstyrede PROCURE-noder. Er en `
+      + `PROCURE QR-node, 34 med de serverstyrede PROCURE-noder og 38 med `
+      + `WORKFORCEs serverprojektion og interne noder. Er en `
       + `node blevet åbnet igen?\n  `
       + uden.map((n) => n.sti).join("\n  "));
   });

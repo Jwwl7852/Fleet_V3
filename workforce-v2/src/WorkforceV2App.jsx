@@ -18,7 +18,7 @@ const MANAGER_ACTOR = { id: "user-manager", tenantId: "demo-transport", employee
     "workforce.leave.approve", "workforce.leave.sensitive", "workforce.skill.write", "workforce.time.correct", "workforce.self"] };
 const EMPLOYEE_ACTOR = { id: "user-anne", tenantId: "demo-transport", employeeId: "emp-anne", name: "Anne Krogh", permissions: ["workforce.self"] };
 
-export function WorkforceV2App({ actor: actorProp, embedded = false, repository: repositoryProp, initialPage }) {
+export function WorkforceV2App({ actor: actorProp, embedded = false, repository: repositoryProp, initialPage, onNavigate, pathname }) {
   const [demoRole, setDemoRole] = useState("manager");
   const actor = actorProp || (demoRole === "manager" ? MANAGER_ACTOR : EMPLOYEE_ACTOR);
   const repository = useMemo(() => repositoryProp || createIndexedDbWorkforceRepository({ databaseName: import.meta.env.VITE_WORKFORCE_DATABASE_NAME || WORKFORCE_DB_NAME, tenantId: actor.tenantId }), [repositoryProp, actor.tenantId]);
@@ -30,6 +30,10 @@ export function WorkforceV2App({ actor: actorProp, embedded = false, repository:
     try { setState(await repository.getState(actor)); setError(""); } catch (reason) { setError(reason.message); }
   }, [repository, actor]);
   useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    if (!pathname || !initialPage) return;
+    setPage(initialPage);
+  }, [pathname, initialPage]);
 
   const run = useCallback(async (operation) => {
     setBusy(true); setError("");
@@ -40,7 +44,8 @@ export function WorkforceV2App({ actor: actorProp, embedded = false, repository:
 
   const navigate = (next) => {
     setPage(next);
-    if (!embedded) { const url = new URL(window.location.href); url.searchParams.set("page", next); window.history.replaceState({}, "", url); }
+    if (embedded) onNavigate?.(next);
+    else { const url = new URL(window.location.href); url.searchParams.set("page", next); window.history.replaceState({}, "", url); }
   };
   const manager = actor.permissions.includes("workforce.employee.read");
   const pages = manager ? PAGES : PAGES.filter(([key]) => key === "self");
@@ -54,9 +59,9 @@ export function WorkforceV2App({ actor: actorProp, embedded = false, repository:
       {!actorProp && <label className="wf-role">Vis som <select value={demoRole} onChange={(event) => { setDemoRole(event.target.value); navigate(event.target.value === "manager" ? "overview" : "self"); }}><option value="manager">Leder</option><option value="employee">Medarbejder</option></select></label>}
     </header>}
     <div className="wf-workspace">
-      <aside className="wf-sidebar"><div className="wf-module-title"><span>WORKFORCE</span><small>Medarbejdere & arbejdstid</small></div>
+      {!embedded && <aside className="wf-sidebar"><div className="wf-module-title"><span>WORKFORCE</span><small>Medarbejdere & arbejdstid</small></div>
         <nav aria-label="WORKFORCE-navigation">{pages.map(([key, label]) => <button key={key} className={page === key ? "active" : ""} onClick={() => navigate(key)}>{label}</button>)}</nav>
-      </aside>
+      </aside>}
       <main className="wf-main">{error && <div className="wf-error" role="alert">{error}<button onClick={() => setError("")}>Luk</button></div>}
         {!state ? <div className="wf-loading">Henter WORKFORCE…</div> : <Component {...shared} navigate={navigate} />}
       </main>

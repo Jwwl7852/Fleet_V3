@@ -47,7 +47,17 @@ const NODER = Object.keys(TENANT_REGLER).filter((n) => !n.startsWith("."));
 
 /* Noder der BEVIDST ikke kan læses af nogen klient. Står en node her, er det
    et valg; står den ingen af stederne, er det en forglemmelse. */
-const LAESNING_NAEGTET = new Set(["_findes", "procureMobilKladder", "procureOpsaetning", "procureQrMaerkater"]);
+const LAESNING_NAEGTET = new Set([
+  "_findes",
+  "procureMobilKladder",
+  "procureOpsaetning",
+  "procureQrMaerkater",
+  "vagter",
+  "workforceGodkendelsesomfang",
+  "_workforceAnmodninger",
+  "_workforceVersioner",
+  "workforceEvents",
+]);
 
 /* BEHOLDERE. De har selv ingen .read — den ville kaskadere ned over alle
    objekterne derunder og ophæve hele opdelingen — men hvert objekt inde i

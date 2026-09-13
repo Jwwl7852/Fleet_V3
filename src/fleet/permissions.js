@@ -294,6 +294,14 @@ export const PERM = {
      laes-permission — se noten ved bookingLaes. Kun skrivning styres. */
   kompetencerSkriv: "kompetencer.skriv",
 
+  /* WORKFORCE v2. Vagtplanen og tidsrettelser er selvstændige handlinger:
+     personale.laes giver fortsat adgang til fælles medarbejderstamdata uden
+     WORKFORCE, mens disse fire kun åbner moduldata og serverkommandoer. */
+  vagterLaes: "vagter.laes",
+  vagterSkriv: "vagter.skriv",
+  stemplingerLaesAlle: "stemplinger.laesAlle",
+  stemplingerRette: "stemplinger.rette",
+
   /* UNITBOOKING — udlejning af transportkasser.
 
      ⚠ TO PERMISSIONS, IKKE FIRE. Den ene dækker STAMDATA (kasser,
@@ -454,6 +462,10 @@ export const PERM_KODE = Object.freeze({
   "sag.mailSend": "1j",
   "retention.laes": "1k",
   "retention.skriv": "1l",
+  "vagter.laes": "1m",
+  "vagter.skriv": "1n",
+  "stemplinger.laesAlle": "1o",
+  "stemplinger.rette": "1p",
 });
 
 const KODE_PERM = Object.freeze(

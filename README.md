@@ -531,7 +531,7 @@ Demo-mode er den tilstand **kunden** ser i en salgsdemo.
 læsning". Den regel gælder `naegtet` og er urørt. `demo` sættes kun når der slet
 ikke er en database at spørge — og opdigtede tal findes netop kun dér.
 
-### Skærmene: 107 i alt, og alle har indhold
+### Skærmene: 114 i alt, og alle har indhold
 
 ⚠ **Overskriften sagde "27 af 30" mens tabellen under den sagde "Bygget
 (29)".** To tal om det samme, i to linjer med et blankt mellemrum imellem,
@@ -563,10 +563,10 @@ node/permission. Kunder og Fakturaer & bilag er nu egne topniveaupunkter
 | Procure | 12 | PROCURE v2 har Overblik, Varekatalog, Godkendelser, én samlet Bestillinger-arbejdsflade, Modtagelser, Lager og Forbrug i AppShell. Match & kontantkøb og det tidligere Varelager-link er skjulte kontekstruter; Leverandører og Fakturacenter forbliver fælles platformskærme. Mobilbestilling, varegruppeanalyse og Procure-opsætning er skjulte kontekstruter; mobilens interne Varer/Kurv/Mine indkøb er fortsat ét ruteopslag. |
 | Warehouse | 11 | modulet med flest skærme |
 | Unitbooking | 4 | Kalender, Udlån, Historik, Reolpladser |
-| Workforce | 3 | heraf Bemandingsplan som skjult detaljerute (V1: LATER) |
+| Workforce | 10 | WORKFORCE v2 er monteret under `/workforce-v2/*` med Overblik, Medarbejdere, Bemanding, Ferie & fravær, Kompetencer, Timer og Min arbejdsdag; de tre tidligere `/bemanding*`-ruter bevares skjult |
 | Opsætning | 10 | heraf Kundepriser pr. kunde og Integrationer som skjulte detaljeruter (V1: LATER). Kunder er flyttet til Fælles. Godkendelsesregler er ny (Procure TARGET trin 4) — administrations-UI'et for Procures godkendelsesregler, flyttet ud af Godkendelser.jsx |
 | Hjælp | 3 | heraf Supportoverblik og Supportsag som skjulte detaljeruter |
-| **I alt** | **107** | **69 i menuen, 38 skjulte detaljeruter** |
+| **I alt** | **114** | **74 i menuen, 40 skjulte detaljeruter** |
 
 | | |
 |---|---|

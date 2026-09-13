@@ -50,6 +50,7 @@ const Bemanding = lazy(() => import("./moduler/Bemanding.jsx"));
 const Medarbejdere = lazy(() => import("./moduler/Medarbejdere.jsx"));
 const Kompetencer = lazy(() => import("./moduler/Kompetencer.jsx"));
 const Fravaer = lazy(() => import("./moduler/Fravaer.jsx"));
+const WorkforceV2Module = lazy(() => import("./moduler/workforce/WorkforceV2Module.jsx"));
 const FlaadeOversigt = lazy(() => import("./moduler/flaade/Oversigt.jsx"));
 const FlaadeOverblik = lazy(() => import("./moduler/flaade/Overblik.jsx"));
 const Vaerkstedskalender = lazy(() => import("./moduler/flaade/Vaerkstedskalender.jsx"));
@@ -613,6 +614,7 @@ export default function App() {
             <Route path="bemanding" element={<Bemanding />} />
             <Route path="bemanding/kompetencer" element={<Kompetencer />} />
             <Route path="bemanding/fravaer" element={<Fravaer />} />
+            <Route path="workforce-v2/*" element={<WorkforceV2Module />} />
 
             {/* ⚠ OVERBLIK ER FLEETS FORSIDE (Fleet TARGET, produktejer-review
                 2026-09-01) — IKKE LÆNGERE DRIFTSKALENDEREN. Se

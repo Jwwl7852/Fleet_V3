@@ -237,6 +237,7 @@ export default function PlanningDemo({
   embedded = false,
   onNavigate = null,
   syncChannelName = "veyro-planning-week-demo",
+  workforceAvailabilityCheck = null,
 }) {
   const fixtures = useMemo(() => opretReferenceFixtures(), []);
   const urlState = useMemo(() => {
@@ -328,7 +329,7 @@ export default function PlanningDemo({
     return () => { channelRef.current = null; channel.close(); };
   }, [syncChannelName]);
   if (urlState.customerOnly) return <PlanningCustomerConfirmation state={ugeplan} setState={opdaterUgeplan} taskId={urlState.taskId} requestedProposalId={urlState.proposalId} requestedVersion={urlState.version} />;
-  if (urlState.calendarOnly) return <main className="ps-standalone-calendar" id="planning-indhold"><PlanningScheduling state={ugeplan} setState={opdaterUgeplan} calendarOnly onReset={nulstilDemo} onOpenLive={(routeId) => { setLiveFlerdagsruteId(routeId); }} /></main>;
+  if (urlState.calendarOnly) return <main className="ps-standalone-calendar" id="planning-indhold"><PlanningScheduling state={ugeplan} setState={opdaterUgeplan} calendarOnly onReset={nulstilDemo} onOpenLive={(routeId) => { setLiveFlerdagsruteId(routeId); }} availabilityCheck={workforceAvailabilityCheck} /></main>;
   return (
     <div className={`pu-app pr-platform${embedded ? " pr-platform-embedded" : ""}${sidebarLukket ? " pr-sidebar-collapsed" : ""}`}>
       {!embedded && <a className="pu-skip" href="#planning-indhold">Gå til indhold</a>}
@@ -352,7 +353,7 @@ export default function PlanningDemo({
           {visning === VISNING.OVERBLIK && <DagensOverblik ruter={ruter} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} indstillinger={indstillinger} filtre={filtre} setFiltre={setFiltre} raekkevisning={raekkevisning} setRaekkevisning={setRaekkevisning} selectedRouteId={valgtRuteId} onSelectRoute={vaelgRute} onOpenCalendar={aabnRute} onProposal={aabnForslag} />}
           {visning === VISNING.KALENDER && <Livekalender ruter={filtreredeRuter} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} indstillinger={indstillinger} filtre={filtre} setFiltre={setFiltre} raekkevisning={raekkevisning} setRaekkevisning={setRaekkevisning} selectedRouteId={valgtRuteId} selectedStopId={valgtStopId} onRoute={aabnKalenderElement} onProposal={aabnKalenderElement} fullscreen={fullscreen} setFullscreen={setFullscreen} flerdagsrute={ugeplan.multiDayRoutes.find((route) => route.id === liveFlerdagsruteId) || null} />}
           <section hidden={visning !== VISNING.OPGAVER}><PlanningIntake planlaegningspulje={planlaegningspulje} setPlanlaegningspulje={setPlanlaegningspulje} createLocalUrl={createLocalUrl} /></section>
-          <section hidden={visning !== VISNING.PLANLAEGNING}><PlanningScheduling createLocalUrl={createLocalUrl} state={ugeplan} setState={opdaterUgeplan} calendarOnly={urlState.calendarOnly} onReset={nulstilDemo} onOpenLive={(routeId) => { setLiveFlerdagsruteId(routeId); gaaTil(VISNING.KALENDER); }} /></section>
+          <section hidden={visning !== VISNING.PLANLAEGNING}><PlanningScheduling createLocalUrl={createLocalUrl} state={ugeplan} setState={opdaterUgeplan} calendarOnly={urlState.calendarOnly} onReset={nulstilDemo} onOpenLive={(routeId) => { setLiveFlerdagsruteId(routeId); gaaTil(VISNING.KALENDER); }} availabilityCheck={workforceAvailabilityCheck} /></section>
           {visning === VISNING.OPTIMERING && <PlanningOptimization planlaegningspulje={planlaegningspulje} />}
           {visning === VISNING.FASTE_RUTER && <FasteRuter skabeloner={skabeloner} setSkabeloner={setSkabeloner} koeretider={skabelonKoeretider} setKoeretider={setSkabelonKoeretider} ressourcer={fixtures.ressourceSnapshot} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} />}
           {visning === VISNING.MOBIL && <Mobilvisning ruter={ruter} setRuter={setRuter} medarbejdere={fixtures.medarbejdere} onAabnKalender={aabnRute} />}

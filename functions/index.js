@@ -249,15 +249,25 @@ export {
   supportEjerSvarSend, supportEjerNoteSkriv,
 } from "./support-endpoints.js";
 
+export {
+  workforceprojektionhent, workforcekommando, workforceplanningtjek,
+} from "./workforce-endpoints.js";
+
 const lokalStorageBucket = process.env.FUNCTIONS_EMULATOR === "true" && process.env.GCLOUD_PROJECT
   ? `${process.env.GCLOUD_PROJECT}.appspot.com`
   : null;
 let runtimeFirebaseConfig = {};
 try { runtimeFirebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG || "{}"); } catch { runtimeFirebaseConfig = {}; }
+const lokalDatabaseUrl = process.env.FUNCTIONS_EMULATOR === "true"
+  ? process.env.VEYRO_EMULATOR_DATABASE_URL || null
+  : null;
+if (lokalDatabaseUrl && !/^http:\/\/(127\.0\.0\.1|localhost):\d+\/\?ns=demo-[a-z0-9-]+-default-rtdb$/.test(lokalDatabaseUrl)) {
+  throw new Error("VEYRO_EMULATOR_DATABASE_URL skal være localhost og et demo-*-default-rtdb namespace.");
+}
 initializeApp(lokalStorageBucket ? {
   ...runtimeFirebaseConfig,
   projectId: runtimeFirebaseConfig.projectId || process.env.GCLOUD_PROJECT,
-  databaseURL: runtimeFirebaseConfig.databaseURL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
+  databaseURL: lokalDatabaseUrl || runtimeFirebaseConfig.databaseURL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
   storageBucket: runtimeFirebaseConfig.storageBucket || lokalStorageBucket,
 } : undefined);
 
