@@ -31,6 +31,7 @@ import { SELVVALGT_KASSE_STATUS } from "../src/fleet/unitbooking.js";
 /* Egen tenant: node --test kører testfilerne parallelt. */
 const TENANT = "vognmandWh";
 let miljoe;
+const REGEL_PORT = Number(process.env.UNITBOOKING_RULES_PORT || 9000);
 
 const som = (uid, rolle = "lagermedarbejder") =>
   miljoe.authenticatedContext(uid, {
@@ -44,7 +45,7 @@ before(async () => {
     projectId: "fc-rules-unitbooking",
     database: {
       host: "127.0.0.1",
-      port: 9000,
+      port: REGEL_PORT,
       rules: readFileSync("firebase.rules.json", "utf8"),
     },
   });

@@ -50,14 +50,24 @@ import {
 } from "./delt/audit-regler.js";
 import { beregnKpi } from "./delt/kpi-aggregering.js";
 import {
-  valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter
+  valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter,
+  bygUnitbevaegelse, sammeUnitbevaegelse, UNIT_OPERATION_ID_MOENSTER
 } from "./delt/unitbooking.js";
+import {
+  UNIT_IMPORT_MAKS_BYTES, UNIT_IMPORT_MAKS_TEKST,
+  filtypeFraNavn, valideImportFil, udtraekBookingtekst, udtraekCsv,
+  valideImportKladde, rensImportKladde, vurderKasse, isoTilUtcMs,
+} from "./delt/unitbooking-import.js";
 import {
   valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
   talFraMaengde, kanSkifteOrdre, beholdningsNoegle, UDEN_BATCH,
   valideOptaelling, validePlacering, virkningPaaCarrier, kanPlaceres,
   CARRIER_STATUS, virkningPaaEnhed, valideEnhed, ENHED_TILSTAND
 } from "./delt/warehouse.js";
+import {
+  bygWarehouseUnitbevaegelse, bindendeBookingerForUnit,
+  sammenlignOperation, valideUnitBevaegelse,
+} from "./delt/warehouse-unit.js";
 import {
   ROLLE_PERMS, permsForTenant,
   valideRolleperms, laaserUde, PERM, byggRolleClaims, permStrengFraClaims,
@@ -151,6 +161,7 @@ const MAILGUN_API_KEY = defineSecret("MAILGUN_API_KEY");
 const MAILGUN_DOMAIN = defineSecret("MAILGUN_DOMAIN");
 const MAILGUN_AFSENDER = defineSecret("MAILGUN_AFSENDER");
 const PROCURE_WEBSHOP_KEY = defineSecret("PROCURE_WEBSHOP_KEY");
+const UNITBOOKING_EXTRACTION_API_KEY = defineSecret("UNITBOOKING_EXTRACTION_API_KEY");
 /* ⚠ IKKE-DESTRUKTIV — beslutning 115. simulerRetention() og erUndtaget() er
    rene funktioner; ingen af dem sletter eller anonymiserer noget. Se noten
    i retention-regler.js. */
@@ -2191,49 +2202,102 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
     const udlaanId = kortStreng(d.udlaanId, 60);
     const til = kortStreng(d.til, 20);
     if (!udlaanId) throw new HttpsError("invalid-argument", "udlaanId mangler.");
-
-    const foer = (await rod.child(`kasseudlaan/${udlaanId}`).once("value")).val();
-    if (!foer) throw new HttpsError("not-found", "Udlånet findes ikke.");
-
-    if (!kanSkifteUdlaan(foer.tilstand, til)) {
-      /* ⚠ SAMME TABEL SOM SKÆRMEN. Knappen findes ikke i UI'et for et skift
-         der ikke er lovligt — den her er for den der går uden om UI'et. */
-      throw new HttpsError("failed-precondition",
-        `Et udlån kan ikke skifte fra ${foer.tilstand} til ${til}.`);
+    const fysisk = til === "udlaant" || til === "returneret";
+    const operationId = kortStreng(d.operationId, 80);
+    if (fysisk && !UNIT_OPERATION_ID_MOENSTER.test(operationId || "")) {
+      throw new HttpsError("invalid-argument", "Fysiske skift kræver en gyldig operationId.");
     }
+    const modtagelsesPladsId = til === "returneret"
+      ? kortStreng(d.modtagelsesPladsId, 80) : null;
+    const tidspunktMs = Date.now();
+    let afvisning = null;
+    let resultat = null;
+    let foerTilstand = null;
 
-    const kasse = (await rod.child(`kasser/${foer.kasseId}`).once("value")).val();
-    if (!kasse) throw new HttpsError("not-found", `Kassen ${foer.kasseId} findes ikke.`);
+    /* Hele tenant-roden er transaktionsgrænsen, fordi booking, kasse,
+       placering og append-only bevægelse skal lande sammen. Det er en bevidst
+       V1-grænse; en senere sharding må bevare samme atomiske kontrakt. */
+    // Admin SDK'et kan på en kold emulatorforbindelse kalde callbacken med en
+    // tom lokal cache før serverværdien er hentet. Et læs varmer kun cachen;
+    // transaktionen genkontrollerer stadig serverversionen atomisk.
+    const tenantFoerSnap = await rod.once("value");
+    if (!tenantFoerSnap.exists()) throw new HttpsError("not-found", "Tenantdata findes ikke.");
+    const tenantFoer = tenantFoerSnap.val();
+    let koldCacheFallback = true;
+    const tx = await rod.transaction((aktuel) => {
+      if (!aktuel && koldCacheFallback) aktuel = structuredClone(tenantFoer);
+      koldCacheFallback = false;
+      afvisning = null;
+      resultat = null;
+      if (!aktuel) { afvisning = { kode: "not-found", tekst: "Tenantdata findes ikke." }; return; }
+      const foer = aktuel.kasseudlaan?.[udlaanId];
+      if (!foer) { afvisning = { kode: "not-found", tekst: "Udlånet findes ikke." }; return; }
+      const kasse = aktuel.kasser?.[foer.kasseId];
+      if (!kasse) { afvisning = { kode: "not-found", tekst: `Kassen ${foer.kasseId} findes ikke.` }; return; }
+      foerTilstand = foer.tilstand;
 
-    const virkning = virkningPaaKasse({ fra: foer.tilstand, til, kasse });
-
-    /* ⚠ ÉN SKRIVNING. Udlånet og kassen lander sammen eller slet ikke.
-       To kald ville kunne efterlade en kasse som udlånt uden et udlån —
-       netop den tilstand hele noden er lukket for at undgå. */
-    const opdatering = { [`kasseudlaan/${udlaanId}/tilstand`]: til };
-
-    /* ⚠ HVORNÅR DET FAKTISK SKETE. `fra`/`til` er AFTALEN — hvad der var
-       planlagt. De to stempler her er kendsgerningen, og de sættes af
-       SERVEREN i selve skiftet, ikke af klienten: et tidspunkt en browser må
-       oplyse, kan sættes til hvad som helst, og et ur der går forkert er
-       ikke engang ond vilje.
-       Uden dem kan historikken kun sige hvad der var meningen, og "MDT-101
-       har været ude 126 dage" ville være en påstand vi ikke kan stå inde
-       for, hvis kassen kom hjem i forvejen. */
-    if (til === "udlaant") opdatering[`kasseudlaan/${udlaanId}/udleveretMs`] = Date.now();
-    if (til === "returneret") opdatering[`kasseudlaan/${udlaanId}/returneretMs`] = Date.now();
-
-    if (virkning) {
-      for (const [felt, vaerdi] of Object.entries(virkning)) {
-        opdatering[`kasser/${foer.kasseId}/${felt}`] = vaerdi;
+      let bevaegelse = null;
+      if (fysisk) {
+        const eksisterende = aktuel.unitbevaegelser?.[operationId];
+        if (til === "returneret" && (!modtagelsesPladsId
+            || !aktuel.reolpladser?.[modtagelsesPladsId])) {
+          afvisning = { kode: "failed-precondition", tekst: "Vælg en gyldig modtagelseslokation." };
+          return;
+        }
+        const bygget = bygUnitbevaegelse({
+          operationId,
+          unitId: foer.kasseId,
+          art: til === "udlaant" ? "udlevering" : "retur",
+          // Null er en meningsfuld, gemt "ude"-placering ved retur. Brug
+          // derfor ikke nullish fallback til kassens nye modtagelsesplads.
+          fraPladsId: eksisterende ? (eksisterende.fraPladsId ?? null) : (kasse.pladsId ?? null),
+          tilPladsId: til === "returneret" ? modtagelsesPladsId : null,
+          bookingId: udlaanId,
+          reference: foer.sagsnummer || null,
+          kilde: "unitbooking",
+          tidspunktMs,
+          udfoertAf: uid,
+        });
+        if (!bygget.ok) {
+          afvisning = { kode: "invalid-argument", tekst: somBesked(bygget.fejl) };
+          return;
+        }
+        bevaegelse = bygget.bevaegelse;
+        if (eksisterende) {
+          if (!sammeUnitbevaegelse(eksisterende, bevaegelse)) {
+            afvisning = { kode: "already-exists", tekst: "operationId er allerede brugt til en anden fysisk handling." };
+            return;
+          }
+          resultat = { ok: true, id: udlaanId, tilstand: foer.tilstand, kasse: null, bevaegelse: eksisterende, gentaget: true };
+          return aktuel;
+        }
       }
-    }
-    await rod.update(opdatering);
 
-    await logUdlaan(tenantId, uid, AUDIT.tilstandsskift, udlaanId,
-      { tilstand: foer.tilstand }, { tilstand: til },
-      virkning ? `kasse ${foer.kasseId} -> ${virkning.status}` : null);
-    return { ok: true, id: udlaanId, tilstand: til, kasse: virkning || null };
+      if (!kanSkifteUdlaan(foer.tilstand, til)) {
+        afvisning = { kode: "failed-precondition", tekst: `Et udlån kan ikke skifte fra ${foer.tilstand} til ${til}.` };
+        return;
+      }
+      const virkning = virkningPaaKasse({
+        fra: foer.tilstand, til, kasse, modtagelsesPladsId,
+      });
+      const ny = { ...aktuel };
+      ny.kasseudlaan = { ...(aktuel.kasseudlaan || {}), [udlaanId]: { ...foer, tilstand: til } };
+      if (til === "udlaant") ny.kasseudlaan[udlaanId].udleveretMs = tidspunktMs;
+      if (til === "returneret") ny.kasseudlaan[udlaanId].returneretMs = tidspunktMs;
+      if (virkning) ny.kasser = { ...(aktuel.kasser || {}), [foer.kasseId]: { ...kasse, ...virkning } };
+      if (bevaegelse) ny.unitbevaegelser = { ...(aktuel.unitbevaegelser || {}), [operationId]: bevaegelse };
+      resultat = { ok: true, id: udlaanId, tilstand: til, kasse: virkning || null, bevaegelse, gentaget: false };
+      return ny;
+    });
+
+    if (afvisning) throw new HttpsError(afvisning.kode, afvisning.tekst);
+    if (!tx.committed || !resultat) throw new HttpsError("aborted", "En anden ændrede udlånet. Opdatér og prøv igen.");
+    if (!resultat.gentaget) {
+      await logUdlaan(tenantId, uid, AUDIT.tilstandsskift, udlaanId,
+        { tilstand: foerTilstand }, { tilstand: til },
+        resultat.kasse ? `kasse ${resultat.bevaegelse?.unitId || ""} -> ${resultat.kasse.status}` : null);
+    }
+    return resultat;
   }
 
   /* ---- RET: sagsnummer, periode og beskrivelse, kun mens den er booket -- */
@@ -2300,6 +2364,387 @@ export const kasseudlaanskriv = onCall({ region: REGION }, async (req) => {
   }
 
   throw new HttpsError("invalid-argument", `Ukendt handling: ${d.handling}`);
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   UNITBOOKING — IMPORT AF MAIL OG BOOKINGSKEMA
+
+   Originalmaterialet bevares på kladden. Tekst/CSV/.eml kan aflæses med den
+   deterministiske parser. PDF, billeder, .msg og .xlsx sendes kun til en
+   ekstern extractor, når UNITBOOKING_EXTRACTION_URL og secret er konfigureret;
+   ellers står kladden ærligt som manuel. Dokumentindhold udfører aldrig kode.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const unitImportKladdeId = (operationId) =>
+  `imp-${createHash("sha256").update(operationId).digest("hex").slice(0, 24)}`;
+const unitImportDokumentId = (operationId) =>
+  `dok-${createHash("sha256").update(`dok:${operationId}`).digest("hex").slice(0, 24)}`;
+const unitImportStorageSti = (tenantId, kladdeId, dokumentId) =>
+  `tenants/${tenantId}/unitbooking/import/${kladdeId}/${dokumentId}`;
+const unitImportMaterialeHash = (tekst) =>
+  createHash("sha256").update(String(tekst).replace(/\r\n/g, "\n").trim().toLowerCase()).digest("hex");
+
+function kraevUnitOperationId(v) {
+  const id = kortStreng(v, 80);
+  if (!UNIT_OPERATION_ID_MOENSTER.test(id || "")) {
+    throw new HttpsError("invalid-argument", "operationId mangler eller er ugyldig.");
+  }
+  return id;
+}
+
+function tomUnitImportAflæsning() {
+  return {
+    felter: {
+      kunde: null, kontaktperson: null, eksternReference: null,
+      beskrivelse: null, fraDato: null, tilDato: null,
+      klargoerDato: null, haandtering: null,
+    },
+    linjer: [{
+      id: "linje-1", objekt: null,
+      laengdeMm: null, breddeMm: null, hoejdeMm: null,
+      maaleenhedKilde: null, type: null, undertype: null,
+      orienteringsnote: null, maaIkkeVendes: false,
+      tilladAndreOrienteringer: false,
+      polstringLaengdePrSideMm: 0,
+      polstringBreddePrSideMm: 0,
+      polstringHoejdePrSideMm: 0,
+    }],
+    kilder: [],
+    advarsler: ["Automatisk aflæsning er ikke tilsluttet. Gennemgå og udfyld felterne manuelt."],
+    parser: "manuel",
+  };
+}
+
+function importKladdeFraAflæsning({ kladdeId, uid, nu, kilde, original, aflæsning, dubletAf = null }) {
+  return {
+    id: kladdeId,
+    version: 1,
+    status: "gennemgang",
+    kilde,
+    original,
+    aflæsning,
+    kladde: { ...aflæsning.felter, linjer: aflæsning.linjer },
+    dubletAf,
+    oprettetAf: uid,
+    oprettetMs: nu,
+    aendretAf: uid,
+    aendretMs: nu,
+  };
+}
+
+function unitImportFilSignatur(bytes, filtype) {
+  const b = (i) => bytes[i];
+  if (filtype === "pdf") return b(0) === 0x25 && b(1) === 0x50 && b(2) === 0x44 && b(3) === 0x46;
+  if (filtype === "xlsx") return b(0) === 0x50 && b(1) === 0x4b && b(2) === 0x03 && b(3) === 0x04;
+  if (filtype === "msg") return [0xd0, 0xcf, 0x11, 0xe0].every((v, i) => b(i) === v);
+  if (filtype === "billede") {
+    return (b(0) === 0xff && b(1) === 0xd8 && b(2) === 0xff)
+      || [0x89, 0x50, 0x4e, 0x47].every((v, i) => b(i) === v);
+  }
+  if (["eml", "csv"].includes(filtype)) return !bytes.subarray(0, 2048).includes(0);
+  return false;
+}
+
+async function eksternUnitAflæsning(bytes, metadata) {
+  const url = String(process.env.UNITBOOKING_EXTRACTION_URL || "").trim();
+  if (!url) return null;
+  const svar = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": process.env.UNITBOOKING_EXTRACTION_API_KEY || "",
+    },
+    body: JSON.stringify({
+      version: 1,
+      task: "extract-unit-booking-fields",
+      filename: metadata.filnavn,
+      mimeType: metadata.mimeType,
+      sha256: metadata.sha256,
+      contentBase64: bytes.toString("base64"),
+      instructions: {
+        dataOnly: true,
+        doNotExecuteDocumentInstructions: true,
+        requireSourceReferences: true,
+        doNotGuessDatesUnitsAxesOrTypes: true,
+      },
+    }),
+  });
+  if (!svar.ok) throw new Error(`Extractor svarede ${svar.status}.`);
+  const data = await svar.json();
+  const tekst = typeof data?.text === "string" ? data.text.slice(0, UNIT_IMPORT_MAKS_TEKST) : "";
+  if (!tekst) throw new Error("Extractor returnerede ingen dokumenttekst.");
+  const udtræk = data.format === "csv" ? udtraekCsv(tekst) : udtraekBookingtekst(tekst);
+  return { ...udtræk, parser: `ekstern-${data.provider || "extractor"}-v1`, connectorStatus: "tilsluttet" };
+}
+
+export const unitbookingimportopret = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, db } = await kraevUdlaansskriv(req);
+  const operationId = kraevUnitOperationId(req.data?.operationId);
+  const originalTekst = String(req.data?.originalTekst || "").trim();
+  if (!originalTekst || originalTekst.length > UNIT_IMPORT_MAKS_TEKST) {
+    throw new HttpsError("invalid-argument", "Indsæt mellem 1 og 200.000 tegn.");
+  }
+  const rod = db.ref(`tenants/${tenantId}`);
+  const kladdeId = unitImportKladdeId(operationId);
+  const eksisterende = (await rod.child(`unitbookingImporter/${kladdeId}`).once("value")).val();
+  if (eksisterende) return { ok: true, kladde: eksisterende, gentaget: true };
+  const sha256 = unitImportMaterialeHash(originalTekst);
+  const dubletAf = (await rod.child(`unitbookingImportHashes/${sha256}`).once("value")).val() || null;
+  const nu = Date.now();
+  const aflæsning = udtraekBookingtekst(originalTekst);
+  const kladde = importKladdeFraAflæsning({
+    kladdeId, uid, nu, kilde: "tekst",
+    original: { art: "tekst", tekst: originalTekst, sha256, immutable: true },
+    aflæsning, dubletAf,
+  });
+  const opdatering = {
+    [`unitbookingImporter/${kladdeId}`]: kladde,
+    [`unitbookingImportOperationer/${operationId}`]: { art: "opret-tekst", kladdeId, sha256, tidspunktMs: nu, uid },
+  };
+  if (!dubletAf) opdatering[`unitbookingImportHashes/${sha256}`] = kladdeId;
+  await rod.update(opdatering);
+  await logUdlaan(tenantId, uid, AUDIT.opret, kladdeId, null,
+    { status: kladde.status }, dubletAf ? `importdublet af ${dubletAf}` : "bookingimport fra tekst");
+  return { ok: true, kladde, gentaget: false };
+});
+
+export const unitbookingimportuploadstart = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, db } = await kraevUdlaansskriv(req);
+  const d = req.data || {};
+  const operationId = kraevUnitOperationId(d.operationId);
+  const filnavn = kortStreng(d.filnavn, 200);
+  const mimeType = kortStreng(d.mimeType, 120) || "application/octet-stream";
+  const stoerrelse = Number(d.stoerrelse);
+  const sha256 = String(d.sha256 || "").toLowerCase();
+  const validering = valideImportFil({ filnavn, mimeType, stoerrelse });
+  if (!validering.ok || !/^[a-f0-9]{64}$/.test(sha256)) {
+    throw new HttpsError("invalid-argument", `${somBesked(validering.fejl)} sha256 mangler eller er ugyldig.`);
+  }
+  const filtype = filtypeFraNavn(filnavn, mimeType);
+  if (d.filtype && d.filtype !== filtype) throw new HttpsError("invalid-argument", "Filtype og filnavn er uenige.");
+  const rod = db.ref(`tenants/${tenantId}`);
+  const kladdeId = unitImportKladdeId(operationId);
+  const dokumentId = unitImportDokumentId(operationId);
+  const storagePath = unitImportStorageSti(tenantId, kladdeId, dokumentId);
+  const nu = Date.now();
+  const dubletAf = (await rod.child(`unitbookingImportHashes/${sha256}`).once("value")).val() || null;
+  const eksisterende = (await rod.child(`unitbookingImporter/${kladdeId}`).once("value")).val();
+  if (!eksisterende) {
+    const aflæsning = tomUnitImportAflæsning();
+    const kladde = importKladdeFraAflæsning({
+      kladdeId, uid, nu, kilde: "fil",
+      original: {
+        art: "fil", filnavn, mimeType, filtype, stoerrelse, sha256,
+        dokumentId, storagePath, status: "upload-afventer", immutable: true,
+      },
+      aflæsning, dubletAf,
+    });
+    const opdatering = {
+      [`unitbookingImporter/${kladdeId}`]: kladde,
+      [`unitbookingImportOperationer/${operationId}`]: { art: "upload-start", kladdeId, sha256, tidspunktMs: nu, uid },
+    };
+    if (!dubletAf) opdatering[`unitbookingImportHashes/${sha256}`] = kladdeId;
+    await rod.update(opdatering);
+  }
+  const uploadUrl = await lokalStorageUrl(req, {
+    handling: "write", storagePath, mimeType, stoerrelse,
+  }) || (await getStorage().bucket().file(storagePath).getSignedUrl({
+    version: "v4", action: "write", expires: nu + 10 * 60 * 1000, contentType: mimeType,
+  }))[0];
+  return { ok: true, kladdeId, dokumentId, storagePath, uploadUrl, mimeType, dubletAf };
+});
+
+export const unitbookingimportuploadslut = onCall({
+  region: REGION, secrets: [UNITBOOKING_EXTRACTION_API_KEY],
+}, async (req) => {
+  const { uid, tenantId, db } = await kraevUdlaansskriv(req);
+  const operationId = kraevUnitOperationId(req.data?.operationId);
+  const kladdeId = kortStreng(req.data?.kladdeId, 80);
+  const dokumentId = kortStreng(req.data?.dokumentId, 80);
+  if (kladdeId !== unitImportKladdeId(operationId) || dokumentId !== unitImportDokumentId(operationId)) {
+    throw new HttpsError("invalid-argument", "Uploadreferencen matcher ikke handlingen.");
+  }
+  const rod = db.ref(`tenants/${tenantId}`);
+  const kladdeRef = rod.child(`unitbookingImporter/${kladdeId}`);
+  const kladde = (await kladdeRef.once("value")).val();
+  if (!kladde) throw new HttpsError("not-found", "Importudkastet findes ikke.");
+  if (kladde.original?.status === "aktiv") return { ok: true, kladde, gentaget: true };
+  const file = getStorage().bucket().file(kladde.original.storagePath);
+  const [findes] = await file.exists();
+  if (!findes) throw new HttpsError("failed-precondition", "Filen er ikke overført endnu.");
+  const [meta] = await file.getMetadata();
+  const faktiskStoerrelse = Number(meta.size);
+  if (!Number.isSafeInteger(faktiskStoerrelse) || faktiskStoerrelse <= 0 || faktiskStoerrelse > UNIT_IMPORT_MAKS_BYTES) {
+    await file.delete({ ignoreNotFound: true });
+    await kladdeRef.child("original").update({ status: "afvist", afvistGrund: "Ugyldig filstørrelse." });
+    throw new HttpsError("failed-precondition", "Filen er tom eller større end 25 MB.");
+  }
+  const [bytes] = await file.download();
+  const faktiskHash = createHash("sha256").update(bytes).digest("hex");
+  if (faktiskHash !== kladde.original.sha256 || !unitImportFilSignatur(bytes, kladde.original.filtype)) {
+    await file.delete({ ignoreNotFound: true });
+    await kladdeRef.child("original").update({ status: "afvist", afvistGrund: "Filens indhold matcher ikke metadata." });
+    throw new HttpsError("failed-precondition", "Filens signatur eller hash matcher ikke uploaden.");
+  }
+  let aflæsning = null;
+  let connectorStatus = "ikke-tilsluttet";
+  try {
+    if (["eml", "csv"].includes(kladde.original.filtype)) {
+      const tekst = bytes.toString("utf8").slice(0, UNIT_IMPORT_MAKS_TEKST);
+      aflæsning = kladde.original.filtype === "csv" ? udtraekCsv(tekst) : udtraekBookingtekst(tekst);
+      aflæsning = { ...aflæsning, parser: `lokal-${kladde.original.filtype}-v1`, connectorStatus: "lokal" };
+      connectorStatus = "lokal";
+    } else {
+      aflæsning = await eksternUnitAflæsning(bytes, kladde.original);
+      connectorStatus = aflæsning ? "tilsluttet" : "ikke-tilsluttet";
+    }
+  } catch (fejl) {
+    aflæsning = tomUnitImportAflæsning();
+    aflæsning.advarsler = [`Automatisk aflæsning fejlede: ${fejl.message}`, ...aflæsning.advarsler];
+    connectorStatus = "fejl";
+  }
+  if (!aflæsning) aflæsning = tomUnitImportAflæsning();
+  const nu = Date.now();
+  const efter = {
+    ...kladde,
+    original: { ...kladde.original, status: "aktiv", stoerrelse: faktiskStoerrelse },
+    aflæsning: { ...aflæsning, connectorStatus },
+    kladde: { ...aflæsning.felter, linjer: aflæsning.linjer },
+    aendretAf: uid, aendretMs: nu,
+  };
+  await kladdeRef.set(efter);
+  await logUdlaan(tenantId, uid, AUDIT.aendre, kladdeId,
+    { status: "upload-afventer" }, { status: "gennemgang" }, `bookingimport ${connectorStatus}`);
+  return { ok: true, kladde: efter, gentaget: false };
+});
+
+export const unitbookingimportgem = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, db } = await kraevUdlaansskriv(req);
+  const operationId = kraevUnitOperationId(req.data?.operationId);
+  const kladdeId = kortStreng(req.data?.kladdeId, 80);
+  const rod = db.ref(`tenants/${tenantId}`);
+  const ref = rod.child(`unitbookingImporter/${kladdeId}`);
+  const foer = (await ref.once("value")).val();
+  if (!foer) throw new HttpsError("not-found", "Importudkastet findes ikke.");
+  if (foer.status === "bekraeftet") throw new HttpsError("failed-precondition", "Importen er allerede bekræftet.");
+  const renset = rensImportKladde(req.data?.kladde || {});
+  const fejl = valideImportKladde(renset);
+  const nu = Date.now();
+  const efter = {
+    ...foer, kladde: renset,
+    status: Object.keys(fejl).length ? "gennemgang" : "klar-til-forslag",
+    valideringsfejl: Object.keys(fejl).length ? fejl : null,
+    aendretAf: uid, aendretMs: nu,
+  };
+  await rod.update({
+    [`unitbookingImporter/${kladdeId}`]: efter,
+    [`unitbookingImportOperationer/${operationId}`]: { art: "gem", kladdeId, tidspunktMs: nu, uid },
+  });
+  return { ok: true, kladde: efter, fejl };
+});
+
+export const unitbookingimportbekraeft = onCall({ region: REGION }, async (req) => {
+  const { uid, tenantId, db } = await kraevUdlaansskriv(req);
+  const operationId = kraevUnitOperationId(req.data?.operationId);
+  const kladdeId = kortStreng(req.data?.kladdeId, 80);
+  const renset = rensImportKladde(req.data?.kladde || {});
+  const fejl = valideImportKladde(renset);
+  if (Object.keys(fejl).length) throw new HttpsError("invalid-argument", somBesked(fejl));
+  if (renset.linjer.some((l) => !l.valgtKasseId)) {
+    throw new HttpsError("invalid-argument", "Vælg en enhed på hver objektlinje.");
+  }
+  const valgte = renset.linjer.map((l) => l.valgtKasseId);
+  if (new Set(valgte).size !== valgte.length) {
+    throw new HttpsError("invalid-argument", "Samme enhed kan ikke vælges til flere objektlinjer i samme periode.");
+  }
+  const rod = db.ref(`tenants/${tenantId}`);
+  const bookingIder = renset.linjer.map(() => rod.child("kasseudlaan").push().key);
+  const payloadHash = createHash("sha256").update(JSON.stringify(renset)).digest("hex");
+  let afvisning = null;
+  let resultat = null;
+  const nu = Date.now();
+  const tenantFoerSnap = await rod.once("value");
+  if (!tenantFoerSnap.exists()) throw new HttpsError("not-found", "Tenantdata findes ikke.");
+  const tenantFoer = tenantFoerSnap.val();
+  let koldCacheFallback = true;
+  const tx = await rod.transaction((aktuel) => {
+    if (!aktuel && koldCacheFallback) aktuel = structuredClone(tenantFoer);
+    koldCacheFallback = false;
+    afvisning = null;
+    resultat = null;
+    if (!aktuel?.unitbookingImporter?.[kladdeId]) {
+      afvisning = { kode: "not-found", tekst: "Importudkastet findes ikke." }; return;
+    }
+    const tidligereOp = aktuel.unitbookingImportOperationer?.[operationId];
+    if (tidligereOp) {
+      if (tidligereOp.payloadHash !== payloadHash) {
+        afvisning = { kode: "already-exists", tekst: "operationId er allerede brugt med andre oplysninger." }; return;
+      }
+      resultat = { ok: true, bookingIder: tidligereOp.bookingIder || [], gentaget: true };
+      return aktuel;
+    }
+    const tidligere = aktuel.unitbookingImporter[kladdeId];
+    if (tidligere.status === "bekraeftet") {
+      resultat = { ok: true, bookingIder: tidligere.bookingIder || [], gentaget: true };
+      return aktuel;
+    }
+    const fra = isoTilUtcMs(renset.fraDato);
+    const til = isoTilUtcMs(renset.tilDato);
+    const klargoerSenest = renset.klargoerDato ? isoTilUtcMs(renset.klargoerDato) : null;
+    const eksisterendeUdlaan = Object.entries(aktuel.kasseudlaan || {}).map(([id, u]) => ({ id, ...u }));
+    const nye = {};
+    for (let i = 0; i < renset.linjer.length; i += 1) {
+      const linje = renset.linjer[i];
+      const kasse = aktuel.kasser?.[linje.valgtKasseId];
+      if (!kasse) { afvisning = { kode: "not-found", tekst: `Enheden ${linje.valgtKasseId} findes ikke.` }; return; }
+      const vurdering = vurderKasse(linje, { id: linje.valgtKasseId, ...kasse }, [...eksisterendeUdlaan, ...Object.values(nye)], { fra, til });
+      if (!vurdering.gyldig) {
+        afvisning = { kode: "failed-precondition", tekst: `${linje.valgtKasseId}: ${vurdering.grund}` }; return;
+      }
+      const id = bookingIder[i];
+      const booking = {
+        kasseId: linje.valgtKasseId,
+        sagsnummer: renset.eksternReference,
+        beskrivelse: linje.objekt || renset.beskrivelse || null,
+        fra, til,
+        ...(klargoerSenest ? { klargoerSenest } : {}),
+        tilstand: "booket",
+        oprettetAf: uid,
+        oprettetMs: nu,
+        importKladdeId: kladdeId,
+        importLinjeId: linje.id,
+      };
+      const bookingFejl = valideUdlaan(booking, { kasser: Object.keys(aktuel.kasser || {}) });
+      if (Object.keys(bookingFejl).length) {
+        afvisning = { kode: "invalid-argument", tekst: somBesked(bookingFejl) };
+        return;
+      }
+      nye[id] = booking;
+    }
+    const ny = { ...aktuel };
+    ny.kasseudlaan = { ...(aktuel.kasseudlaan || {}), ...nye };
+    ny.unitbookingImporter = {
+      ...aktuel.unitbookingImporter,
+      [kladdeId]: {
+        ...tidligere, kladde: renset, status: "bekraeftet",
+        bookingIder, bekraeftetAf: uid, bekraeftetMs: nu,
+        aendretAf: uid, aendretMs: nu,
+      },
+    };
+    ny.unitbookingImportOperationer = {
+      ...(aktuel.unitbookingImportOperationer || {}),
+      [operationId]: { art: "bekraeft", kladdeId, payloadHash, bookingIder, tidspunktMs: nu, uid },
+    };
+    resultat = { ok: true, bookingIder, gentaget: false };
+    return ny;
+  });
+  if (afvisning) throw new HttpsError(afvisning.kode, afvisning.tekst);
+  if (!tx.committed || !resultat) throw new HttpsError("aborted", "En anden ændrede data. Opdatér og prøv igen.");
+  if (!resultat.gentaget) {
+    await logUdlaan(tenantId, uid, AUDIT.opret, kladdeId, null,
+      { status: "bekraeftet" }, `${resultat.bookingIder.length} reservationer oprettet fra import`);
+  }
+  return resultat;
 });
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -2385,6 +2830,201 @@ async function kraevBevaegelsesskriv(req) {
 
   return { uid: auth.uid, tenantId, db };
 }
+
+async function kraevUnitlagerskriv(req, kilde) {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  if (!["unitbooking", "warehouse"].includes(kilde)) {
+    throw new HttpsError("invalid-argument", "Vælg en gyldig modul-kilde.");
+  }
+  const db = getDatabase();
+  const perms = permStrengFraClaims(auth.token);
+  const permission = kilde === "warehouse" ? PERM.bevaegelserSkriv : PERM.kasseudlaanSkriv;
+  if (typeof perms !== "string" || !perms.includes(`|${permission}|`)) {
+    throw new HttpsError("permission-denied", `Kræver ${permission}.`);
+  }
+  const [ab, modul] = await Promise.all([
+    db.ref(`tenants/${tenantId}/abonnement/status`).once("value"),
+    db.ref(`tenants/${tenantId}/moduler/${kilde}`).once("value"),
+  ]);
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  if (modul.exists() && modul.val() !== true) {
+    throw new HttpsError("permission-denied", `${kilde === "warehouse" ? "Warehouse" : "UNIT Booking"} er ikke slået til.`);
+  }
+  return { uid: auth.uid, tenantId, db };
+}
+
+/**
+ * Fælles atomisk adapter for fysiske UNIT/Warehouse-handlinger.
+ * Reservationer flytter aldrig en unit; udlevering, retur og flytning gør.
+ */
+export const unitlagerhandling = onCall({ region: REGION }, async (req) => {
+  const d = req.data || {};
+  const kilde = kortStreng(d.kilde, 20);
+  const { uid, tenantId, db } = await kraevUnitlagerskriv(req, kilde);
+  const operationId = kortStreng(d.operationId, 80);
+  const unitId = kortStreng(d.unitId, 30);
+  const art = kortStreng(d.art, 20);
+  const tilPladsId = art === "udlevering" ? null : kortStreng(d.tilPladsId, 80);
+  const bookingId = kortStreng(d.bookingId, 60);
+  const reference = kortStreng(d.reference, 60);
+  const tidspunktMs = Date.now();
+  const rod = db.ref(`tenants/${tenantId}`);
+  let afvisning = null;
+  let resultat = null;
+
+  const tenantFoerSnap = await rod.once("value");
+  if (!tenantFoerSnap.exists()) throw new HttpsError("not-found", "Virksomhedens lagerdata findes ikke.");
+  const tenantFoer = tenantFoerSnap.val();
+  let koldCacheFallback = true;
+  const tx = await rod.transaction((aktuel) => {
+    if (!aktuel && koldCacheFallback) aktuel = structuredClone(tenantFoer);
+    koldCacheFallback = false;
+    afvisning = null;
+    resultat = null;
+    if (!aktuel) {
+      afvisning = { kode: "not-found", tekst: "Virksomhedens lagerdata findes ikke." };
+      return;
+    }
+
+    const unit = aktuel.kasser?.[unitId];
+    const eksisterende = aktuel.unitbevaegelser?.[operationId];
+    if (eksisterende) {
+      const foreslaaet = {
+        operationId, unitId, art,
+        fraPladsId: eksisterende.fraPladsId ?? null,
+        tilPladsId, bookingId: bookingId || null,
+        reference: reference || null, kilde,
+      };
+      const sammenligning = sammenlignOperation(eksisterende, foreslaaet);
+      if (sammenligning.art === "konflikt") {
+        afvisning = { kode: "already-exists", tekst: sammenligning.besked };
+        return;
+      }
+      resultat = { ok: true, gentaget: true, bevaegelse: eksisterende };
+      return aktuel;
+    }
+
+    if (!unit) {
+      afvisning = { kode: "not-found", tekst: `Unitten ${unitId || "(tom kode)"} findes ikke. Der er ikke oprettet noget.` };
+      return;
+    }
+    if (tilPladsId && !aktuel.reolpladser?.[tilPladsId]) {
+      afvisning = { kode: "not-found", tekst: "Den valgte lokation findes ikke i virksomheden." };
+      return;
+    }
+    if (tilPladsId && aktuel.reolpladser[tilPladsId]?.status === "lukket") {
+      afvisning = { kode: "failed-precondition", tekst: "Den valgte lokation er lukket og kan ikke modtage en unit." };
+      return;
+    }
+
+    const fraPladsId = unit.pladsId || null;
+    const fejl = valideUnitBevaegelse({
+      operationId, unitId, art, fraPladsId, tilPladsId,
+      bookingId: bookingId || null, reference: reference || null,
+    }, {
+      units: Object.keys(aktuel.kasser || {}),
+      pladser: Object.keys(aktuel.reolpladser || {}),
+    });
+    if (Object.keys(fejl).length) {
+      afvisning = { kode: "invalid-argument", tekst: Object.values(fejl).join(" ") };
+      return;
+    }
+
+    if (["modtagelse", "retur"].includes(art) && fraPladsId) {
+      afvisning = { kode: "already-exists", tekst: `Unitten står allerede på ${fraPladsId}. Der er ikke registreret en ekstra tilgang.` };
+      return;
+    }
+    if (["flytning", "udlevering"].includes(art) && !fraPladsId) {
+      afvisning = { kode: "failed-precondition", tekst: "Unitten har ingen registreret intern afgangslokation." };
+      return;
+    }
+    if (art === "udlevering" && unit.status === "udeAfDrift") {
+      afvisning = { kode: "failed-precondition", tekst: "En unit, der er ude af drift, kan ikke udleveres." };
+      return;
+    }
+    if (kilde === "unitbooking" && ["udlevering", "retur"].includes(art)) {
+      afvisning = {
+        kode: "failed-precondition",
+        tekst: "UNIT-udlevering og -retur skal ske fra bookingforløbet, så reservation og fysisk hændelse afsluttes samlet.",
+      };
+      return;
+    }
+
+    const bookinger = Object.entries(aktuel.kasseudlaan || {}).map(([id, booking]) => ({ id, ...booking }));
+    const bindende = bindendeBookingerForUnit(bookinger, unitId);
+    if (art === "udlevering" && bindende.length) {
+      afvisning = {
+        kode: "failed-precondition",
+        tekst: `Unitten har ${bindende.length} aktiv reservation. Udlever den fra UNIT Booking, eller frigiv reservationen først.`,
+      };
+      return;
+    }
+
+    let booking = null;
+    if (bookingId) {
+      booking = aktuel.kasseudlaan?.[bookingId];
+      if (!booking || booking.kasseId !== unitId) {
+        afvisning = { kode: "not-found", tekst: "Bookingreferencen findes ikke på den scannede unit." };
+        return;
+      }
+      if (art !== "retur" || booking.tilstand !== "udlaant") {
+        afvisning = { kode: "failed-precondition", tekst: "Kun et faktisk udlånt bookingforløb kan modtages retur her." };
+        return;
+      }
+    } else if (art === "retur" && bindende.some((b) => b.tilstand === "udlaant")) {
+      afvisning = { kode: "failed-precondition", tekst: "Unitten er udlånt via UNIT Booking. Scan returen med bookingreferencen." };
+      return;
+    }
+
+    const bygget = bygWarehouseUnitbevaegelse({
+      operationId, unitId, art, fraPladsId, tilPladsId,
+      bookingId: bookingId || null, reference: reference || booking?.sagsnummer || null,
+      kilde, tidspunktMs, udfoertAf: uid,
+    });
+    if (!bygget.ok) {
+      afvisning = { kode: "invalid-argument", tekst: Object.values(bygget.fejl).join(" ") };
+      return;
+    }
+
+    const nyUnit = art === "udlevering"
+      ? { ...unit, status: "udlaant", pladsId: null }
+      : art === "flytning"
+        ? { ...unit, pladsId: tilPladsId }
+        : { ...unit, status: "ledig", pladsId: tilPladsId };
+    const ny = { ...aktuel };
+    ny.kasser = { ...(aktuel.kasser || {}), [unitId]: nyUnit };
+    ny.unitbevaegelser = { ...(aktuel.unitbevaegelser || {}), [operationId]: bygget.bevaegelse };
+    if (booking) {
+      ny.kasseudlaan = {
+        ...(aktuel.kasseudlaan || {}),
+        [bookingId]: { ...booking, tilstand: "returneret", returneretMs: tidspunktMs },
+      };
+    }
+    resultat = {
+      ok: true, gentaget: false,
+      unit: { id: unitId, ...nyUnit },
+      bevaegelse: bygget.bevaegelse,
+      bookingId: booking ? bookingId : null,
+    };
+    return ny;
+  });
+
+  if (afvisning) throw new HttpsError(afvisning.kode, afvisning.tekst);
+  if (!tx.committed || !resultat) {
+    throw new HttpsError("aborted", "En anden ændrede unitten samtidig. Opdatér og prøv igen.");
+  }
+  if (!resultat.gentaget) {
+    await logBevaegelse(tenantId, uid, AUDIT.aendre, operationId, null,
+      { art, status: resultat.unit?.status },
+      `${unitId}: ${art}${bookingId ? ` · booking ${bookingId}` : ""}`);
+  }
+  return resultat;
+});
 
 /** Saldoposten som den ser ud efter en ændring — eller null hvis den ikke findes. */
 const saldoAf = (snap) => (snap.exists() ? snap.val()?.antal ?? 0 : 0);

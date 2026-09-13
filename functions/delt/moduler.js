@@ -392,9 +392,12 @@ export const NODE_MODUL = {
   /* ⚠ IKKE lagre. Den node er reservedelslageret under Indkøb. Kasser er
      transportkasser der lejes ud — se noten i unitbooking.js om de tre navne
      der allerede var taget. */
-  kasser: "unitbooking",
-  kassetyper: "unitbooking",
+  kasser: ["unitbooking", "warehouse"],
+  kassetyper: ["unitbooking", "warehouse"],
   kasseudlaan: "unitbooking",
+  unitbookingImporter: "unitbooking",
+  unitbookingImportHashes: "unitbooking",
+  unitbookingImportOperationer: "unitbooking",
 
   /* ⚠ DEN FØRSTE NODE DER HØRER TIL TO MODULER, og det er en beslutning og
      ikke en forglemmelse. Unitbookings transportkasser og Warehouses
@@ -406,6 +409,7 @@ export const NODE_MODUL = {
      hedde `kasser.skriv`: en WMS-medarbejder hos en kunde uden Unitbooking
      ville ikke kunne oprette en hylde. Se WAREHOUSE.md punkt 3.3. */
   reolpladser: ["unitbooking", "warehouse"],
+  unitbevaegelser: ["unitbooking", "warehouse"],
 
   /* Warehouse (WMS) — 3PL. Varen er KUNDENS; se noten ved MODUL.warehouse
      om hvorfor det ikke er det samme som `lagre`. */

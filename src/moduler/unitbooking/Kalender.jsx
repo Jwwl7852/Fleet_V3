@@ -30,7 +30,7 @@
  * HVILKE grupperinger der giver mening, men ikke hvornår de er tomme.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
@@ -57,6 +57,7 @@ import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
 } from "../../fleet/demo-unitbooking.js";
 import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
+import "./unitbooking.css";
 
 const DAG = 86400000;
 
@@ -147,6 +148,7 @@ function mangler(h, nu) {
 }
 
 export default function Kalender() {
+  const navigate = useNavigate();
   const { data: udlaan, tilstand, genindlaes, henter } = useListe("kasseudlaan", {
     graense: 2000, demo: DEMO_KASSEUDLAAN,
   });
@@ -475,6 +477,14 @@ export default function Kalender() {
   const bel = kassebelaegning(kasser);
   const klargoer = klargoeresSnart(udlaan, nu);
   const retur = returneresSnart(udlaan, nu);
+  const iMorgen = iDag.getTime() + DAG;
+  const paaDato = (ms) => Number.isFinite(ms) && ms >= iDag.getTime() && ms < iMorgen;
+  const dagens = {
+    klargoeringer: udlaan.filter((u) => u.tilstand === "booket" && paaDato(u.klargoerSenest)),
+    udleveringer: udlaan.filter((u) => ["booket", "klargjort"].includes(u.tilstand) && paaDato(u.fra)),
+    returneringer: udlaan.filter((u) => u.tilstand === "udlaant" && paaDato(u.til)),
+    forsinkelser: retur.bagud,
+  };
 
   /* ⚠ ID'ET ER SAMMENSAT ved gruppering pr. kasse — se udlaansblokke().
      Ved gruppering pr. sag er blokken FLERE udlaan flettet sammen, og der er
@@ -484,7 +494,18 @@ export default function Kalender() {
   const liste = haendelser(udlaan, nu);
 
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
+    <div className="fc-grid ub-kalender" style={{ gap: 16 }}>
+      <div className="ub-sidehoved">
+        <div>
+          <h1>UNIT arbejdsflade</h1>
+          <p>Bookingaftaler, dagens opgaver og den fysiske placering holdes adskilt.</p>
+        </div>
+        <div className="fc-row">
+          <Knap onClick={() => navigate("/unitbooking/scan")}>Scan og flyt</Knap>
+          <Knap onClick={() => navigate("/opsaetning/kasser")}>Enhedsregister</Knap>
+          <Knap variant="primaer" onClick={() => navigate("/unitbooking/import")}>Importér booking</Knap>
+        </div>
+      </div>
       {/* ⚠ PLANCHENS FEM NØGLETAL. Skærmen havde fire andre — Ud denne uge,
           Hjem denne uge, Bagud, Kasser i spil — og de svarede på ugen frem for
           på lageret.
@@ -535,6 +556,15 @@ export default function Kalender() {
                  note={`af ${mindst(kasser.length, kasserAfkortet)} i de viste ${num(vindueDage)} dage`} />
       </KpiRaekke>
 
+      <Kort titel="Dagens arbejde">
+        <div className="ub-dagligt">
+          <a href="/unitbooking/udlaan"><strong>{num(dagens.klargoeringer.length)}</strong><b>Klargøringer</b><span>{dagens.klargoeringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span></a>
+          <a href="/unitbooking/udlaan"><strong>{num(dagens.udleveringer.length)}</strong><b>Udleveringer</b><span>{dagens.udleveringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span></a>
+          <a href="/unitbooking/udlaan"><strong>{num(dagens.returneringer.length)}</strong><b>Returer</b><span>{dagens.returneringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span></a>
+          <a href="/unitbooking/udlaan"><strong className={dagens.forsinkelser.length ? "fc-bad" : ""}>{num(dagens.forsinkelser.length)}</strong><b>Forsinkelser</b><span>{dagens.forsinkelser.slice(0, 3).map((u) => u.kasseId).join(", ") || "Alt er til tiden"}</span></a>
+        </div>
+      </Kort>
+
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       {/* ⚠ EN VEJ HJEM. Uden den kan man klikke sig fem uger ud og kun komme
@@ -542,9 +572,10 @@ export default function Kalender() {
           hjemme igen. Knappen vises kun når man ER væk; ellers ville den sige
           "gå hen hvor du står". */}
       <Fuldskaerm naar={fuld}>
-      <Kort titel={`Udlånskalender · ${dato(vindueFra)} – ${dato(vindueTil - DAG)}`}
+      <Kort className="ub-kalenderkort"
+            titel={`Udlånskalender · ${dato(vindueFra)} – ${dato(vindueTil - DAG)}`}
             handling={
-              <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span className="ub-kalender-kontroller">
                 {/* ⚠ VÆLGEREN NULSTILLER IKKE SKUBBET. Har man bladret tre
                     uger frem og skifter til én uges visning, vil man se den
                     uge man kigger på — ikke hoppe hjem. Startdatoen står fast;
@@ -719,14 +750,9 @@ export default function Kalender() {
               femte farve; her vises kasser uden aktivitet slet ikke. Et gitter
               med hundrede rækker hvoraf seks har en blok, skjuler de seks —
               og en gråtonet række er stadig en række der fylder. Se 6.25. */}
-          Kun kasser med et udlån i perioden vises. Vinduet starter{" "}
-          <b>fremadrettet</b>, længden vælges foroven, og pilene under
-          kalenderen flytter det <b>én uge</b> ad gangen — også ved fire ugers
-          visning, så et udlån hen over kanten ikke kan springes over.
-          Topbarens periodevælger ser bagud og hører til rapporterne. Alt der
-          ligger længere ude, står i listen nedenfor.
-          Gitteret ligger i <b>fleet/Gitterkalender.jsx</b> og bruges også af
-          Driftskalender, Servicekalender og Disponering.
+          Kun enheder med aktivitet i perioden vises. Vælg periodens længde
+          ovenfor, og brug pilene under kalenderen til at gå en uge frem eller
+          tilbage. Senere hændelser står også i listen nedenfor.
         </p>
         {/* ⚠ HVORNÅR BLEV DET HER HENTET? En kalender uden et tidsstempel kan
             ikke skelnes fra en der har stået åben siden i morges — og så
@@ -815,11 +841,8 @@ export default function Kalender() {
           tom="Ingen kasser er lovet væk. Reservationer oprettes under Udlån."
         />
         <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>Et udlån står to gange</b> — den dag kassen skal ud, og den dag
-          den skal hjem. Lageret arbejder efter hændelser, ikke efter perioder:
-          et udlån over to måneder ville ellers være usynligt i begge de uger
-          hvor der faktisk skulle gøres noget. Er kassen allerede ude, er
-          afhentningen historik, og kun returen står tilbage.
+          Et udlån står ved både udlevering og forventet retur. Når enheden er
+          udleveret, vises kun den tilbageværende returhandling.
         </p>
       </Kort>
     </div>
@@ -1012,10 +1035,7 @@ function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }
           )}
 
           <p className="fc-hint" style={{ marginTop: 10 }}>
-            Knappen er <b>den samme handling</b> som på Udlån-skærmen —{" "}
-            <code>kasseudlaanskriv</code> skriver udlånet og kassen i én
-            transaktion. <code>kasseudlaan</code> er <b>.write: false</b>, så
-            der er ingen anden vej ind at kopiere.
+            Klargøring opdaterer både reservationen og enhedens tilstand samlet.
           </p>
         </>
       )}

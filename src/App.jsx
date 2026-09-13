@@ -75,6 +75,8 @@ const Reolpladser = lazy(() => import("./moduler/unitbooking/Reolpladser.jsx"));
 const Kasseudlaan = lazy(() => import("./moduler/unitbooking/Udlaan.jsx"));
 const Unitbookingkalender = lazy(() => import("./moduler/unitbooking/Kalender.jsx"));
 const Unitbookinghistorik = lazy(() => import("./moduler/unitbooking/Historik.jsx"));
+const Unitbookingimport = lazy(() => import("./moduler/unitbooking/ImportBooking.jsx"));
+const Unitbookingscanner = lazy(() => import("./moduler/unitbooking/UnitScanner.jsx"));
 const Wmsvarer = lazy(() => import("./moduler/warehouse/Varer.jsx"));
 const Wmslokationer = lazy(() => import("./moduler/warehouse/Lokationer.jsx"));
 const Wmsbevaegelser = lazy(() => import("./moduler/warehouse/Bevaegelser.jsx"));
@@ -647,6 +649,9 @@ export default function App() {
             {/* Kalenderen er modulets forside; kasselisten er stamdata og
                 ligger under Opsaetning. Se nav.js og REDIRECTS. */}
             <Route path="unitbooking" element={<Unitbookingkalender />} />
+            <Route path="unitbooking/import" element={<Unitbookingimport />} />
+            <Route path="unitbooking/scan" element={<Unitbookingscanner />} />
+            <Route path="unitbooking/scan/:unitId" element={<Unitbookingscanner />} />
             <Route path="unitbooking/udlaan" element={<Kasseudlaan />} />
             <Route path="opsaetning/kasser" element={<UnitbookingKasser />} />
             <Route path="unitbooking/historik" element={<Unitbookinghistorik />} />

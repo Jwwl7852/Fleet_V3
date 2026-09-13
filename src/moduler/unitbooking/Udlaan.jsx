@@ -171,6 +171,8 @@ export default function Udlaan() {
   const [soeg, saetSoeg] = useState("");
   const [arbejder, saetArbejder] = useState(null);
   const [svar, saetSvar] = useState(null);
+  const [returFor, saetReturFor] = useState(null);
+  const [returPladsId, saetReturPladsId] = useState("");
 
   const { data: udlaan, tilstand, genindlaes, henter } = useListe("kasseudlaan", {
     graense: 2000, demo: DEMO_KASSEUDLAAN,
@@ -238,13 +240,26 @@ export default function Udlaan() {
       (u.kasseId || "").toLowerCase().includes(q) ||
       (u.beskrivelse || "").toLowerCase().includes(q)));
 
-  const skift = async (u, til2) => {
+  const skift = async (u, til2, modtagelsesPladsId = null) => {
+    if (til2 === "returneret" && !modtagelsesPladsId) {
+      saetReturFor(u);
+      saetReturPladsId("");
+      saetSvar(null);
+      return;
+    }
     saetArbejder(u.id);
     saetSvar(null);
-    const r = await skiftUdlaan({ udlaanId: u.id, til: til2 });
+    const r = await skiftUdlaan({
+      udlaanId: u.id, til: til2,
+      modtagelsesPladsId: modtagelsesPladsId || undefined,
+    });
     saetArbejder(null);
     saetSvar(r);
-    if (r.ok) genindlaes();
+    if (r.ok) {
+      saetReturFor(null);
+      saetReturPladsId("");
+      genindlaes();
+    }
   };
 
   return (
@@ -289,6 +304,33 @@ export default function Udlaan() {
       </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
+
+      {returFor && (
+        <Kort titel={`Modtag retur · ${returFor.kasseId}`}>
+          <p className="fc-hint">
+            Vælg den lokation, hvor enheden faktisk modtages. Hjempladsen er
+            kun et forslag og vælges ikke automatisk. En senere placering
+            registreres som en særskilt bevægelse.
+          </p>
+          <div className="fc-filtre">
+            <div className="fc-felt">
+              <label htmlFor="ub-retur-plads">Modtagelseslokation</label>
+              <select id="ub-retur-plads" value={returPladsId}
+                      onChange={(e) => saetReturPladsId(e.target.value)}>
+                <option value="">Vælg faktisk modtagelseslokation …</option>
+                {pladser.map((p) => <option key={p.id} value={p.id}>{pladsnavn(p)}</option>)}
+              </select>
+            </div>
+            <div className="fc-filtre-knapper">
+              <Knap onClick={() => saetReturFor(null)}>Annullér</Knap>
+              <Knap variant="primaer" disabled={!returPladsId || arbejder === returFor.id}
+                    onClick={() => skift(returFor, "returneret", returPladsId)}>
+                {arbejder === returFor.id ? "Modtager …" : "Modtag og afslut booking"}
+              </Knap>
+            </div>
+          </div>
+        </Kort>
+      )}
 
       <Kort titel="Ledige kasser i en periode">
         <div className="fc-filtre">

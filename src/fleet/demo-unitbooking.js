@@ -52,16 +52,16 @@ export const DEMO_KASSETYPER = [
 const D = (a, m, d) => Date.UTC(a, m - 1, d);
 
 export const DEMO_KASSER = [
-  { id: "MDT-101", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, type: "AL", undertype: "std", status: "udlaant", hjemPladsId: "p-h1-r2-f1-h10-1" },
-  { id: "MDT-102", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, type: "AL", undertype: "std", status: "ledig", hjemPladsId: "p-h1-r2-f1-h10-1", pladsId: "p-h1-r2-f1-h10-1" },
-  { id: "MDT-103", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, type: "AL", undertype: "std", status: "udlaant", hjemPladsId: "p-h1-r2-f1-h9-2" },
-  { id: "MDT-104", laengdeMm: 1600, breddeMm: 1000, hoejdeMm: 1100, type: "AL", undertype: "stor", status: "klargjort", hjemPladsId: "p-h1-r2-f1-h9-2", pladsId: "p-h1-r2-f1-h9-2" },
-  { id: "MDT-105", laengdeMm: 1400, breddeMm: 900, hoejdeMm: 1000, type: "TR", status: "ledig", hjemPladsId: "p-h1-r2-f1-h9-3", pladsId: "p-h1-r2-f1-h9-3" },
+  { id: "MDT-101", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, maalBetydning: "udvendig", indvendigLaengdeMm: 1140, indvendigBreddeMm: 740, indvendigHoejdeMm: 890, type: "AL", undertype: "std", status: "udlaant", hjemPladsId: "p-h1-r2-f1-h10-1" },
+  { id: "MDT-102", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, maalBetydning: "udvendig", indvendigLaengdeMm: 1140, indvendigBreddeMm: 740, indvendigHoejdeMm: 890, type: "AL", undertype: "std", status: "ledig", hjemPladsId: "p-h1-r2-f1-h10-1", pladsId: "p-h1-r2-f1-h10-1" },
+  { id: "MDT-103", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, maalBetydning: "ukendt", type: "AL", undertype: "std", status: "udlaant", hjemPladsId: "p-h1-r2-f1-h9-2" },
+  { id: "MDT-104", laengdeMm: 1600, breddeMm: 1000, hoejdeMm: 1100, maalBetydning: "udvendig", indvendigLaengdeMm: 1510, indvendigBreddeMm: 910, indvendigHoejdeMm: 1010, type: "AL", undertype: "stor", status: "klargjort", hjemPladsId: "p-h1-r2-f1-h9-2", pladsId: "p-h1-r2-f1-h9-2" },
+  { id: "MDT-105", laengdeMm: 1400, breddeMm: 900, hoejdeMm: 1000, maalBetydning: "udvendig", indvendigLaengdeMm: 1320, indvendigBreddeMm: 820, indvendigHoejdeMm: 920, type: "TR", status: "ledig", hjemPladsId: "p-h1-r2-f1-h9-3", pladsId: "p-h1-r2-f1-h9-3" },
   /* ⚠ LEDIG, SELV OM DEN ER RESERVERET til september (ku-4). Kassen står
      fysisk på sin hylde — "booket" er ikke en kassestatus, det er et udlån.
      Sættet er valgt netop for at vise det tilfælde. */
-  { id: "MDT-106", laengdeMm: 1400, breddeMm: 900, hoejdeMm: 1000, type: "TR", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
-  { id: "MDT-107", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, type: "KL", undertype: "std", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
+  { id: "MDT-106", laengdeMm: 1400, breddeMm: 900, hoejdeMm: 1000, maalBetydning: "udvendig", indvendigLaengdeMm: 1320, indvendigBreddeMm: 820, indvendigHoejdeMm: 920, type: "TR", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
+  { id: "MDT-107", laengdeMm: 1200, breddeMm: 800, hoejdeMm: 950, maalBetydning: "udvendig", indvendigLaengdeMm: 1100, indvendigBreddeMm: 700, indvendigHoejdeMm: 850, type: "KL", undertype: "std", status: "ledig", hjemPladsId: "p-h1-r1-f1-h7-3", pladsId: "p-h1-r1-f1-h7-3" },
   {
     /* ⚠ DEN ENESTE UDE AF DRIFT — og nu med en dato. Uden den kan
        kalenderen ikke tegne den roede blok, og reglen afviser posten:
@@ -72,8 +72,8 @@ export const DEMO_KASSER = [
     pladsId: "p-h1-r1-f1-h6-1",
     note: "Fugtbuffer utæt efter transport. Afventer reparation.",
   },
-  { id: "MDT-201", laengdeMm: 2000, breddeMm: 1200, hoejdeMm: 1300, type: "AL", undertype: "xl", status: "ledig", hjemPladsId: "p-h2-r1-f2-h3-1", pladsId: "p-h2-r1-f2-h3-1" },
-  { id: "MDT-202", laengdeMm: 2000, breddeMm: 1200, hoejdeMm: 1300, type: "AL", undertype: "xl", status: "ledig", hjemPladsId: "p-h2-r1-f2-h3-2", pladsId: "p-h2-r1-f2-h3-2" },
+  { id: "MDT-201", laengdeMm: 2000, breddeMm: 1200, hoejdeMm: 1300, maalBetydning: "udvendig", indvendigLaengdeMm: 1900, indvendigBreddeMm: 1100, indvendigHoejdeMm: 1200, type: "AL", undertype: "xl", status: "ledig", hjemPladsId: "p-h2-r1-f2-h3-1", pladsId: "p-h2-r1-f2-h3-1" },
+  { id: "MDT-202", laengdeMm: 2000, breddeMm: 1200, hoejdeMm: 1300, maalBetydning: "udvendig", indvendigLaengdeMm: 1900, indvendigBreddeMm: 1100, indvendigHoejdeMm: 1200, type: "AL", undertype: "xl", status: "ledig", hjemPladsId: "p-h2-r1-f2-h3-2", pladsId: "p-h2-r1-f2-h3-2" },
 ];
 
 export const DEMO_KASSEUDLAAN = [

@@ -62,12 +62,13 @@ export const DELTE_FILER = [
      samme kanSkifteUdlaan(), samme overlapsregel. Skrev serveren sin egen
      afskrift, ville skaermen sige ja og serveren nej, uden at nogen kunne se
      hvorfor. */
-  "unitbooking.js",
+  "unitbooking.js", "unitbooking-import.js",
   /* ⚠ warehouse.js SKAL MED, fordi bevaegelseskriv er DEN ENESTE vej ind i
      bevaegelser og beholdning — begge noder er .write: false. Serveren skal
      proeve mod noejagtig de samme regler som formularen viser brugeren:
      samme valideBevaegelse(), samme virkningPaaBeholdning(), samme skala. */
   "warehouse.js",
+  "warehouse-unit.js",
   /* ⚠ warehouse.js IMPORTERER prioritet.js, OG SAA SKAL DEN MED. Reglen er
      ikke "importfri" — den er LUKKET UNDER IMPORT, og prioritet.js er det
      tredje eksempel efter beloeb.js og booking-state.js. Kataloget deles

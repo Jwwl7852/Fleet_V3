@@ -1,0 +1,104 @@
+{
+  "ok": true,
+  "generatedAt": "2026-09-13T16:26:53.912Z",
+  "baseUrl": "http://127.0.0.1:5216",
+  "projectId": "demo-unitbooking-v2",
+  "checks": {
+    "returnAndMove": true,
+    "savedBooking": true,
+    "documentInstructionInert": true,
+    "mobileNoHorizontalOverflow": true
+  },
+  "screenshots": [
+    {
+      "filename": "01-desktop-kalender-og-dagens-arbejde.png",
+      "width": 1425,
+      "height": 1905,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "02-desktop-faelles-enhedsregister.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "03-desktop-scanning-retur-foer.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "04-desktop-retur-paa-modtagelse.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "05-desktop-efterfoelgende-flytning.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "06-desktop-importer-booking.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "07-desktop-gennemgang-original-og-felter.png",
+      "width": 1425,
+      "height": 1563,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "08-desktop-korrekt-match.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "09-desktop-bekraeftelse-foer-reservation.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "10-desktop-reservation-gemt.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "11-desktop-uklare-oplysninger.png",
+      "width": 1425,
+      "height": 1647,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "12-desktop-intet-match-med-forklaring.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "13-mobile-kalender-listevisning.png",
+      "width": 390,
+      "height": 3708,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "14-mobile-scanning-og-flytning.png",
+      "width": 390,
+      "height": 1804,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "15-mobile-import.png",
+      "width": 390,
+      "height": 1259,
+      "horizontalOverflow": false
+    }
+  ]
+}

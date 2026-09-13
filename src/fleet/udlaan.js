@@ -63,9 +63,15 @@ export const opretUdlaan = ({
     klargoerSenest: Number.isFinite(klargoerSenest) ? klargoerSenest : undefined,
   });
 
-/** Klargør, udlever, modtag retur, annullér. */
-export const skiftUdlaan = ({ udlaanId, til }) =>
-  kald({ handling: "skift", udlaanId, til });
+/** Klargør, udlever, modtag retur, annullér. Fysiske skift bærer en stabil
+ * operationId, så netværksgenforsøg rammer samme bevægelse. */
+export const skiftUdlaan = ({ udlaanId, til, modtagelsesPladsId, operationId }) =>
+  kald({
+    handling: "skift", udlaanId, til,
+    modtagelsesPladsId: modtagelsesPladsId || undefined,
+    operationId: operationId || (["udlaant", "returneret"].includes(til)
+      ? crypto.randomUUID() : undefined),
+  });
 
 /** Ret sagsnummer, periode eller beskrivelse — kun mens den er booket. */
 export const retUdlaan = ({
