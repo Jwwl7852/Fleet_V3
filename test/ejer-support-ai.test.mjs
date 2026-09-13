@@ -67,3 +67,10 @@ test("V8.1 B portaladapteren bruger kun de afstemte ejeroperationer og transport
   assert.match(adapter, /supportEjerSvarTransporter/);
   assert.doesNotMatch(adapter, /supportEjerSvarSend/);
 });
+
+test("V8.1 mobilopfølgning reserverer læseplads til AI-historikken", () => {
+  const css = readFileSync(new URL("../src/fleet/ejer-mail-v7.css", import.meta.url), "utf8");
+  assert.match(css, /\.ejer-support-detalje \.ejer-mail-fokus\.mobil-svar \.ejer-mail-svarfokus\{height:max\(700px,calc\(100dvh - 16px\)\);min-height:700px\}/);
+  assert.match(css, /\.ejer-support-detalje \.ejer-ai-chatpanel\{grid-template-rows:auto minmax\(240px,1fr\) auto auto\}/);
+  assert.match(css, /\.ejer-support-detalje \.ejer-ai-chatpanel>\.ejer-ai-chathistorik\{max-height:none;min-height:240px;overflow:auto\}/);
+});
