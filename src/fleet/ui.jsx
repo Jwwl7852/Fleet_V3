@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { deviation } from "./format.js";
 import { MODUL } from "./moduler.js";
+import { erIndreRaekkehandling } from "./visningsvalg.js";
 
 /* ⚠ MASSIVE IKONER, IKKE STREGTEGNEDE. Mockuppens glyffer er fyldte —
    sidebarens ICO i AppShell er konturer, og de to skal ikke forveksles: her
@@ -158,9 +159,14 @@ export function Tabel({ kolonner, raekker, noegle = (r, i) => r.id ?? i, tom = "
           {raekker.map((r, i) => (
             <tr
               key={noegle(r, i)}
-              onClick={paaRaekke ? () => paaRaekke(r) : undefined}
+              onClick={paaRaekke ? (e) => {
+                if (!erIndreRaekkehandling(e.target, e.currentTarget)) paaRaekke(r);
+              } : undefined}
               onKeyDown={paaRaekke ? (e) => {
-                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); paaRaekke(r); }
+                if ((e.key === "Enter" || e.key === " ")
+                    && !erIndreRaekkehandling(e.target, e.currentTarget)) {
+                  e.preventDefault(); paaRaekke(r);
+                }
               } : undefined}
               tabIndex={paaRaekke ? 0 : undefined}
               role={paaRaekke ? "button" : undefined}

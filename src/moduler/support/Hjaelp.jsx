@@ -6,6 +6,7 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { demoMode } from "../../firebase.js";
 import { opretSupportKundeAdapter } from "../../fleet/support-kunde-adapter.js";
 import { SUPPORT_SAMTALE_STATUS } from "../../fleet/support.js";
+import JusterbarePaneler from "../../fleet/JusterbarePaneler.jsx";
 
 const GUIDER = [
   ["Find en opgave eller booking", "Brug søgning og filtre i den relevante arbejdsflade. Send ikke uvedkommende driftsdata med til support."],
@@ -178,7 +179,8 @@ export default function Hjaelp() {
         </Kort>
       </div>}
 
-      {fane === "chat" && !nySamtale && traad && <div className="fc-support-layout">
+      {fane === "chat" && !nySamtale && traad && <JusterbarePaneler className="fc-support-layout"
+        brugerId={bruger?.uid} kontekst={tenantId} skaerm="/support" standard={66} minimum={46} maksimum={74}>
         <main className="fc-support-main">
           <Kort>
             <div className="fc-support-sagshoved"><div><h2>{traad.sag.emne}</h2><span>{traad.sag.nummer || "Lokal prototype"}</span></div><Pille tone={statusTone(traad.sag.status)}>{SUPPORT_SAMTALE_STATUS[traad.sag.status]}</Pille></div>
@@ -205,7 +207,7 @@ export default function Hjaelp() {
           <Kort titel="Hvad sker der nu?"><p>Veyro gennemgår sagen og svarer i den samme samtale. Du behøver ikke starte forfra.</p></Kort>
           <Knap onClick={() => setFane("sager")}>Se mine supportsager →</Knap>
         </aside>
-      </div>}
+      </JusterbarePaneler>}
 
       {fejl && <p className="fc-svar fc-svar-fejl" role="alert">{fejl}</p>}
     </div>

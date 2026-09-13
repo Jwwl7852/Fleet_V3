@@ -17,6 +17,8 @@ import { erSkjultVedNavvisning } from "./navvisning.js";
 import Brugervaelger from "./Brugervaelger.jsx";
 import VeyroLogo from "./VeyroLogo.jsx";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
+import { useVisningsvalg } from "./useVisningsvalg.js";
+import { begraensZoom } from "./visningsvalg.js";
 
 /**
  * Miljøbjælke — over hele bredden, over sidebaren, umulig at overse.
@@ -101,7 +103,7 @@ const ICO = {
 };
 
 export default function AppShell() {
-  const { tenant, bruger, logUd, demo, demoRolle, saetDemoRolle, moduler } = useFleet();
+  const { tenant, tenantId, bruger, logUd, demo, demoRolle, saetDemoRolle, moduler } = useFleet();
   const location = useLocation();
   const { pathname } = location;
   const modul = findModul(pathname);
@@ -109,6 +111,20 @@ export default function AppShell() {
   const procureOwnsPageTitle = pathname === "/indkoeb" || pathname.startsWith("/indkoeb/");
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
+  const visningsKontekst = tenantId || tenant?.id || "ingen-tenant";
+  const [menuvisning, setMenuvisning, nulstilMenuvisning] = useVisningsvalg({
+    brugerId: bruger?.uid, kontekst: visningsKontekst, skaerm: "kundeshell", egenskab: "menu", standard: "normal",
+  });
+  const [zoom, setZoom, nulstilZoom] = useVisningsvalg({
+    brugerId: bruger?.uid, kontekst: visningsKontekst, skaerm: pathname, egenskab: "zoom", standard: 100,
+  });
+  const menuKompakt = menuvisning === "kompakt";
+  const skiftZoom = (retning) => setZoom((aktuel) => begraensZoom(Number(aktuel) + retning));
+  const nulstilVisning = () => {
+    nulstilMenuvisning();
+    nulstilZoom();
+    window.dispatchEvent(new CustomEvent("veyro:nulstil-visning", { detail: { skaerm: pathname } }));
+  };
 
   /* Hjælp kan dermed medtage den side brugeren faktisk kom fra uden at tage
      et screenshot eller kopiere sidens forretningsdata. Sessionen ryddes af
@@ -139,24 +155,12 @@ export default function AppShell() {
    * kun ved mount — AppShell tegnes først når `bruger` findes (harAdgang
    * kræver et tenant-claim), så uid'et er stabilt fra første render.
    */
-  const gruppeNoegle = `fc-nav-gruppe-lukket:${bruger?.uid || "anon"}`;
-  const [gruppeLukket, saetGruppeLukket] = useState(() => {
-    try {
-      const raa = window.localStorage.getItem(gruppeNoegle);
-      return raa ? JSON.parse(raa) : {};
-    } catch {
-      return {};
-    }
+  const [gruppeLukket, saetGruppeLukket] = useVisningsvalg({
+    brugerId: bruger?.uid, kontekst: visningsKontekst, skaerm: "kundeshell", egenskab: "grupper", standard: {},
   });
   const skifGruppe = (gruppe) => {
     saetGruppeLukket((forrige) => {
       const naeste = { ...forrige, [gruppe]: !forrige[gruppe] };
-      try {
-        window.localStorage.setItem(gruppeNoegle, JSON.stringify(naeste));
-      } catch {
-        /* localStorage utilgængelig (privat vindue e.l.) — fold-tilstanden
-           virker stadig i sessionen, den huskes bare ikke til næste besøg. */
-      }
       return naeste;
     });
   };
@@ -208,11 +212,15 @@ export default function AppShell() {
   return (
     <>
       <MiljoeBjaelke />
-      <div className="fc-app">
-        <aside className="fc-side">
+      <div className={`fc-app${menuKompakt ? " fc-menu-kompakt" : ""}`}>
+        <aside className="fc-side" aria-label={menuKompakt ? "Kompakt navigation" : "Navigation"}>
           <div className="fc-brand-logo"><VeyroLogo variant="sidebar" /></div>
           <div className="fc-ver">version 3.0</div>
           <div className="fc-tenant">{tenant?.kort || tenant?.navn || "—"}</div>
+          <button type="button" className="fc-menu-toggle"
+            aria-label={menuKompakt ? "Åbn normal menu" : "Fold menuen sammen"}
+            aria-pressed={menuKompakt}
+            onClick={() => setMenuvisning(menuKompakt ? "normal" : "kompakt")}>{menuKompakt ? "›" : "‹"}</button>
 
           {/* ⚠ HER STOD GODS/BUS-VÆLGEREN — beslutning 9, fjernet i 70.
               Argumentet der bar den, faldt sammen med sin egen præmis:
@@ -252,7 +260,7 @@ export default function AppShell() {
             {GRUPPE_ORDEN.map((gruppe) => {
               const punkter = synligeToppunkter.filter((m) => m.gruppe === gruppe);
               if (!punkter.length) return null;
-              const lukket = !!gruppeLukket[gruppe];
+              const lukket = !menuKompakt && !!gruppeLukket[gruppe];
               return (
                 <div key={gruppe} className="fc-nav-gruppe-blok">
                   <button type="button" className="fc-nav-gruppe-toggle"
@@ -283,7 +291,7 @@ export default function AppShell() {
                        ruten findes uændret, og skærmen svarer med en afvisning hvis
                        man taster stien. Håndhævelsen ligger i reglerne. */
                     const born = synligeBorn(m);
-                    const visBorn = aktiv && born.length > 1 && !modulLukket[m.key];
+                    const visBorn = menuKompakt ? born.length > 0 : aktiv && born.length > 1 && !modulLukket[m.key];
                     const fakturacenterSektioner = m.fakturacenterSektioner || [];
                     const aktivFakturacenterSektion =
                       fakturacenterSektioner.some((sektion) =>
@@ -291,9 +299,9 @@ export default function AppShell() {
                         ? new URLSearchParams(location.search).get("sektion")
                         : fakturacenterSektioner[0]?.id;
                     if (fakturacenterSektioner.length) {
-                      const undermenuAaben = aktiv && !modulLukket[m.key];
+                      const undermenuAaben = menuKompakt || aktiv && !modulLukket[m.key];
                       return (
-                        <div key={m.key} className="fc-fakturacenter-nav">
+                        <div key={m.key} className="fc-fakturacenter-nav fc-nav-modul" data-modul-label={m.label}>
                           <div className="fc-fakturacenter-main">
                             <NavLink to={m.sti} end className={aktiv ? "fc-link fc-on" : "fc-link"}>
                               <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -312,6 +320,7 @@ export default function AppShell() {
                           </div>
                           {undermenuAaben && (
                             <div className="fc-sub fc-sub-fakturacenter" aria-label="Fakturacentersektioner">
+                              <strong className="fc-kompakt-modulnavn">{m.label}</strong>
                               {fakturacenterSektioner.map((sektion) => {
                                 const antal = fakturacenterAntal[sektion.id];
                                 return (
@@ -332,7 +341,7 @@ export default function AppShell() {
                       );
                     }
                     return (
-                      <div key={m.key}>
+                      <div key={m.key} className="fc-nav-modul" data-modul-label={m.label}>
                         <NavLink to={m.sti} end={m.sti === "/"} className={aktiv ? "fc-link fc-on" : "fc-link"}
                                  onClick={(e) => {
                                    /* Klik på et allerede-aktivt punkt med undermenu skal folde
@@ -355,6 +364,7 @@ export default function AppShell() {
                         </NavLink>
                         {visBorn && (
                           <div className="fc-sub">
+                            <strong className="fc-kompakt-modulnavn">{m.label}</strong>
                             {born.map((b) => (
                               <NavLink key={b.key} to={b.sti} end
                                        className={modul.key === b.key ? "fc-sublink fc-on" : "fc-sublink"}>
@@ -415,6 +425,14 @@ export default function AppShell() {
         </aside>
 
         <div className="fc-main">
+          <div className="fc-visningslinje" aria-label="Visningsindstillinger">
+            <div className="fc-zoomkontroller" role="group" aria-label="Arbejdsområdezoom">
+              <button type="button" onClick={() => skiftZoom(-5)} aria-label="Zoom ud">−</button>
+              <output aria-live="polite">{begraensZoom(zoom)} %</output>
+              <button type="button" onClick={() => skiftZoom(5)} aria-label="Zoom ind">+</button>
+            </div>
+            <button type="button" className="fc-nulstil-visning" onClick={nulstilVisning}>Nulstil visning</button>
+          </div>
           {!procureOwnsPageTitle && <header className="fc-top">
             <div className="fc-top-h">
               <h1>{modul.titel}</h1>
@@ -450,10 +468,16 @@ export default function AppShell() {
               forsvinde og blive tegnet om ved hvert eneste skift — og
               en shell der blinker, føles som en app der genstarter.
               Her skiftes kun indholdsfeltet ud. */}
-          <main className="fc-slot">
-            <Suspense fallback={<div className="fc-empty">Henter skærmen …</div>}>
-              <Outlet context={{ setFakturacenterAntal }} />
-            </Suspense>
+          <main className="fc-slot" onWheel={(event) => {
+            if (!event.shiftKey || event.ctrlKey || event.metaKey) return;
+            event.preventDefault();
+            skiftZoom(event.deltaY > 0 ? -5 : 5);
+          }}>
+            <div className="fc-workspace-zoom" style={{ "--fc-workspace-zoom": begraensZoom(zoom) / 100 }}>
+              <Suspense fallback={<div className="fc-empty">Henter skærmen …</div>}>
+                <Outlet context={{ setFakturacenterAntal }} />
+              </Suspense>
+            </div>
           </main>
         </div>
       </div>

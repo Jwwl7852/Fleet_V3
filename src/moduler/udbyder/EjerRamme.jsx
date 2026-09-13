@@ -4,6 +4,8 @@ import VeyroLogo from "../../fleet/VeyroLogo.jsx";
 import { EjerDataProvider } from "./EjerDataContext.jsx";
 import EjerIkon from "./EjerIkon.jsx";
 import { erEjerNavgruppeAaben, ejerInitialer, ejerVisningsnavn } from "../../fleet/ejer-navigation.js";
+import { useVisningsvalg } from "../../fleet/useVisningsvalg.js";
+import { begraensZoom } from "../../fleet/visningsvalg.js";
 
 const NAV = [
   { label: null, punkter: [{ to: "/main", label: "Overblik", slut: true, ikon: "home" }] },
@@ -74,9 +76,21 @@ export default function EjerRamme({ bruger, logUd, children }) {
   const [soegning, setSoegning] = useState("");
   const [ejerfilter, setEjerfilter] = useState("Alle");
   const [mobilmenuAaben, setMobilmenuAaben] = useState(false);
-  const [aabneGrupper, setAabneGrupper] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("veyro.ejer.nav.aabne") || "{}") || {}; } catch { return {}; }
+  const [aabneGrupper, setAabneGrupper] = useVisningsvalg({
+    brugerId: bruger?.uid, kontekst: "ejer", skaerm: "ejershell", egenskab: "grupper", standard: {},
   });
+  const [menuvisning, setMenuvisning, nulstilMenuvisning] = useVisningsvalg({
+    brugerId: bruger?.uid, kontekst: "ejer", skaerm: "ejershell", egenskab: "menu", standard: "normal",
+  });
+  const [zoom, setZoom, nulstilZoom] = useVisningsvalg({
+    brugerId: bruger?.uid, kontekst: "ejer", skaerm: location.pathname, egenskab: "zoom", standard: 100,
+  });
+  const menuKompakt = menuvisning === "kompakt";
+  const skiftZoom = (retning) => setZoom((aktuel) => begraensZoom(Number(aktuel) + retning));
+  const nulstilVisning = () => {
+    nulstilMenuvisning(); nulstilZoom();
+    window.dispatchEvent(new CustomEvent("veyro:nulstil-visning", { detail: { skaerm: location.pathname } }));
+  };
   const mobilmenuknap = useRef(null);
   const [titel, undertekst] = TITLER[location.pathname]
     || (location.pathname.startsWith("/main/kunder/") ? TITLER["/main/kunder"] : TITLER["/main"]);
@@ -90,7 +104,6 @@ export default function EjerRamme({ bruger, logUd, children }) {
   };
 
   useEffect(() => setMobilmenuAaben(false), [location.pathname]);
-  useEffect(() => { localStorage.setItem("veyro.ejer.nav.aabne", JSON.stringify(aabneGrupper)); }, [aabneGrupper]);
   useEffect(() => {
     document.body.classList.add("ejer-body");
     return () => document.body.classList.remove("ejer-body");
@@ -109,12 +122,16 @@ export default function EjerRamme({ bruger, logUd, children }) {
 
   return (
     <EjerDataProvider ansvarligFilter={ejerfilter}>
-      <div className="fc-app ejer-app">
+      <div className={`fc-app ejer-app${menuKompakt ? " ejer-menu-kompakt" : ""}`}>
         <aside className={`ejer-side${mobilmenuAaben ? " ejer-side-aaben" : ""}`}>
           <NavLink className="ejer-logo" to="/main" aria-label="Veyro ejerkonsol, overblik">
             <VeyroLogo variant="sidebar" />
           </NavLink>
           <div className="ejer-produkt">Ejerkonsol</div>
+          <button type="button" className="fc-menu-toggle ejer-menu-toggle"
+            aria-label={menuKompakt ? "Åbn normal ejermenu" : "Fold ejermenuen sammen"}
+            aria-pressed={menuKompakt}
+            onClick={() => setMenuvisning(menuKompakt ? "normal" : "kompakt")}>{menuKompakt ? "›" : "‹"}</button>
           <button
             ref={mobilmenuknap}
             type="button"
@@ -131,19 +148,22 @@ export default function EjerRamme({ bruger, logUd, children }) {
                 const noegle = gruppe.label || gruppe.punkter[0].to;
                 const aaben = !gruppe.label || erEjerNavgruppeAaben({ gemt: aabneGrupper, noegle, aktiv: aktivGruppe });
                 return (
-                <section key={gruppe.label || gruppe.punkter[0].to} className={gruppe.separat ? "ejer-nav-separat" : ""}>
+                <section key={gruppe.label || gruppe.punkter[0].to} data-gruppe-label={gruppe.label || gruppe.punkter[0].label} className={gruppe.separat ? "ejer-nav-separat" : ""}>
                   {gruppe.label && <button type="button" className="ejer-navgruppe" aria-expanded={aaben} onClick={() => setAabneGrupper((gamle) => ({ ...gamle, [noegle]: !aaben }))}><EjerIkon navn={gruppe.ikon} size={20}/><span>{gruppe.label}</span><b>{aaben ? "⌃" : "⌄"}</b></button>}
-                  {aaben && gruppe.punkter.map((punkt) => (
-                    <NavLink
-                      key={punkt.to}
-                      to={punkt.to}
-                      end={punkt.slut}
-                      className={({ isActive }) => `ejer-link${isActive ? " ejer-link-aktiv" : ""}`}
-                    >
-                      <EjerIkon navn={punkt.ikon} size={24} />
-                      <span>{punkt.label}</span>
-                    </NavLink>
-                  ))}
+                  {(aaben || menuKompakt) && <div className="ejer-navpunkter">
+                    <strong className="ejer-kompakt-gruppenavn">{gruppe.label || gruppe.punkter[0].label}</strong>
+                    {gruppe.punkter.map((punkt) => (
+                      <NavLink
+                        key={punkt.to}
+                        to={punkt.to}
+                        end={punkt.slut}
+                        className={({ isActive }) => `ejer-link${isActive ? " ejer-link-aktiv" : ""}`}
+                      >
+                        <EjerIkon navn={punkt.ikon} size={24} />
+                        <span>{punkt.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>}
                 </section>
                 );
               })}
@@ -159,9 +179,11 @@ export default function EjerRamme({ bruger, logUd, children }) {
         <div className="ejer-hoved">
           <header className="ejer-top">
             <form className="ejer-globalsoeg" role="search" onSubmit={soeg}><EjerIkon navn="search" size={23} /><input aria-label="Søg i ejerkonsollen" value={soegning} onChange={(event) => setSoegning(event.target.value)} placeholder="Søg kunde, tilbud eller bilag..." /></form>
-            <div className="ejer-tophandlinger"><select className="ejer-ejerfilter" value={ejerfilter} onChange={(event) => setEjerfilter(event.target.value)} aria-label="Filtrér på ansvarlig"><option value="Alle">Alle ansvarlige</option><option value="Dennis">Dennis</option><option value="Jørn">Jørn</option></select><button type="button" className="ejer-notifikation" aria-label="Åbn opgaver og notifikationer" onClick={() => navigate("/main/mail/opfoelgning")}><EjerIkon navn="bell" size={25} /><b>3</b></button><span className="ejer-avatar">{ejerInitialer(bruger)}</span></div>
+            <div className="ejer-tophandlinger"><div className="fc-zoomkontroller ejer-zoomkontroller" role="group" aria-label="Arbejdsområdezoom"><button type="button" onClick={() => skiftZoom(-5)} aria-label="Zoom ud">−</button><output>{begraensZoom(zoom)} %</output><button type="button" onClick={() => skiftZoom(5)} aria-label="Zoom ind">+</button></div><button type="button" className="fc-nulstil-visning ejer-nulstil-visning" onClick={nulstilVisning}>Nulstil visning</button><select className="ejer-ejerfilter" value={ejerfilter} onChange={(event) => setEjerfilter(event.target.value)} aria-label="Filtrér på ansvarlig"><option value="Alle">Alle ansvarlige</option><option value="Dennis">Dennis</option><option value="Jørn">Jørn</option></select><button type="button" className="ejer-notifikation" aria-label="Åbn opgaver og notifikationer" onClick={() => navigate("/main/mail/opfoelgning")}><EjerIkon navn="bell" size={25} /><b>3</b></button><span className="ejer-avatar">{ejerInitialer(bruger)}</span></div>
           </header>
-          <main className="ejer-indhold" id="ejer-indhold">
+          <main className="ejer-indhold fc-workspace-zoom" id="ejer-indhold"
+            style={{ "--fc-workspace-zoom": begraensZoom(zoom) / 100 }}
+            onWheel={(event) => { if (!event.shiftKey || event.ctrlKey || event.metaKey) return; event.preventDefault(); skiftZoom(event.deltaY > 0 ? -5 : 5); }}>
             <div className="ejer-sidehoved"><div><h1>{titel}</h1><p>{undertekst}</p></div><div className="ejer-eksempelmaerke"><span>DESIGNFORSLAG&nbsp; · &nbsp;EKSEMPELDATA</span></div></div>
             {children}
           </main>
