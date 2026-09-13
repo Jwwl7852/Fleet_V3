@@ -3,10 +3,13 @@ import { initializeApp, deleteApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getDatabase } from "firebase-admin/database";
 
-const projectId = "demo-veyro-support-samling";
-const authHost = "127.0.0.1:9198";
-const databaseHost = "127.0.0.1:9290";
-const functionsBase = `http://127.0.0.1:5099/${projectId}/europe-west1`;
+const projectId = process.env.GCLOUD_PROJECT || "demo-veyro-support-samling";
+const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST || "127.0.0.1:9198";
+const databaseHost = process.env.FIREBASE_DATABASE_EMULATOR_HOST || "127.0.0.1:9290";
+const functionsHost = process.env.FIREBASE_FUNCTIONS_EMULATOR_HOST || "127.0.0.1:5099";
+assert.match(projectId, /^demo-/);
+for (const host of [authHost, databaseHost, functionsHost]) assert.match(host, /^(127\.0\.0\.1|localhost):\d+$/);
+const functionsBase = `http://${functionsHost}/${projectId}/europe-west1`;
 process.env.FIREBASE_AUTH_EMULATOR_HOST = authHost;
 process.env.FIREBASE_DATABASE_EMULATOR_HOST = databaseHost;
 
@@ -50,19 +53,17 @@ async function afvist(navn, data, token, status) {
 }
 
 try {
-  await db.ref().set({
-    tenants: {
-      nordlys: { _findes: true, virksomhed: { navn: "Nordlys Syntetisk Drift" } },
-      anden: { _findes: true, virksomhed: { navn: "Anden Syntetisk Tenant" } },
-    },
-    udbyder: {
-      kunder: { nordlys: { oprettetMs: 1 }, anden: { oprettetMs: 1 } },
-      vidensbase: { poster: {
-        godkendt: { id: "godkendt", titel: "FLEET filtersøgning", indhold: "Nulstil de aktive filtre og søg igen på enhedens lokale test-id.", kilde: "Syntetisk FLEET-vejledning", modul: "FLEET", relevanteVersioner: "3.x", noegleord: ["enhed", "filter"], leveringsstatus: "tilgaengelig", vidensstatus: "godkendt", publikum: "kunde_godkendt", aktuelVersion: 3, gennemgaaetAfNavn: "Syntetisk reviewer", gennemgaaetMs: 1 },
-        intern: { id: "intern", titel: "Intern FLEET-diagnose", indhold: "Kontrollér den syntetiske indeksrevision internt.", kilde: "Syntetisk intern driftsnote", modul: "FLEET", relevanteVersioner: "3.x", noegleord: ["enhed", "filter"], leveringsstatus: "tilgaengelig", vidensstatus: "godkendt", publikum: "intern", aktuelVersion: 2, gennemgaaetAfNavn: "Syntetisk reviewer", gennemgaaetMs: 1 },
-        legacy: { id: "legacy", titel: "Må ikke vises", indhold: "Internt indhold", kilde: "Legacy", modul: "FLEET", noegleord: ["legacyhemmelig"], leveringsstatus: "tilgaengelig", godkendt: true, kundeGodkendt: true, aktuelVersion: 1 },
-      } },
-    },
+  /* Opdater kun Support-fixturens egne noder. Den samlede integrationssuite
+     kan allerede rumme Procure- og ejerdata, som ikke må nulstilles af en
+     efterfølgende kontraktprøve. */
+  await db.ref().update({
+    "tenants/nordlys": { _findes: true, virksomhed: { navn: "Nordlys Syntetisk Drift" }, abonnement: { status: "aktiv" }, moduler: {} },
+    "tenants/anden": { _findes: true, virksomhed: { navn: "Anden Syntetisk Tenant" }, abonnement: { status: "aktiv" }, moduler: {} },
+    "udbyder/kunder/nordlys": { oprettetMs: 1 },
+    "udbyder/kunder/anden": { oprettetMs: 1 },
+    "udbyder/vidensbase/poster/godkendt": { id: "godkendt", titel: "FLEET filtersøgning", indhold: "Nulstil de aktive filtre og søg igen på enhedens lokale test-id.", kilde: "Syntetisk FLEET-vejledning", modul: "FLEET", relevanteVersioner: "3.x", noegleord: ["enhed", "filter"], leveringsstatus: "tilgaengelig", vidensstatus: "godkendt", publikum: "kunde_godkendt", aktuelVersion: 3, gennemgaaetAfNavn: "Syntetisk reviewer", gennemgaaetMs: 1 },
+    "udbyder/vidensbase/poster/intern": { id: "intern", titel: "Intern FLEET-diagnose", indhold: "Kontrollér den syntetiske indeksrevision internt.", kilde: "Syntetisk intern driftsnote", modul: "FLEET", relevanteVersioner: "3.x", noegleord: ["enhed", "filter"], leveringsstatus: "tilgaengelig", vidensstatus: "godkendt", publikum: "intern", aktuelVersion: 2, gennemgaaetAfNavn: "Syntetisk reviewer", gennemgaaetMs: 1 },
+    "udbyder/vidensbase/poster/legacy": { id: "legacy", titel: "Må ikke vises", indhold: "Internt indhold", kilde: "Legacy", modul: "FLEET", noegleord: ["legacyhemmelig"], leveringsstatus: "tilgaengelig", godkendt: true, kundeGodkendt: true, aktuelVersion: 1 },
   });
 
   const kunde = await opretBruger("maria@nordlys.invalid", { tenant: "nordlys", rolle: "admin", perms: "|", pv: 2 });
