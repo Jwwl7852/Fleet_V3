@@ -18,16 +18,26 @@ const MANAGER_ACTOR = { id: "user-manager", tenantId: "demo-transport", employee
     "workforce.leave.approve", "workforce.leave.sensitive", "workforce.skill.write", "workforce.time.correct", "workforce.self"] };
 const EMPLOYEE_ACTOR = { id: "user-anne", tenantId: "demo-transport", employeeId: "emp-anne", name: "Anne Krogh", permissions: ["workforce.self"] };
 
-export function WorkforceV2App({ actor: actorProp, embedded = false, repository: repositoryProp, initialPage, onNavigate, pathname }) {
+function readableLoadError(reason) {
+  if (/ingen Firebase-app/i.test(String(reason?.message))) {
+    return "WORKFORCE kræver en lokal emulatorbackend i dette miljø. Kontrollér miljøopsætningen, og prøv igen.";
+  }
+  return `WORKFORCE-data kunne ikke hentes. ${reason?.message || "Prøv igen om lidt."}`;
+}
+
+export function WorkforceV2App({ actor: actorProp, embedded = false, repository: repositoryProp, initialPage, onNavigate, pathname, environmentNotice = null }) {
   const [demoRole, setDemoRole] = useState("manager");
   const actor = actorProp || (demoRole === "manager" ? MANAGER_ACTOR : EMPLOYEE_ACTOR);
   const repository = useMemo(() => repositoryProp || createIndexedDbWorkforceRepository({ databaseName: import.meta.env.VITE_WORKFORCE_DATABASE_NAME || WORKFORCE_DB_NAME, tenantId: actor.tenantId }), [repositoryProp, actor.tenantId]);
   const pageFromUrl = () => initialPage || new URLSearchParams(window.location.search).get("page") || (actor.permissions.includes("workforce.employee.read") ? "overview" : "self");
   const [page, setPage] = useState(pageFromUrl);
-  const [state, setState] = useState(null); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
+  const [state, setState] = useState(null); const [error, setError] = useState(""); const [busy, setBusy] = useState(false); const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
-    try { setState(await repository.getState(actor)); setError(""); } catch (reason) { setError(reason.message); }
+    setLoading(true);
+    try { setState(await repository.getState(actor)); setError(""); }
+    catch (reason) { setError(readableLoadError(reason)); }
+    finally { setLoading(false); }
   }, [repository, actor]);
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
@@ -62,8 +72,9 @@ export function WorkforceV2App({ actor: actorProp, embedded = false, repository:
       {!embedded && <aside className="wf-sidebar"><div className="wf-module-title"><span>WORKFORCE</span><small>Medarbejdere & arbejdstid</small></div>
         <nav aria-label="WORKFORCE-navigation">{pages.map(([key, label]) => <button key={key} className={page === key ? "active" : ""} onClick={() => navigate(key)}>{label}</button>)}</nav>
       </aside>}
-      <main className="wf-main">{error && <div className="wf-error" role="alert">{error}<button onClick={() => setError("")}>Luk</button></div>}
-        {!state ? <div className="wf-loading">Henter WORKFORCE…</div> : <Component {...shared} navigate={navigate} />}
+      <main className="wf-main">{environmentNotice && <div className="wf-notice" role="status">{environmentNotice}</div>}
+        {error && <div className="wf-error" role="alert"><span>{error}</span><button type="button" disabled={loading} onClick={reload}>{loading ? "Prøver igen …" : "Prøv igen"}</button></div>}
+        {!state && loading ? <div className="wf-loading">Henter WORKFORCE…</div> : state ? <Component {...shared} navigate={navigate} /> : null}
       </main>
     </div>
   </div>;

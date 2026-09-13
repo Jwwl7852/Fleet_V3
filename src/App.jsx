@@ -10,7 +10,7 @@ import VeyroLogo from "./fleet/VeyroLogo.jsx";
 import { REDIRECTS } from "./fleet/nav.js";
 import { erAktiv, laasetekst, opbevaresTil } from "./fleet/abonnement.js";
 import { dato } from "./fleet/format.js";
-import { auth, db, demoMode, miljoe, hentBrugerContext } from "./firebase.js";
+import { auth, db, demoMode, firebaseStartfejl, miljoe, hentBrugerContext } from "./firebase.js";
 
 import { permStrengFraRolle } from "./fleet/permissions.js";
 import { harModul } from "./fleet/moduler.js";
@@ -391,6 +391,15 @@ export default function App() {
     return () => { aktiv = false; };
   }, [bruger?.tenant]);
 
+  if (!klar && firebaseStartfejl) {
+    return <section className="fc-boot" role="alert" aria-labelledby="firebase-startfejl-titel">
+      <div className="fc-card">
+        <h1 id="firebase-startfejl-titel">Den lokale backend kunne ikke startes</h1>
+        <p>Veyro skifter ikke automatisk til demodata, når et konfigureret Firebase-miljø fejler.</p>
+        <button type="button" className="fc-btn fc-btn-primaer" onClick={() => window.location.reload()}>Prøv igen</button>
+      </div>
+    </section>;
+  }
   if (!klar) return <div className="fc-boot">Henter…</div>;
 
   /**

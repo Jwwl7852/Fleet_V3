@@ -884,6 +884,24 @@ implementeret i checkpointet. Integrationen er emulatorverificeret Milepæl A
 med udvalgte serverfunktioner; den er ikke en deployment eller en tilslutning
 til eksterne løn-, mail- eller certifikattjenester.
 
+### Rettelse af miljøvalg og indlæsningsfejl
+
+Den efterfølgende browserafprøvning viste, at WORKFORCE altid valgte Firebase-
+repositoryet, også i platformens eksplicitte demo-mode uden Firebase-app. Det
+er rettet ved at vælge en tydeligt markeret, tenantafgrænset syntetisk memory-
+datakilde i demo-mode og udelukkende Firebase i backendmiljøet. Backendfejl
+falder ikke skjult tilbage til demo. Første læsefejl stopper nu spinneren og
+viser en forståelig fejl med genforsøg. Alle syv integrerede WORKFORCE-ruter er
+browserkontrolleret i demo-mode, og målrettede tests bestod 71/71.
+
+En ny autentificeret prøve med det isolerede projekt
+`demo-veyro-workforce-test`, Firebase CLI 15.29.0 og proceslokal Temurin
+21.0.12+1 blev blokeret, før login og produktprøver, fordi Database Emulator
+ikke kunne oprette sin lokale Netty event-loop/loopback-forbindelse på denne
+Windows-vært. Det tidligere backendbevis ændres ikke, men den nye afsluttende
+backendprøve må ikke beskrives som bestået. Detaljerne findes i
+`docs/VEYRO_WORKFORCE_MILJOERETTELSE_V1.md`.
+
 ## 16. WAREHOUSE integreret — 2026-09-13
 
 Det præcise rettelsescheckpoint

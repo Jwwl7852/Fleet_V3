@@ -98,6 +98,7 @@ export const erProduktionsdeploy = netlifyKontekst === "production";
 let _db = null;
 let _auth = null;
 let _funktioner = null;
+let _firebaseStartfejl = null;
 
 if (!demoMode) {
   try {
@@ -116,12 +117,14 @@ if (!demoMode) {
       _funktioner.useEmulator("127.0.0.1", funktionerEmulatorPort);
     }
   } catch (e) {
-    console.warn("Firebase kunne ikke starte. Kører demo-mode.", e);
+    _firebaseStartfejl = e;
+    console.error("Firebase kunne ikke starte. Backend er utilgængelig; der skiftes ikke til demodata.", e);
   }
 }
 
 export const db = _db;
 export const auth = _auth;
+export const firebaseStartfejl = _firebaseStartfejl;
 export { firebase };
 
 /**
