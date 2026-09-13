@@ -1,0 +1,6262 @@
+{
+  "version": "WORKFORCE integrated layout V1",
+  "capturedAtUtc": "2026-09-13T19:44:30.695Z",
+  "baseUrl": "http://127.0.0.1:5197",
+  "rootCause": "Embedded WORKFORCE beholdt standalone-gridets tomme 230px sidebarkolonne.",
+  "measurements": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1417,
+        "width": 1193,
+        "clientWidth": 1193,
+        "scrollWidth": 1193,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "grid",
+        "gridTemplateColumns": "1141px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1054,
+        "scrollWidth": 1054,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1057,
+        "scrollWidth": 1057,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 812,
+        "width": 520,
+        "clientWidth": 518,
+        "scrollWidth": 518,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/medarbejdere",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1417,
+        "width": 1193,
+        "clientWidth": 1193,
+        "scrollWidth": 1193,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "grid",
+        "gridTemplateColumns": "1141px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1054,
+        "scrollWidth": 1054,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1057,
+        "scrollWidth": 1057,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1055,
+        "scrollWidth": 1055,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/bemanding",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1417,
+        "width": 1193,
+        "clientWidth": 1193,
+        "scrollWidth": 1193,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "grid",
+        "gridTemplateColumns": "1141px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1054,
+        "scrollWidth": 1054,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1057,
+        "scrollWidth": 1057,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1055,
+        "scrollWidth": 1055,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/fravaer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1417,
+        "width": 1193,
+        "clientWidth": 1193,
+        "scrollWidth": 1193,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "grid",
+        "gridTemplateColumns": "1141px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1054,
+        "scrollWidth": 1054,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1057,
+        "scrollWidth": 1057,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1055,
+        "scrollWidth": 1055,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/kompetencer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1417,
+        "width": 1193,
+        "clientWidth": 1193,
+        "scrollWidth": 1193,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "grid",
+        "gridTemplateColumns": "1141px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1054,
+        "scrollWidth": 1054,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1057,
+        "scrollWidth": 1057,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1055,
+        "scrollWidth": 1055,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/timer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1417,
+        "width": 1193,
+        "clientWidth": 1193,
+        "scrollWidth": 1193,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "grid",
+        "gridTemplateColumns": "1141px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1054,
+        "scrollWidth": 1054,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1057,
+        "scrollWidth": 1057,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1055,
+        "scrollWidth": 1055,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/min-arbejdsdag",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1417,
+        "width": 1193,
+        "clientWidth": 1193,
+        "scrollWidth": 1193,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "grid",
+        "gridTemplateColumns": "1141px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1391,
+        "width": 1141,
+        "clientWidth": 1141,
+        "scrollWidth": 1141,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1349,
+        "width": 1057,
+        "clientWidth": 1054,
+        "scrollWidth": 1054,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 321,
+        "right": 1321,
+        "width": 1000,
+        "clientWidth": 1000,
+        "scrollWidth": 1000,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 321,
+        "right": 1321,
+        "width": 1000,
+        "clientWidth": 998,
+        "scrollWidth": 998,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1897,
+        "width": 1673,
+        "clientWidth": 1673,
+        "scrollWidth": 1673,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "grid",
+        "gridTemplateColumns": "1621px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1534,
+        "scrollWidth": 1534,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1537,
+        "scrollWidth": 1537,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1052,
+        "width": 760,
+        "clientWidth": 758,
+        "scrollWidth": 758,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/medarbejdere",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1897,
+        "width": 1673,
+        "clientWidth": 1673,
+        "scrollWidth": 1673,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "grid",
+        "gridTemplateColumns": "1621px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1534,
+        "scrollWidth": 1534,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1537,
+        "scrollWidth": 1537,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1535,
+        "scrollWidth": 1535,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/bemanding",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1897,
+        "width": 1673,
+        "clientWidth": 1673,
+        "scrollWidth": 1673,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "grid",
+        "gridTemplateColumns": "1621px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1534,
+        "scrollWidth": 1534,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1537,
+        "scrollWidth": 1537,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1535,
+        "scrollWidth": 1535,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/fravaer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1897,
+        "width": 1673,
+        "clientWidth": 1673,
+        "scrollWidth": 1673,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "grid",
+        "gridTemplateColumns": "1621px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1534,
+        "scrollWidth": 1534,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1537,
+        "scrollWidth": 1537,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1535,
+        "scrollWidth": 1535,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/kompetencer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1897,
+        "width": 1673,
+        "clientWidth": 1673,
+        "scrollWidth": 1673,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "grid",
+        "gridTemplateColumns": "1621px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1534,
+        "scrollWidth": 1534,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1537,
+        "scrollWidth": 1537,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1535,
+        "scrollWidth": 1535,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/timer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1897,
+        "width": 1673,
+        "clientWidth": 1673,
+        "scrollWidth": 1673,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "grid",
+        "gridTemplateColumns": "1621px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1534,
+        "scrollWidth": 1534,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1537,
+        "scrollWidth": 1537,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1535,
+        "scrollWidth": 1535,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/min-arbejdsdag",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 224,
+        "right": 1897,
+        "width": 1673,
+        "clientWidth": 1673,
+        "scrollWidth": 1673,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "grid",
+        "gridTemplateColumns": "1621px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 250,
+        "right": 1871,
+        "width": 1621,
+        "clientWidth": 1621,
+        "scrollWidth": 1621,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 292,
+        "right": 1829,
+        "width": 1537,
+        "clientWidth": 1534,
+        "scrollWidth": 1534,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 561,
+        "right": 1561,
+        "width": 1000,
+        "clientWidth": 1000,
+        "scrollWidth": 1000,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 561,
+        "right": 1561,
+        "width": 1000,
+        "clientWidth": 998,
+        "scrollWidth": 998,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 224,
+        "width": 216,
+        "clientWidth": 216,
+        "scrollWidth": 230,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/workforce-v2",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 300,
+        "scrollWidth": 300,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 303,
+        "scrollWidth": 303,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 301,
+        "scrollWidth": 301,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/workforce-v2/medarbejdere",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 300,
+        "scrollWidth": 300,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 303,
+        "scrollWidth": 303,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 301,
+        "scrollWidth": 301,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": [
+        {
+          "text": "Åbn",
+          "left": 700,
+          "right": 751,
+          "insideScroll": true
+        },
+        {
+          "text": "Fratræd",
+          "left": 700,
+          "right": 774,
+          "insideScroll": true
+        },
+        {
+          "text": "Åbn",
+          "left": 700,
+          "right": 751,
+          "insideScroll": true
+        },
+        {
+          "text": "Fratræd",
+          "left": 700,
+          "right": 774,
+          "insideScroll": true
+        },
+        {
+          "text": "Åbn",
+          "left": 700,
+          "right": 751,
+          "insideScroll": true
+        },
+        {
+          "text": "Fratræd",
+          "left": 700,
+          "right": 774,
+          "insideScroll": true
+        },
+        {
+          "text": "Åbn",
+          "left": 700,
+          "right": 751,
+          "insideScroll": true
+        },
+        {
+          "text": "Fratræd",
+          "left": 700,
+          "right": 774,
+          "insideScroll": true
+        },
+        {
+          "text": "Åbn",
+          "left": 700,
+          "right": 751,
+          "insideScroll": true
+        },
+        {
+          "text": "Fratræd",
+          "left": 700,
+          "right": 774,
+          "insideScroll": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/workforce-v2/bemanding",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 300,
+        "scrollWidth": 300,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 303,
+        "scrollWidth": 303,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 301,
+        "scrollWidth": 301,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": [
+        {
+          "text": "06.00–14.007,5 t · Offentliggjort",
+          "left": 322,
+          "right": 442,
+          "insideScroll": true
+        },
+        {
+          "text": "06.00–14.007,5 t · Offentliggjort",
+          "left": 442,
+          "right": 562,
+          "insideScroll": true
+        },
+        {
+          "text": "06.00–14.007,5 t · Kladde",
+          "left": 562,
+          "right": 682,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 682,
+          "right": 802,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 802,
+          "right": 922,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 922,
+          "right": 1042,
+          "insideScroll": true
+        },
+        {
+          "text": "07.00–15.007,5 t · Offentliggjort",
+          "left": 322,
+          "right": 442,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 442,
+          "right": 562,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 562,
+          "right": 682,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 682,
+          "right": 802,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 802,
+          "right": 922,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 922,
+          "right": 1042,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 322,
+          "right": 442,
+          "insideScroll": true
+        },
+        {
+          "text": "Fravær",
+          "left": 442,
+          "right": 562,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 562,
+          "right": 682,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 682,
+          "right": 802,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 802,
+          "right": 922,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 922,
+          "right": 1042,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 322,
+          "right": 442,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 442,
+          "right": 562,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 562,
+          "right": 682,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 682,
+          "right": 802,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 802,
+          "right": 922,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 922,
+          "right": 1042,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 322,
+          "right": 442,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 442,
+          "right": 562,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 562,
+          "right": 682,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 682,
+          "right": 802,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 802,
+          "right": 922,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 922,
+          "right": 1042,
+          "insideScroll": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/workforce-v2/fravaer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 300,
+        "scrollWidth": 300,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 303,
+        "scrollWidth": 303,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 301,
+        "scrollWidth": 301,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": [
+        {
+          "text": "Åbn",
+          "left": 750,
+          "right": 801,
+          "insideScroll": true
+        },
+        {
+          "text": "Åbn",
+          "left": 750,
+          "right": 801,
+          "insideScroll": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/workforce-v2/kompetencer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 300,
+        "scrollWidth": 300,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 303,
+        "scrollWidth": 303,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 301,
+        "scrollWidth": 301,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": [
+        {
+          "text": "Redigér",
+          "left": 714,
+          "right": 788,
+          "insideScroll": true
+        },
+        {
+          "text": "Redigér",
+          "left": 714,
+          "right": 788,
+          "insideScroll": true
+        },
+        {
+          "text": "Redigér",
+          "left": 714,
+          "right": 788,
+          "insideScroll": true
+        },
+        {
+          "text": "Redigér",
+          "left": 714,
+          "right": 788,
+          "insideScroll": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/workforce-v2/timer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 300,
+        "scrollWidth": 300,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 303,
+        "scrollWidth": 303,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 301,
+        "scrollWidth": 301,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": [
+        {
+          "text": "Ret",
+          "left": 734,
+          "right": 780,
+          "insideScroll": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/workforce-v2/min-arbejdsdag",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 351,
+        "width": 327,
+        "clientWidth": 327,
+        "scrollWidth": 327,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 300,
+        "scrollWidth": 300,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 303,
+        "scrollWidth": 303,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 339,
+        "width": 303,
+        "clientWidth": 301,
+        "scrollWidth": 301,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 367,
+        "width": 359,
+        "clientWidth": 359,
+        "scrollWidth": 359,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "route": "/workforce-v2",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 270,
+        "scrollWidth": 270,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 273,
+        "scrollWidth": 273,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 271,
+        "scrollWidth": 271,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "route": "/workforce-v2/medarbejdere",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 270,
+        "scrollWidth": 270,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 273,
+        "scrollWidth": 273,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 271,
+        "scrollWidth": 271,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": [
+        {
+          "text": "Åbn",
+          "left": 700,
+          "right": 751,
+          "insideScroll": true
+        },
+        {
+          "text": "Fratræd",
+          "left": 700,
+          "right": 774,
+          "insideScroll": true
+        },
+        {
+          "text": "Åbn",
+          "left": 700,
+          "right": 751,
+          "insideScroll": true
+        },
+        {
+          "text": "Fratræd",
+          "left": 700,
+          "right": 774,
+          "insideScroll": true
+        },
+        {
+          "text": "Åbn",
+          "left": 700,
+          "right": 751,
+          "insideScroll": true
+        },
+        {
+          "text": "Fratræd",
+          "left": 700,
+          "right": 774,
+          "insideScroll": true
+        },
+        {
+          "text": "Åbn",
+          "left": 700,
+          "right": 751,
+          "insideScroll": true
+        },
+        {
+          "text": "Fratræd",
+          "left": 700,
+          "right": 774,
+          "insideScroll": true
+        },
+        {
+          "text": "Åbn",
+          "left": 700,
+          "right": 751,
+          "insideScroll": true
+        },
+        {
+          "text": "Fratræd",
+          "left": 700,
+          "right": 774,
+          "insideScroll": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "route": "/workforce-v2/bemanding",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 270,
+        "scrollWidth": 270,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 273,
+        "scrollWidth": 273,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 271,
+        "scrollWidth": 271,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": [
+        {
+          "text": "06.00–14.007,5 t · Offentliggjort",
+          "left": 322,
+          "right": 442,
+          "insideScroll": true
+        },
+        {
+          "text": "06.00–14.007,5 t · Offentliggjort",
+          "left": 442,
+          "right": 562,
+          "insideScroll": true
+        },
+        {
+          "text": "06.00–14.007,5 t · Kladde",
+          "left": 562,
+          "right": 682,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 682,
+          "right": 802,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 802,
+          "right": 922,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 922,
+          "right": 1042,
+          "insideScroll": true
+        },
+        {
+          "text": "07.00–15.007,5 t · Offentliggjort",
+          "left": 322,
+          "right": 442,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 442,
+          "right": 562,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 562,
+          "right": 682,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 682,
+          "right": 802,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 802,
+          "right": 922,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 922,
+          "right": 1042,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 322,
+          "right": 442,
+          "insideScroll": true
+        },
+        {
+          "text": "Fravær",
+          "left": 442,
+          "right": 562,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 562,
+          "right": 682,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 682,
+          "right": 802,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 802,
+          "right": 922,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 922,
+          "right": 1042,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 322,
+          "right": 442,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 442,
+          "right": 562,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 562,
+          "right": 682,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 682,
+          "right": 802,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 802,
+          "right": 922,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 922,
+          "right": 1042,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 322,
+          "right": 442,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 442,
+          "right": 562,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 562,
+          "right": 682,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 682,
+          "right": 802,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 802,
+          "right": 922,
+          "insideScroll": true
+        },
+        {
+          "text": "＋",
+          "left": 922,
+          "right": 1042,
+          "insideScroll": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "route": "/workforce-v2/fravaer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 270,
+        "scrollWidth": 270,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 273,
+        "scrollWidth": 273,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 271,
+        "scrollWidth": 271,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": [
+        {
+          "text": "Åbn",
+          "left": 750,
+          "right": 801,
+          "insideScroll": true
+        },
+        {
+          "text": "Åbn",
+          "left": 750,
+          "right": 801,
+          "insideScroll": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "route": "/workforce-v2/kompetencer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 270,
+        "scrollWidth": 270,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 273,
+        "scrollWidth": 273,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 271,
+        "scrollWidth": 271,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": [
+        {
+          "text": "Redigér",
+          "left": 714,
+          "right": 788,
+          "insideScroll": true
+        },
+        {
+          "text": "Redigér",
+          "left": 714,
+          "right": 788,
+          "insideScroll": true
+        },
+        {
+          "text": "Redigér",
+          "left": 714,
+          "right": 788,
+          "insideScroll": true
+        },
+        {
+          "text": "Redigér",
+          "left": 714,
+          "right": 788,
+          "insideScroll": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "route": "/workforce-v2/timer",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 270,
+        "scrollWidth": 270,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 273,
+        "scrollWidth": 273,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 271,
+        "scrollWidth": 271,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": [
+        {
+          "text": "Ret",
+          "left": 734,
+          "right": 780,
+          "insideScroll": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "route": "/workforce-v2/min-arbejdsdag",
+      "mode": "normal",
+      "zoomText": "100 %",
+      "compact": false,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "minmax(0px, 1fr)",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 24,
+        "right": 321,
+        "width": 297,
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 270,
+        "scrollWidth": 270,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 273,
+        "scrollWidth": 273,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 36,
+        "right": 309,
+        "width": 273,
+        "clientWidth": 271,
+        "scrollWidth": 271,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 337,
+        "width": 329,
+        "clientWidth": 329,
+        "scrollWidth": 329,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1417,
+        "width": 1337,
+        "clientWidth": 1337,
+        "scrollWidth": 1337,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "grid",
+        "gridTemplateColumns": "1285px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1198,
+        "scrollWidth": 1198,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1201,
+        "scrollWidth": 1201,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 740,
+        "width": 592,
+        "clientWidth": 590,
+        "scrollWidth": 590,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/medarbejdere",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1417,
+        "width": 1337,
+        "clientWidth": 1337,
+        "scrollWidth": 1337,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "grid",
+        "gridTemplateColumns": "1285px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1198,
+        "scrollWidth": 1198,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1201,
+        "scrollWidth": 1201,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1199,
+        "scrollWidth": 1199,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/bemanding",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1417,
+        "width": 1337,
+        "clientWidth": 1337,
+        "scrollWidth": 1337,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "grid",
+        "gridTemplateColumns": "1285px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1198,
+        "scrollWidth": 1198,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1201,
+        "scrollWidth": 1201,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1199,
+        "scrollWidth": 1199,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/fravaer",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1417,
+        "width": 1337,
+        "clientWidth": 1337,
+        "scrollWidth": 1337,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "grid",
+        "gridTemplateColumns": "1285px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1198,
+        "scrollWidth": 1198,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1201,
+        "scrollWidth": 1201,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1199,
+        "scrollWidth": 1199,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/kompetencer",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1417,
+        "width": 1337,
+        "clientWidth": 1337,
+        "scrollWidth": 1337,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "grid",
+        "gridTemplateColumns": "1285px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1198,
+        "scrollWidth": 1198,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1201,
+        "scrollWidth": 1201,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1199,
+        "scrollWidth": 1199,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/timer",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1417,
+        "width": 1337,
+        "clientWidth": 1337,
+        "scrollWidth": 1337,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "grid",
+        "gridTemplateColumns": "1285px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1198,
+        "scrollWidth": 1198,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1201,
+        "scrollWidth": 1201,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1199,
+        "scrollWidth": 1199,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/workforce-v2/min-arbejdsdag",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1417,
+        "width": 1337,
+        "clientWidth": 1337,
+        "scrollWidth": 1337,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "grid",
+        "gridTemplateColumns": "1285px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1391,
+        "width": 1285,
+        "clientWidth": 1285,
+        "scrollWidth": 1285,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1349,
+        "width": 1201,
+        "clientWidth": 1198,
+        "scrollWidth": 1198,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 249,
+        "right": 1249,
+        "width": 1000,
+        "clientWidth": 1000,
+        "scrollWidth": 1000,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 249,
+        "right": 1249,
+        "width": 1000,
+        "clientWidth": 998,
+        "scrollWidth": 998,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1897,
+        "width": 1817,
+        "clientWidth": 1817,
+        "scrollWidth": 1817,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "grid",
+        "gridTemplateColumns": "1765px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1678,
+        "scrollWidth": 1678,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1681,
+        "scrollWidth": 1681,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 980,
+        "width": 832,
+        "clientWidth": 830,
+        "scrollWidth": 830,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/medarbejdere",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1897,
+        "width": 1817,
+        "clientWidth": 1817,
+        "scrollWidth": 1817,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "grid",
+        "gridTemplateColumns": "1765px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1678,
+        "scrollWidth": 1678,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1681,
+        "scrollWidth": 1681,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1679,
+        "scrollWidth": 1679,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/bemanding",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1897,
+        "width": 1817,
+        "clientWidth": 1817,
+        "scrollWidth": 1817,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "grid",
+        "gridTemplateColumns": "1765px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1678,
+        "scrollWidth": 1678,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1681,
+        "scrollWidth": 1681,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1679,
+        "scrollWidth": 1679,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/fravaer",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1897,
+        "width": 1817,
+        "clientWidth": 1817,
+        "scrollWidth": 1817,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "grid",
+        "gridTemplateColumns": "1765px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1678,
+        "scrollWidth": 1678,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1681,
+        "scrollWidth": 1681,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1679,
+        "scrollWidth": 1679,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/kompetencer",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1897,
+        "width": 1817,
+        "clientWidth": 1817,
+        "scrollWidth": 1817,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "grid",
+        "gridTemplateColumns": "1765px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1678,
+        "scrollWidth": 1678,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1681,
+        "scrollWidth": 1681,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1679,
+        "scrollWidth": 1679,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/timer",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1897,
+        "width": 1817,
+        "clientWidth": 1817,
+        "scrollWidth": 1817,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "grid",
+        "gridTemplateColumns": "1765px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1678,
+        "scrollWidth": 1678,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1681,
+        "scrollWidth": 1681,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1679,
+        "scrollWidth": 1679,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "route": "/workforce-v2/min-arbejdsdag",
+      "mode": "kompakt",
+      "zoomText": "100 %",
+      "compact": true,
+      "horizontalOverflow": false,
+      "slot": {
+        "left": 80,
+        "right": 1897,
+        "width": 1817,
+        "clientWidth": 1817,
+        "scrollWidth": 1817,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "zoom": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "root": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "workspace": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "grid",
+        "gridTemplateColumns": "1765px",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "main": {
+        "left": 106,
+        "right": 1871,
+        "width": 1765,
+        "clientWidth": 1765,
+        "scrollWidth": 1765,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "notice": {
+        "left": 148,
+        "right": 1829,
+        "width": 1681,
+        "clientWidth": 1678,
+        "scrollWidth": 1678,
+        "display": "block",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "pageHead": {
+        "left": 489,
+        "right": 1489,
+        "width": 1000,
+        "clientWidth": 1000,
+        "scrollWidth": 1000,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "firstCard": {
+        "left": 489,
+        "right": 1489,
+        "width": 1000,
+        "clientWidth": 998,
+        "scrollWidth": 998,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "sidebar": {
+        "left": 8,
+        "right": 80,
+        "width": 72,
+        "clientWidth": 72,
+        "scrollWidth": 86,
+        "display": "flex",
+        "gridTemplateColumns": "none",
+        "maxWidth": "none",
+        "zoom": "1"
+      },
+      "outsideControls": []
+    }
+  ],
+  "preferenceChecks": {
+    "saved": {
+      "zoom": "110 %",
+      "compact": true
+    },
+    "reset": {
+      "zoom": "100 %",
+      "compact": false
+    }
+  },
+  "console": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    }
+  ],
+  "screenshots": [
+    "screenshots/01-1440x900-normal-overblik.png",
+    "screenshots/02-1440x900-normal-medarbejdere.png",
+    "screenshots/03-1440x900-normal-bemanding.png",
+    "screenshots/04-1440x900-normal-fravaer.png",
+    "screenshots/05-1440x900-normal-kompetencer.png",
+    "screenshots/06-1440x900-normal-timer.png",
+    "screenshots/07-1440x900-normal-min-arbejdsdag.png",
+    "screenshots/08-1920x1080-normal-overblik.png",
+    "screenshots/09-1920x1080-normal-medarbejdere.png",
+    "screenshots/10-1920x1080-normal-bemanding.png",
+    "screenshots/11-1920x1080-normal-fravaer.png",
+    "screenshots/12-1920x1080-normal-kompetencer.png",
+    "screenshots/13-1920x1080-normal-timer.png",
+    "screenshots/14-1920x1080-normal-min-arbejdsdag.png",
+    "screenshots/15-390x844-normal-overblik.png",
+    "screenshots/16-390x844-normal-medarbejdere.png",
+    "screenshots/17-390x844-normal-bemanding.png",
+    "screenshots/18-390x844-normal-fravaer.png",
+    "screenshots/19-390x844-normal-kompetencer.png",
+    "screenshots/20-390x844-normal-timer.png",
+    "screenshots/21-390x844-normal-min-arbejdsdag.png",
+    "screenshots/22-360x800-normal-overblik.png",
+    "screenshots/23-360x800-normal-medarbejdere.png",
+    "screenshots/24-360x800-normal-bemanding.png",
+    "screenshots/25-360x800-normal-fravaer.png",
+    "screenshots/26-360x800-normal-kompetencer.png",
+    "screenshots/27-360x800-normal-timer.png",
+    "screenshots/28-360x800-normal-min-arbejdsdag.png",
+    "screenshots/29-1440x900-kompakt-overblik.png",
+    "screenshots/30-1440x900-kompakt-medarbejdere.png",
+    "screenshots/31-1440x900-kompakt-bemanding.png",
+    "screenshots/32-1440x900-kompakt-fravaer.png",
+    "screenshots/33-1440x900-kompakt-kompetencer.png",
+    "screenshots/34-1440x900-kompakt-timer.png",
+    "screenshots/35-1440x900-kompakt-min-arbejdsdag.png",
+    "screenshots/36-1920x1080-kompakt-overblik.png",
+    "screenshots/37-1920x1080-kompakt-medarbejdere.png",
+    "screenshots/38-1920x1080-kompakt-bemanding.png",
+    "screenshots/39-1920x1080-kompakt-fravaer.png",
+    "screenshots/40-1920x1080-kompakt-kompetencer.png",
+    "screenshots/41-1920x1080-kompakt-timer.png",
+    "screenshots/42-1920x1080-kompakt-min-arbejdsdag.png",
+    "screenshots/43-1440x900-gemte-visningsvalg.png",
+    "screenshots/44-1440x900-nulstillet-visning.png"
+  ]
+}

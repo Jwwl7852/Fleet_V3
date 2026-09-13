@@ -902,6 +902,16 @@ Windows-vært. Det tidligere backendbevis ændres ikke, men den nye afsluttende
 backendprøve må ikke beskrives som bestået. Detaljerne findes i
 `docs/VEYRO_WORKFORCE_MILJOERETTELSE_V1.md`.
 
+Den særskilte efterfølgende layoutfejl skyldtes, at embedded WORKFORCE beholdt
+standalone-appens todelte grid (`230px` intern sidebar plus indhold), selv om
+den interne sidebar ikke blev tegnet i AppShell. Modulindholdet endte derfor i
+den tomme 230 px-kolonne. `.wf-app--embedded` bruger nu én fleksibel kolonne og
+udfylder den fælles zoom-wrapper uden at ændre AppShell, zoomregler eller
+standalone-layout. 42 kombinationer af syv ruter, fire viewports og normal/
+kompakt desktopmenu er målt uden dokumentoverflow; 44 screenshots samt
+konkrete mål findes i `docs/VEYRO_WORKFORCE_LAYOUTRETTELSE_V1.md` og
+`artifacts/workforce-layout-v1/`.
+
 ## 16. WAREHOUSE integreret — 2026-09-13
 
 Det præcise rettelsescheckpoint
