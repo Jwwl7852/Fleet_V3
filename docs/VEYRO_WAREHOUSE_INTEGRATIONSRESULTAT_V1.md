@@ -1,6 +1,6 @@
 # WAREHOUSE – integrationsresultat V1
 
-Dato: 2026-09-13  
+Dato: 2026-09-13
 Branch: `codex/veyro-integration-v1`
 
 ## Sporbarhed
@@ -38,7 +38,7 @@ Ingen root-dependency eller lockfil er ændret i denne etape.
 
 ## Isoleret emulator-QA
 
-Projekt: `demo-veyro-warehouse-integration-test`  
+Projekt: `demo-veyro-warehouse-integration-test`
 Auth `127.0.0.1:9121`, Database `127.0.0.1:9022`, Functions
 `127.0.0.1:5024`, Storage `127.0.0.1:9231`.
 
