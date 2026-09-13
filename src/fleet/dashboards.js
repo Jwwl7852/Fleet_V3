@@ -60,7 +60,7 @@ export const DASHBOARDS = [
   { key: "flaade", label: "Fleet", under: "Enheder, service og vedligehold" },
   { key: "facility", label: "Facility", under: "Ejendomme, service og opgaver" },
   { key: "indkoeb", label: "Procure", under: "Indkøb, leverandører og fakturaer" },
-  { key: "warehouse", label: "Warehouse", under: "Lagerbeholdning og varestyring" },
+  { key: "warehouse", label: "WAREHOUSE", under: "Lagerbeholdning og varestyring" },
   /* ⚠ "Unitbooking", IKKE "UnitBooking". Modulet hedder det ene sted, og
      prøven holder katalogerne op mod hinanden — to stavemåder af et
      modulnavn er to steder det kan rettes. */

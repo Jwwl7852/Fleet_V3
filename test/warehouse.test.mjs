@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  ALLE_ENHEDER, ALLE_SPORINGER, BATCH_MOENSTER,
+  ALLE_ENHEDER, ALLE_SPORINGER, ALLE_VARE_EJERFORHOLD, BATCH_MOENSTER,
   valideVare, rumfangMm3,
   ALLE_PLADS_TYPER, ALLE_PLADS_STATUS,
   kanPlukkesFra, valideLagerfelter,
@@ -27,6 +27,7 @@ import {
   ALLE_CARRIER_TYPER,
   ALLE_CARRIER_STATUS, kraeverLokation, udenLokation,
   valideCarrier, carrieroverblik, kanPlaceres,
+  valideEnhed, virkningPaaEnhed,
 } from "../src/fleet/warehouse.js";
 import { ANTAL_SKALA } from "../src/fleet/beloeb.js";
 import { NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor } from "../src/fleet/moduler.js";
@@ -63,13 +64,41 @@ describe("skalaen er husets, ikke Warehouses egen", () => {
   });
 });
 
-describe("varen er kundens", () => {
-  it("kræver en kunde", () => {
-    /* ⚠ 3PL: uden en kunde er varen på lageret uden en modpart, og
-       bevægelsen kan ikke afregnes. */
+describe("individuelle enheder bevarer ejerforholdet", () => {
+  const grundlag = { varer: ["v1"], kunder: ["k1"], carriers: ["c1"] };
+
+  it("accepterer både historisk kundegods og virksomhedens egen serienummerenhed", () => {
+    assert.deepEqual(valideEnhed({
+      serienummer: "SN-KUNDE-1", vareId: "v1", kundeId: "k1",
+      tilstand: "paaLager", carrierId: "c1",
+    }, grundlag), {});
+    assert.deepEqual(valideEnhed({
+      serienummer: "SN-EGEN-1", vareId: "v1", ejerforhold: "egen",
+      tilstand: "paaLager", carrierId: "c1",
+    }, grundlag), {});
+  });
+
+  it("kopierer ejerforholdet ind i den atomiske enhedsrække", () => {
+    const virkning = virkningPaaEnhed({
+      art: "modtag", vareId: "v1", serienummer: "SN-EGEN-2", tilCarrierId: "c1",
+    }, { vare: { sporing: "serie", ejerforhold: "egen" } });
+    assert.equal(virkning.felter.ejerforhold, "egen");
+    assert.equal(virkning.felter.kundeId, null);
+    assert.equal(virkning.felter.carrierId, "c1");
+  });
+});
+
+describe("varen har ét tydeligt ejerforhold", () => {
+  it("kræver en kunde for kundegods", () => {
     assert.ok(valideVare(vare({ kundeId: "" }), K).kundeId);
     assert.ok(valideVare(vare({ kundeId: "findes-ikke" }), K).kundeId);
     assert.deepEqual(valideVare(vare(), K), {});
+  });
+
+  it("tillader egne varer uden kunde og forbyder dobbelt ejerskab", () => {
+    assert.deepEqual(ALLE_VARE_EJERFORHOLD, ["kunde", "egen"]);
+    assert.deepEqual(valideVare(vare({ ejerforhold: "egen", kundeId: null }), K), {});
+    assert.ok(valideVare(vare({ ejerforhold: "egen", kundeId: "k1" }), K).kundeId);
   });
 
   it("kræver en enhed fra listen, ikke fritekst", () => {
@@ -305,17 +334,17 @@ describe("modulet, noderne og rettighederne hænger sammen", () => {
     assert.deepEqual(
       Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("warehouse")).sort(),
       ["beholdning", "bevaegelser", "carriers", "enheder", "optaellinger",
-       "plukordrer", "reolpladser", "varer"]);
+       "kasser", "kassetyper", "plukordrer", "reolpladser", "unitbevaegelser", "varer"].sort());
     assert.deepEqual(modulerFor("reolpladser").sort(), ["unitbooking", "warehouse"]);
   });
 
-  it("⚠ CARRIEREN HØRER TIL WAREHOUSE ALENE — IKKE SAMMEN MED `kasser`", () => {
-    /* De to er fysisk den samme slags beholder, men de bærer hver sin
-       forretning: kassen udlejes pr. sag, carrieren bærer kundens gods. De
-       står derfor på hvert sit modul — mens `reolpladser`, som de begge står
-       på, hører til begge. Se WAREHOUSE.md punkt 6.2. */
+  it("carrieren er kun WAREHOUSE, mens den bookbare unit er fælles", () => {
+    /* `kasser` er den eksisterende stabile identitet for en bookbar fysisk
+       unit. Carrieren er fortsat en beholder for lagerindhold og må ikke
+       tælles som en parallel kopi af den samme unit. */
     assert.deepEqual(modulerFor("carriers"), ["warehouse"]);
-    assert.deepEqual(modulerFor("kasser"), ["unitbooking"]);
+    assert.deepEqual(modulerFor("kasser").sort(), ["unitbooking", "warehouse"]);
+    assert.deepEqual(modulerFor("unitbevaegelser").sort(), ["unitbooking", "warehouse"]);
   });
 
   it("⚠ RØRER IKKE `lagre`", () => {
@@ -453,7 +482,7 @@ describe("serveren skriver bevægelsen og saldoen sammen", () => {
     const start = kilde.indexOf("export const bevaegelseskriv");
     const naeste = kilde.indexOf(String.fromCharCode(10) + "export const ", start + 1);
     const blok = naeste < 0 ? kilde.slice(start) : kilde.slice(start, naeste);
-    assert.ok(blok.includes("post.kundeId = vare.kundeId"));
+    assert.ok(blok.includes('post.kundeId = post.ejerforhold === "kunde" ? vare.kundeId : null'));
     /* ⚠ KUN I DEN HER FUNKTION. `kasseudlaanskriv` tager legitimt imod en
        kundeId fra klienten — dér er kunden en oplysning om udlånet, ikke en
        ejendomsret der kan misbruges. Prøven må ikke ramme den. */
@@ -891,6 +920,20 @@ describe("raterne bor i satser — ikke i et fjerde prissystem", () => {
     const l = afregningslinjer({ bevaegelser: bev, satsFor, kundeId: "k1", fra: D(1), til: D(29) });
     assert.equal(l.length, 1);
     assert.equal(l[0].haendelser, 1);
+  });
+
+  it("egne varer bliver ikke kundeafregnet", () => {
+    const bev = [
+      { ejerforhold: "egen", kundeId: null, art: "modtag", antal: 3 * V, tidspunktMs: D(5) },
+      { ejerforhold: "kunde", kundeId: "k1", art: "modtag", antal: 2 * V, tidspunktMs: D(5) },
+    ];
+    const l = afregningslinjer({
+      bevaegelser: bev,
+      satsFor: () => ({ gyldigFra: D(1), satsOere: 4500 }),
+      kundeId: "k1", fra: D(1), til: D(30),
+    });
+    assert.equal(l.length, 1);
+    assert.equal(l[0].antal, 2 * V);
   });
 
   it("⚠ EN YDELSE UDEN SATS UDELADES IKKE — den står med null", () => {

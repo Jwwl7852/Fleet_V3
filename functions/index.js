@@ -50,14 +50,20 @@ import {
 } from "./delt/audit-regler.js";
 import { beregnKpi } from "./delt/kpi-aggregering.js";
 import {
-  valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter
+  valideUdlaan, kanSkifteUdlaan, virkningPaaKasse, konflikter,
+  valideKasse, KASSE_ID_MOENSTER,
 } from "./delt/unitbooking.js";
 import {
   valideBevaegelse, virkningPaaBeholdning, kanPlukkesFra, PLADS_STATUS,
   talFraMaengde, kanSkifteOrdre, beholdningsNoegle, UDEN_BATCH,
   valideOptaelling, validePlacering, virkningPaaCarrier, kanPlaceres,
-  CARRIER_STATUS, virkningPaaEnhed, valideEnhed, ENHED_TILSTAND
+  CARRIER_STATUS, virkningPaaEnhed, valideEnhed, ENHED_TILSTAND,
+  vareEjerforhold
 } from "./delt/warehouse.js";
+import {
+  bygWarehouseUnitbevaegelse, bindendeBookingerForUnit,
+  sammenlignOperation, valideUnitBevaegelse,
+} from "./delt/warehouse-unit.js";
 import {
   ROLLE_PERMS, permsForTenant,
   valideRolleperms, laaserUde, PERM, byggRolleClaims, permStrengFraClaims,
@@ -2386,8 +2392,327 @@ async function kraevBevaegelsesskriv(req) {
   return { uid: auth.uid, tenantId, db };
 }
 
+async function kraevUnitlagerskriv(req, kilde) {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+  if (!['unitbooking', 'warehouse'].includes(kilde)) {
+    throw new HttpsError("invalid-argument", "Vælg en gyldig modul-kilde.");
+  }
+  const db = getDatabase();
+  const perms = permStrengFraClaims(auth.token);
+  const permission = kilde === "warehouse" ? PERM.bevaegelserSkriv : PERM.kasseudlaanSkriv;
+  if (typeof perms !== "string" || !perms.includes(`|${permission}|`)) {
+    throw new HttpsError("permission-denied", `Kræver ${permission}.`);
+  }
+  const [ab, modul] = await Promise.all([
+    db.ref(`tenants/${tenantId}/abonnement/status`).once("value"),
+    db.ref(`tenants/${tenantId}/moduler/${kilde}`).once("value"),
+  ]);
+  if (ab.exists() && ab.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+  if (modul.exists() && modul.val() !== true) {
+    throw new HttpsError("permission-denied", `${kilde === "warehouse" ? "WAREHOUSE" : "UNIT Booking"} er ikke slået til.`);
+  }
+  return { uid: auth.uid, tenantId, db };
+}
+
 /** Saldoposten som den ser ud efter en ændring — eller null hvis den ikke findes. */
 const saldoAf = (snap) => (snap.exists() ? snap.val()?.antal ?? 0 : 0);
+
+export const unitlageropret = onCall({ region: REGION }, async (req) => {
+  const d = req.data || {};
+  const kilde = kortStreng(d.kilde, 20);
+  if (kilde !== "warehouse") {
+    throw new HttpsError("invalid-argument", "Unitoprettelse her tilhører WAREHOUSE.");
+  }
+  const { uid, tenantId, db } = await kraevUnitlagerskriv(req, kilde);
+  const operationId = kortStreng(d.operationId, 80);
+  const unitId = kortStreng(d.unitId, 30);
+  const typeId = kortStreng(d.typeId, 30);
+  const typeNavn = kortStreng(d.typeNavn, 60);
+  const hjemPladsId = kortStreng(d.hjemPladsId, 80);
+  const modtagelsesPladsId = kortStreng(d.modtagelsesPladsId, 80);
+  const reference = kortStreng(d.reference, 60);
+  const note = kortStreng(d.note, 300);
+  const tidspunktMs = Date.now();
+  const rod = db.ref(`tenants/${tenantId}`);
+  let afvisning = null;
+  let resultat = null;
+
+  const tx = await rod.transaction((aktuel) => {
+    afvisning = null;
+    resultat = null;
+    if (!aktuel) {
+      afvisning = { kode: "not-found", tekst: "Virksomhedens lagerdata findes ikke." };
+      return;
+    }
+    const eksisterendeEvent = aktuel.unitbevaegelser?.[operationId];
+    if (eksisterendeEvent) {
+      const sammenligning = sammenlignOperation(eksisterendeEvent, {
+        operationId, unitId, art: "modtagelse", fraPladsId: null,
+        tilPladsId: modtagelsesPladsId, bookingId: null,
+        reference: reference || null, kilde: "warehouse",
+      });
+      if (sammenligning.art === "konflikt" || !aktuel.kasser?.[unitId]) {
+        afvisning = { kode: "already-exists", tekst: "operationId er allerede brugt til en anden handling." };
+        return;
+      }
+      resultat = {
+        ok: true, gentaget: true,
+        unit: { id: unitId, ...aktuel.kasser[unitId] },
+        bevaegelse: eksisterendeEvent,
+      };
+      return aktuel;
+    }
+    if (!KASSE_ID_MOENSTER.test(unitId || "")) {
+      afvisning = { kode: "invalid-argument", tekst: "Unit-id skal være 2–30 tegn med bogstaver, tal eller bindestreg." };
+      return;
+    }
+    if (aktuel.kasser?.[unitId]) {
+      afvisning = { kode: "already-exists", tekst: `Unitten ${unitId} findes allerede og er ikke oprettet igen.` };
+      return;
+    }
+    if (!KASSE_ID_MOENSTER.test(typeId || "")) {
+      afvisning = { kode: "invalid-argument", tekst: "Vælg en gyldig unittype." };
+      return;
+    }
+    if (!aktuel.reolpladser?.[hjemPladsId] || !aktuel.reolpladser?.[modtagelsesPladsId]) {
+      afvisning = { kode: "not-found", tekst: "Hjemme- og modtagelseslokation skal findes i virksomhedens lager." };
+      return;
+    }
+    if (aktuel.reolpladser[modtagelsesPladsId]?.status === "lukket") {
+      afvisning = { kode: "failed-precondition", tekst: "Modtagelseslokationen er lukket." };
+      return;
+    }
+    const typeFindes = Boolean(aktuel.kassetyper?.[typeId]);
+    if (!typeFindes && !typeNavn) {
+      afvisning = { kode: "invalid-argument", tekst: "Navnet på den nye unittype mangler." };
+      return;
+    }
+    const unit = {
+      type: typeId, status: "ledig",
+      hjemPladsId, pladsId: modtagelsesPladsId,
+      ...(note ? { note } : {}),
+    };
+    const fejl = valideKasse({ id: unitId, ...unit }, {
+      typer: [...Object.keys(aktuel.kassetyper || {}), ...(typeFindes ? [] : [typeId])],
+      pladser: Object.keys(aktuel.reolpladser || {}),
+      katalog: [],
+    });
+    if (Object.keys(fejl).length) {
+      afvisning = { kode: "invalid-argument", tekst: Object.values(fejl).join(" ") };
+      return;
+    }
+    const bygget = bygWarehouseUnitbevaegelse({
+      operationId, unitId, art: "modtagelse", fraPladsId: null,
+      tilPladsId: modtagelsesPladsId, reference: reference || null,
+      kilde: "warehouse", tidspunktMs, udfoertAf: uid,
+    });
+    if (!bygget.ok) {
+      afvisning = { kode: "invalid-argument", tekst: Object.values(bygget.fejl).join(" ") };
+      return;
+    }
+    const ny = { ...aktuel };
+    if (!typeFindes) {
+      ny.kassetyper = { ...(aktuel.kassetyper || {}), [typeId]: { navn: typeNavn } };
+    }
+    ny.kasser = { ...(aktuel.kasser || {}), [unitId]: unit };
+    ny.unitbevaegelser = {
+      ...(aktuel.unitbevaegelser || {}), [operationId]: bygget.bevaegelse,
+    };
+    resultat = { ok: true, gentaget: false, unit: { id: unitId, ...unit }, bevaegelse: bygget.bevaegelse };
+    return ny;
+  });
+
+  if (afvisning) throw new HttpsError(afvisning.kode, afvisning.tekst);
+  if (!tx.committed || !resultat) {
+    throw new HttpsError("aborted", "En anden oprettede unitten samtidig. Opdatér og prøv igen.");
+  }
+  if (!resultat.gentaget) {
+    await logBevaegelse(tenantId, uid, AUDIT.opret, operationId, null,
+      { art: "modtagelse", status: "ledig" }, `${unitId}: oprettet og modtaget på ${modtagelsesPladsId}`);
+  }
+  return resultat;
+});
+
+/**
+ * WAREHOUSEs selvstændige vej til den fælles fysiske unit.
+ *
+ * Hele tenant-roden er transaktionsgrænse med vilje: unit, bookingstatus og
+ * append-only hændelse må ikke kunne lande hver for sig. UNIT Booking ejer
+ * fortsat reservationen; WAREHOUSE må kun afslutte den ved en faktisk retur
+ * med den konkrete bookingreference. En selvstændig udlevering afvises, hvis
+ * den ellers ville omgå en bindende reservation.
+ */
+export const unitlagerhandling = onCall({ region: REGION }, async (req) => {
+  const d = req.data || {};
+  const kilde = kortStreng(d.kilde, 20);
+  const { uid, tenantId, db } = await kraevUnitlagerskriv(req, kilde);
+  const operationId = kortStreng(d.operationId, 80);
+  const unitId = kortStreng(d.unitId, 30);
+  const art = kortStreng(d.art, 20);
+  const tilPladsId = art === "udlevering" ? null : kortStreng(d.tilPladsId, 80);
+  const bookingId = kortStreng(d.bookingId, 60);
+  const reference = kortStreng(d.reference, 60);
+  const tidspunktMs = Date.now();
+  const rod = db.ref(`tenants/${tenantId}`);
+  let afvisning = null;
+  let resultat = null;
+
+  const tx = await rod.transaction((aktuel) => {
+    afvisning = null;
+    resultat = null;
+    if (!aktuel) {
+      afvisning = { kode: "not-found", tekst: "Virksomhedens lagerdata findes ikke." };
+      return;
+    }
+
+    const unit = aktuel.kasser?.[unitId];
+    const eksisterende = aktuel.unitbevaegelser?.[operationId];
+    if (eksisterende) {
+      const foreslaaet = {
+        operationId, unitId, art,
+        fraPladsId: eksisterende.fraPladsId ?? unit?.pladsId ?? null,
+        tilPladsId, bookingId: bookingId || null,
+        // En bookingretur kan have fået sagsnummeret som server-afledt reference.
+        // Et identisk retry uden en eksplicit reference skal derfor stadig genkendes.
+        reference: reference || eksisterende.reference || null, kilde,
+      };
+      const sammenligning = sammenlignOperation(eksisterende, foreslaaet);
+      if (sammenligning.art === "konflikt") {
+        afvisning = { kode: "already-exists", tekst: sammenligning.besked };
+        return;
+      }
+      resultat = { ok: true, gentaget: true, bevaegelse: eksisterende };
+      return aktuel;
+    }
+
+    if (!unit) {
+      afvisning = { kode: "not-found", tekst: `Unitten ${unitId || "(tom kode)"} findes ikke. Der er ikke oprettet noget.` };
+      return;
+    }
+    if (tilPladsId && !aktuel.reolpladser?.[tilPladsId]) {
+      afvisning = { kode: "not-found", tekst: "Den valgte lokation findes ikke i virksomheden." };
+      return;
+    }
+    if (tilPladsId && aktuel.reolpladser[tilPladsId]?.status === "lukket") {
+      afvisning = { kode: "failed-precondition", tekst: "Den valgte lokation er lukket og kan ikke modtage en unit." };
+      return;
+    }
+
+    const fraPladsId = unit.pladsId || null;
+    const fejl = valideUnitBevaegelse({
+      operationId, unitId, art, fraPladsId, tilPladsId,
+      bookingId: bookingId || null, reference: reference || null,
+    }, {
+      units: Object.keys(aktuel.kasser || {}),
+      pladser: Object.keys(aktuel.reolpladser || {}),
+    });
+    if (Object.keys(fejl).length) {
+      afvisning = {
+        kode: "invalid-argument",
+        tekst: Object.values(fejl).join(" "),
+      };
+      return;
+    }
+
+    if (["modtagelse", "retur"].includes(art) && fraPladsId) {
+      afvisning = { kode: "already-exists", tekst: `Unitten står allerede på ${fraPladsId}. Der er ikke registreret en ekstra tilgang.` };
+      return;
+    }
+    if (["flytning", "udlevering"].includes(art) && !fraPladsId) {
+      afvisning = { kode: "failed-precondition", tekst: "Unitten har ingen registreret intern afgangslokation." };
+      return;
+    }
+    if (art === "udlevering" && unit.status === "udeAfDrift") {
+      afvisning = { kode: "failed-precondition", tekst: "En unit, der er ude af drift, kan ikke udleveres." };
+      return;
+    }
+    if (kilde === "unitbooking" && ["udlevering", "retur"].includes(art)) {
+      afvisning = {
+        kode: "failed-precondition",
+        tekst: "UNIT-udlevering og -retur skal ske fra bookingforløbet, så reservation og fysisk hændelse afsluttes samlet.",
+      };
+      return;
+    }
+
+    const bookinger = Object.entries(aktuel.kasseudlaan || {})
+      .map(([id, booking]) => ({ id, ...booking }));
+    const bindende = bindendeBookingerForUnit(bookinger, unitId);
+    if (art === "udlevering" && bindende.length) {
+      afvisning = {
+        kode: "failed-precondition",
+        tekst: `Unitten har ${bindende.length} aktiv reservation. Udlever den fra UNIT Booking, eller frigiv reservationen først.`,
+      };
+      return;
+    }
+
+    let booking = null;
+    if (bookingId) {
+      booking = aktuel.kasseudlaan?.[bookingId];
+      if (!booking || booking.kasseId !== unitId) {
+        afvisning = { kode: "not-found", tekst: "Bookingreferencen findes ikke på den scannede unit." };
+        return;
+      }
+      if (art !== "retur" || booking.tilstand !== "udlaant") {
+        afvisning = { kode: "failed-precondition", tekst: "Kun et faktisk udlånt bookingforløb kan modtages retur her." };
+        return;
+      }
+    } else if (art === "retur" && bindende.some((b) => b.tilstand === "udlaant")) {
+      afvisning = { kode: "failed-precondition", tekst: "Unitten er udlånt via UNIT Booking. Scan returen med bookingreferencen, så forløbet afsluttes samlet." };
+      return;
+    }
+
+    const bygget = bygWarehouseUnitbevaegelse({
+      operationId, unitId, art, fraPladsId, tilPladsId,
+      bookingId: bookingId || null, reference: reference || booking?.sagsnummer || null,
+      kilde, tidspunktMs, udfoertAf: uid,
+    });
+    if (!bygget.ok) {
+      afvisning = { kode: "invalid-argument", tekst: Object.values(bygget.fejl).join(" ") };
+      return;
+    }
+
+    const nyUnit = art === "udlevering"
+      ? { ...unit, status: "udlaant", pladsId: null }
+      : art === "flytning"
+        ? { ...unit, pladsId: tilPladsId }
+        : { ...unit, status: "ledig", pladsId: tilPladsId };
+    const ny = { ...aktuel };
+    ny.kasser = { ...(aktuel.kasser || {}), [unitId]: nyUnit };
+    ny.unitbevaegelser = {
+      ...(aktuel.unitbevaegelser || {}),
+      [operationId]: bygget.bevaegelse,
+    };
+    if (booking) {
+      ny.kasseudlaan = {
+        ...(aktuel.kasseudlaan || {}),
+        [bookingId]: { ...booking, tilstand: "returneret", returneretMs: tidspunktMs },
+      };
+    }
+    resultat = {
+      ok: true, gentaget: false,
+      unit: { id: unitId, ...nyUnit },
+      bevaegelse: bygget.bevaegelse,
+      bookingId: booking ? bookingId : null,
+    };
+    return ny;
+  });
+
+  if (afvisning) throw new HttpsError(afvisning.kode, afvisning.tekst);
+  if (!tx.committed || !resultat) {
+    throw new HttpsError("aborted", "En anden ændrede unitten samtidig. Opdatér og prøv igen.");
+  }
+  if (!resultat.gentaget) {
+    await logBevaegelse(tenantId, uid, AUDIT.aendre, operationId, null,
+      { art, status: resultat.unit?.status },
+      `${unitId}: ${art}${bookingId ? ` · booking ${bookingId}` : ""}`);
+  }
+  return resultat;
+});
 
 export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
   const { uid, tenantId, db } = await kraevBevaegelsesskriv(req);
@@ -2425,7 +2750,8 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
      kunde end den varen tilhører. Og den skrives MED frem for at blive slået
      op igen senere, fordi bevægelsen er et historisk faktum — skifter varen
      ejer, må sidste kvartals fakturagrundlag ikke ændre sig. */
-  post.kundeId = vare.kundeId;
+  post.ejerforhold = vareEjerforhold(vare);
+  post.kundeId = post.ejerforhold === "kunde" ? vare.kundeId : null;
 
   const fejl = valideBevaegelse(post, { vare });
   if (Object.keys(fejl).length) {
@@ -2557,6 +2883,7 @@ export const bevaegelseskriv = onCall({ region: REGION }, async (req) => {
       art: post.art,
       vareId: post.vareId,
       kundeId: post.kundeId,
+      ejerforhold: post.ejerforhold,
       antal: post.antal,
       fraCarrierId: post.fraCarrierId || null,
       tilCarrierId: post.tilCarrierId || null,

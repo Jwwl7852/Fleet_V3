@@ -64,6 +64,15 @@ before(async () => {
         hal: "Hal 1", reol: "1", fag: "1", hylde: "7", plads: "1",
       });
       await set(ref(db, t(id, "varer/v1")), vare());
+      await set(ref(db, t(id, "kassetyper/lagerunit")), { navn: "Lagerunit" });
+      await set(ref(db, t(id, "kasser/UNIT-101")), {
+        type: "lagerunit", status: "ledig", hjemPladsId: "p1", pladsId: "p1",
+      });
+      await set(ref(db, t(id, "unitbevaegelser/op-seed-0001")), {
+        operationId: "op-seed-0001", unitId: "UNIT-101", art: "modtagelse",
+        tilPladsId: "p1", kilde: "warehouse", tidspunktMs: 1786000000000,
+        udfoertAf: "seed",
+      });
     }
   });
 });
@@ -135,6 +144,34 @@ describe("den delte reolplads", () => {
     assert.equal(efter.status, "karantaene", "karantænen forsvandt");
     assert.equal(efter.temperatur, 4.2, "temperaturen forsvandt");
     assert.equal(efter.zone, "Zone A", "zonen forsvandt");
+  });
+});
+
+describe("den fælles fysiske unit", () => {
+  it("kan læses med kun WAREHOUSE eller kun UNIT Booking", async () => {
+    for (const tenant of [KUN_WMS, KUN_TB]) {
+      const db = som(tenant);
+      await assertSucceeds(get(ref(db, t(tenant, "kasser"))));
+      await assertSucceeds(get(ref(db, t(tenant, "kassetyper"))));
+      await assertSucceeds(get(ref(db, t(tenant, "unitbevaegelser"))));
+    }
+  });
+
+  it("åbner ikke direkte WAREHOUSE-skrivning til den kanoniske unit", async () => {
+    const db = som(KUN_WMS);
+    await assertFails(update(ref(db, t(KUN_WMS, "kasser/UNIT-101")), { pladsId: "p2" }));
+    await assertFails(set(ref(db, t(KUN_WMS, "kassetyper/ny")), { navn: "Ny type" }));
+  });
+
+  it("holder den fysiske historik append-only for alle klienter", async () => {
+    for (const tenant of [KUN_WMS, KUN_TB, BEGGE]) {
+      const db = som(tenant);
+      await assertFails(set(ref(db, t(tenant, "unitbevaegelser/op-test-0001")), {
+        operationId: "op-test-0001", unitId: "UNIT-101", art: "flytning",
+        fraPladsId: "p1", tilPladsId: "p2", kilde: "warehouse",
+        tidspunktMs: 1786000000100, udfoertAf: "u-test",
+      }));
+    }
   });
 });
 

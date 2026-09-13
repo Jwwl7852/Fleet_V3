@@ -235,7 +235,7 @@ export default function Varelager() {
       >
         <p className="fc-hint" style={{ marginTop: 0 }}>
           <b>Vores egne forbrugsvarer</b> — ikke kundernes gods. Det ligger i{" "}
-          <Link className="fc-a" to="/warehouse">Warehouse</Link>, hvor hver
+          <Link className="fc-a" to="/warehouse">WAREHOUSE</Link>, hvor hver
           vare tilhører en kunde.
         </p>
         <Tabel

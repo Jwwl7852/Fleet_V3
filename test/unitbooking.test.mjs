@@ -193,17 +193,18 @@ describe("To udlån på samme kasse", () => {
 });
 
 describe("Modulet er registreret — men ikke tegnet", () => {
-  it("står i kataloget med sine fire noder", () => {
+  it("står i kataloget med bookingnoden og de fælles unitnoder", () => {
     assert.ok(MODUL.unitbooking, "unitbooking mangler i kataloget");
     assert.deepEqual(
       Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("unitbooking")).sort(),
-      ["kasser", "kassetyper", "kasseudlaan", "reolpladser"]);
+      ["kasser", "kassetyper", "kasseudlaan", "reolpladser", "unitbevaegelser"]);
     /* ⚠ REOLPLADSER ER DELT MED WAREHOUSE. Transportkasser og kundegods staar
        paa de samme hylder, og noden blev UDVIDET frem for kopieret. Proeven
        staar her, saa en fremtidig oprydning ikke "retter" den tilbage til eet
        modul og dermed lukker WMS ude af sit eget lager. */
     assert.deepEqual(modulerFor("reolpladser").sort(), ["unitbooking", "warehouse"]);
-    assert.deepEqual(modulerFor("kasser"), ["unitbooking"]);
+    assert.deepEqual(modulerFor("kasser").sort(), ["unitbooking", "warehouse"]);
+    assert.deepEqual(modulerFor("unitbevaegelser").sort(), ["unitbooking", "warehouse"]);
   });
 
   it("⚠ TEGNES NU — og UDEN_SKAERM er tom igen", () => {

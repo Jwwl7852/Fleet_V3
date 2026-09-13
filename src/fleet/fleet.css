@@ -375,6 +375,56 @@
    Radius og kant arves fra faelles-reglen — kun maalene aendres, saa feltet
    stadig ligner et felt. */
 .fc-num .fc-input-pct{max-width:58px; min-height:19px; padding:1px 6px; font-size:var(--fc-t-s)}
+
+/* WAREHOUSE — daglig arbejdsflade og mobil scanning. Alle farver kommer fra
+   de fælles tokens; modulet tilføjer ikke en parallel designkilde. */
+.warehouse-workspace{gap:16px; min-width:0}
+.warehouse-hero{display:flex; align-items:center; justify-content:space-between; gap:18px;
+  padding:18px 20px; background:var(--fc-navy); color:var(--veyro-white);
+  border-radius:var(--fc-r); box-shadow:var(--fc-shadow)}
+.warehouse-hero h2{margin:2px 0 4px; font-size:var(--fc-t-2xl)}
+.warehouse-hero .fc-hint{color:#cbd5e1; margin:0}
+.warehouse-eyebrow{margin:0; color:var(--bc-accent); font-size:var(--fc-t-xs);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase}
+.warehouse-hero-actions,.warehouse-card-action{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.warehouse-card-action{margin-top:12px}
+.warehouse-overview-grid,.warehouse-unit-layout{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px}
+.warehouse-task-list{display:grid; gap:8px}
+.warehouse-task-row{display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 12px; border:1px solid var(--bc-line); border-radius:9px;
+  color:var(--bc-text); text-decoration:none}
+.warehouse-task-row:hover{border-color:var(--bc-accent); background:var(--fc-accent-soft)}
+.warehouse-task-row>span:first-child{display:grid; gap:2px; min-width:0}
+.warehouse-scan-row{display:flex; align-items:flex-end; gap:8px; flex-wrap:wrap}
+.warehouse-scan-input{flex:1 1 300px; min-width:0}
+.warehouse-camera{display:grid; gap:10px; margin-top:12px; max-width:520px}
+.warehouse-camera video{display:block; width:100%; max-height:360px; border-radius:var(--fc-r);
+  background:var(--fc-navy)}
+.warehouse-unit-summary{display:grid; grid-template-columns:150px minmax(0,1fr); gap:18px; align-items:start}
+.warehouse-unit-qr{display:block; width:150px; height:150px; max-width:100%; border:1px solid var(--bc-line)}
+.warehouse-action-choices{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px}
+.warehouse-action-choice{border:1px solid var(--bc-line); background:var(--bc-card); color:var(--bc-text);
+  border-radius:8px; padding:8px 10px; font:inherit; font-size:var(--fc-t-s); font-weight:650; cursor:pointer}
+.warehouse-action-choice:hover,.warehouse-action-choice.is-active{border-color:var(--bc-accent);
+  background:var(--fc-accent-soft); color:var(--bc-accent)}
+
+@media (max-width:760px){
+  .fc-slot{overflow-x:hidden}
+  .warehouse-hero{align-items:flex-start; flex-direction:column; padding:15px 16px}
+  .warehouse-hero-actions{width:100%}
+  .warehouse-hero-actions .fc-btn{flex:1 1 auto; text-align:center}
+  .warehouse-overview-grid,.warehouse-unit-layout{grid-template-columns:minmax(0,1fr)}
+  .warehouse-unit-summary{grid-template-columns:minmax(0,1fr)}
+  .warehouse-unit-summary>div{min-width:0}
+  .warehouse-unit-summary .fc-mini{align-items:flex-start}
+  .warehouse-unit-summary .fc-mini>b{min-width:0; max-width:68%; white-space:normal;
+    overflow-wrap:anywhere}
+  .warehouse-unit-qr{width:132px; height:132px}
+  .warehouse-scan-row{align-items:stretch}
+  .warehouse-scan-row .fc-btn{flex:1 1 auto}
+  .warehouse-action-choice{flex:1 1 calc(50% - 6px)}
+  .warehouse-task-row{align-items:flex-start}
+}
 .fc-med-suffiks{display:inline-flex; align-items:baseline; gap:5px}
 .fc-pill{display:inline-block; padding:3px 9px; border-radius:20px; font-size:var(--fc-t-xs); font-weight:650}
 .fc-pill-ok{background:var(--fc-ok-bg); color:var(--bc-ok)}
@@ -389,6 +439,8 @@
   .fc-app{flex-direction:column}
   .fc-side{position:static; height:auto; width:100%; flex:none}
   .fc-nav{flex-direction:row; overflow-x:auto; flex:none}
+  .fc-nav{scrollbar-width:none}
+  .fc-nav::-webkit-scrollbar{display:none}
   /* Grupperne må ikke være selvstændige flex-items på den vandrette mobilrække:
      deres indhold har forskellig minimumsbredde og ville ellers overlappe næste
      gruppe. Links bliver direkte børn af den scrollbare nav via display:contents. */

@@ -1,14 +1,10 @@
 /* src/moduler/warehouse/Varer.jsx
  * Warehouse – varekartotek.
  *
- * ⚠ VAREN ER KUNDENS. Det er 3PL: vi opbevarer andres gods og afregner for
- * håndtering ind, opbevaring og håndtering ud. Derfor er `kundeId` påkrævet —
- * en vare uden en modpart kan ikke afregnes, og så står den på lageret uden
- * at nogen ved hvem der skal have regningen.
- *
- * ⚠ FORVEKSL DEN IKKE MED `lagre`. Den node er reservedelslageret under
- * Indkøb: VORES egne dele, hvor forbruget er en omkostning på en bil. To
- * forskellige ting, og derfor to skærme.
+ * WAREHOUSE rummer både kundegods og virksomhedens egne lagerførte varer.
+ * Ejerforholdet står eksplicit på nye varer; historiske varer uden felt er
+ * fortsat kundegods. Egne varer har ingen kunde og går ikke automatisk til
+ * afregningsgrundlaget.
  *
  * ⚠ SPORINGEN KAN IKKE LAVES OM BAGUD, og formularen siger det. Får en vare
  * batch et år senere, findes der bevægelser uden — og så kan et tilbagekald
@@ -20,14 +16,16 @@
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, mindst } from "../../fleet/format.js";
+import { num, mindst, datoTid } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
-  Henter, Datatilstand, Tom, Ikon, Sider, KpiKort, KpiRaekke,
+  Henter, Datatilstand, Tom, Ikon, Sider, KpiKort, KpiRaekke, MiniLinje,
 } from "../../fleet/ui.jsx";
 import {
   ENHED, ALLE_ENHEDER, SPORING, ALLE_SPORINGER,
+  VARE_EJERFORHOLD, ALLE_VARE_EJERFORHOLD, vareEjerforhold,
+  BEVAEGELSE_ART,
   MAENGDE_SKALA, talFraMaengde, valideVare, rumfangMm3,
   beholdningPrVare, underMinimum,
 } from "../../fleet/warehouse.js";
@@ -39,7 +37,7 @@ import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
 const PR_SIDE = 12;
 
 const tomVare = () => ({
-  kundeId: "", varenummer: "", navn: "", enhed: "stk", sporing: "ingen",
+  ejerforhold: "kunde", kundeId: "", varenummer: "", navn: "", enhed: "stk", sporing: "ingen",
   varegruppe: "", laengdeMm: "", breddeMm: "", hoejdeMm: "", vaegtG: "",
   minimum: "", aktiv: true,
 });
@@ -56,7 +54,7 @@ function Vareformular({ vare, kunder, sti, paaGemt, paaLuk }) {
   const [svar, saetSvar] = useState(null);
 
   const saet = (felt) => (v) => {
-    saetF((x) => ({ ...x, [felt]: v }));
+    saetF((x) => ({ ...x, [felt]: v, ...(felt === "ejerforhold" && v === "egen" ? { kundeId: "" } : {}) }));
     saetRoert((x) => ({ ...x, [felt]: true }));
     saetSvar(null);
   };
@@ -85,7 +83,8 @@ function Vareformular({ vare, kunder, sti, paaGemt, paaLuk }) {
     const r = await gem({
       sti: sti(`varer/${id}`),
       data: {
-        kundeId: f.kundeId,
+        ejerforhold: f.ejerforhold,
+        kundeId: f.ejerforhold === "kunde" ? f.kundeId : null,
         varenummer: f.varenummer.trim(),
         navn: f.navn.trim(),
         enhed: f.enhed,
@@ -108,12 +107,19 @@ function Vareformular({ vare, kunder, sti, paaGemt, paaLuk }) {
                 gemLabel={nyt ? "Opret vare" : "Gem ændringer"}
                 onAnnuller={paaLuk} svar={svar}>
         <Feltraekke>
-          {/* ⚠ PÅKRÆVET. Uden en kunde kan bevægelsen ikke afregnes. */}
-          <Felt id="v-kunde" label="Kunde" kraevet vaerdi={f.kundeId}
-                saet={saet("kundeId")} fejl={vis("kundeId")}
-                valgmuligheder={[{ vaerdi: "", label: "— vælg —" },
-                  ...kunder.map((k) => ({ vaerdi: k.id, label: k.navn || k.id }))]}
-                hint="Godset er kundens. Det afgør hvem regningen går til." />
+          <Felt id="v-ejerforhold" label="Ejerforhold" kraevet vaerdi={f.ejerforhold}
+                saet={saet("ejerforhold")} fejl={vis("ejerforhold")}
+                valgmuligheder={ALLE_VARE_EJERFORHOLD.map((id) => ({
+                  vaerdi: id, label: VARE_EJERFORHOLD[id].label,
+                }))}
+                hint="Afgør ejerskab og om lagerarbejdet kan kundeafregnes." />
+          {f.ejerforhold === "kunde" && (
+            <Felt id="v-kunde" label="Kunde" kraevet vaerdi={f.kundeId}
+                  saet={saet("kundeId")} fejl={vis("kundeId")}
+                  valgmuligheder={[{ vaerdi: "", label: "— vælg —" },
+                    ...kunder.map((k) => ({ vaerdi: k.id, label: k.navn || k.id }))]}
+                  hint="Kunden ejer varen og er modpart på lagerafregningen." />
+          )}
           <Felt id="v-nr" label="Varenummer" kraevet vaerdi={f.varenummer}
                 saet={saet("varenummer")} fejl={vis("varenummer")}
                 hint="Kundens eget nummer. To kunder må gerne bruge det samme." />
@@ -180,7 +186,9 @@ export default function Varer() {
   const { path, bruger } = useFleet();
   const [ny, saetNy] = useState(false);
   const [redigerer, saetRedigerer] = useState(null);
+  const [detalje, saetDetalje] = useState(null);
   const [soeg, saetSoeg] = useState("");
+  const [ejer, saetEjer] = useState("");
   const [kunde, saetKunde] = useState("");
   const [gruppe, saetGruppe] = useState("");
   const [side, saetSide] = useState(1);
@@ -193,6 +201,9 @@ export default function Varer() {
   });
   const { data: beholdning } = useListe("beholdning", {
     graense: 5000, demo: DEMO_BEHOLDNING,
+  });
+  const { data: bevaegelser } = useListe("bevaegelser", {
+    graense: 5000, demo: [], sorter: (a, b) => (b.tidspunktMs || 0) - (a.tidspunktMs || 0),
   });
   const { data: kunder } = useListe("kunder", {
     graense: 500, demo: DEMO_KUNDER,
@@ -209,6 +220,7 @@ export default function Varer() {
 
   const q = soeg.trim().toLowerCase();
   const viste = varer.filter((v) =>
+    (!ejer || vareEjerforhold(v) === ejer) &&
     (!kunde || v.kundeId === kunde) &&
     (!gruppe || v.varegruppe === gruppe) &&
     (!q || (v.varenummer || "").toLowerCase().includes(q) ||
@@ -225,7 +237,7 @@ export default function Varer() {
       <KpiRaekke>
         <KpiKort label="Varer i alt" vaerdi={mindst(varer.length, varerAfkortet)}
                  ikon={<Ikon navn="kasse" />} tone="ikon-5" rund
-                 note={`for ${num(new Set(varer.map((v) => v.kundeId)).size)} kunder`} />
+                 note={`${num(varer.filter((v) => vareEjerforhold(v) === "kunde").length)} kundegods · ${num(varer.filter((v) => vareEjerforhold(v) === "egen").length)} egne`} />
         <KpiKort label="Under minimum" vaerdi={num(lave.length)}
                  note={lave.length
                    ? lave.slice(0, 3).map((r) => r.vare.varenummer).join(", ")
@@ -253,11 +265,9 @@ export default function Varer() {
       <Kort
         titel={`Varer (${num(viste.length)} af ${num(varer.length)})`}
         handling={
-          <Knap variant="primaer" disabled={!maaSkrive || !kunder.length}
+          <Knap variant="primaer" disabled={!maaSkrive}
                 onClick={() => saetNy(true)}
-                title={!maaSkrive ? `Kræver ${PERM.varerSkriv} — reglerne afviser.`
-                  : !kunder.length ? "Opret en kunde først — godset er kundens."
-                  : "Opret en vare."}>
+                title={!maaSkrive ? `Kræver ${PERM.varerSkriv} — reglerne afviser.` : "Opret en vare."}>
             Ny vare
           </Knap>
         }
@@ -268,6 +278,16 @@ export default function Varer() {
             <input id="vf-soeg" type="search" value={soeg}
                    placeholder="Varenummer eller navn"
                    onChange={(e) => { saetSoeg(e.target.value); saetSide(1); }} />
+          </div>
+          <div className="fc-felt">
+            <label htmlFor="vf-ejer">Ejerforhold</label>
+            <select id="vf-ejer" value={ejer}
+                    onChange={(e) => { saetEjer(e.target.value); saetSide(1); }}>
+              <option value="">Alle ejere</option>
+              {ALLE_VARE_EJERFORHOLD.map((id) => (
+                <option key={id} value={id}>{VARE_EJERFORHOLD[id].label}</option>
+              ))}
+            </select>
           </div>
           <div className="fc-felt">
             <label htmlFor="vf-kunde">Kunde</label>
@@ -289,11 +309,9 @@ export default function Varer() {
           </div>
         </div>
 
-        {!kunder.length ? (
-          <Tom>
-            En vare skal have en <b>kunde</b> — godset er ikke vores. Opret en
-            kunde under Opsætning → Kunder først; ellers ville varen ligge på
-            lageret uden at nogen vidste hvem der skulle have regningen.
+        {!varer.length ? (
+          <Tom handling={<Knap variant="primaer" disabled={!maaSkrive} onClick={() => saetNy(true)}>Opret første vare</Knap>}>
+            Varekartoteket er tomt. Opret kundegods eller en af virksomhedens egne varer.
           </Tom>
         ) : (
           <>
@@ -301,8 +319,10 @@ export default function Varer() {
               kolonner={[
                 { key: "nr", label: "Varenr.", render: (v) => <b>{v.varenummer}</b> },
                 { key: "navn", label: "Navn", render: (v) => v.navn },
-                { key: "kunde", label: "Kunde",
-                  render: (v) => <span className="fc-hint">{kundeNavn(v.kundeId)}</span> },
+                { key: "ejer", label: "Ejer",
+                  render: (v) => vareEjerforhold(v) === "egen"
+                    ? <Pille tone="info">Egen virksomhed</Pille>
+                    : <span className="fc-hint">{kundeNavn(v.kundeId)}</span> },
                 { key: "enhed", label: "Enhed", render: (v) => ENHED[v.enhed]?.label || v.enhed },
                 { key: "sporing", label: "Sporing", render: (v) => (
                     <Pille tone={v.sporing === "ingen" ? "info" : "ok"}>
@@ -332,6 +352,8 @@ export default function Varer() {
                   ) },
               ]}
               raekker={paaSiden}
+              paaRaekke={(v) => saetDetalje(v)}
+              erValgt={(v) => detalje?.id === v.id}
               tom="Ingen varer matcher filteret."
             />
             <Sider side={nuSide} antal={viste.length} prSide={PR_SIDE} saet={saetSide} />
@@ -339,13 +361,38 @@ export default function Varer() {
         )}
 
         <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>"På lager" er en sum, ikke et gemt tal.</b> Den regnes af
-          beholdningsposterne hver gang. Et gemt totaltal ville drive fra
-          posterne ved den første skrivning der ramte den ene og ikke den
-          anden — og et forkert lagertal er værre end intet, fordi nogen
-          disponerer efter det.
+          På lager regnes af bevægelserne. Egne varer indgår i lagerarbejdet,
+          men ikke automatisk i kundens afregningsgrundlag.
         </p>
       </Kort>
+
+      {detalje && (
+        <Kort titel={`${detalje.varenummer} · ${detalje.navn}`}
+              handling={<Knap onClick={() => saetDetalje(null)}>Luk detalje</Knap>}>
+          <div className="warehouse-overview-grid">
+            <div>
+              <MiniLinje label="Ejer" vaerdi={vareEjerforhold(detalje) === "egen" ? "Egen virksomhed" : kundeNavn(detalje.kundeId)} />
+              <MiniLinje label="Beholdning" vaerdi={`${num(talFraMaengde(total[detalje.id] || 0), ENHED[detalje.enhed]?.helTal ? 0 : 1)} ${ENHED[detalje.enhed]?.label || detalje.enhed}`} />
+              <MiniLinje label="Sporing" vaerdi={SPORING[detalje.sporing]?.label || detalje.sporing} />
+              <MiniLinje label="Varegruppe" vaerdi={detalje.varegruppe || "Ikke angivet"} />
+              <MiniLinje label="Mål" vaerdi={rumfangMm3(detalje) ? `${detalje.laengdeMm} × ${detalje.breddeMm} × ${detalje.hoejdeMm} mm` : "Ikke fuldt opmålt"} />
+            </div>
+            <div>
+              <b>Seneste historik</b>
+              <Tabel
+                kolonner={[
+                  { key: "tid", label: "Tid", render: (b) => datoTid(b.tidspunktMs) },
+                  { key: "art", label: "Handling", render: (b) => BEVAEGELSE_ART[b.art]?.label || b.art },
+                  { key: "antal", label: "Antal", num: true, render: (b) => num(talFraMaengde(b.antal), ENHED[detalje.enhed]?.helTal ? 0 : 1) },
+                  { key: "ref", label: "Reference", render: (b) => b.reference || "—" },
+                ]}
+                raekker={bevaegelser.filter((b) => b.vareId === detalje.id).slice(0, 8)}
+                tom="Der er endnu ingen bevægelser på varen."
+              />
+            </div>
+          </div>
+        </Kort>
+      )}
     </div>
   );
 }
