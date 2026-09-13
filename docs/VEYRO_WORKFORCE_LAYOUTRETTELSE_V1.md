@@ -116,7 +116,9 @@ layoutfejl.
 
 ## Afgrænsning
 
-Denne rettelse ændrer kun WORKFORCEs indlejrede layout og tilhørende tests og
-beviser. Den tidligere dokumenterede Firebase Database Emulator-loopbackfejl
-er uændret og er fortsat et separat miljørestpunkt. Ingen backendfallback,
-permissions, emulatoropsætning eller produktionsforbindelse er ændret.
+Layoutcommittet ændrer kun WORKFORCEs indlejrede layout og tilhørende tests og
+beviser. Firebase Database Emulator-loopbackfejlen blev behandlet efterfølgende
+som en særskilt miljørettelse og er derfor ikke en del af layoutcommittet.
+Resultatet af den efterfølgende autentificerede prøve står i
+`docs/VEYRO_WORKFORCE_EMULATORRETTELSE_V1.md`. Ingen backendfallback,
+produktionsforbindelse eller global maskinindstilling er indført.

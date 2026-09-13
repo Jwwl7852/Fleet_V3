@@ -9,6 +9,10 @@ import path from "node:path";
 
 const baseUrl = process.env.WORKFORCE_LAYOUT_URL || "http://127.0.0.1:5197";
 assert.match(baseUrl, /^http:\/\/(127\.0\.0\.1|localhost):\d+$/, "QA må kun køre mod localhost");
+const loginEmail = process.env.WORKFORCE_LAYOUT_LOGIN_EMAIL || "";
+const loginPassword = process.env.WORKFORCE_LAYOUT_LOGIN_PASSWORD || "";
+assert.equal(Boolean(loginEmail), Boolean(loginPassword), "Login til layout-QA kræver både e-mail og adgangskode");
+const authenticatedMode = Boolean(loginEmail);
 
 const outputDir = path.resolve(process.argv[2] || "artifacts/workforce-layout-v1");
 const screenshotDir = path.join(outputDir, "screenshots");
@@ -111,6 +115,20 @@ const click = async (selector) => {
   assert.equal(found, true, `Mangler ${selector}`);
   await sleep(120);
 };
+const login = async () => {
+  if (!authenticatedMode) return;
+  await send("Page.navigate", { url: `${baseUrl}/workforce-v2` }, sessionId);
+  await waitFor("document.readyState === 'complete' && document.querySelector('#fc-email')", "emulator-login");
+  await evaluate(`(()=>{
+    const setValue=(selector,value)=>{const element=document.querySelector(selector);const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(element,value);element.dispatchEvent(new Event('input',{bubbles:true}));};
+    setValue('#fc-email',${JSON.stringify(loginEmail)});
+    setValue('#fc-kode',${JSON.stringify(loginPassword)});
+    document.querySelector('form').requestSubmit();
+    return true;
+  })()`);
+  await waitFor("document.querySelector('.wf-app--embedded .wf-page-head')", "autentificeret WORKFORCE-visning");
+  await waitFor("!document.querySelector('.wf-loading')", "autentificeret WORKFORCE blev ved med at hente");
+};
 const measure = async (name, route, mode, width, height) => {
   const measurement = await evaluate(`(()=>{
     const box=(selector)=>{const element=document.querySelector(selector);if(!element)return null;const rect=element.getBoundingClientRect();const style=getComputedStyle(element);return{left:Math.round(rect.left),right:Math.round(rect.right),width:Math.round(rect.width),clientWidth:element.clientWidth,scrollWidth:element.scrollWidth,display:style.display,gridTemplateColumns:style.gridTemplateColumns,maxWidth:style.maxWidth,zoom:style.zoom}};
@@ -126,7 +144,7 @@ const measure = async (name, route, mode, width, height) => {
     assert.equal(measurement.workspace.gridTemplateColumns.includes(" "), false, `${name}: embedded-grid har stadig flere beregnede kolonner (${measurement.workspace.gridTemplateColumns})`);
   }
   const minimumNotice = width < 700 ? 240 : Math.min(600, Math.round(measurement.main.width * 0.45));
-  assert.ok(measurement.notice.width >= minimumNotice, `${name}: demobeskeden er stadig for smal`);
+  if (!authenticatedMode) assert.ok(measurement.notice.width >= minimumNotice, `${name}: demobeskeden er stadig for smal`);
   if (measurement.firstCard) assert.ok(measurement.firstCard.width >= (width < 700 ? 240 : 420), `${name}: første kort er ulæseligt smalt`);
   return measurement;
 };
@@ -137,7 +155,7 @@ const screenshot = async (filename) => {
 };
 
 const evidence = {
-  version: "WORKFORCE integrated layout V1",
+  version: authenticatedMode ? "WORKFORCE authenticated emulator layout V1" : "WORKFORCE integrated layout V1",
   capturedAtUtc: new Date().toISOString(),
   baseUrl,
   rootCause: "Embedded WORKFORCE beholdt standalone-gridets tomme 230px sidebarkolonne.",
@@ -149,6 +167,7 @@ const evidence = {
 
 try {
   await setViewport(1440, 900);
+  await login();
   await navigate("/workforce-v2");
   await evaluate("localStorage.clear(); sessionStorage.clear(); true");
   await send("Page.reload", { ignoreCache: true }, sessionId);

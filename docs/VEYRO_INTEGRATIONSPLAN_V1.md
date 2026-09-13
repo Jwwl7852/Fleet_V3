@@ -894,13 +894,15 @@ falder ikke skjult tilbage til demo. Første læsefejl stopper nu spinneren og
 viser en forståelig fejl med genforsøg. Alle syv integrerede WORKFORCE-ruter er
 browserkontrolleret i demo-mode, og målrettede tests bestod 71/71.
 
-En ny autentificeret prøve med det isolerede projekt
-`demo-veyro-workforce-test`, Firebase CLI 15.29.0 og proceslokal Temurin
-21.0.12+1 blev blokeret, før login og produktprøver, fordi Database Emulator
-ikke kunne oprette sin lokale Netty event-loop/loopback-forbindelse på denne
-Windows-vært. Det tidligere backendbevis ændres ikke, men den nye afsluttende
-backendprøve må ikke beskrives som bestået. Detaljerne findes i
-`docs/VEYRO_WORKFORCE_MILJOERETTELSE_V1.md`.
+Den efterfølgende emulatorrunde lokaliserede Windows-fejlen til de nedarvede
+`TEMP`/`TMP`-værdier; den allerede installerede Temurin 21.0.12.1 startede
+korrekt med proceslokalt ryddede værdier. Et separat namespace-mismatch i
+WORKFORCE-seedet er rettet, så seed, Functions og browser bruger samme
+demo-runtime-namespace med repositoryets uændrede regler. Den fulde
+Auth/Database/Functions/Storage-QA bestod, og alle syv ruter blev åbnet efter
+normalt emulatorlogin. Direkte URL uden WORKFORCE-adgang og anonym adgang blev
+afvist før dataindlæsning. Detaljerne findes i
+`docs/VEYRO_WORKFORCE_EMULATORRETTELSE_V1.md`.
 
 Den særskilte efterfølgende layoutfejl skyldtes, at embedded WORKFORCE beholdt
 standalone-appens todelte grid (`230px` intern sidebar plus indhold), selv om

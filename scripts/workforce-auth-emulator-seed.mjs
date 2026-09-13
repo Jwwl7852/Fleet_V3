@@ -1,6 +1,7 @@
 /* Syntetisk seed til WORKFORCE-integration. Scriptet accepterer kun lokale
  * emulatorhosts og demo-projekter og sletter ikke andre lokale brugere. */
 import { pathToFileURL } from "node:url";
+import { readFile } from "node:fs/promises";
 import {
   CLAIM_PERMISSION_VERSION,
   kompaktPermStreng,
@@ -8,7 +9,8 @@ import {
 } from "../src/fleet/permissions.js";
 
 export const PROJECT_ID = process.env.WORKFORCE_QA_PROJECT_ID || "demo-veyro-workforce-test";
-export const DATABASE_NAMESPACE = `${PROJECT_ID}-default-rtdb`;
+// Functions-emulatorens Admin SDK bruger projekt-id'et som runtime-namespace.
+export const DATABASE_NAMESPACE = PROJECT_ID;
 export const TENANT_A = "workforce-auth-a";
 export const TENANT_B = "workforce-auth-b";
 export const TENANT_NO_MODULE = "workforce-auth-no-module";
@@ -92,6 +94,15 @@ async function writeTenant(databaseHost, tenantId, data) {
 export async function seedWorkforceAuthEmulator() {
   const authHost = localHost("FIREBASE_AUTH_EMULATOR_HOST", "127.0.0.1:9119");
   const databaseHost = localHost("FIREBASE_DATABASE_EMULATOR_HOST", "127.0.0.1:9020");
+  // Firebase CLI kan lægge konfigurationsreglerne på *-default-rtdb, mens
+  // Functions bruger projekt-id'et. Installer derfor de samme regler eksplicit
+  // på runtime-namespacet, så QA aldrig kommer til at køre med åbne regler.
+  const rules = await readFile(new URL("../firebase.rules.json", import.meta.url), "utf8");
+  await jsonRequest(`http://${databaseHost}/.settings/rules.json?ns=${DATABASE_NAMESPACE}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", authorization: "Bearer owner" },
+    body: rules,
+  });
   const users = {};
   for (const [key, definition] of Object.entries(TEST_USERS)) users[key] = await createOrUpdateUser(authHost, definition);
 

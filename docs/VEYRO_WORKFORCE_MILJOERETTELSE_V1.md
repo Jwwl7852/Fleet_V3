@@ -124,3 +124,18 @@ tilladt bruger, afvisning uden WORKFORCE-permission, tenantadskillelse og alle
 syv undermenuer mod den fælles backend. Fejlvisningen ved en utilgængelig
 backend er kode- og testverificeret, men kunne ikke reproduceres gennem en
 fuldt startet emulatorbrowser i denne runde.
+
+## Efterfølgende løsning
+
+Restpunktet er lukket i en særskilt efterfølgende rettelse. Den samme Temurin
+21.0.12.1 startede Database Emulator, da `TEMP` og `TMP` blev ryddet kun for
+emulatorprocessen. Et dernæst synligt namespace-mismatch i WORKFORCE-seedet er
+rettet uden ændring af produktionsregler: seed, Functions og browser bruger nu
+projekt-id'ets runtime-namespace, og de uændrede regler installeres eksplicit
+før seed.
+
+Den fulde Auth/Database/Functions/Storage-QA samt autentificeret browserlogin,
+alle syv ruter, direkte afvisning uden WORKFORCE-adgang og en komplet
+44-billeders layoutmatrix mod emulatorbackenden er bestået. Se
+`docs/VEYRO_WORKFORCE_EMULATORRETTELSE_V1.md` for kommandoer, resultater og
+begrænsninger.

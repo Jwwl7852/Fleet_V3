@@ -7,6 +7,7 @@ const moduleSource = readFileSync(new URL("../../src/moduler/workforce/Workforce
 const appSource = readFileSync(new URL("../src/WorkforceV2App.jsx", import.meta.url), "utf8");
 const firebaseSource = readFileSync(new URL("../../src/firebase.js", import.meta.url), "utf8");
 const platformSource = readFileSync(new URL("../../src/App.jsx", import.meta.url), "utf8");
+const emulatorSeedSource = readFileSync(new URL("../../scripts/workforce-auth-emulator-seed.mjs", import.meta.url), "utf8");
 
 test("integrationen vælger en eksplicit datakilde før første WORKFORCE-læsning", () => {
   assert.match(moduleSource, /demoMode\s*\?\s*createMemoryWorkforceRepository/);
@@ -47,4 +48,11 @@ test("Firebase-startfejl skifter ikke miljøet skjult til demo", () => {
   assert.doesNotMatch(firebaseSource, /console\.warn\("Firebase kunne ikke starte\. Kører demo-mode/);
   assert.match(platformSource, /!klar && firebaseStartfejl/);
   assert.match(platformSource, /Veyro skifter ikke automatisk til demodata/);
+});
+
+test("WORKFORCE-emulatorseed bruger Functions' runtime-namespace med produktregler", () => {
+  assert.match(emulatorSeedSource, /DATABASE_NAMESPACE\s*=\s*PROJECT_ID/);
+  assert.doesNotMatch(emulatorSeedSource, /DATABASE_NAMESPACE\s*=\s*`\$\{PROJECT_ID\}-default-rtdb`/);
+  assert.match(emulatorSeedSource, /readFile\(new URL\("\.\.\/firebase\.rules\.json"/);
+  assert.match(emulatorSeedSource, /\.settings\/rules\.json\?ns=\$\{DATABASE_NAMESPACE\}/);
 });

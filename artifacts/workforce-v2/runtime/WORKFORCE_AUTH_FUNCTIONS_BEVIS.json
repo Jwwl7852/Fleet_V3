@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-13T17:06:58.566Z",
+  "generatedAt": "2026-09-13T19:55:05.505Z",
   "projectId": "demo-veyro-workforce-test",
   "environment": "isolated Firebase Emulator Suite",
   "identities": {
-    "employeeUid": "353amZQFbxOW5Jjkl3mLXv5hlr0e",
-    "managerUid": "FXmNT3BSJubfS02lxpWuESl16v73",
+    "employeeUid": "zozFVQed7fczTd77iFosvECAdNib",
+    "managerUid": "MR9A467LhDSYzcqZlZgj0xMXPsQ6",
     "sharedTenantId": "workforce-auth-a",
     "separateAuthenticatedSessions": true
   },
