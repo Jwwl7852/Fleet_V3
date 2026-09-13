@@ -1,0 +1,24 @@
+import { useMemo, useState } from "react";
+import { localDateTimeMs, requirementResult, toLocalDateKey } from "../domain/workforceDomain.js";
+import { Card, employeeName, Field, formatDate, Modal, PageHeader, Pill } from "./Shared.jsx";
+
+export function SkillsPage({ state, repository, actor, run, busy }) {
+  const [editing, setEditing] = useState(null); const [employeeFilter, setEmployeeFilter] = useState("all"); const now = Date.now(); const inThirty = now + 30 * 86_400_000;
+  const skills = useMemo(() => state.skills.filter((item) => employeeFilter === "all" || item.employeeId === employeeFilter).sort((a, b) => (a.validUntilMs || Infinity) - (b.validUntilMs || Infinity)), [state, employeeFilter]);
+  const tone = (skill) => !Number.isFinite(skill.validUntilMs) ? "ok" : skill.validUntilMs < now ? "bad" : skill.validUntilMs <= inThirty ? "warn" : "ok";
+  const label = (skill) => !Number.isFinite(skill.validUntilMs) ? "Uden udløb" : skill.validUntilMs < now ? "Udløbet" : skill.validUntilMs <= inThirty ? "Udløber snart" : "Gyldig";
+  return <><PageHeader title="Kompetencer" subtitle="Kvalifikationer og certifikater vurderes på opgavens tidspunkt" actions={<button className="wf-btn wf-btn--primary" onClick={() => setEditing({})}>Tilføj kompetence</button>} />
+    <div className="wf-kpis wf-kpis--three"><div><span>Registrerede kompetencer</span><strong>{state.skills.length}</strong><small>på tværs af medarbejdere</small></div><div><span>Udløbet</span><strong>{state.skills.filter((item) => Number.isFinite(item.validUntilMs) && item.validUntilMs < now).length}</strong><small>kræver opfølgning</small></div><div><span>Udløber inden 30 dage</span><strong>{state.skills.filter((item) => item.validUntilMs >= now && item.validUntilMs <= inThirty).length}</strong><small>forny i tide</small></div></div>
+    <Card><div className="wf-toolbar"><select value={employeeFilter} onChange={(event) => setEmployeeFilter(event.target.value)}><option value="all">Alle medarbejdere</option>{state.employees.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div><div className="wf-table-wrap"><table><thead><tr><th>Medarbejder</th><th>Kompetence</th><th>Gyldig til</th><th>Dokumentation</th><th>Status</th><th /></tr></thead><tbody>{skills.map((skill) => <tr key={skill.id}><td><strong>{employeeName(state, skill.employeeId)}</strong></td><td>{skill.type}</td><td>{skill.validUntilMs ? formatDate(skill.validUntilMs, { year: true }) : "Ingen udløbsdato"}</td><td>{skill.documentName || "Ikke vedhæftet"}</td><td><Pill tone={tone(skill)}>{label(skill)}</Pill></td><td><button className="wf-btn" onClick={() => setEditing(skill)}>Redigér</button></td></tr>)}</tbody></table></div></Card>
+    {editing && <SkillForm skill={editing} state={state} busy={busy} onClose={() => setEditing(null)} onSave={async (value) => { await run(() => repository.saveSkill(actor, value)); setEditing(null); }} />}
+  </>;
+}
+
+function SkillForm({ skill, state, busy, onClose, onSave }) {
+  const [form, setForm] = useState({ employeeId: skill.employeeId || state.employees[0]?.id, type: skill.type || "", validUntil: skill.validUntilMs ? toLocalDateKey(skill.validUntilMs) : "", documentName: skill.documentName || "" }); const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  return <Modal title={skill.id ? "Redigér kompetence" : "Tilføj kompetence"} onClose={onClose}><form onSubmit={(event) => { event.preventDefault(); onSave({ ...skill, employeeId: form.employeeId, type: form.type, validUntilMs: form.validUntil ? localDateTimeMs(form.validUntil, "23:59") : null, documentName: form.documentName || null }); }}><Field label="Medarbejder"><select value={form.employeeId} onChange={(event) => update("employeeId", event.target.value)}>{state.employees.filter((item) => item.status !== "terminated").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Kompetence eller certifikat"><input required value={form.type} onChange={(event) => update("type", event.target.value)} placeholder="Fx ADR, Kørekort C/E eller Liftcertifikat" /></Field><Field label="Gyldig til"><input type="date" value={form.validUntil} onChange={(event) => update("validUntil", event.target.value)} /></Field><Field label="Dokumentreference"><input value={form.documentName} onChange={(event) => update("documentName", event.target.value)} placeholder="Filnavn eller dokument-id" /></Field><footer className="wf-modal-actions"><button type="button" className="wf-btn" onClick={onClose}>Annuller</button><button disabled={busy} className="wf-btn wf-btn--primary">Gem kompetence</button></footer></form></Modal>;
+}
+
+export function verifyAssignmentCompetence(state, assignment) {
+  return requirementResult(state.skills, assignment.requirements, assignment.employeeId, assignment.startMs);
+}
