@@ -79,9 +79,9 @@ export default function Brugervaelger({ email, devTester = false }) {
     } catch (e) {
       setFejl(
         e?.code === "auth/invalid-credential" || e?.code === "auth/wrong-password"
-          ? "Koden passer ikke. Kør provisioner:dev, eller ret VITE_DEV_BRUGER_KODE."
+          ? "Koden passer ikke. Kontakt den ansvarlige for testmiljøet."
           : e?.code === "auth/user-not-found"
-            ? "Kontoen findes ikke. Kør npm run provisioner:dev."
+            ? "Testkontoen findes ikke. Kontakt den ansvarlige for testmiljøet."
             : e?.message || "Kunne ikke skifte bruger."
       );
       setSkifter(false);
@@ -124,7 +124,7 @@ export default function Brugervaelger({ email, devTester = false }) {
     return (
       <div className="fc-demo-rolle">
         <label>Skift bruger</label>
-        <span>VITE_DEV_BRUGER_KODE mangler i .env.local. Se README.</span>
+        <span>Brugerskift er ikke tilgængeligt i dette testmiljø.</span>
       </div>
     );
   }
@@ -174,7 +174,7 @@ export default function Brugervaelger({ email, devTester = false }) {
       <span>
         {fejl
           || (skifter ? "Skifter session…"
-            : "Du bliver faktisk en anden bruger. Nyt token, nye claims — serveren behandler dig som den rolle.")}
+            : "Visningen og adgangen skifter til den valgte testrolle.")}
       </span>
     </div>
   );

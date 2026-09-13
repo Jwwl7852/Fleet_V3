@@ -171,6 +171,8 @@ export default function Udlaan() {
   const [soeg, saetSoeg] = useState("");
   const [arbejder, saetArbejder] = useState(null);
   const [svar, saetSvar] = useState(null);
+  const [returFor, saetReturFor] = useState(null);
+  const [returPladsId, saetReturPladsId] = useState("");
 
   const { data: udlaan, tilstand, genindlaes, henter } = useListe("kasseudlaan", {
     graense: 2000, demo: DEMO_KASSEUDLAAN,
@@ -238,13 +240,26 @@ export default function Udlaan() {
       (u.kasseId || "").toLowerCase().includes(q) ||
       (u.beskrivelse || "").toLowerCase().includes(q)));
 
-  const skift = async (u, til2) => {
+  const skift = async (u, til2, modtagelsesPladsId = null) => {
+    if (til2 === "returneret" && !modtagelsesPladsId) {
+      saetReturFor(u);
+      saetReturPladsId("");
+      saetSvar(null);
+      return;
+    }
     saetArbejder(u.id);
     saetSvar(null);
-    const r = await skiftUdlaan({ udlaanId: u.id, til: til2 });
+    const r = await skiftUdlaan({
+      udlaanId: u.id, til: til2,
+      modtagelsesPladsId: modtagelsesPladsId || undefined,
+    });
     saetArbejder(null);
     saetSvar(r);
-    if (r.ok) genindlaes();
+    if (r.ok) {
+      saetReturFor(null);
+      saetReturPladsId("");
+      genindlaes();
+    }
   };
 
   return (
@@ -289,6 +304,33 @@ export default function Udlaan() {
       </KpiRaekke>
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
+
+      {returFor && (
+        <Kort titel={`Modtag retur · ${returFor.kasseId}`}>
+          <p className="fc-hint">
+            Vælg den lokation, hvor enheden faktisk modtages. Hjempladsen er
+            kun et forslag og vælges ikke automatisk. En senere placering
+            registreres som en særskilt bevægelse.
+          </p>
+          <div className="fc-filtre">
+            <div className="fc-felt">
+              <label htmlFor="ub-retur-plads">Modtagelseslokation</label>
+              <select id="ub-retur-plads" value={returPladsId}
+                      onChange={(e) => saetReturPladsId(e.target.value)}>
+                <option value="">Vælg faktisk modtagelseslokation …</option>
+                {pladser.map((p) => <option key={p.id} value={p.id}>{pladsnavn(p)}</option>)}
+              </select>
+            </div>
+            <div className="fc-filtre-knapper">
+              <Knap onClick={() => saetReturFor(null)}>Annullér</Knap>
+              <Knap variant="primaer" disabled={!returPladsId || arbejder === returFor.id}
+                    onClick={() => skift(returFor, "returneret", returPladsId)}>
+                {arbejder === returFor.id ? "Modtager …" : "Modtag og afslut booking"}
+              </Knap>
+            </div>
+          </div>
+        </Kort>
+      )}
 
       <Kort titel="Ledige kasser i en periode">
         <div className="fc-filtre">
@@ -362,7 +404,7 @@ export default function Udlaan() {
               { key: "id", label: "Kasse", render: (k) => <b>{k.id}</b> },
               { key: "type", label: "Type",
                 render: (k) => typer.find((t) => t.id === k.type)?.navn || k.type },
-              { key: "status", label: "Står nu", render: (k) => (
+              { key: "status", label: "Enhedstilstand og aktuel placering", render: (k) => (
                   <>
                     <Pille tone={KASSE_STATUS[k.status]?.pill || "info"}>
                       {KASSE_STATUS[k.status]?.label || k.status}
@@ -384,7 +426,7 @@ export default function Udlaan() {
               { key: "handling", label: "", render: (k) => (
                   <Knap variant="primaer" disabled={!maaSkrive}
                         title={maaSkrive ? `Reservér ${k.id} i perioden.`
-                          : `Kræver ${PERM.kasseudlaanSkriv} — serveren afviser.`}
+                          : "Du har ikke rettighed til at reservere."}
                         onClick={() => saetReserverer(k)}>
                     Reservér
                   </Knap>
@@ -413,7 +455,7 @@ export default function Udlaan() {
                    onChange={(e) => saetSoeg(e.target.value)} />
           </div>
           <div className="fc-felt">
-            <label htmlFor="uf-tilstand">Tilstand</label>
+            <label htmlFor="uf-tilstand">Bookingstatus</label>
             <select id="uf-tilstand" value={filter}
                     onChange={(e) => saetFilter(e.target.value)}>
               <option value="">Alle tilstande</option>
@@ -448,7 +490,7 @@ export default function Udlaan() {
                   )}
                 </>
               ) },
-            { key: "tilstand", label: "Tilstand", render: (u) => (
+            { key: "tilstand", label: "Bookingstatus", render: (u) => (
                 <Pille tone={UDLAAN_TILSTAND[u.tilstand]?.pill || "info"}>
                   {UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}
                 </Pille>
@@ -465,7 +507,7 @@ export default function Udlaan() {
                   <Knap variant="primaer"
                         disabled={!maaSkrive || arbejder === u.id}
                         title={maaSkrive ? SKIFTEFORKLARING[t]
-                          : `Kræver ${PERM.kasseudlaanSkriv} — serveren afviser.`}
+                          : "Du har ikke rettighed til at ændre bookingen."}
                         onClick={() => skift(u, t)}>
                     {arbejder === u.id ? "…" : SKIFTELABEL[t] || t}
                   </Knap>
@@ -482,7 +524,7 @@ export default function Udlaan() {
                       <Knap key={t}
                             disabled={!maaSkrive || arbejder === u.id}
                             title={maaSkrive ? SKIFTEFORKLARING[t]
-                              : `Kræver ${PERM.kasseudlaanSkriv} — serveren afviser.`}
+                              : "Du har ikke rettighed til at ændre bookingen."}
                             onClick={() => skift(u, t)}>
                         {arbejder === u.id ? "…" : SKIFTELABEL[t] || t}
                       </Knap>

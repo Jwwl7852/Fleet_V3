@@ -386,11 +386,13 @@ export const NODE_MODUL = {
 
   /* Den bookbare fysiske unit er fælles. `kasser/<unitId>` og dens type er
      den eksisterende stabile identitet; WAREHOUSE må ikke oprette en kopi.
-     Bookingforløbet nedenfor forbliver UNIT Bookings alene. */
+     Bookingforløbet og importnoderne nedenfor forbliver UNIT Bookings alene. */
   kasser: ["unitbooking", "warehouse"],
   kassetyper: ["unitbooking", "warehouse"],
   kasseudlaan: "unitbooking",
-  unitbevaegelser: ["unitbooking", "warehouse"],
+  unitbookingImporter: "unitbooking",
+  unitbookingImportHashes: "unitbooking",
+  unitbookingImportOperationer: "unitbooking",
 
   /* ⚠ DEN FØRSTE NODE DER HØRER TIL TO MODULER, og det er en beslutning og
      ikke en forglemmelse. Unitbookings transportkasser og Warehouses
@@ -402,6 +404,7 @@ export const NODE_MODUL = {
      hedde `kasser.skriv`: en WMS-medarbejder hos en kunde uden Unitbooking
      ville ikke kunne oprette en hylde. Se WAREHOUSE.md punkt 3.3. */
   reolpladser: ["unitbooking", "warehouse"],
+  unitbevaegelser: ["unitbooking", "warehouse"],
 
   /* Warehouse (WMS) — 3PL. Varen er KUNDENS; se noten ved MODUL.warehouse
      om hvorfor det ikke er det samme som `lagre`. */

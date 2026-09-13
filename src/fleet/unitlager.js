@@ -1,5 +1,6 @@
 import { kaldFunktion } from "../firebase.js";
 import { tolkLagerfejl } from "./warehouse.js";
+import { tolkUdlaansfejl, UDLAANSSVAR } from "./udlaan-regler.js";
 
 export const UNITLAGERFUNKTION = "unitlagerhandling";
 export const UNITLAGEROPRETFUNKTION = "unitlageropret";
@@ -68,5 +69,28 @@ export async function skrivUnitLagerhandling({
     }
     const tolket = tolkLagerfejl(fejl);
     return { ok: false, ...tolket, operationId: id };
+  }
+}
+
+/** Klientadapter til den fælles UNIT/WAREHOUSE-kontrakt. Kilden er eksplicit,
+ * men tenant, bruger, fra-lokation og tidspunkt udledes altid på serveren. */
+export async function unitlagerhandling({
+  operationId, unitId, art, tilPladsId, bookingId, reference, forventetPladsId,
+  kilde = "unitbooking",
+}) {
+  try {
+    const svar = await kaldFunktion(UNITLAGERFUNKTION, {
+      operationId, unitId, art, kilde,
+      tilPladsId: tilPladsId || undefined,
+      bookingId: bookingId || undefined,
+      reference: reference || undefined,
+      forventetPladsId: forventetPladsId ?? null,
+    });
+    return { ok: true, art: UDLAANSSVAR.ok, besked: null, data: svar?.data ?? null };
+  } catch (fejl) {
+    if (/ingen Firebase-app/i.test(String(fejl?.message))) {
+      return { ok: false, art: UDLAANSSVAR.demo, besked: "Demo-tilstand: ingen fysisk bevægelse blev gemt.", data: null };
+    }
+    return { ok: false, ...tolkUdlaansfejl(fejl), data: null };
   }
 }

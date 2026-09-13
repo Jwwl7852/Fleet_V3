@@ -19,6 +19,7 @@ import {
   kassebelaegning, I_BRUG_STATUS, klargoeresSnart, KLARGOER_VINDUE_TIMER,
   sagsblokke, sagstilstand, SAGSTILSTAND_RANG, SKIFTELABEL,
   udlaansblokke, UDLAAN_ART, ALLE_UDLAAN_ARTER, returneresSnart, udeAfDriftBlok,
+  bygUnitbevaegelse, sammeUnitbevaegelse,
 } from "../src/fleet/unitbooking.js";
 import {
   NODE_MODUL, MODUL, UDEN_SKAERM, modulerFor,
@@ -95,9 +96,11 @@ describe("Kassen", () => {
 
   it("behandler hjemplads som et valgfrit forslag", () => {
     /* Hvor kassen foreslås placeret, er ikke det samme som hvor den står. */
-    assert.deepEqual(valideKasse({
-      ...kasse, status: "udlaant", pladsId: null, hjemPladsId: null,
-    }, ctx), {});
+    assert.deepEqual(
+      valideKasse({ ...kasse, status: "udlaant", pladsId: null, hjemPladsId: null }, ctx),
+      {},
+      "hjemplads er et valgfrit forslag, også mens kassen er ude",
+    );
   });
 
   it("afviser en ukendt type og en ukendt plads", () => {
@@ -194,11 +197,11 @@ describe("To udlån på samme kasse", () => {
 });
 
 describe("Modulet er registreret — men ikke tegnet", () => {
-  it("står i kataloget med bookingnoden og de fælles unitnoder", () => {
+  it("står i kataloget med egne og fælles noder", () => {
     assert.ok(MODUL.unitbooking, "unitbooking mangler i kataloget");
-    assert.deepEqual(
-      Object.keys(NODE_MODUL).filter((n) => modulerFor(n).includes("unitbooking")).sort(),
-      ["kasser", "kassetyper", "kasseudlaan", "reolpladser", "unitbevaegelser"]);
+    for (const node of ["kasser", "kassetyper", "kasseudlaan", "reolpladser", "unitbevaegelser", "unitbookingImporter"]) {
+      assert.ok(modulerFor(node).includes("unitbooking"), `${node} er ikke tilknyttet UNIT`);
+    }
     /* ⚠ REOLPLADSER ER DELT MED WAREHOUSE. Transportkasser og kundegods staar
        paa de samme hylder, og noden blev UDVIDET frem for kopieret. Proeven
        staar her, saa en fremtidig oprydning ikke "retter" den tilbage til eet
@@ -226,6 +229,32 @@ describe("Modulet er registreret — men ikke tegnet", () => {
       assert.ok(!["lagre", "bookinger", "kunder", "opgaver"].includes(node));
     }
     assert.equal(NODE_MODUL.lagre, "indkoeb", "lagre hører stadig til Indkøb");
+  });
+});
+
+describe("fælles fysisk bevægelse", () => {
+  const input = {
+    operationId: "op-unit-12345678", unitId: "MDT-101", art: "retur",
+    fraPladsId: null, tilPladsId: "p-modtagelse", bookingId: "u-1",
+    reference: "SAG-42", kilde: "unitbooking", tidspunktMs: 1789000000000,
+    udfoertAf: "lager-1",
+  };
+
+  it("bærer stabil unit-identitet, faktisk fra/til, booking og bruger", () => {
+    const r = bygUnitbevaegelse(input);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.bevaegelse, input);
+  });
+
+  it("genkender samme operation men ikke en ændret destination", () => {
+    const b = bygUnitbevaegelse(input).bevaegelse;
+    assert.equal(sammeUnitbevaegelse(b, { ...b }), true);
+    assert.equal(sammeUnitbevaegelse(b, { ...b, tilPladsId: "p-anden" }), false);
+  });
+
+  it("afviser ukendt art og ugyldigt operation-id", () => {
+    assert.equal(bygUnitbevaegelse({ ...input, art: "teleport" }).ok, false);
+    assert.equal(bygUnitbevaegelse({ ...input, operationId: "kort" }).ok, false);
   });
 });
 
@@ -335,10 +364,12 @@ describe("hvad skiftet gør ved kassen", () => {
     assert.equal(v.pladsId, null);
   });
 
-  it("sender en returneret kasse hjem — ikke tilbage hvor den stod", () => {
-    const v = virkningPaaKasse({ fra: "udlaant", til: "returneret", kasse });
+  it("placerer en retur på den faktiske modtagelseslokation — ikke automatisk hjemme", () => {
+    const v = virkningPaaKasse({
+      fra: "udlaant", til: "returneret", kasse, modtagelsesPladsId: "p-modtagelse",
+    });
     assert.equal(v.status, "ledig");
-    assert.equal(v.pladsId, "p-hjem");
+    assert.equal(v.pladsId, "p-modtagelse");
   });
 
   it("ruller klargøringen tilbage, men kun hvis den fandt sted", () => {
@@ -601,8 +632,8 @@ describe("serveren stempler det faktiske tidspunkt", () => {
   it("sætter udleveretMs og returneretMs i selve skiftet", () => {
     /* ⚠ I SAMME opdatering-OBJEKT som tilstanden. To skrivninger kunne give
        et udlån der er returneret uden et returtidspunkt. */
-    assert.ok(kilde.includes("udleveretMs`] = Date.now()"));
-    assert.ok(kilde.includes("returneretMs`] = Date.now()"));
+    assert.ok(kilde.includes("udleveretMs = tidspunktMs"));
+    assert.ok(kilde.includes("returneretMs = tidspunktMs"));
   });
 
   it("lader ikke klienten oplyse dem", () => {

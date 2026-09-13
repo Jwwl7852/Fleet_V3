@@ -155,18 +155,18 @@ export const kanSkifteUdlaan = (fra, til) =>
  *
  * ⚠ EN UDLEVERET KASSE MISTER SIN PLADS. `pladsId: null`, ikke "hos kunde" —
  * ellers er hylden optaget af en kasse der fysisk er i Paris, og ledige
- * pladser kan ikke tælles. Ved retur får den sin HJEMPLADS igen: det er dér
- * den hører til, og lagermanden kan flytte den bagefter hvis den skal stå et
- * andet sted.
+ * pladser kan ikke tælles. Ved retur registreres den valgte FAKTISKE
+ * modtagelsesplads. Hjempladsen er kun et forslag; en automatisk hjemplacering
+ * ville påstå at den fysiske flytning allerede var sket.
  *
  * Returneres den i stykker, sættes `udeAfDrift` bagefter i Kasser — det er en
  * observation om kassen, ikke om udlånet.
  */
-export function virkningPaaKasse({ fra, til, kasse = {} }) {
+export function virkningPaaKasse({ fra, til, kasse = {}, modtagelsesPladsId = null }) {
   if (til === "klargjort") return { status: "klargjort" };
   if (til === "udlaant") return { status: "udlaant", pladsId: null };
   if (til === "returneret") {
-    return { status: "ledig", pladsId: kasse.hjemPladsId || null };
+    return { status: "ledig", pladsId: modtagelsesPladsId || null };
   }
   /* Fortrydes klargøringen — eller annulleres et klargjort udlån — skal
      kassen ud af klargjort igen. Var den kun booket, blev den aldrig rørt. */
@@ -174,6 +174,69 @@ export function virkningPaaKasse({ fra, til, kasse = {} }) {
     return { status: "ledig" };
   }
   return null;
+}
+
+/* ---- Fælles fysisk unitbevægelse ------------------------------------- */
+
+export const UNIT_BEVAEGELSE_ART = Object.freeze({
+  modtagelse: "modtagelse",
+  flytning: "flytning",
+  udlevering: "udlevering",
+  retur: "retur",
+});
+
+export const UNIT_BEVAEGELSE_KILDE = Object.freeze({
+  unitbooking: "unitbooking",
+  warehouse: "warehouse",
+});
+
+export const UNIT_OPERATION_ID_MOENSTER = /^[A-Za-z0-9][A-Za-z0-9_-]{7,79}$/;
+
+/**
+ * Append-only hændelse. Tid og bruger kommer altid fra serveren.
+ * operationId er samtidig nodens nøgle og tenant-scope idempotensnøgle.
+ */
+export function bygUnitbevaegelse({
+  operationId, unitId, art, fraPladsId = null, tilPladsId = null,
+  bookingId = null, reference = null, kilde = "unitbooking",
+  tidspunktMs, udfoertAf,
+} = {}) {
+  const fejl = {};
+  if (!UNIT_OPERATION_ID_MOENSTER.test(String(operationId || ""))) {
+    fejl.operationId = "Handlingen mangler en gyldig idempotensnøgle.";
+  }
+  if (!KASSE_ID_MOENSTER.test(String(unitId || ""))) fejl.unitId = "Ukendt eller ugyldigt unit-id.";
+  if (!Object.values(UNIT_BEVAEGELSE_ART).includes(art)) fejl.art = "Ukendt bevægelsesart.";
+  if (!Object.values(UNIT_BEVAEGELSE_KILDE).includes(kilde)) fejl.kilde = "Ukendt kilde.";
+  if (!Number.isSafeInteger(tidspunktMs) || tidspunktMs <= 0) fejl.tidspunktMs = "Serverens tidspunkt mangler.";
+  if (!String(udfoertAf || "").trim()) fejl.udfoertAf = "Den udførende bruger mangler.";
+  if (art === "flytning" && (!fraPladsId || !tilPladsId || fraPladsId === tilPladsId)) {
+    fejl.plads = "En flytning kræver to forskellige lokationer.";
+  }
+  if (["modtagelse", "retur"].includes(art) && !tilPladsId) {
+    fejl.tilPladsId = "Modtagelse og retur kræver en faktisk modtagelseslokation.";
+  }
+  if (art === "udlevering" && tilPladsId) fejl.tilPladsId = "En udleveret unit har ingen intern lokation.";
+  if (["udlevering", "retur"].includes(art) && !bookingId) fejl.bookingId = "Bookingreference mangler.";
+  if (Object.keys(fejl).length) return { ok: false, fejl, bevaegelse: null };
+  return {
+    ok: true,
+    fejl: {},
+    bevaegelse: {
+      operationId, unitId, art,
+      fraPladsId: fraPladsId || null,
+      tilPladsId: tilPladsId || null,
+      bookingId: bookingId || null,
+      reference: reference || null,
+      kilde, tidspunktMs, udfoertAf,
+    },
+  };
+}
+
+/** Felter der afgør om et idempotent genforsøg er samme handling. */
+export function sammeUnitbevaegelse(a = {}, b = {}) {
+  return ["operationId", "unitId", "art", "fraPladsId", "tilPladsId", "bookingId", "reference", "kilde"]
+    .every((felt) => (a[felt] ?? null) === (b[felt] ?? null));
 }
 
 /* ---- Reolpladsen ------------------------------------------------------- */
@@ -336,6 +399,33 @@ export function valideKasse(post = {}, { typer = [], pladser = [], katalog = [] 
       if (!satte.includes(m) && !f[m]) {
         f[m] = "Udfyld alle tre mål — ellers kan volumen ikke regnes.";
       }
+    }
+  }
+
+  /* Eksisterende mål må ikke lydløst få ny betydning. De historiske felter
+     bevares, mens betydningen markeres ukendt eller udvendig. Brugbare
+     indvendige mål står i tre nye, særskilte felter. */
+  if (post.maalBetydning && !["ukendt", "udvendig"].includes(post.maalBetydning)) {
+    f.maalBetydning = "Vælg om de eksisterende mål er udvendige eller endnu uafklarede.";
+  }
+  const indvendige = ["indvendigLaengdeCm", "indvendigBreddeCm", "indvendigHoejdeCm"];
+  const indvendigeSatte = indvendige.filter((m) => String(post[m] ?? "").trim() !== "");
+  for (const m of indvendigeSatte) {
+    const v = Number(String(post[m]).replace(",", "."));
+    const navn = {
+      indvendigLaengdeCm: "Den indvendige længde",
+      indvendigBreddeCm: "Den indvendige bredde",
+      indvendigHoejdeCm: "Den indvendige højde",
+    }[m];
+    if (!Number.isFinite(v)) f[m] = `${navn} skal være et tal.`;
+    else if (v <= 0) f[m] = `${navn} skal være større end nul.`;
+    else if (Math.abs(v * 10 - Math.round(v * 10)) > 1e-9) {
+      f[m] = `${navn} kan højst have én decimal.`;
+    }
+  }
+  if (indvendigeSatte.length > 0 && indvendigeSatte.length < 3) {
+    for (const m of indvendige) {
+      if (!indvendigeSatte.includes(m) && !f[m]) f[m] = "Udfyld alle tre indvendige mål.";
     }
   }
 

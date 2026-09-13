@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-09-13T16:26:26.066Z",
+  "projectId": "demo-unitbooking-v2",
+  "environment": "Firebase Auth/Functions/RTDB Emulator Suite",
+  "access": {
+    "unitOnly": true,
+    "warehouseOnly": true,
+    "bothModules": true,
+    "tenantIsolation": true,
+    "permissionDenied": true
+  },
+  "import": {
+    "draftId": "imp-76387113a8094952ef437e4f",
+    "originalRetained": true,
+    "bookingIds": [
+      "-P1Q_n-iGEB6zS6KUqSw"
+    ],
+    "duplicateWarning": "imp-76387113a8094952ef437e4f",
+    "retryIdempotent": true,
+    "emlUpload": {
+      "draftId": "imp-4aa9d658555b666f0e111e0a",
+      "originalRetained": true,
+      "connectorStatus": "lokal"
+    }
+  },
+  "concurrency": {
+    "attempts": 2,
+    "committed": 1,
+    "rejected": 1
+  },
+  "physical": {
+    "returnLocation": "modtagelse",
+    "laterLocation": "destination",
+    "retryMovements": 2,
+    "sameQrId": "AL-101"
+  }
+}

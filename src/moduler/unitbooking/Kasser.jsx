@@ -50,7 +50,9 @@ const m3 = (f) => (maalAfFelter(f)?.m3 ?? 0).toFixed(2).replace('.', ',');
 
 const tomKasse = () => ({
   id: "", type: "", undertype: "", status: "ledig", hjemPladsId: "", pladsId: "",
-  laengdeCm: "", breddeCm: "", hoejdeCm: "", note: "", udeAfDriftIso: "",
+  laengdeCm: "", breddeCm: "", hoejdeCm: "", maalBetydning: "udvendig",
+  indvendigLaengdeCm: "", indvendigBreddeCm: "", indvendigHoejdeCm: "",
+  note: "", udeAfDriftIso: "",
 });
 
 function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
@@ -61,6 +63,10 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
       /* Noden bærer mm; formularen viser cm. Se mmFraCm(). */
       laengdeCm: cmFraMm(kasse.laengdeMm), breddeCm: cmFraMm(kasse.breddeMm),
       hoejdeCm: cmFraMm(kasse.hoejdeMm),
+      maalBetydning: kasse.maalBetydning || "ukendt",
+      indvendigLaengdeCm: cmFraMm(kasse.indvendigLaengdeMm),
+      indvendigBreddeCm: cmFraMm(kasse.indvendigBreddeMm),
+      indvendigHoejdeCm: cmFraMm(kasse.indvendigHoejdeMm),
       udeAfDriftIso: Number.isFinite(kasse.udeAfDriftFra)
         ? msTilIso(kasse.udeAfDriftFra) : "",
     }
@@ -129,9 +135,13 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
       /* ⚠ NULSTILLES NAAR TYPEN SKIFTER — se saetType nedenfor. Null og ikke
          tom streng: reglen kraever en streng der findes i katalogget. */
       undertype: f.undertype || null,
-      status: f.status, hjemPladsId: f.hjemPladsId,
+      status: f.status, hjemPladsId: f.hjemPladsId || null,
       laengdeMm: mmFraCm(f.laengdeCm), breddeMm: mmFraCm(f.breddeCm),
       hoejdeMm: mmFraCm(f.hoejdeCm),
+      maalBetydning: f.maalBetydning,
+      indvendigLaengdeMm: mmFraCm(f.indvendigLaengdeCm),
+      indvendigBreddeMm: mmFraCm(f.indvendigBreddeCm),
+      indvendigHoejdeMm: mmFraCm(f.indvendigHoejdeCm),
       pladsId: paaLager ? f.pladsId : null,
       /* ⚠ KUN NAAR DEN ER UDE AF DRIFT. Bliver kassen ledig igen, ryddes
          datoen: et felt der blev staaende, ville faa kalenderen til at tegne
@@ -184,14 +194,14 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
               havde den. Reglerne afviser det også; det er ikke kun formularen
               der er pæn. */}
           {SELVVALGT_KASSE_STATUS.includes(f.status) ? (
-            <Felt id="k-status" label="Status" kraevet vaerdi={f.status} saet={saet("status")}
+            <Felt id="k-status" label="Enhedstilstand" kraevet vaerdi={f.status} saet={saet("status")}
                   fejl={vis("status")}
                   valgmuligheder={SELVVALGT_KASSE_STATUS.map((s) => ({
                     vaerdi: s, label: KASSE_STATUS[s].label,
                   }))}
                   hint="Ude af drift, når kassen er i stykker. Den bliver stående." />
           ) : (
-            <Felt id="k-status" label="Status" readOnly
+            <Felt id="k-status" label="Enhedstilstand" readOnly
                   vaerdi={KASSE_STATUS[f.status]?.label || f.status}
                   hint="Kommer fra et udlån og ændres under Udlån — ikke her." />
           )}
@@ -215,15 +225,25 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
                       længe den står sådan." />
         )}
 
-        {/* ⚠ MÅL, IKKE m² OG m³. Planchen har volumen som to indtastede felter;
-            to tal om den samme fysiske kasse kan blive uenige. Målene kan de
-            ikke — 120 × 80 × 95 cm ER 0,96 m² og 0,91 m³. Se maalFraMm(). */}
+        <p className="fc-hint">
+          Udvendige mål bruges til plads og transport. Brugbare indvendige mål
+          bruges til pasform. Fast polstring skal allerede være fratrukket de
+          indvendige mål; bookingens ekstra polstring lægges kun til objektet.
+        </p>
+        <Felt id="k-maal-betydning" label="Historiske måls betydning"
+              vaerdi={f.maalBetydning} saet={saet("maalBetydning")}
+              fejl={vis("maalBetydning")}
+              valgmuligheder={[
+                { vaerdi: "udvendig", label: "Bekræftet udvendige mål" },
+                { vaerdi: "ukendt", label: "Betydning skal gennemgås" },
+              ]}
+              hint="Eksisterende værdier omfortolkes aldrig automatisk som indvendige mål." />
         <Feltraekke>
-          <Felt id="k-laengde" label="Længde" vaerdi={f.laengdeCm}
+          <Felt id="k-laengde" label="Udvendig længde" vaerdi={f.laengdeCm}
                 saet={saet("laengdeCm")} fejl={vis("laengdeCm")} suffiks="cm" />
-          <Felt id="k-bredde" label="Bredde" vaerdi={f.breddeCm}
+          <Felt id="k-bredde" label="Udvendig bredde" vaerdi={f.breddeCm}
                 saet={saet("breddeCm")} fejl={vis("breddeCm")} suffiks="cm" />
-          <Felt id="k-hoejde" label="Højde" vaerdi={f.hoejdeCm}
+          <Felt id="k-hoejde" label="Udvendig højde" vaerdi={f.hoejdeCm}
                 saet={saet("hoejdeCm")} fejl={vis("hoejdeCm")} suffiks="cm"
                 hint={maalFraMm({
                   laengdeMm: mmFraCm(f.laengdeCm), breddeMm: mmFraCm(f.breddeCm),
@@ -234,15 +254,34 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
         </Feltraekke>
 
         <Feltraekke>
-          <Felt id="k-hjem" label="Hjemplads" kraevet vaerdi={f.hjemPladsId}
+          <Felt id="k-indv-laengde" label="Brugbar indvendig længde"
+                vaerdi={f.indvendigLaengdeCm} saet={saet("indvendigLaengdeCm")}
+                fejl={vis("indvendigLaengdeCm")} suffiks="cm" />
+          <Felt id="k-indv-bredde" label="Brugbar indvendig bredde"
+                vaerdi={f.indvendigBreddeCm} saet={saet("indvendigBreddeCm")}
+                fejl={vis("indvendigBreddeCm")} suffiks="cm" />
+          <Felt id="k-indv-hoejde" label="Brugbar indvendig højde"
+                vaerdi={f.indvendigHoejdeCm} saet={saet("indvendigHoejdeCm")}
+                fejl={vis("indvendigHoejdeCm")} suffiks="cm"
+                hint="Alle tre kræves, før enheden kan vises som bekræftet størrelsesmatch." />
+        </Feltraekke>
+
+        <Feltraekke>
+          <Felt id="k-hjem" label="Foreslået hjemplads" vaerdi={f.hjemPladsId}
                 saet={saet("hjemPladsId")} fejl={vis("hjemPladsId")}
-                valgmuligheder={pladsvalg}
-                hint="Hvor kassen hører til. Den beholder den, også når den er ude." />
+                valgmuligheder={[{ vaerdi: "", label: "Ingen foreslået hjemplads" }, ...pladsvalg]}
+                hint="Valgfri normalplacering. Den flytter aldrig enheden automatisk." />
           {paaLager ? (
-            <Felt id="k-plads" label="Står nu" kraevet vaerdi={f.pladsId}
-                  saet={saet("pladsId")} fejl={vis("pladsId")}
-                  valgmuligheder={pladsvalg}
-                  hint="Hvor den står lige nu. Ofte den samme som hjempladsen." />
+            nyt ? (
+              <Felt id="k-plads" label="Første placering" kraevet vaerdi={f.pladsId}
+                    saet={saet("pladsId")} fejl={vis("pladsId")}
+                    valgmuligheder={pladsvalg}
+                    hint="Den faktiske placering ved registreringen." />
+            ) : (
+              <Felt id="k-plads" label="Aktuel placering" readOnly
+                    vaerdi={pladsnavn(pladser.find((p) => p.id === f.pladsId))}
+                    hint="Flyt enheden via Scan og flyt, så historikken følger med." />
+            )
           ) : null}
         </Feltraekke>
 
@@ -380,7 +419,7 @@ export default function Kasser() {
         handling={
           <Knap variant="primaer" disabled={!maaSkrive || !typer.length || !pladser.length}
                 onClick={() => saetNy(true)}
-                title={!maaSkrive ? `Kræver ${PERM.kasserSkriv} — reglerne afviser.`
+                title={!maaSkrive ? "Du har ikke rettighed til at oprette enheder."
                   : !typer.length ? "Opret en kassetype først."
                   : !pladser.length ? "Opret en reolplads først."
                   : "Opret en kasse."}>
@@ -396,10 +435,10 @@ export default function Kasser() {
                    onChange={(e) => { saetSoeg(e.target.value); saetSide(1); }} />
           </div>
           <div className="fc-felt">
-            <label htmlFor="kf-status">Status</label>
+            <label htmlFor="kf-status">Enhedstilstand</label>
             <select id="kf-status" value={status}
                     onChange={(e) => { saetStatus(e.target.value); saetSide(1); }}>
-              <option value="">Alle statusser</option>
+              <option value="">Alle enhedstilstande</option>
               {ALLE_KASSE_STATUS.map((v) => (
                 <option key={v} value={v}>{KASSE_STATUS[v].label}</option>
               ))}
@@ -441,7 +480,7 @@ export default function Kasser() {
           <Tom>
             En kasse skal have en <b>type</b> og en <b>hjemplads</b>. Opret dem
             under Reolpladser først — ellers ville kassen pege på noget der ikke
-            findes, og reglerne afviser den.
+            findes.
           </Tom>
         ) : (
           <>
@@ -462,20 +501,26 @@ export default function Kasser() {
                    visninger af det SAMME mål — og en tabel med ti kolonner
                    læses ikke. Der er intet gemt felt at sortere på alligevel:
                    tallene er afledt af længde × bredde × højde. */
-                { key: "volumen", label: "Volumen", render: (k) => {
-                  const m = maalFraMm(k);
-                  if (!m) return "—";
-                  const t = (v) => v.toFixed(2).replace(".", ",");
-                  return `${t(m.m2)} m² · ${t(m.m3)} m³`;
+                { key: "maal", label: "Indvendig / udvendig", render: (k) => {
+                  const t = (v) => Number.isFinite(v) ? cmFraMm(v) : "?";
+                  const ind = [k.indvendigLaengdeMm, k.indvendigBreddeMm, k.indvendigHoejdeMm];
+                  const ud = [k.laengdeMm, k.breddeMm, k.hoejdeMm];
+                  return (
+                    <span className="fc-hint">
+                      <b>Ind:</b> {ind.every(Number.isFinite) ? ind.map(t).join(" × ") + " cm" : "ikke bekræftet"}<br />
+                      <b>Ud:</b> {ud.every(Number.isFinite) ? ud.map(t).join(" × ") + " cm" : "ukendt"}
+                      {k.maalBetydning === "ukendt" ? " · betydning til gennemgang" : ""}
+                    </span>
+                  );
                 } },
-                { key: "status", label: "Status", render: (k) => (
+                { key: "status", label: "Enhedstilstand", render: (k) => (
                     <Pille tone={KASSE_STATUS[k.status]?.pill || "info"}>
                       {KASSE_STATUS[k.status]?.label || k.status}
                     </Pille>
                   ) },
                 /* ⚠ EN STREG, IKKE "Udlånt hos kunde". Kassen står ingen
                    steder — det er ikke en plads med et navn. */
-                { key: "plads", label: "Står nu", render: (k) => (
+                { key: "plads", label: "Aktuel placering", render: (k) => (
                     k.pladsId ? pladsnavn(pladsMap[k.pladsId])
                               : <span className="fc-neutral">— ude</span>
                   ) },

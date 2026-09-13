@@ -27,7 +27,6 @@ export const FYSISK_OBJEKT = Object.freeze({
   carrier: "carrier",
   vareenhed: "vareenhed",
 });
-
 export const UNIT_BEVAEGELSE_ART = Object.freeze({
   modtagelse: { label: "Modtaget", kraeverTil: true },
   flytning: { label: "Flyttet", kraeverFra: true, kraeverTil: true },
@@ -79,17 +78,14 @@ export function valideUnitBevaegelse(post = {}, { units = [], pladser = [] } = {
   if (!post.unitId) f.unitId = "Scan eller vælg en unit.";
   else if (!KASSE_ID_MOENSTER.test(String(post.unitId))) f.unitId = "Ugyldigt unit-id.";
   else if (units.length && !units.includes(post.unitId)) f.unitId = "Ukendt unit.";
-
   if (!UNIT_OPERATION_ID_MOENSTER.test(String(post.operationId || ""))) {
     f.operationId = "Handlingen mangler en gyldig idempotensnøgle.";
   }
-
   if (art?.kraeverFra && !post.fraPladsId) f.fraPladsId = "Unitten har ingen registreret afgangslokation.";
   if (art?.kraeverTil && !post.tilPladsId) f.tilPladsId = "Vælg en destinationslokation.";
   if (post.fraPladsId && pladser.length && !pladser.includes(post.fraPladsId)) f.fraPladsId = "Ukendt afgangslokation.";
   if (post.tilPladsId && pladser.length && !pladser.includes(post.tilPladsId)) f.tilPladsId = "Ukendt destinationslokation.";
   if (post.fraPladsId && post.fraPladsId === post.tilPladsId) f.tilPladsId = "Vælg en anden lokation.";
-
   if (post.bookingId != null && typeof post.bookingId !== "string") f.bookingId = "Ugyldig bookingreference.";
   if (post.reference != null && (typeof post.reference !== "string" || post.reference.length > 60)) {
     f.reference = "Referencen må højst være 60 tegn.";
@@ -164,10 +160,6 @@ export function senesteUnitBevaegelser(bevaegelser = [], unitId) {
     .sort((a, b) => (b.tidspunktMs || 0) - (a.tidspunktMs || 0));
 }
 
-/**
- * Samme operationId med samme payload er en genafspilning; anden payload er
- * en konflikt. Serveren skal bruge resultatet i en transaction.
- */
 export function sammenlignOperation(gemt, foreslaaet = {}) {
   if (!gemt) return { art: "ny" };
   const felter = ["operationId", "unitId", "art", "fraPladsId", "tilPladsId", "bookingId", "reference", "kilde"];
@@ -176,7 +168,6 @@ export function sammenlignOperation(gemt, foreslaaet = {}) {
     ? { art: "gentaget", eventId: gemt.eventId || gemt.id || null }
     : { art: "konflikt", besked: "Idempotensnøglen er allerede brugt til en anden handling." };
 }
-
 export function lagerBelægningPrOmraade(pladser = [], belaegning = {}) {
   const map = new Map();
   for (const plads of pladser) {

@@ -1,0 +1,162 @@
+.ub-side,
+.ub-side * { box-sizing: border-box; }
+.ub-side { min-width: 0; }
+.ub-sidehoved { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.ub-sidehoved h1 { margin: 0; font-size: var(--fc-t-2xl); }
+.ub-sidehoved p { margin: 4px 0 0; color: var(--bc-muted); font-size: var(--fc-t-xs); }
+
+.ub-proces { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 0; padding: 0; list-style: none; }
+.ub-proces li { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 9px 11px; color: var(--bc-muted); background: var(--fc-bg); border: 1px solid var(--bc-line); border-radius: 9px; font-size: var(--fc-t-xs); }
+.ub-proces li span { display: grid; place-items: center; flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; background: var(--bc-card); font-weight: 750; }
+.ub-proces li b { overflow: hidden; text-overflow: ellipsis; }
+.ub-proces .ub-proces-aktiv { color: var(--bc-accent); background: var(--fc-accent-soft); border-color: var(--bc-accent); }
+.ub-proces .ub-proces-faerdig { color: var(--bc-ok); }
+
+.ub-importvalg { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; min-width: 0; }
+.ub-importvalg > * { min-width: 0; }
+.ub-drop { display: grid; place-items: center; gap: 8px; min-height: 225px; padding: 24px; text-align: center; border: 2px dashed var(--bc-line); border-radius: 10px; background: var(--fc-bg); transition: .15s ease; }
+.ub-drop > svg { width: 38px; height: 38px; color: var(--bc-accent); }
+.ub-drop > span { color: var(--bc-muted); font-size: var(--fc-t-xs); }
+.ub-drop-over { border-color: var(--bc-accent); background: var(--fc-accent-soft); transform: translateY(-1px); }
+.ub-formatstatus { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }
+.ub-formatstatus > div { display: grid; gap: 2px; min-width: 0; padding: 8px 9px; background: var(--fc-bg); border-radius: 8px; font-size: var(--fc-t-tight); }
+.ub-formatstatus span { color: var(--bc-muted); overflow-wrap: anywhere; }
+.ub-skjult { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.ub-tekstlabel { display: block; margin-bottom: 6px; color: var(--bc-muted); font-size: var(--fc-t-xs); font-weight: 650; }
+.ub-mailtekst { width: 100%; min-height: 225px; resize: vertical; padding: 11px; color: var(--bc-text); background: var(--bc-card); border: 1px solid var(--bc-line); border-radius: 9px; font: inherit; line-height: 1.45; }
+.ub-handlinger { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.ub-eksempler { display: flex; flex-wrap: wrap; gap: 7px; margin-right: auto; }
+.ub-eksempler button { padding: 3px 0; color: var(--bc-accent); background: transparent; border: 0; cursor: pointer; font: inherit; font-size: var(--fc-t-tight); text-decoration: underline; }
+
+.ub-review-layout { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(480px, 1.45fr); gap: 14px; align-items: start; min-width: 0; }
+.ub-review-layout > *, .ub-forslagsliste > *, .ub-forslag-grid > * { min-width: 0; }
+.ub-originalkort { position: sticky; top: 10px; }
+.ub-original-tekst { max-height: 72vh; margin: 0; padding: 13px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--fc-bg); border-radius: 8px; font: inherit; font-size: var(--fc-t-xs); line-height: 1.55; }
+.ub-original-billede, .ub-original-pdf { display: block; width: 100%; max-height: 72vh; border: 1px solid var(--bc-line); border-radius: 8px; object-fit: contain; }
+.ub-original-pdf { height: 72vh; }
+.ub-original-tom, .ub-original-fil { display: grid; place-items: center; gap: 8px; min-height: 300px; padding: 20px; color: var(--bc-muted); text-align: center; background: var(--fc-bg); border-radius: 8px; }
+.ub-original-fil svg { width: 36px; height: 36px; color: var(--bc-accent); }
+.ub-advarsel { display: grid; gap: 5px; margin-bottom: 12px; padding: 10px 12px; color: var(--bc-warn); background: var(--fc-warn-bg); border: 1px solid var(--bc-line); border-radius: 9px; font-size: var(--fc-t-xs); }
+.ub-advarsel ul { margin: 3px 0 0; padding-left: 18px; }
+.ub-advarsel-info { color: var(--bc-text); background: var(--fc-accent-soft); }
+.ub-kilder { margin-top: 10px; padding: 9px 11px; color: var(--bc-muted); background: var(--fc-bg); border-radius: 8px; font-size: var(--fc-t-tight); }
+.ub-kilder summary { color: var(--bc-text); cursor: pointer; font-weight: 700; }
+.ub-kilder[open] { display: grid; gap: 6px; }
+.ub-kilder code { color: var(--bc-accent); }
+.ub-kilde-uafklaret { padding-left: 7px; border-left: 3px solid var(--bc-warn); }
+.ub-linjer { display: grid; gap: 10px; margin-top: 12px; }
+.ub-objektlinje { min-width: 0; padding: 12px; border: 1px solid var(--bc-line); border-radius: 10px; }
+.ub-objektlinje-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.ub-tremaal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ub-padding { min-width: 0; margin: 10px 0 0; padding: 10px; border: 1px solid var(--bc-line); border-radius: 9px; }
+.ub-padding legend { padding: 0 5px; font-size: var(--fc-t-xs); font-weight: 700; }
+.ub-pladskrav { display: block; margin-top: 7px; color: var(--bc-accent); font-size: var(--fc-t-xs); }
+.ub-checks { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; font-size: var(--fc-t-xs); }
+.ub-checks label { display: inline-flex; align-items: center; gap: 6px; }
+
+.ub-forslagsliste { display: grid; gap: 12px; min-width: 0; }
+.ub-kravlinje { margin-bottom: 9px; font-size: var(--fc-t-xs); }
+.ub-forslag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 8px; min-width: 0; }
+.ub-forslag { position: relative; display: grid; gap: 5px; min-width: 0; padding: 11px 11px 11px 35px; background: var(--fc-bg); border: 1px solid var(--bc-line); border-radius: 9px; cursor: pointer; font-size: var(--fc-t-xs); overflow-wrap: anywhere; }
+.ub-forslag > input { position: absolute; top: 13px; left: 11px; }
+.ub-forslag-valgt { background: var(--fc-ok-bg); border-color: var(--bc-accent); box-shadow: inset 0 0 0 1px var(--bc-accent); }
+.ub-forslag-h { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 7px; }
+.ub-intet-match { display: grid; gap: 5px; padding: 12px; color: var(--bc-block); background: var(--fc-bad-bg); border: 1px solid var(--bc-line); border-radius: 9px; font-size: var(--fc-t-xs); }
+.ub-intet-match p, .ub-intet-match ul { margin: 0; }
+.ub-intet-match ul { padding-left: 18px; }
+.ub-afviste summary { margin: 4px 0; cursor: pointer; font-weight: 700; }
+.ub-afviste > div { display: grid; gap: 3px; padding: 8px 0; border-top: 1px solid var(--bc-line); }
+.ub-afviste > div > span { color: var(--bc-muted); }
+.ub-bekraeft { max-width: 900px; margin-inline: auto; }
+.ub-resume { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.ub-resume div { min-width: 0; padding: 9px; background: var(--fc-bg); border-radius: 8px; }
+.ub-resume dt { color: var(--bc-muted); font-size: var(--fc-t-tight); }
+.ub-resume dd { margin: 3px 0 0; overflow-wrap: anywhere; font-size: var(--fc-t-xs); font-weight: 700; }
+.ub-bekraeft-linjer { display: grid; gap: 7px; margin-top: 11px; }
+.ub-bekraeft-linjer > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; padding: 9px 10px; border: 1px solid var(--bc-line); border-radius: 8px; font-size: var(--fc-t-xs); }
+.ub-succes { display: grid; gap: 6px; margin-top: 12px; padding: 12px; color: var(--bc-ok); background: var(--fc-ok-bg); border: 1px solid var(--bc-line); border-radius: 9px; font-size: var(--fc-t-xs); }
+
+.ub-scan-layout { display: grid; grid-template-columns: minmax(280px, .75fr) minmax(380px, 1.25fr); gap: 14px; align-items: start; min-width: 0; }
+.ub-scan-layout > * { min-width: 0; }
+.ub-scanner { display: grid; gap: 9px; }
+.ub-kamera { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; color: var(--fc-info); background: var(--fc-navy); border-radius: 11px; }
+.ub-kamera video { width: 100%; height: 100%; object-fit: cover; }
+.ub-kamera > span { position: absolute; font-size: 70px; }
+.ub-kamera > i { position: absolute; width: 58%; aspect-ratio: 1; border: 3px solid var(--fc-info); border-radius: 14px; box-shadow: 0 0 0 999px var(--fc-overlay); }
+.ub-scanner-knapper .fc-btn { width: 100%; min-height: 44px; }
+.ub-scan-manuel { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; align-items: end; }
+.ub-scan-manuel label { grid-column: 1 / -1; color: var(--bc-muted); font-size: var(--fc-t-xs); font-weight: 650; }
+.ub-scan-manuel input, .ub-scan-handling select { width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; color: var(--bc-text); background: var(--bc-card); border: 1px solid var(--bc-line); border-radius: 8px; font: inherit; }
+.ub-unit-top { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 12px; }
+.ub-unit-qr { width: 150px; max-width: 100%; background: var(--fc-stregkode-bund); }
+.ub-qr-bund { fill: var(--fc-stregkode-bund); }
+.ub-qr-felt { fill: var(--fc-stregkode-streg); }
+.ub-scan-handling { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; align-items: end; padding: 11px; background: var(--fc-bg); border-radius: 9px; }
+.ub-scan-handling label { grid-column: 1 / -1; color: var(--bc-muted); font-size: var(--fc-t-xs); font-weight: 650; }
+.ub-bevaegelser { display: grid; gap: 7px; }
+.ub-bevaegelser > div { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 8px; padding: 9px; background: var(--fc-bg); border-radius: 8px; font-size: var(--fc-t-xs); }
+.ub-bevaegelser span:last-child { color: var(--bc-muted); text-align: right; }
+
+/* UNIT-forsiden bruger den samme KPI-komponent, men arbejdslisten skal have
+   første skærmhøjde. Indhold og beregning er uændret. */
+.ub-kalender .fc-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
+.ub-kalender .fc-kpi { gap: 6px; min-height: 0; padding: 7px 9px; }
+.ub-kalender .fc-kpi-ico { width: 39px; height: 39px; border-radius: 10px; }
+.ub-kalender .fc-kpi-ico svg { width: 25px; height: 25px; }
+.ub-kalender .fc-kpi-v { margin: 0; font-size: var(--fc-t-l); line-height: 1.05; }
+.ub-kalender .fc-kpi-l, .ub-kalender .fc-kpi-d { font-size: var(--fc-t-tight); line-height: 1.2; }
+.ub-kalender-genveje > p { max-width: 540px; }
+.ub-kalender-kontroller { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.ub-dagligt { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.ub-dagligt a { display: grid; gap: 3px; min-width: 0; padding: 10px 11px; color: inherit; text-decoration: none; background: var(--fc-bg); border: 1px solid var(--bc-line); border-radius: 9px; }
+.ub-dagligt a:hover { border-color: var(--bc-accent); }
+.ub-dagligt strong { font-size: var(--fc-t-l); }
+.ub-dagligt span { color: var(--bc-muted); font-size: var(--fc-t-tight); overflow-wrap: anywhere; }
+.ub-dagligt em { color: var(--bc-accent); font-size: var(--fc-t-tight); font-style: normal; font-weight: 700; }
+.ub-mobilkort-liste { display: none; }
+
+@media (max-width: 900px) {
+  .ub-review-layout, .ub-importvalg, .ub-scan-layout { grid-template-columns: 1fr; }
+  .ub-originalkort { position: static; }
+  .ub-original-tekst, .ub-original-billede { max-height: 45vh; }
+  .ub-original-pdf { height: 45vh; }
+  .ub-dagligt { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .ub-sidehoved { align-items: stretch; flex-direction: column; }
+  .ub-proces { grid-template-columns: repeat(4, minmax(52px, 1fr)); overflow-x: auto; }
+  .ub-proces li { justify-content: center; padding: 7px 5px; }
+  .ub-proces li b { display: none; }
+  .ub-proces li.ub-proces-aktiv { grid-column: span 2; }
+  .ub-proces li.ub-proces-aktiv b { display: block; white-space: normal; }
+  .ub-formatstatus { grid-template-columns: 1fr; }
+  .ub-tremaal, .ub-resume { grid-template-columns: 1fr; }
+  .ub-drop { min-height: 190px; padding: 18px 12px; }
+  .ub-mailtekst { min-height: 190px; }
+  .ub-handlinger { align-items: stretch; flex-direction: column-reverse; }
+  .ub-handlinger .fc-btn { width: 100%; }
+  .ub-eksempler { width: 100%; }
+  .ub-forslag-grid, .ub-dagligt { grid-template-columns: 1fr; }
+  .ub-bekraeft-linjer > div { flex-direction: column; }
+  .ub-unit-top { grid-template-columns: 1fr; }
+  .ub-unit-qr { width: 110px; }
+  .ub-unit-top .fc-mini { min-width: 0; align-items: flex-start; }
+  .ub-unit-top .fc-mini > span { flex: 0 0 42%; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+  .ub-unit-top .fc-mini > b { min-width: 0; max-width: 62%; white-space: normal; overflow-wrap: anywhere; }
+  .ub-scan-handling { grid-template-columns: 1fr; }
+  .ub-scan-handling label { grid-column: auto; }
+  .ub-bevaegelser > div { grid-template-columns: 1fr; }
+  .ub-bevaegelser span:last-child { text-align: left; }
+  .ub-kalender .fc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ub-kalender .fc-kpi { min-width: 0; }
+  .ub-kalender .fc-kpi-ico { display: none; }
+  .ub-kalenderkort .fc-card-h { align-items: stretch; flex-direction: column; }
+  .ub-kalender-kontroller { justify-content: flex-start; width: 100%; }
+  .ub-kalender-kontroller > * { min-width: 0; max-width: 100%; }
+  .ub-kalender .fc-scroll:has(+ .ub-mobilkort-liste) { display: none; }
+  .ub-mobilkort-liste { display: grid; gap: 8px; }
+  .ub-mobilkort-liste article { display: grid; gap: 7px; min-width: 0; padding: 10px; background: var(--fc-bg); border: 1px solid var(--bc-line); border-radius: 9px; font-size: var(--fc-t-xs); overflow-wrap: anywhere; }
+  .ub-mobilkort-liste article > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
+  .ub-mobilkort-liste article .fc-btn { width: 100%; }
+}

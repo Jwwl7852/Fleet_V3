@@ -78,6 +78,8 @@ const Kasseudlaan = lazy(() => import("./moduler/unitbooking/Udlaan.jsx"));
 const Unitbookingkalender = lazy(() => import("./moduler/unitbooking/Kalender.jsx"));
 const Unitbookinghistorik = lazy(() => import("./moduler/unitbooking/Historik.jsx"));
 const WmsOverblik = lazy(() => import("./moduler/warehouse/Overblik.jsx"));
+const Unitbookingimport = lazy(() => import("./moduler/unitbooking/ImportBooking.jsx"));
+const Unitbookingscanner = lazy(() => import("./moduler/unitbooking/UnitScanner.jsx"));
 const Wmsvarer = lazy(() => import("./moduler/warehouse/Varer.jsx"));
 const Wmsunits = lazy(() => import("./moduler/warehouse/Units.jsx"));
 const Wmslokationer = lazy(() => import("./moduler/warehouse/Lokationer.jsx"));
@@ -695,6 +697,9 @@ export default function App() {
                 og dybe links følger samme abonnementsgrænse. */}
             <Route element={<ModulRute moduler={moduler} modul="unitbooking" label="UNITBOOKING" />}>
               <Route path="unitbooking" element={<Unitbookingkalender />} />
+              <Route path="unitbooking/import" element={<Unitbookingimport />} />
+              <Route path="unitbooking/scan" element={<Unitbookingscanner />} />
+              <Route path="unitbooking/scan/:unitId" element={<Unitbookingscanner />} />
               <Route path="unitbooking/udlaan" element={<Kasseudlaan />} />
               <Route path="opsaetning/kasser" element={<UnitbookingKasser />} />
               <Route path="unitbooking/historik" element={<Unitbookinghistorik />} />

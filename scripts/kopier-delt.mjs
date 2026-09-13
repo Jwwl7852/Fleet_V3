@@ -67,7 +67,7 @@ export const DELTE_FILER = [
      samme kanSkifteUdlaan(), samme overlapsregel. Skrev serveren sin egen
      afskrift, ville skaermen sige ja og serveren nej, uden at nogen kunne se
      hvorfor. */
-  "unitbooking.js",
+  "unitbooking.js", "unitbooking-import.js",
   /* ⚠ warehouse.js SKAL MED, fordi bevaegelseskriv er DEN ENESTE vej ind i
      bevaegelser og beholdning — begge noder er .write: false. Serveren skal
      proeve mod noejagtig de samme regler som formularen viser brugeren:

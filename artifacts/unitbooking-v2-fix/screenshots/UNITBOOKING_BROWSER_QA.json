@@ -1,0 +1,161 @@
+{
+  "ok": true,
+  "generatedAt": "2026-09-13T18:02:48.344Z",
+  "baseUrl": "http://127.0.0.1:5216",
+  "projectId": "demo-unitbooking-v2",
+  "checks": {
+    "statusViews": true,
+    "returnAndMove": true,
+    "csvBrowserUpload": true,
+    "savedBooking": true,
+    "documentInstructionInert": true,
+    "mobileNoHorizontalOverflow": true,
+    "mobileImportStages": true
+  },
+  "screenshots": [
+    {
+      "filename": "01-desktop-kalender-og-dagens-arbejde.png",
+      "width": 1425,
+      "height": 1669,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "02-desktop-faelles-enhedsregister.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "02a-desktop-bookingdetalje-udlaant.png",
+      "width": 1425,
+      "height": 1934,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "03-desktop-scanning-retur-foer.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "04-desktop-retur-paa-modtagelse.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "05-desktop-efterfoelgende-flytning.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "06-desktop-importer-booking.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "06a-desktop-csv-upload-gennemgang.png",
+      "width": 1425,
+      "height": 1973,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "07-desktop-gennemgang-original-og-felter.png",
+      "width": 1425,
+      "height": 1299,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "08-desktop-korrekt-match.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "09-desktop-bekraeftelse-foer-reservation.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "10-desktop-reservation-gemt.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "11-desktop-uklare-oplysninger.png",
+      "width": 1425,
+      "height": 1560,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "12-desktop-intet-match-med-forklaring.png",
+      "width": 1425,
+      "height": 1250,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "13-mobile-390x844-kalender-og-opgaver.png",
+      "width": 390,
+      "height": 3500,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "14-mobile-390x844-scanning-og-flytning.png",
+      "width": 390,
+      "height": 1844,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "15-mobile-390x844-import.png",
+      "width": 390,
+      "height": 1422,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "16-mobile-390x844-gennemgang.png",
+      "width": 390,
+      "height": 2896,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "17-mobile-390x844-match.png",
+      "width": 390,
+      "height": 1208,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "18-mobile-390x844-kvittering.png",
+      "width": 390,
+      "height": 1155,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "19-mobile-360x800-kalender-og-opgaver.png",
+      "width": 360,
+      "height": 3986,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "20-mobile-360x800-uklare-oplysninger.png",
+      "width": 360,
+      "height": 3167,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "21-mobile-360x800-intet-match.png",
+      "width": 360,
+      "height": 1367,
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "22-mobile-360x800-scanning.png",
+      "width": 360,
+      "height": 1822,
+      "horizontalOverflow": false
+    }
+  ]
+}

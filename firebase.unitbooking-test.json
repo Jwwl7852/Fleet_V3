@@ -1,0 +1,15 @@
+{
+  "database": { "rules": "firebase.rules.json" },
+  "storage": { "rules": "storage.rules" },
+  "functions": [{ "source": "functions", "codebase": "default", "runtime": "nodejs20", "ignore": ["node_modules", ".git", "*.log"] }],
+  "emulators": {
+    "auth": { "host": "127.0.0.1", "port": 9119 },
+    "database": { "host": "127.0.0.1", "port": 9020 },
+    "functions": { "host": "127.0.0.1", "port": 5022 },
+    "storage": { "host": "127.0.0.1", "port": 9229 },
+    "hub": { "host": "127.0.0.1", "port": 4402 },
+    "logging": { "host": "127.0.0.1", "port": 4502 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  }
+}

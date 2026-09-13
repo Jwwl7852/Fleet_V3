@@ -30,7 +30,7 @@
  * HVILKE grupperinger der giver mening, men ikke hvornår de er tomme.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
@@ -40,7 +40,7 @@ import {
 } from "../../fleet/format.js";
 import {
   Kort, Tabel, Pille, Henter, Datatilstand, KpiKort, KpiRaekke, Knap, Faner,
-  Formularsvar, Donut, Gitter, MiniLinje, Raekke, Felt, Feltraekke, Formular,
+  Formularsvar, Gitter, MiniLinje, Raekke, Felt, Feltraekke, Formular,
 } from "../../fleet/ui.jsx";
 import Gitterkalender from "../../fleet/Gitterkalender.jsx";
 import { ENHED, maanedNoegle, ugeNoegle } from "../../fleet/gitter.js";
@@ -57,6 +57,7 @@ import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
 } from "../../fleet/demo-unitbooking.js";
 import { DEMO_REOLPLADSER } from "../../fleet/demo-lager.js";
+import "./unitbooking.css";
 
 const DAG = 86400000;
 
@@ -147,6 +148,7 @@ function mangler(h, nu) {
 }
 
 export default function Kalender() {
+  const navigate = useNavigate();
   const { data: udlaan, tilstand, genindlaes, henter } = useListe("kasseudlaan", {
     graense: 2000, demo: DEMO_KASSEUDLAAN,
   });
@@ -288,7 +290,7 @@ export default function Kalender() {
      hentet, hver gang man trykkede paa noget. */
   const [hentetMs, setHentetMs] = useState(() => Date.now());
   /* Det valgte udlaan — planchens klik-kort. */
-  const [valgtId, setValgtId] = useState(null);
+  const [valgtId, setValgtId] = useState(() => params.get("booking") || null);
   /* ⚠ PERMISSIONEN, IKKE ROLLEN — og kun til at tegne knappen. Serveren
      spørger om den samme, og `kasseudlaan` er `.write: false`. */
   const { bruger } = useFleet();
@@ -362,7 +364,7 @@ export default function Kalender() {
          kolonne; se noten i 6.23. */
       under: [typeNavn(k.type), ...nuvaerendeSag(k.id)].join(" · "),
       pille: (
-        <Pille tone={KASSE_STATUS[k.status]?.pill || "info"}>
+        <Pille tone={KASSE_STATUS[k.status]?.pill || "info"} title="Enhedstilstand">
           {KASSE_STATUS[k.status]?.label || k.status}
         </Pille>
       ),
@@ -470,11 +472,18 @@ export default function Kalender() {
   /* ⚠ ALLE AF LISTER SKÆRMEN ALLEREDE HENTER, ikke af `kpi/`. De er afledte,
      og et gemt afledt tal driver fra sit grundlag — fejlen i `bemanding.ledig`.
      Se undtagelsen i CLAUDE.md. */
-  const antalMedStatus = (s) => kasser.filter((k) => k.status === s).length;
   const antalUdlaant = udlaan.filter((u) => u.tilstand === "udlaant").length;
   const bel = kassebelaegning(kasser);
   const klargoer = klargoeresSnart(udlaan, nu);
   const retur = returneresSnart(udlaan, nu);
+  const iMorgen = iDag.getTime() + DAG;
+  const paaDato = (ms) => Number.isFinite(ms) && ms >= iDag.getTime() && ms < iMorgen;
+  const dagens = {
+    klargoeringer: udlaan.filter((u) => u.tilstand === "booket" && paaDato(u.klargoerSenest)),
+    udleveringer: udlaan.filter((u) => ["booket", "klargjort"].includes(u.tilstand) && paaDato(u.fra)),
+    returneringer: udlaan.filter((u) => u.tilstand === "udlaant" && paaDato(u.til)),
+    forsinkelser: retur.bagud,
+  };
 
   /* ⚠ ID'ET ER SAMMENSAT ved gruppering pr. kasse — se udlaansblokke().
      Ved gruppering pr. sag er blokken FLERE udlaan flettet sammen, og der er
@@ -484,7 +493,23 @@ export default function Kalender() {
   const liste = haendelser(udlaan, nu);
 
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
+    <div className="fc-grid ub-kalender" style={{ gap: 16 }}>
+      <div className="ub-sidehoved ub-kalender-genveje">
+        <p>Bookingstatus, enhedstilstand og fysisk placering vises som adskilte oplysninger.</p>
+        <div className="fc-row">
+          <Knap onClick={() => navigate("/unitbooking/scan")}>Scan og flyt</Knap>
+          <Knap onClick={() => navigate("/opsaetning/kasser")}>Enhedsregister</Knap>
+          <Knap variant="primaer" onClick={() => navigate("/unitbooking/import")}>Importér booking</Knap>
+        </div>
+      </div>
+      <Kort titel="Dagens arbejde" className="ub-dagens-kort">
+        <div className="ub-dagligt">
+          <a href={dagens.klargoeringer[0] ? `/unitbooking?booking=${encodeURIComponent(dagens.klargoeringer[0].id)}` : "/unitbooking/udlaan?status=booket"}><strong>{num(dagens.klargoeringer.length)}</strong><b>Klargøringer</b><span>{dagens.klargoeringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span><em>Åbn opgave</em></a>
+          <a href={dagens.udleveringer[0] ? `/unitbooking?booking=${encodeURIComponent(dagens.udleveringer[0].id)}` : "/unitbooking/udlaan?status=klargjort"}><strong>{num(dagens.udleveringer.length)}</strong><b>Udleveringer</b><span>{dagens.udleveringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span><em>Åbn opgave</em></a>
+          <a href={dagens.returneringer[0] ? `/unitbooking?booking=${encodeURIComponent(dagens.returneringer[0].id)}` : "/unitbooking/udlaan?status=udlaant"}><strong>{num(dagens.returneringer.length)}</strong><b>Returer</b><span>{dagens.returneringer.slice(0, 3).map((u) => u.kasseId).join(", ") || "Ingen planlagt i dag"}</span><em>Åbn opgave</em></a>
+          <a href={dagens.forsinkelser[0] ? `/unitbooking?booking=${encodeURIComponent(dagens.forsinkelser[0].id)}` : "/unitbooking/udlaan"}><strong className={dagens.forsinkelser.length ? "fc-bad" : ""}>{num(dagens.forsinkelser.length)}</strong><b>Forsinkelser</b><span>{dagens.forsinkelser.slice(0, 3).map((u) => u.kasseId).join(", ") || "Alt er til tiden"}</span><em>Åbn opgave</em></a>
+        </div>
+      </Kort>
       {/* ⚠ PLANCHENS FEM NØGLETAL. Skærmen havde fire andre — Ud denne uge,
           Hjem denne uge, Bagud, Kasser i spil — og de svarede på ugen frem for
           på lageret.
@@ -504,16 +529,6 @@ export default function Kalender() {
           note={bel.udeAfDrift
             ? `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare · ${num(bel.udeAfDrift)} ude af drift`
             : `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare`}
-          ekstra={
-            <Donut
-              dele={[
-                { navn: "Udlånt", antal: antalMedStatus("udlaant") },
-                { navn: "Klargjort", antal: antalMedStatus("klargjort") },
-                { navn: "Ledige", antal: antalMedStatus("ledig") },
-              ]}
-              midteTekst={pct(bel.pct)}
-            />
-          }
         />
         <KpiKort label="Kommende klargøringer" vaerdi={num(klargoer.antal)}
                  note={[
@@ -542,9 +557,10 @@ export default function Kalender() {
           hjemme igen. Knappen vises kun når man ER væk; ellers ville den sige
           "gå hen hvor du står". */}
       <Fuldskaerm naar={fuld}>
-      <Kort titel={`Udlånskalender · ${dato(vindueFra)} – ${dato(vindueTil - DAG)}`}
+      <Kort className="ub-kalenderkort"
+            titel={`Udlånskalender · ${dato(vindueFra)} – ${dato(vindueTil - DAG)}`}
             handling={
-              <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span className="ub-kalender-kontroller">
                 {/* ⚠ VÆLGEREN NULSTILLER IKKE SKUBBET. Har man bladret tre
                     uger frem og skifter til én uges visning, vil man se den
                     uge man kigger på — ikke hoppe hjem. Startdatoen står fast;
@@ -719,14 +735,9 @@ export default function Kalender() {
               femte farve; her vises kasser uden aktivitet slet ikke. Et gitter
               med hundrede rækker hvoraf seks har en blok, skjuler de seks —
               og en gråtonet række er stadig en række der fylder. Se 6.25. */}
-          Kun kasser med et udlån i perioden vises. Vinduet starter{" "}
-          <b>fremadrettet</b>, længden vælges foroven, og pilene under
-          kalenderen flytter det <b>én uge</b> ad gangen — også ved fire ugers
-          visning, så et udlån hen over kanten ikke kan springes over.
-          Topbarens periodevælger ser bagud og hører til rapporterne. Alt der
-          ligger længere ude, står i listen nedenfor.
-          Gitteret ligger i <b>fleet/Gitterkalender.jsx</b> og bruges også af
-          Driftskalender, Servicekalender og Disponering.
+          Kun enheder med aktivitet i perioden vises. Vælg periodens længde
+          ovenfor, og brug pilene under kalenderen til at gå en uge frem eller
+          tilbage. Senere hændelser står også i listen nedenfor.
         </p>
         {/* ⚠ HVORNÅR BLEV DET HER HENTET? En kalender uden et tidsstempel kan
             ikke skelnes fra en der har stået åben siden i morges — og så
@@ -799,7 +810,7 @@ export default function Kalender() {
             { key: "sag", label: "Sag", render: (h) => h.sagsnummer },
             { key: "besk", label: "Beskrivelse",
               render: (h) => <span className="fc-hint">{h.beskrivelse || "—"}</span> },
-            { key: "tilstand", label: "Tilstand", render: (h) => (
+            { key: "tilstand", label: "Bookingstatus", render: (h) => (
                 <Pille tone={UDLAAN_TILSTAND[h.tilstand]?.pill || "info"}>
                   {UDLAAN_TILSTAND[h.tilstand]?.label || h.tilstand}
                 </Pille>
@@ -814,12 +825,15 @@ export default function Kalender() {
           raekker={liste}
           tom="Ingen kasser er lovet væk. Reservationer oprettes under Udlån."
         />
+        <div className="ub-mobilkort-liste">
+          {liste.map((h) => {
+            const k = kasser.find((x) => x.id === h.kasseId);
+            return <article key={h.id}><div><b>{h.kasseId} · {h.sagsnummer}</b><Pille tone={h.art === "ud" ? "warn" : "ok"}>{h.art === "ud" ? "Udlevering" : "Retur"}</Pille></div><span><b>Dato:</b> {dato(h.naar)}</span><span><b>Bookingstatus:</b> {UDLAAN_TILSTAND[h.tilstand]?.label || h.tilstand}</span><span><b>Hjemplads:</b> {pladsnavn(pladsMap[k?.hjemPladsId])}</span><Knap onClick={() => setValgtId(h.id.replace(/-(?:ud|hjem)$/, ""))}>Åbn booking</Knap></article>;
+          })}
+        </div>
         <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>Et udlån står to gange</b> — den dag kassen skal ud, og den dag
-          den skal hjem. Lageret arbejder efter hændelser, ikke efter perioder:
-          et udlån over to måneder ville ellers være usynligt i begge de uger
-          hvor der faktisk skulle gøres noget. Er kassen allerede ude, er
-          afhentningen historik, og kun returen står tilbage.
+          Et udlån står ved både udlevering og forventet retur. Når enheden er
+          udleveret, vises kun den tilbageværende returhandling.
         </p>
       </Kort>
     </div>
@@ -985,7 +999,7 @@ function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }
                       disabled={!maaSkrive || !til || arbejder === u.id}
                       title={maaSkrive
                         ? SKIFTEFORKLARING[til]
-                        : `Kræver ${PERM.kasseudlaanSkriv} — reglerne afviser.`}
+                        : "Du har ikke rettighed til at klargøre enheden."}
                       onClick={() => skift(u)}
                     >
                       {SKIFTELABEL[til] || "—"}
@@ -996,6 +1010,9 @@ function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }
             raekker={klargoer.poster}
             tom="Ingen kasser skal klargøres inden for de næste syv dage."
           />
+          <div className="ub-mobilkort-liste">
+            {klargoer.poster.map((u) => <article key={u.id}><div><b>{u.kasseId} · {u.sagsnummer}</b><span className={u.klargoerSenest < nu ? "fc-bad" : ""}>{dato(u.klargoerSenest)}</span></div><span><b>Hjemplads:</b> {hjemplads(u.kasseId)}</span><span><b>Bookingstatus:</b> {UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}</span><Knap variant="primaer" disabled={!maaSkrive || arbejder === u.id} onClick={() => skift(u)}>{SKIFTELABEL[naesteSkift(u.tilstand)] || "—"}</Knap></article>)}
+          </div>
 
           <Formularsvar svar={svar} okTekst="Kassen er klargjort." />
 
@@ -1012,10 +1029,7 @@ function Klargoeringspanel({ klargoer, kasser, pladsMap, maaSkrive, paaSkiftet }
           )}
 
           <p className="fc-hint" style={{ marginTop: 10 }}>
-            Knappen er <b>den samme handling</b> som på Udlån-skærmen —{" "}
-            <code>kasseudlaanskriv</code> skriver udlånet og kassen i én
-            transaktion. <code>kasseudlaan</code> er <b>.write: false</b>, så
-            der er ingen anden vej ind at kopiere.
+            Klargøring opdaterer både reservationen og enhedens tilstand samlet.
           </p>
         </>
       )}
@@ -1100,7 +1114,7 @@ function Udlaanskort({ udlaan: u, kasse, typeNavn, pladsMap, maaSkrive, onLuk, p
             <MiniLinje label="Hjemplads" vaerdi={pladsnavn(pladsMap[kasse.hjemPladsId])} />
           )}
           <MiniLinje
-            label="Tilstand"
+            label="Bookingstatus"
             vaerdi={
               <Pille tone={UDLAAN_TILSTAND[u.tilstand]?.pill || "info"}>
                 {UDLAAN_TILSTAND[u.tilstand]?.label || u.tilstand}
@@ -1145,7 +1159,7 @@ function Udlaanskort({ udlaan: u, kasse, typeNavn, pladsMap, maaSkrive, onLuk, p
             <Knap
               disabled={!maaSkrive || !kanRettes}
               title={!maaSkrive
-                ? `Kræver ${PERM.kasseudlaanSkriv} — reglerne afviser.`
+                ? "Du har ikke rettighed til at redigere bookingen."
                 : kanRettes
                   ? "Ret sagsnummer, kunde, periode og klargøringsfrist."
                   : "Kun en reservation der endnu er booket, kan rettes. Se nedenfor."}
@@ -1157,7 +1171,7 @@ function Udlaanskort({ udlaan: u, kasse, typeNavn, pladsMap, maaSkrive, onLuk, p
               disabled={!maaSkrive || !kanSkifteUdlaan(u.tilstand, "annulleret") || arbejder}
               title={maaSkrive
                 ? SKIFTEFORKLARING.annulleret
-                : `Kræver ${PERM.kasseudlaanSkriv} — reglerne afviser.`}
+                : "Du har ikke rettighed til at annullere bookingen."}
               onClick={annuller}
             >
               Annullér booking
@@ -1171,18 +1185,11 @@ function Udlaanskort({ udlaan: u, kasse, typeNavn, pladsMap, maaSkrive, onLuk, p
               ⚠ <b>Kun en reservation der endnu er booket, kan rettes.</b> Er
               kassen klargjort, står den pakket til en bestemt periode; er den
               udlånt, er den hos kunden. At flytte datoerne bagefter ville
-              beskrive noget andet end det der skete. Serveren afviser det —
-              det er ikke en manglende rettighed.
+              beskrive noget andet end det der skete. Opret i stedet en ny
+              reservation, hvis perioden skal ændres.
             </p>
           )}
 
-          <p className="fc-hint" style={{ marginTop: 10 }}>
-            ⚠ <b>Ingen mails og fotos endnu.</b> Planchens „Relateret indhold“ er{" "}
-            <b>beslutning 20</b>, og den er fase 0: <code>sager/</code> står ikke
-            i <b>firebase.rules.json</b>, så der er hverken en node at læse fra
-            eller en regel der giver adgang. Et afsnit der sagde „3 mails“ uden
-            at kunne åbne dem, ville være en attrap.
-          </p>
         </>
       )}
     </Kort>
