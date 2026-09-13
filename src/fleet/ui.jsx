@@ -3,7 +3,7 @@
  * statuschips eller tomme tilstande — så kan de heller ikke se
  * forskellige ud fra skærm til skærm.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { deviation } from "./format.js";
 import { MODUL } from "./moduler.js";
@@ -147,8 +147,8 @@ export function Tabel({ kolonner, raekker, noegle = (r, i) => r.id ?? i, tom = "
       <table className="fc-table">
         <thead>
           <tr>
-            {kolonner.map((k) => (
-              <th key={k.key} className={k.num ? "fc-num" : k.midt ? "fc-midt" : ""} style={k.bredde ? { width: k.bredde } : undefined}>
+            {kolonner.map((k, i) => (
+              <th key={k.key ?? k.felt ?? `kolonne-${i}`} className={k.num ? "fc-num" : k.midt ? "fc-midt" : ""} style={k.bredde ? { width: k.bredde } : undefined}>
                 {k.label}
               </th>
             ))}
@@ -168,9 +168,9 @@ export function Tabel({ kolonner, raekker, noegle = (r, i) => r.id ?? i, tom = "
               className={erValgt?.(r) ? "fc-valgt" : undefined}
               style={paaRaekke ? { cursor: "pointer" } : undefined}
             >
-              {kolonner.map((k) => (
-                <td key={k.key} className={k.num ? "fc-num" : k.midt ? "fc-midt" : ""}>
-                  {k.render ? k.render(r) : r[k.key]}
+              {kolonner.map((k, j) => (
+                <td key={k.key ?? k.felt ?? `kolonne-${j}`} className={k.num ? "fc-num" : k.midt ? "fc-midt" : ""}>
+                  {k.render ? k.render(r) : r[k.key ?? k.felt]}
                 </td>
               ))}
             </tr>
@@ -731,7 +731,7 @@ export function MiniKurve({ punkter = [], tone = "neutral", bredde = 62, hoejde 
  */
 export function Felt({
   id, label, type = "text", vaerdi, saet, fejl, hint, kraevet,
-  suffiks, valgmuligheder, disabled, ...p
+  suffiks, valgmuligheder, disabled, multiline = false, ...p
 }) {
   const beskrivelse = [hint && `${id}-hint`, fejl && `${id}-fejl`].filter(Boolean).join(" ");
   return (
@@ -752,6 +752,11 @@ export function Felt({
               <option key={o.vaerdi} value={o.vaerdi}>{o.label}</option>
             ))}
           </select>
+        ) : multiline ? (
+          <textarea id={id} value={vaerdi ?? ""} disabled={disabled}
+                    aria-invalid={fejl ? "true" : undefined}
+                    aria-describedby={beskrivelse || undefined}
+                    onChange={(e) => saet(e.target.value)} {...p} />
         ) : (
           <input id={id} type={type} value={vaerdi ?? ""} disabled={disabled}
                  aria-invalid={fejl ? "true" : undefined}
@@ -893,11 +898,9 @@ export function ModulNav({ punkter, label = "Modulnavigation" }) {
  *     en div der ligger ovenpå, og en skærmlæser bliver stående i siden
  *     nedenunder.
  *
- * ⚠ DEN FANGER IKKE FOKUS. En rigtig fokusfælde kræver at man kender alle
- * fokuserbare børn og håndterer Tab i begge retninger; en halv fælde er værre
- * end ingen, fordi den ser ud som om den virker. Panelet får fokus ved
- * åbning, så tastaturet lander det rigtige sted — resten er et selvstændigt
- * stykke arbejde.
+ * Fokus holdes i det øverste aktive lag og afleveres tilbage til åbneren ved
+ * lukning. En intern kassér-bekræftelse er et selvstændigt lag, så Escape og
+ * Tab aldrig arbejder på både den og hoveddialogen samtidig.
  *
  * `variant: "drawer"` (§1) er samme komponent, samme tre ting ovenfor, kun
  * anden POSITION og ANIMATION — et højreankret, fuld-højde panel i stedet
@@ -907,51 +910,98 @@ export function ModulNav({ punkter, label = "Modulnavigation" }) {
  * bredde, fordi "bred" ikke betyder noget for et panel der allerede går fra
  * top til bund.
  */
-export function Dialog({ titel, under, handling, onLuk, bred = false, variant = "center", children }) {
+export function Dialog({
+  titel, under, handling, onLuk, bred = false, variant = "center", children,
+  ugemte = false, kasseringTekst = "Dine ændringer er ikke gemt.",
+}) {
   const erDrawer = variant === "drawer";
   const panel = useRef(null);
+  const bekraeftelse = useRef(null);
   const nedPaaBaggrund = useRef(false);
+  const aabner = useRef(null);
+  const [bekraefterLuk, saetBekraefterLuk] = useState(false);
+  const titelId = useId();
+
+  const luk = () => {
+    if (ugemte) { saetBekraefterLuk(true); return; }
+    onLuk?.();
+  };
 
   useEffect(() => {
-    const paaTast = (e) => { if (e.key === "Escape") onLuk?.(); };
-    document.addEventListener("keydown", paaTast);
+    aabner.current = document.activeElement;
     panel.current?.focus();
-    /* Baggrunden må ikke kunne scrolles bag et modalt panel: gør den det,
-       ruller siden nedenunder når man scroller i en lang tråd, og man står et
-       andet sted når dialogen lukkes. */
     const foer = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener("keydown", paaTast);
       document.body.style.overflow = foer;
+      if (aabner.current?.isConnected) aabner.current.focus();
     };
-  }, [onLuk]);
+  }, []);
+
+  useEffect(() => {
+    const fokusbare = (rod) => [...(rod?.querySelectorAll(
+      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+    ) || [])].filter((element) => element.getClientRects().length > 0);
+    const paaTast = (e) => {
+      if (e.key === "Escape") {
+        /* En åben kontrol inde i dialogen ejer første Escape. Derved lukkes
+           aldrig både dropdown og dialog med samme tastetryk. */
+        if (e.target?.closest?.('select,[aria-expanded="true"],[role="menu"]')) return;
+        e.preventDefault();
+        if (bekraefterLuk) { saetBekraefterLuk(false); return; }
+        luk();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const rod = bekraefterLuk ? bekraeftelse.current : panel.current;
+      const liste = fokusbare(rod);
+      if (!liste.length) { e.preventDefault(); rod?.focus(); return; }
+      const foerste = liste[0]; const sidste = liste[liste.length - 1];
+      if (e.shiftKey && document.activeElement === foerste) { e.preventDefault(); sidste.focus(); }
+      else if (!e.shiftKey && document.activeElement === sidste) { e.preventDefault(); foerste.focus(); }
+    };
+    document.addEventListener("keydown", paaTast);
+    (bekraefterLuk ? bekraeftelse.current : panel.current)?.focus();
+    return () => document.removeEventListener("keydown", paaTast);
+  }, [bekraefterLuk, onLuk, ugemte]);
 
   return (
     <div
       className={`fc-dialog-baggrund ${erDrawer ? "fc-dialog-baggrund-drawer" : ""}`}
       onMouseDown={(e) => { nedPaaBaggrund.current = e.target === e.currentTarget; }}
       onMouseUp={(e) => {
-        if (nedPaaBaggrund.current && e.target === e.currentTarget) onLuk?.();
+        if (nedPaaBaggrund.current && e.target === e.currentTarget) luk();
         nedPaaBaggrund.current = false;
       }}
     >
       <div
         className={`fc-dialog ${erDrawer ? "fc-dialog-drawer" : (bred ? "fc-dialog-bred" : "")}`}
-        role="dialog" aria-modal="true" aria-labelledby="fc-dialog-titel"
+        role="dialog" aria-modal="true" aria-labelledby={titelId}
         tabIndex={-1} ref={panel}
       >
         <div className="fc-dialog-top">
           <div>
-            <h2 id="fc-dialog-titel">{titel}</h2>
+            <h2 id={titelId}>{titel}</h2>
             {under && <p className="fc-dialog-under">{under}</p>}
           </div>
           <div className="fc-dialog-top-h">
             {handling}
-            <button type="button" className="fc-dialog-luk" onClick={onLuk} aria-label="Luk">×</button>
+            <button type="button" className="fc-dialog-luk" onClick={luk} aria-label="Luk">×</button>
           </div>
         </div>
         <div className="fc-dialog-krop">{children}</div>
+        {bekraefterLuk && (
+          <div className="fc-dialog-bekraeftlag">
+            <div className="fc-dialog-bekraeft" role="alertdialog" aria-modal="true" aria-labelledby={`${titelId}-kassering`} tabIndex={-1} ref={bekraeftelse}>
+              <h3 id={`${titelId}-kassering`}>Kassér ændringer?</h3>
+              <p>{kasseringTekst}</p>
+              <div className="fc-formular-knapper">
+                <button type="button" className="fc-btn" onClick={() => saetBekraefterLuk(false)}>Fortsæt redigering</button>
+                <button type="button" className="fc-btn fc-btn-fare" onClick={onLuk}>Kassér ændringer</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

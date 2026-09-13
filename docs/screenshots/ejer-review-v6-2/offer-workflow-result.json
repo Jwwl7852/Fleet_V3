@@ -1,0 +1,91 @@
+{
+  "projekt": "demo-veyro-owner",
+  "adapter": "lokal_deterministisk_v6_2",
+  "eksternAI": false,
+  "virkeligMail": false,
+  "kunde": {
+    "virksomhedId": "-P1GqVVk3ZwT6HLMAqwq",
+    "mulighedId": "-P1GqVWOni0NcGpJpuCk",
+    "navn": "Aurora Mobilitet ApS — syntetisk V6.2-kunde",
+    "kontakt": "Sara Testperson",
+    "email": "sara@aurora-v62.invalid",
+    "cvr": "00000662"
+  },
+  "tilbudId": "v62_pilot_20260911",
+  "accepteretVersion": 1,
+  "nyKladdeVersion": 2,
+  "kilder": {
+    "moduler": [
+      "Fleet",
+      "Planning",
+      "Fleet"
+    ],
+    "aktiviteter": "OBD-montering, opstartsworkshop",
+    "pilotStart": "2026-10-01",
+    "pilotMaaneder": 3,
+    "omfang": "25 køretøjer og 5 navngivne brugere",
+    "udenfor": "specialudvikling, automatisk overgang til drift",
+    "uafklaret": "CVR-reference til fakturering",
+    "vejledendeDrift": true
+  },
+  "originalTekst": "Pilotens omfang, aktiviteter og afgrænsning fremgår af den accepterede version.",
+  "foersteForslag": "Veyro leverer et afgrænset pilotforløb til Aurora Mobilitet ApS — syntetisk V6.2-kunde. Piloten omfatter modulerne Fleet og Planning samt aktiviteterne OBD-montering og opstartsworkshop. Den løber i 3 kalendermåneder fra 2026-10-01. Det aftalte omfang er 25 køretøjer og 5 navngivne brugere. Uden for piloten er specialudvikling og automatisk overgang til drift. Før opstart skal vi afklare CVR-reference til fakturering. En eventuel efterfølgende driftsaftale er en separat, vejledende fase og aktiveres ikke automatisk. Omfang og næste skridt gennemgås sammen før opstart, så pilotens resultat kan vurderes på et fælles grundlag.",
+  "saelgerinstruktion": "Gør teksten kortere og fremhæv pilotens afgrænsning. Skriv ikke denne instruktion i tilbuddet.",
+  "revideretForslag": "Veyro leverer et afgrænset pilotforløb til Aurora Mobilitet ApS — syntetisk V6.2-kunde. Piloten omfatter modulerne Fleet og Planning samt aktiviteterne OBD-montering og opstartsworkshop. Den løber i 3 kalendermåneder fra 2026-10-01. Det aftalte omfang er 25 køretøjer og 5 navngivne brugere. Uden for piloten er specialudvikling og automatisk overgang til drift. Før opstart skal vi afklare CVR-reference til fakturering. En eventuel efterfølgende driftsaftale er en separat, vejledende fase og aktiveres ikke automatisk.",
+  "gemtOgGenindlaestTekst": "Veyro leverer et afgrænset pilotforløb til Aurora Mobilitet ApS — syntetisk V6.2-kunde. Piloten omfatter modulerne Fleet og Planning samt aktiviteterne OBD-montering og opstartsworkshop. Den løber i 3 kalendermåneder fra 2026-10-01. Det aftalte omfang er 25 køretøjer og 5 navngivne brugere. Uden for piloten er specialudvikling og automatisk overgang til drift. Før opstart skal vi afklare CVR-reference til fakturering. En eventuel efterfølgende driftsaftale er en separat, vejledende fase og aktiveres ikke automatisk.",
+  "kontrast": {
+    "varighedFoer": 3,
+    "varighedEfter": 2,
+    "tekst": "Veyro leverer et afgrænset pilotforløb til Aurora Mobilitet ApS — syntetisk V6.2-kunde. Piloten omfatter modulerne Fleet og Planning samt aktiviteterne OBD-montering og opstartsworkshop. Den løber i 2 kalendermåneder fra 2026-10-01. Det aftalte omfang er 25 køretøjer og 5 navngivne brugere. Uden for piloten er specialudvikling og automatisk overgang til drift. Før opstart skal vi afklare CVR-reference til fakturering. En eventuel efterfølgende driftsaftale er en separat, vejledende fase og aktiveres ikke automatisk.",
+    "manglendeOmfangTekst": "Veyro leverer et afgrænset pilotforløb til Aurora Mobilitet ApS — syntetisk V6.2-kunde. Piloten omfatter modulerne Fleet og Planning samt aktiviteterne OBD-montering og opstartsworkshop. Den løber i 3 kalendermåneder fra 2026-10-01. Uden for piloten er specialudvikling og automatisk overgang til drift. Før opstart skal vi afklare CVR-reference til fakturering og pilotens aftalte omfang. En eventuel efterfølgende driftsaftale er en separat, vejledende fase og aktiveres ikke automatisk."
+  },
+  "identitet": {
+    "crmVirksomhedId": "-P1GqVVk3ZwT6HLMAqwq",
+    "crmMulighedId": "-P1GqVWOni0NcGpJpuCk",
+    "tilbudVirksomhedId": "-P1GqVVk3ZwT6HLMAqwq",
+    "kladdeVirksomhedId": "-P1GqVVk3ZwT6HLMAqwq",
+    "accepteretKontakt": "sara@aurora-v62.invalid",
+    "kladdeKontakt": "sara@aurora-v62.invalid"
+  },
+  "kontroller": {
+    "revideretErKortere": true,
+    "instruktionIkkeLaekket": true,
+    "kunValgtTekstfeltAendret": true,
+    "struktureretOekonomiUaendret": true,
+    "accepteretSnapshotUaendret": true,
+    "accepteretPdfUaendret": true,
+    "vejledendeDriftIkkeAutoaktiveret": true
+  },
+  "accepteretSnapshotSha256Foer": "96d005d512c57b569afe521b20de811a95b272bcf134f33ff9d9e02e7de27933",
+  "accepteretSnapshotSha256Efter": "96d005d512c57b569afe521b20de811a95b272bcf134f33ff9d9e02e7de27933",
+  "accepteretPdfSha256Foer": "661518529adc3ce66604e0a18ba01ad0cac011e91d77e3b1f7f0470b3052d1fd",
+  "accepteretPdfSha256Efter": "661518529adc3ce66604e0a18ba01ad0cac011e91d77e3b1f7f0470b3052d1fd",
+  "pdfPath": "ejer/tilbud/v62_pilot_20260911/v1.pdf",
+  "datoProever": {
+    "fremtidig": {
+      "input": {
+        "udstedelsesdato": "2026-09-15",
+        "pilotStart": "2026-10-01",
+        "pilotMaaneder": 3
+      },
+      "fejl": {},
+      "pilotSlut": "2027-01-01",
+      "pilotEvaluering": "2026-12-17"
+    },
+    "historisk": {
+      "input": {
+        "udstedelsesdato": "2026-11-01",
+        "pilotStart": "2026-10-01"
+      },
+      "pilotStartFejl": null
+    },
+    "ugyldigDato": "Pilotens startdato er ugyldig.",
+    "ugyldigVarighed": "Pilotens varighed skal være 1–24 kalendermåneder.",
+    "maanedsslut": {
+      "start": "2028-01-31",
+      "maaneder": 1,
+      "slut": "2028-02-29"
+    }
+  },
+  "revision": 7
+}

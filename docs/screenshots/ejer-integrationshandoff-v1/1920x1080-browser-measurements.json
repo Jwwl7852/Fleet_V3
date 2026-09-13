@@ -1,0 +1,19 @@
+{
+  "actualCssViewport": {
+    "dpr": 0.6700000166893005,
+    "height": 1080,
+    "width": 1919
+  },
+  "backgroundValue": "Syntetisk samtidig intern ændring til revisionskontrol.",
+  "font": {
+    "family": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "lineHeight": "20.3px",
+    "size": "14px"
+  },
+  "onePixelWidthCalibrationLimit": true,
+  "requestedCssViewport": {
+    "height": 1080,
+    "width": 1920
+  },
+  "sourceCount": 2
+}

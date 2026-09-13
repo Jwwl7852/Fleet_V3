@@ -1,0 +1,33 @@
+Veyro ejerkonsol V7.2 — lokal teststatus
+Kørt: 2026-09-12
+Kodecommit: f5533b190b48175bef22024cc4890d1ba6172011
+
+BESTÅET  npm run build
+          Vite 5.4.21; 535 moduler transformeret.
+
+BESTÅET  npx eslint src/moduler/udbyder/EjerMailV7.jsx src/moduler/udbyder/EjerMailV71Samtale.jsx scripts/capture-owner-review-v7.mjs scripts/test-owner-mailworker-v7-2-emulator.mjs test/ejer-mail-v7-2.test.mjs
+          0 fejl.
+
+BESTÅET  npm run test:design
+          11/11 designtoken-tests.
+
+BESTÅET  node --test test/ejer-mail-v7.test.mjs test/ejer-mail-v7-1.test.mjs test/ejer-mail-v7-2.test.mjs
+          12/12 mailregressioner.
+
+BESTÅET  node scripts/test-owner-mailworker-v7-2-emulator.mjs
+          Fire forældede godkendelser stoppet før transport; én ny godkendt
+          version kaldte den lokale, injicerede transport præcis én gang.
+
+BESTÅET  node --env-file=.env.owner-emulator.local scripts/capture-owner-review-v7.mjs
+          Normal login + reload, 20 faktiske screenshots, mobilmålinger og otte
+          trusted-wheel-scrollflows ved 1440x900 og 1920x1080.
+
+KENDT REPOFORHOLD
+Den brede historiske npm run lint går ind i den separat indlejrede
+facility-v2-installation, hvor @eslint/js ikke er installeret. Det afgrænsede
+lint af alle V7.2-filer er grønt; V7.2 introducerer ikke lintfejlen.
+
+SIKKERHED
+Kun demo-veyro-owner og lokale emulatorer er anvendt. Microsoft 365, OpenAI,
+Dinero, OCR og bilagsmail er ikke tilsluttet. Ingen ekstern eller rigtig mail er
+sendt.

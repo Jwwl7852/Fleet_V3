@@ -1,0 +1,185 @@
+{
+  "version": "V8.1 Support-afstemning",
+  "capturedAtUtc": "2026-09-13T11:21:05.020Z",
+  "base": "http://127.0.0.1:5213",
+  "normalLogin": true,
+  "reload": true,
+  "sameCase": {
+    "support": "/main/support?sag=v8-support-kendt",
+    "mailHref": "/main/mail/indbakker?postkasse=faelles&sag=v8-support-kendt",
+    "noteIds": [
+      "n3",
+      "n2",
+      "n1"
+    ],
+    "draftTo": true
+  },
+  "desktop": {
+    "1440x900-svar": {
+      "visibleLines": 7.487684729064039,
+      "clientHeight": 152,
+      "lineHeight": 20.3,
+      "visible": true,
+      "horizontalOverflow": false,
+      "headerCount": 1,
+      "channel": true
+    },
+    "1440x900-ai": {
+      "documentedFacts": true,
+      "documentedSources": true,
+      "composerVisible": true,
+      "nonOverlap": true,
+      "independentScroll": "auto",
+      "horizontalOverflow": false,
+      "panelHeight": 452.921875
+    },
+    "sources": {
+      "count": 2,
+      "customerApproved": true,
+      "internalOnly": true
+    },
+    "unknown": {
+      "noInventedFix": true,
+      "asksVersion": true,
+      "staleSourceExcluded": true
+    }
+  },
+  "mobile": {
+    "390x844-samtale": {
+      "composerVisible": true,
+      "horizontalOverflow": false
+    },
+    "390x844-ai": {
+      "preserved": true,
+      "composerVisible": true,
+      "horizontalOverflow": false,
+      "active": "AI-chat"
+    },
+    "360x800-svar": {
+      "editorFound": true,
+      "editorVisible": true,
+      "visibleLines": 4.439655172413793,
+      "composerVisible": true,
+      "horizontalOverflow": false,
+      "active": "Svarudkast"
+    }
+  },
+  "scroll": {
+    "conversation": {
+      "selector": ".ejer-mail-venstrehistorik",
+      "before": 0,
+      "after": 602,
+      "clientHeight": 389,
+      "scrollHeight": 991,
+      "overflowY": "auto",
+      "bounds": {
+        "top": 411.78125,
+        "bottom": 800.8125,
+        "left": 273,
+        "right": 824.421875
+      },
+      "scrolled": true
+    },
+    "answer": {
+      "selector": ".ejer-mail-ai-scrollregion",
+      "before": 226,
+      "after": 484,
+      "clientHeight": 303,
+      "scrollHeight": 787,
+      "overflowY": "auto",
+      "bounds": {
+        "top": 476.078125,
+        "bottom": 779.328125,
+        "left": 867.421875,
+        "right": 1381
+      },
+      "scrolled": true
+    },
+    "aiChat": {
+      "selector": ".ejer-ai-chathistorik",
+      "before": 0,
+      "after": 666,
+      "clientHeight": 128,
+      "scrollHeight": 794,
+      "overflowY": "auto",
+      "bounds": {
+        "top": 373.671875,
+        "bottom": 501.671875,
+        "left": 867.421875,
+        "right": 1381
+      },
+      "scrolled": true
+    },
+    "information": {
+      "selector": "#panel-oplysninger",
+      "before": 0,
+      "after": 663,
+      "clientHeight": 453,
+      "scrollHeight": 1116,
+      "overflowY": "auto",
+      "bounds": {
+        "top": 465.078125,
+        "bottom": 918,
+        "left": 865.421875,
+        "right": 1383
+      },
+      "scrolled": true
+    }
+  },
+  "provenance": {
+    "crmAndSenderSeparated": true,
+    "syntheticVersion": true,
+    "sourceVisible": true
+  },
+  "adapter": {
+    "localModel": "eksisterende mailtråde + serverberegnede portalprojektioner",
+    "contract": "veyro.support.v1.1",
+    "commonContractPresent": true,
+    "portalRoundtripVerified": false,
+    "reason": "Fælles emulatorporte kræver integrationsejet Firebase-konfiguration i ejerbuilden."
+  },
+  "font": {
+    "status": "loaded",
+    "inter": true,
+    "body": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "button": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "textarea": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif"
+  },
+  "screenshots": [
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-support-ai\\1440x900-supportkoe.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-support-ai\\1440x900-kendt-svarudkast-kompakt.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-support-ai\\1440x900-kendt-ai-chat.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-support-ai\\1440x900-ai-indsat-og-redigeret.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-support-ai\\1920x1080-kendt-oplysninger-kilder.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-support-ai\\1440x900-ukendt-ai-afklaring.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-support-ai\\390x844-mobil-samtale.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-support-ai\\390x844-mobil-ai-chat.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-support-ai\\360x800-mobil-svarudkast.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-support-ai\\1920x1080-kendt-svarudkast.png"
+  ],
+  "status": {
+    "queue": "SUP-2026-0082\nVestby Service · syntetisk\nSupport · Synkronisering stopper uden fejltekst\nFLEET\nJørn\nFaglig afklaring",
+    "assignedTriageShownAsClarification": true,
+    "incorrectDistribution": false,
+    "detail": true,
+    "takeoverReload": {
+      "owner": true,
+      "status": true
+    },
+    "mail": {
+      "sameId": true,
+      "sameLabel": true,
+      "owner": true
+    }
+  },
+  "reloadState": {
+    "path": "/main/support",
+    "hasReview": true,
+    "body": "EJERKONSOL\nOverblik\nMail\n⌄\nSupport\nSalg\n⌄\nKunder\n⌄\nØkonomi\n⌄\nVidensbase\n⌄\nIndstillinger\n⌄\nDT\nDennis Testejer\nEjer\n⌄\nAlle ansvarlige\nDennis\nJørn\n3\nDT\nSupport\n\nFælles supportkø, ansv"
+  },
+  "explicitInsertAndEdit": {
+    "inserted": true,
+    "manualEdit": true,
+    "unsaved": true
+  }
+}

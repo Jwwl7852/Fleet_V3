@@ -1,0 +1,115 @@
+{
+  "url": "http://127.0.0.1:5211/main/kunder/flow-tenant?fane=obd",
+  "viewport": {
+    "width": 1920,
+    "height": 1080,
+    "devicePixelRatio": 1
+  },
+  "fonts": {
+    "status": "loaded",
+    "interLoaded": true
+  },
+  "body": {
+    "fontFamily": "\"Times New Roman\"",
+    "fontSize": "16px",
+    "lineHeight": "normal",
+    "height": 1080,
+    "width": 1920,
+    "borderRadius": "0px",
+    "color": "rgb(0, 0, 0)",
+    "backgroundColor": "rgb(245, 247, 249)"
+  },
+  "sidebar": {
+    "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "fontSize": "14px",
+    "lineHeight": "20.3px",
+    "height": 1080,
+    "width": 216,
+    "borderRadius": "0px",
+    "color": "rgb(255, 255, 255)",
+    "backgroundColor": "rgba(0, 0, 0, 0)"
+  },
+  "content": {
+    "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "fontSize": "14px",
+    "lineHeight": "20.3px",
+    "height": 754.234375,
+    "width": 1704,
+    "borderRadius": "0px",
+    "color": "rgb(16, 34, 53)",
+    "backgroundColor": "rgb(245, 247, 249)"
+  },
+  "card": {
+    "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "fontSize": "14px",
+    "lineHeight": "20.3px",
+    "height": 385.8125,
+    "width": 1652,
+    "borderRadius": "12px",
+    "color": "rgb(16, 34, 53)",
+    "backgroundColor": "rgb(247, 248, 249)"
+  },
+  "input": {
+    "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "fontSize": "14px",
+    "lineHeight": "20.3px",
+    "height": 38,
+    "width": 529.328125,
+    "borderRadius": "9px",
+    "color": "rgb(91, 107, 123)",
+    "backgroundColor": "rgb(245, 247, 249)"
+  },
+  "button": {
+    "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "fontSize": "14px",
+    "lineHeight": "20.3px",
+    "height": 39.296875,
+    "width": 102.1875,
+    "borderRadius": "0px",
+    "color": "rgb(91, 107, 123)",
+    "backgroundColor": "rgba(0, 0, 0, 0)"
+  },
+  "tableHeader": null,
+  "mobile": {
+    "menuButton": {
+      "text": "☰",
+      "display": "grid",
+      "visibility": "visible",
+      "color": "rgb(255, 255, 255)",
+      "fontSize": "24px",
+      "rect": {
+        "x": 843,
+        "y": 11,
+        "width": 42,
+        "height": 42
+      }
+    },
+    "sidebar": {
+      "text": "Ejerkonsol☰OverblikSalgSalgsindbakkePipelineKunderAktiviteterTilbudRatebladAdministrationAbonnementerØkonomiØkonomioverblikFakturaerKreditnotaerBilagsindbakkeVidensbaseIntegrationerDCejer@demo.veyro.invalidEjer⌄",
+      "display": "flex",
+      "visibility": "visible",
+      "color": "rgb(255, 255, 255)",
+      "fontSize": "14px",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 899,
+        "height": 64
+      }
+    },
+    "menu": {
+      "text": "OverblikSalgSalgsindbakkePipelineKunderAktiviteterTilbudRatebladAdministrationAbonnementerØkonomiØkonomioverblikFakturaerKreditnotaerBilagsindbakkeVidensbaseIntegrationerDCejer@demo.veyro.invalidEjer⌄",
+      "display": "flex",
+      "visibility": "visible",
+      "color": "rgb(255, 255, 255)",
+      "fontSize": "14px",
+      "rect": {
+        "x": -346.79998779296875,
+        "y": 64,
+        "width": 340,
+        "height": 836
+      }
+    },
+    "horizontalOverflow": false
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "unsavedMutation": {
+    "sendVisible": false,
+    "reviewDisabled": true,
+    "reviewText": "Gem og gennemse igen",
+    "warning": "Ugemte ændringer · en tidligere godkendelse gælder ikke. Gem kladden, og gennemse den igen før afsendelse.",
+    "afsendKaldFoer": 0,
+    "afsendKaldEfter": 0,
+    "transportKald": 0
+  },
+  "reviewModal": {
+    "fra": true,
+    "til": true,
+    "emne": true,
+    "indhold": true,
+    "godkendelse": true
+  },
+  "externalMailSent": false
+}

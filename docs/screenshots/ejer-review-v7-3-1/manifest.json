@@ -1,0 +1,114 @@
+{
+  "reviewVersion": "V7.3.1",
+  "capturedAtUtc": "2026-09-12T17:55:58.6155260Z",
+  "testedCodeCommit": "a6d4c226745534de36073ad35c196da16b0795c5",
+  "documentationCommits": [
+    "415e590f20cfa6db54ee5410f395f45b4ea2a44e"
+  ],
+  "branch": "codex/ejer-integrated-development",
+  "baseUrl": "http://127.0.0.1:5213",
+  "routes": {
+    "login": "/login",
+    "pilotCase": "/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys",
+    "support": "/main/support?sag=v7-pilot-nordlys",
+    "signature": "/main/indstillinger/mail-signatur"
+  },
+  "viewports": [
+    "1440x900",
+    "1920x1080",
+    "390x844",
+    "360x800"
+  ],
+  "case": {
+    "threadId": "v7-pilot-nordlys",
+    "data": "synthetic",
+    "externalMailSent": false,
+    "externalAiCalled": false
+  },
+  "files": [
+    {
+      "name": "1440x900-01-synligt-svarfelt.png",
+      "step": "R1 editor visible and usable",
+      "size": 189748,
+      "sha256": "cd4c4f7bedba575b0497dd76964f35b70f18d2dcf45f88fd06ab86e3338a6fe5"
+    },
+    {
+      "name": "1440x900-02-signaturvalg.png",
+      "step": "R3 explicit duplicate-signature choice",
+      "size": 187168,
+      "sha256": "21ead21e002eaacaeadb93f19177a309862cee877867f4210e229a42a5e71786"
+    },
+    {
+      "name": "1440x900-03-gemt-flerlinjet-svar.png",
+      "step": "R1 multiline draft persisted after reload",
+      "size": 189748,
+      "sha256": "cd4c4f7bedba575b0497dd76964f35b70f18d2dcf45f88fd06ab86e3338a6fe5"
+    },
+    {
+      "name": "1920x1080-04-gemt-flerlinjet-svar.png",
+      "step": "R1 desktop verification at 1920x1080",
+      "size": 245803,
+      "sha256": "b6aa6cfce1e3c4e4837a4dcc5465e2a3f3a8c5b98df622f437c3a3e2ca146039"
+    },
+    {
+      "name": "1440x900-05-bred-hurtiginstruks-efter-rulning.png",
+      "step": "R1 full-width quick instruction and independent panel scroll",
+      "size": 184743,
+      "sha256": "40e56d55944f145c7c9f92161acdda3833c7f3bdf924c2407604d20cfc54b35f"
+    },
+    {
+      "name": "1440x900-06-samlet-svar-med-en-signatur.png",
+      "step": "R3 review contains exactly one signature",
+      "size": 188556,
+      "sha256": "b475fd738c86044686ff01e678b8255e48409a70fc6002eb97b2a993c3d6e9c8"
+    },
+    {
+      "name": "1440x900-07-ai-chat-foer-rulning.png",
+      "step": "R1 AI history before independent scroll",
+      "size": 178645,
+      "sha256": "f5de7610a4316d58cfeefeec49fff1837a8e7d7f9947783d12ace6d9abbc630f"
+    },
+    {
+      "name": "1440x900-08-ai-chat-efter-rulning.png",
+      "step": "R1 AI history after independent scroll with composer fixed",
+      "size": 178041,
+      "sha256": "c6e664f6c328246c2582f60e60f04e72df8f88e598df9cc783f97de79690f55f"
+    },
+    {
+      "name": "1440x900-09-gemt-note-i-mail.png",
+      "step": "R4 saved note in Mail with author and time",
+      "size": 176085,
+      "sha256": "ec1096738728688f6c8d91908e7d8da464fa0ee901d2f0970d5e488439873e3a"
+    },
+    {
+      "name": "1440x900-10-samme-note-i-support.png",
+      "step": "R4 same note in Support",
+      "size": 149806,
+      "sha256": "1b27dcc665e7d8222c6c6a5c2ba548c268d1a0a7c2e6a2c20540c4a52e763406"
+    },
+    {
+      "name": "390x844-11-mobil-aktiv-svarfane.png",
+      "step": "R2 active mobile response tab and preserved draft",
+      "size": 67240,
+      "sha256": "d746bcc5b261c136bccc1b1aca02363318cbbf6467cded40bc6e56747491c5b5"
+    },
+    {
+      "name": "360x800-12-mobil-ai-chat-fokus.png",
+      "step": "R2 mobile AI chat focus and multiline input",
+      "size": 54229,
+      "sha256": "78c62c392300ad78faec25d5abf0d9a4c51caaf888d075c576371b0cea0d1689"
+    },
+    {
+      "name": "browser-proof.json",
+      "step": "machine-readable browser assertions and geometry",
+      "size": 4998,
+      "sha256": "8ecc0e030b83206cc3490c5637498a2612a086d92a61bef4dbb513cc4eb3c776"
+    },
+    {
+      "name": "signature-transport-proof.json",
+      "step": "local transport call-count and signature assertions",
+      "size": 562,
+      "sha256": "e35ccbeb7d79bacd2517b2b249d42e14d83b4345dde88e20fb652edd82d2f7fb"
+    }
+  ]
+}

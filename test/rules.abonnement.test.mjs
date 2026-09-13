@@ -138,15 +138,15 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
     assert.ok(med.length >= 40, `kun ${med.length} regler har klausulen.`);
   });
 
-  it("står IKKE i de to udbyderregler", () => {
+  it("står IKKE i de særskilt besluttede udbyderregler", () => {
     /* virksomhed og moduler skal blive læsbare for konsollen og for
        låseskærmen. Kom klausulen på dem, ville en lukket kunde forsvinde ud
        af udbyderens egen kundeliste — netop når han skal genåbnes. */
     const undtaget = alleRegler().filter(
       (r) => typeof r.udtryk === "string" && r.udtryk.includes("auth.token.udbyder")
     );
-    /* virksomhed, moduler og abonnement under tenanten — plus udbyder/kunder,
-       udbyder/prisliste og udbyder/maalinger. Seks, og tallet står her for at
+    /* virksomhed, moduler og abonnement under tenanten — plus ejerens
+       særskilt besluttede platformnoder. Listen står her for at
        en syvende skal SES: hver ny regel med udbyder-claim'et er en udvidelse
        af den anden krydsning af tenant-grænsen, og den skal besluttes, ikke
        opdages.
@@ -182,15 +182,40 @@ describe("Klausulen står i HVER regel der bærer markøren", () => {
       "/tenants/$tenantId/abonnementHistorik/.read",
       "/tenants/$tenantId/moduler/.read",
       "/tenants/$tenantId/virksomhed/.read",
+      "/udbyder/aftaler/.read",
+      "/udbyder/ai/.read",
+      "/udbyder/audit/.read",
+      /* Ejerens bilagskø og klargøringsjobs er Veyros egne
+         regnskabsarbejdsdata. Dedupe-indekset er fortsat helt lukket. */
+      "/udbyder/bilagjobs/.read",
+      "/udbyder/bilagsindbakke/poster/.read",
+      "/udbyder/crm/.read",
+      /* Dinero-returdata og kreditreservationer er Veyros egne regnskabsdata.
+         De ligger aldrig under en kundetenant og er kun læsbare for en ren ejer. */
+      "/udbyder/dinero/.read",
       "/udbyder/fakturagrundlag/.read",
+      /* Køposterne er platformens integrationsstatus, ikke kundedrift. De
+         indeholder kun stabil nøgle, status og eksterne referencer og må
+         ligesom grundlaget kun læses af den tenantløse ejer. */
+      "/udbyder/fakturajobs/.read",
+      "/udbyder/integrationer/.read",
+      "/udbyder/invitationer/.read",
+      "/udbyder/kreditjobs/.read",
+      "/udbyder/kreditnotaer/.read",
+      "/udbyder/kundekonti/.read",
       "/udbyder/kunder/.read",
       "/udbyder/maalinger/.read",
+      "/udbyder/mailjobs/.read",
       "/udbyder/prisliste/.read",
+      "/udbyder/provisioneringer/.read",
       /* ⚠ DEN SYVENDE: retentionsrapporten. Den er ikke kundedata — kun
          tenant, klasse, aar, maaned og et ANTAL. En auditpost kopieret ud i
          en rapport under udbyder/ havde forladt kundens tenant, og reglens
          $andet: false haandhaever at den ikke kan. Se auditoprydning. */
       "/udbyder/retention/.read",
+      "/udbyder/salgsindbakke/traade/.read",
+      "/udbyder/tilbud/.read",
+      "/udbyder/vidensbase/.read",
     ], "en regel med udbyder-claim'et staar et andet sted end besluttet.");
     for (const r of undtaget) {
       assert.ok(!r.udtryk.includes(AABEN), `${r.sti} har klausulen — den skal blive læsbar.`);

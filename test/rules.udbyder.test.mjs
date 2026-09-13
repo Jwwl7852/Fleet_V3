@@ -24,12 +24,14 @@ import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  initializeTestEnvironment,
+  initializeUnwrappedTestEnvironment,
+  testClaimsV2,
   assertSucceeds,
   assertFails,
 } from "./rules-test-claims.mjs";
 import { ref, set, get } from "firebase/database";
 import { permStrengFraRolle } from "../src/fleet/permissions.js";
+import { byggEjerClaims } from "../src/fleet/ejeradgang.js";
 
 /* Egne tenant-id'er: node --test kører filerne parallelt, og denne fil må
    ikke kunne tørre en anden fils data væk. Samme grund som i
@@ -65,7 +67,9 @@ function nodeliste() {
 const TILLADT_FOR_UDBYDER = ["virksomhed", "moduler", "abonnement", "abonnementHistorik"];
 
 before(async () => {
-  miljoe = await initializeTestEnvironment({
+  /* Bevidst uden claims-wrapper: AK-01 skal prøve præcis det claim, som
+     ejer-scriptets fælles builder producerer. */
+  miljoe = await initializeUnwrappedTestEnvironment({
     projectId: "fleetcontrol-rules-test",
     database: { rules: readFileSync("firebase.rules.json", "utf8") },
   });
@@ -82,6 +86,29 @@ before(async () => {
     }
     await set(ref(db, `udbyder/kunder/${T_A}`), { oprettetMs: 1e12, status: "aktiv" });
     await set(ref(db, `udbyder/kunder/${T_B}`), { oprettetMs: 1e12, status: "aktiv" });
+    await set(ref(db, `udbyder/kundekonti/${T_A}`), { tenantId: T_A, status: "aktiv", revision: 1 });
+    await set(ref(db, "udbyder/crm/virksomheder/v1/stamdata"), { navn: "CRM Kunde" });
+    await set(ref(db, "udbyder/tilbud/t1"), { nummer: "T-2026-0001", status: "kladde", virksomhedId: "v1" });
+    await set(ref(db, "udbyder/audit/2026/09/a1"), {
+      ms: 1e12, uid: "udb1", handling: "crm.virksomhed.opret", objekt: "crmVirksomhed",
+    });
+    await set(ref(db, "udbyder/aftaler/a1"), { status: "planlagt", tilbudId: "t1", tilbudVersion: 1 });
+    await set(ref(db, "udbyder/provisioneringer/aftale_t1_1"), { status: "faerdig" });
+    await set(ref(db, "udbyder/invitationer/i1"), { tenantId: T_A, status: "afventer" });
+    await set(ref(db, "udbyder/integrationer/mail"), { status: "ikke_tilsluttet" });
+    await set(ref(db, "udbyder/fakturajobs/f1"), { id: "f1", status: "afventer" });
+    await set(ref(db, "udbyder/kreditnotaer/f1"), { fakturaId: "f1", tenantId: T_A, originalEksternReference: "dinero-f1", originalIaltOere: 12500, poster: { k1: { id: "k1", status: "kladde" } } });
+    await set(ref(db, "udbyder/kreditjobs/k1"), { id: "k1", kreditId: "k1", fakturaId: "f1", status: "afventer" });
+    await set(ref(db, "udbyder/dinero/synk/status/samlet"), { status: "ikke_tilsluttet" });
+    await set(ref(db, "udbyder/bilagsindbakke/poster/b1"), { id: "b1", status: "til_gennemgang", modtagetMs: 1e12 });
+    await set(ref(db, "udbyder/bilagsindbakke/dedupe/hash/h1"), "b1");
+    await set(ref(db, "udbyder/bilagjobs/bilagjob_b1"), { id: "bilagjob_b1", bilagId: "b1", status: "forberedt" });
+    await set(ref(db, "udbyder/salgsindbakke/traade/tr1"), { id: "tr1", status: "ny", senesteAktivitetMs: 1e12 });
+    await set(ref(db, "udbyder/salgsindbakke/dedupe/d1"), { status: "gemt" });
+    await set(ref(db, "udbyder/mailjobs/m1"), { id: "m1", status: "kladde" });
+    await set(ref(db, "udbyder/vidensbase/poster/v1"), { id: "v1", titel: "Godkendt viden" });
+    await set(ref(db, "udbyder/ai/forbrug/2026-09"), { requests: 1 });
+    await set(ref(db, "udbyder/integrationshemmeligheder/microsoft365/delta/inbox"), { link: "hemmelig" });
   });
 });
 
@@ -89,19 +116,49 @@ after(async () => { await miljoe?.cleanup(); });
 
 /** En udbyder: intet tenant-claim, kun udbyder-flaget. */
 const somUdbyder = (uid = "udb1") =>
-  miljoe.authenticatedContext(uid, { udbyder: true }).database();
+  miljoe.authenticatedContext(uid, byggEjerClaims({})).database();
 
 /** En helt almindelig kunde-admin i tenant A. */
 const somKunde = (uid = "kunde1", tenant = T_A) =>
-  miljoe.authenticatedContext(uid, {
+  miljoe.authenticatedContext(uid, testClaimsV2({
     tenant, rolle: "admin", perms: permStrengFraRolle("admin"),
-  }).database();
+  })).database();
 
 describe("udbyder-claim'et rører ikke kundedata", () => {
   it("kan læse indekset over kunder", async () => {
     /* Det er hele grunden til at noden findes: uden den kan konsollen ikke
        vide hvilke tenants der er. */
     await assertSucceeds(get(ref(somUdbyder(), "udbyder/kunder")));
+  });
+
+  it("AK-01: kan læse ejerdata med scriptets faktiske tenantløse claim", async () => {
+    const db = somUdbyder();
+    for (const node of [
+      "crm", "tilbud", "audit", "aftaler", "provisioneringer", "invitationer", "kundekonti", "integrationer", "fakturajobs", "kreditnotaer", "kreditjobs", "dinero", "bilagjobs", "mailjobs", "vidensbase", "ai",
+    ]) {
+      await assertSucceeds(get(ref(db, `udbyder/${node}`)));
+    }
+    // Kommunikation leveres gennem en filtrerende callable, så private
+    // personlige tråde aldrig forlader serveren til den forkerte ejer.
+    await assertFails(get(ref(db, "udbyder/salgsindbakke/traade")));
+    await assertSucceeds(get(ref(db, "udbyder/bilagsindbakke/poster")));
+    await assertFails(get(ref(db, "udbyder/salgsindbakke/dedupe")));
+    await assertFails(get(ref(db, "udbyder/bilagsindbakke/dedupe")));
+    await assertFails(get(ref(db, "udbyder/integrationshemmeligheder")));
+  });
+
+  it("AK-04: afviser et ejer-token udstedt før den aktuelle revocation", async () => {
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), "authRevocations/gammel-ejer/revokeTime"), 100);
+    });
+    const gammel = miljoe.authenticatedContext(
+      "gammel-ejer", { ...byggEjerClaims({}), auth_time: 100 },
+    ).database();
+    const ny = miljoe.authenticatedContext(
+      "gammel-ejer", { ...byggEjerClaims({}), auth_time: 101 },
+    ).database();
+    await assertFails(get(ref(gammel, "udbyder/kunder")));
+    await assertSucceeds(get(ref(ny, "udbyder/kunder")));
   });
 
   it("kan læse virksomhed, moduler, abonnement og historikken — og PRÆCIS de fire", async () => {
@@ -135,6 +192,7 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
        oprette en kunde — og kan derfor heller ikke oprette sig selv adgang. */
     const db = somUdbyder();
     await assertFails(set(ref(db, `udbyder/kunder/${T_A}/status`), "spaerret"));
+    await assertFails(set(ref(db, `udbyder/kundekonti/${T_A}/status`), "spaerret"));
     await assertFails(set(ref(db, `udbyder/kunder/nyKunde`), { oprettetMs: 1 }));
     await assertFails(set(ref(db, `tenants/${T_A}/virksomhed/navn`), "Overtaget"));
     await assertFails(set(ref(db, `tenants/${T_A}/moduler/facility`), true));
@@ -143,11 +201,30 @@ describe("udbyder-claim'et rører ikke kundedata", () => {
 });
 
 describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () => {
-  it("kan ikke læse indekset over kunder", async () => {
+  it("AK-02: en kundeadmin kan ikke læse ejerdata", async () => {
     /* Det ville liste alle andre kunder. Det er den mest direkte udgave af
        kravet: kunder må ikke kunne komme til hinandens data. */
     await assertFails(get(ref(somKunde(), "udbyder/kunder")));
     await assertFails(get(ref(somKunde(), `udbyder/kunder/${T_B}`)));
+    await assertFails(get(ref(somKunde(), "udbyder/crm")));
+    await assertFails(get(ref(somKunde(), "udbyder/tilbud")));
+    await assertFails(get(ref(somKunde(), "udbyder/audit")));
+    await assertFails(get(ref(somKunde(), "udbyder/aftaler")));
+    await assertFails(get(ref(somKunde(), "udbyder/provisioneringer")));
+    await assertFails(get(ref(somKunde(), "udbyder/invitationer")));
+    await assertFails(get(ref(somKunde(), "udbyder/kundekonti")));
+    await assertFails(get(ref(somKunde(), `udbyder/kundekonti/${T_A}`)));
+    await assertFails(get(ref(somKunde(), "udbyder/integrationer")));
+    await assertFails(get(ref(somKunde(), "udbyder/fakturajobs")));
+    await assertFails(get(ref(somKunde(), "udbyder/kreditnotaer")));
+    await assertFails(get(ref(somKunde(), "udbyder/kreditjobs")));
+    await assertFails(get(ref(somKunde(), "udbyder/dinero")));
+    await assertFails(get(ref(somKunde(), "udbyder/bilagsindbakke/poster")));
+    await assertFails(get(ref(somKunde(), "udbyder/bilagjobs")));
+    await assertFails(get(ref(somKunde(), "udbyder/salgsindbakke/traade")));
+    await assertFails(get(ref(somKunde(), "udbyder/mailjobs")));
+    await assertFails(get(ref(somKunde(), "udbyder/vidensbase")));
+    await assertFails(get(ref(somKunde(), "udbyder/ai")));
   });
 
   it("kan læse SIN EGEN virksomhed og moduler", async () => {
@@ -172,7 +249,7 @@ describe("en kunde rører ikke udbyderen — og heller ikke en anden kunde", () 
     await assertFails(get(ref(somKunde(), `tenants/${T_A}/abonnementHistorik`)));
   });
 
-  it("kan IKKE læse en anden kundes virksomhed eller moduler", async () => {
+  it("AK-03: kan IKKE læse en anden kundes virksomhed eller moduler", async () => {
     /* De to noder er de eneste hvor reglen har et ELLER i sig. Præcis dér
        skal det efterprøves at tenant-leddet stadig gælder for en kunde. */
     const db = somKunde();

@@ -15,7 +15,8 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   assert.equal(rules.split("auth.token.pv === 2 && auth.token.perms != null && auth.token.perms.contains").length - 1, 84);
   // PROCURE-godkendelseskøen bruger samme tidsbegrænsede dual-read som de
   // øvrige læsbare noder under claims-migreringen.
-  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 107);
+  // Ejerens tenantløse udbydergrænse bruger ikke legacy-tenantallowlisten.
+  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 101);
   // 166 → 168: den læsbare PROCURE-godkendelseskø har både den kompakte
   // indkoeb.laes-gate og den tidsbegrænsede legacy-permission; kladde og
   // opsætning er fortsat helt serverlukkede.
@@ -25,10 +26,9 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   // snævert loft, så senere ukontrolleret vækst fortsat opdages.
   // Git kan checke filen ud med CRLF på Windows. Loftet måler den
   // versionsstyrede regelkilde (LF), ikke arbejdsplatformens linjeender.
-  assert.ok(Buffer.byteLength(rules.replace(/\r\n/g, "\n"), "utf8") < 455_000);
-  // To nye servervaliderede PROCURE-regler (godkendelseskø og ordrespor)
-  // genbruger fortsat den fælles revocation-gate.
-  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 214);
+  // Den samlede PROCURE- og ejerregelmodel udvider kilden kontrolleret.
+  assert.ok(Buffer.byteLength(rules.replace(/\r\n/g, "\n"), "utf8") < 460_000);
+  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 248);
   assert.match(rules, /"authRevocations"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /"legacyClaimsAllowlist"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /child\('tenant'\)\.val\(\) === auth\.token\.tenant/);
@@ -49,8 +49,15 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   assert.ok(authRegler.length > 0);
   assert.deepEqual(authRegler.filter(({ regel }) =>
     !regel.includes("child('authRevocations').child(auth.uid)")), []);
+  /* Ejerregler accepterer med vilje ikke legacy tenant-claims: ejeren er
+     tenantløs og har kun det serverudstedte `udbyder`-claim. Alle øvrige
+     auth-regler skal fortsat bevare migrationsperiodens dual-read. */
   assert.deepEqual(authRegler.filter(({ regel }) =>
-    !regel.includes("child('legacyClaimsAllowlist').child(auth.uid)")), []);
+    !regel.includes("child('legacyClaimsAllowlist').child(auth.uid)") &&
+    !regel.includes("auth.token.udbyder === true")), []);
+  assert.deepEqual(authRegler.filter(({ regel }) =>
+    regel.split("child('authRevocations').child(auth.uid)").length - 1 !== 2), [],
+  "hver auth-regel skal kontrollere revocationens eksistens og tidspunkt");
   assert.match(doc, /Rollback-matrix/);
   assert.match(doc, /inventering.*godkendt/is);
   assert.match(doc, /Deploy er blokeret/);

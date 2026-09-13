@@ -27,12 +27,15 @@ export const UDBYDERFUNKTION = {
   opret: "kundeopret",
   moduler: "kundemoduler",
   status: "kundestatus",
-  admin: "kundeadmin",
   prisliste: "prislisteopret",
   abonnement: "kundeabonnement",
   grundlag: "grundlagopret",
   maalnu: "maalnu",
   prislisteSlet: "prislisteslet",
+  invitationOpret: "kundeinvitationopret",
+  invitationTilbagekald: "kundeinvitationtilbagekald",
+  invitationGenudsend: "kundeinvitationgenudsend",
+  aftaleProvisioner: "aftaleprovisioner",
 };
 
 async function kald(navn, data) {
@@ -67,13 +70,16 @@ export const saetModuler = ({ id, moduler }) =>
 export const saetStatus = ({ id, status, aarsag }) =>
   kald(UDBYDERFUNKTION.status, { id, status, aarsag: aarsag || undefined });
 
-export const opretKundeadmin = ({ id, email, navn, kode, rolle }) =>
-  kald(UDBYDERFUNKTION.admin, {
-    id, email: email.trim(), navn: navn.trim(), kode, rolle: rolle || "admin",
-  });
+export const opretKundeinvitation = ({ tenantId, email, navn, rolle = "admin" }) =>
+  kald(UDBYDERFUNKTION.invitationOpret, { tenantId, email: email.trim(), navn: navn.trim(), rolle });
+export const tilbagekaldKundeinvitation = ({ id }) =>
+  kald(UDBYDERFUNKTION.invitationTilbagekald, { id });
+export const genudsendKundeinvitation = ({ id }) =>
+  kald(UDBYDERFUNKTION.invitationGenudsend, { id });
+export const provisionerAftale = (data) => kald(UDBYDERFUNKTION.aftaleProvisioner, data);
 
-export const opretPrisliste = ({ gyldigFraMs, momssats, moduler }) =>
-  kald(UDBYDERFUNKTION.prisliste, { gyldigFraMs, momssats, moduler });
+export const opretPrisliste = ({ gyldigFraMs, momssats, platform, moduler, tilbudslinjer }) =>
+  kald(UDBYDERFUNKTION.prisliste, { gyldigFraMs, momssats, platform, moduler, tilbudslinjer });
 
 /**
  * ⚠ RABAT I BASISPOINT. 1500 = 15,00 %. Skærmen viser procent; feltet her

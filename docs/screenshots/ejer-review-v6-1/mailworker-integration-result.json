@@ -1,0 +1,48 @@
+{
+  "projekt": "demo-veyro-owner",
+  "adapter": "lokal_injiceret_transport",
+  "eksternAfsendelse": false,
+  "resultater": [
+    {
+      "scenario": "accepteret",
+      "transportkald": 0,
+      "status": "pauset",
+      "stopaarsag": "tilbud_accepteret"
+    },
+    {
+      "scenario": "afvist",
+      "transportkald": 0,
+      "status": "pauset",
+      "stopaarsag": "tilbud_afvist"
+    },
+    {
+      "scenario": "ny_kundemail",
+      "transportkald": 0,
+      "status": "pauset",
+      "stopaarsag": "godkendelse_forældet"
+    },
+    {
+      "scenario": "ældre_accepteret_version_med_ny_kladde",
+      "transportkald": 0,
+      "status": "pauset",
+      "stopaarsag": "tilbud_accepteret"
+    },
+    {
+      "scenario": "uafhængigt_supportsvar",
+      "transportkald": 1,
+      "status": "accepteret_af_graph"
+    },
+    {
+      "scenario": "to_samtidige_workers",
+      "transportkald": 1,
+      "accepteret": 1,
+      "afvist": 1
+    },
+    {
+      "scenario": "ukendt_transportudfald",
+      "transportkald": 1,
+      "status": "ukendt",
+      "genforsøg": 0
+    }
+  ]
+}

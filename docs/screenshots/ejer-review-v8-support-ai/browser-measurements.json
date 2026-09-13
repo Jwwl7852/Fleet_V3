@@ -1,0 +1,65 @@
+{
+  "version": "V8 Support AI",
+  "capturedAtUtc": "2026-09-12T20:38:47.092Z",
+  "base": "http://127.0.0.1:5213",
+  "normalLogin": true,
+  "reload": true,
+  "sameCase": {
+    "support": "/main/support?sag=v8-support-kendt",
+    "mailHref": "/main/mail/indbakker?postkasse=faelles&sag=v8-support-kendt",
+    "noteIds": [
+      "n1"
+    ],
+    "draftTo": true
+  },
+  "desktop": {
+    "1440x900": {
+      "documentedFacts": true,
+      "documentedSources": true,
+      "composerVisible": true,
+      "nonOverlap": true,
+      "independentScroll": "auto",
+      "horizontalOverflow": false,
+      "panelHeight": 387.515625
+    },
+    "sources": {
+      "count": 2,
+      "customerApproved": true,
+      "internalOnly": true
+    },
+    "unknown": {
+      "noInventedFix": true,
+      "asksVersion": true,
+      "staleSourceExcluded": true
+    }
+  },
+  "mobile": {
+    "390x844": {
+      "preserved": true,
+      "horizontalOverflow": false,
+      "active": "AI-chat"
+    }
+  },
+  "font": {
+    "status": "loaded",
+    "inter": true,
+    "body": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "button": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "textarea": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif"
+  },
+  "screenshots": [
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-support-ai\\1440x900-supportkoe.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-support-ai\\1440x900-kendt-svarudkast.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-support-ai\\1440x900-kendt-ai-chat.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-support-ai\\1920x1080-kendt-oplysninger-kilder.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-support-ai\\1440x900-ukendt-ai-afklaring.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-support-ai\\390x844-mobil-samtale.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-support-ai\\390x844-mobil-ai-chat.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-support-ai\\1920x1080-kendt-svarudkast.png"
+  ],
+  "reloadState": {
+    "path": "/main/support",
+    "hasReview": true,
+    "body": "EJERKONSOL\nOverblik\nMail\n⌄\nSupport\nSalg\n⌄\nKunder\n⌄\nØkonomi\n⌄\nVidensbase\n⌄\nIndstillinger\n⌄\nDT\nDennis Testejer\nEjer\n⌄\nAlle ansvarlige\nDennis\nJørn\n3\nDT\nSupport\n\nFælles supportkø, ansv"
+  }
+}

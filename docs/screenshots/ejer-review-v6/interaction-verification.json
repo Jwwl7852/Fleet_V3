@@ -1,0 +1,436 @@
+{
+  "menu": {
+    "før": {
+      "expanded": "true",
+      "path": "/main/salg/pipeline",
+      "underpunkter": 4
+    },
+    "lukket": {
+      "expanded": "false",
+      "path": "/main/salg/pipeline",
+      "underpunkter": 0
+    },
+    "genåbnet": {
+      "expanded": "true",
+      "path": "/main/salg/pipeline",
+      "underpunkter": 4
+    }
+  },
+  "desktopScroll": {
+    "1440x900": {
+      "fixture": {
+        "liste": 8,
+        "ai": 8
+      },
+      "maalinger": [
+        {
+          "handling": "hjul på .ejer-mail-raekker",
+          "element": {
+            "x": 710.859375,
+            "y": 410.609375,
+            "scrollHeight": 720,
+            "clientHeight": 221,
+            "max": 499
+          },
+          "før": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "efter": {
+            ".ejer-mail-raekker": 260,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "ændrede": [
+            ".ejer-mail-raekker"
+          ],
+          "isolationOk": true,
+          "graenser": {
+            "bundFoer": 499,
+            "max": 499,
+            "bundEfter": 499,
+            "topEfter": 0
+          }
+        },
+        {
+          "handling": "hjul på .ejer-mail-samtale",
+          "element": {
+            "x": 710.859375,
+            "y": 726.4140625,
+            "scrollHeight": 667,
+            "clientHeight": 410,
+            "max": 257
+          },
+          "før": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "efter": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 257,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "ændrede": [
+            ".ejer-mail-samtale"
+          ],
+          "isolationOk": true,
+          "graenser": {
+            "bundFoer": 257,
+            "max": 257,
+            "bundEfter": 257,
+            "topEfter": 0
+          }
+        },
+        {
+          "handling": "hjul på .ejer-mail-ai",
+          "element": {
+            "x": 1206.8515625,
+            "y": 480.6875,
+            "scrollHeight": 1525,
+            "clientHeight": 700,
+            "max": 825
+          },
+          "før": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "efter": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 260,
+            "html": 0
+          },
+          "ændrede": [
+            ".ejer-mail-ai"
+          ],
+          "isolationOk": true,
+          "graenser": {
+            "bundFoer": 825,
+            "max": 825,
+            "bundEfter": 824,
+            "topEfter": 0
+          }
+        },
+        {
+          "handling": "hjul på html",
+          "element": {
+            "x": 720,
+            "y": 220,
+            "scrollHeight": 965,
+            "clientHeight": 900,
+            "max": 65
+          },
+          "før": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "efter": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 65
+          },
+          "ændrede": [
+            "html"
+          ],
+          "isolationOk": true,
+          "graenser": {
+            "bundFoer": 65,
+            "max": 65,
+            "bundEfter": 65,
+            "topEfter": 0
+          }
+        }
+      ]
+    },
+    "1920x1080": {
+      "fixture": {
+        "liste": 8,
+        "ai": 8
+      },
+      "maalinger": [
+        {
+          "handling": "hjul på .ejer-mail-raekker",
+          "element": {
+            "x": 848.359375,
+            "y": 442.109375,
+            "scrollHeight": 720,
+            "clientHeight": 284,
+            "max": 436
+          },
+          "før": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "efter": {
+            ".ejer-mail-raekker": 260,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "ændrede": [
+            ".ejer-mail-raekker"
+          ],
+          "isolationOk": true,
+          "graenser": {
+            "bundFoer": 436,
+            "max": 436,
+            "bundEfter": 436,
+            "topEfter": 0
+          }
+        },
+        {
+          "handling": "hjul på .ejer-mail-samtale",
+          "element": {
+            "x": 848.359375,
+            "y": 804.140625,
+            "scrollHeight": 622,
+            "clientHeight": 527,
+            "max": 95
+          },
+          "før": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "efter": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 95,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "ændrede": [
+            ".ejer-mail-samtale"
+          ],
+          "isolationOk": true,
+          "graenser": {
+            "bundFoer": 95,
+            "max": 95,
+            "bundEfter": 95,
+            "topEfter": 0
+          }
+        },
+        {
+          "handling": "hjul på .ejer-mail-ai",
+          "element": {
+            "x": 1584.359375,
+            "y": 480.6875,
+            "scrollHeight": 1274,
+            "clientHeight": 880,
+            "max": 394
+          },
+          "før": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "efter": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 260,
+            "html": 0
+          },
+          "ændrede": [
+            ".ejer-mail-ai"
+          ],
+          "isolationOk": true,
+          "graenser": {
+            "bundFoer": 394,
+            "max": 394,
+            "bundEfter": 394,
+            "topEfter": 0
+          }
+        },
+        {
+          "handling": "hjul på html",
+          "element": {
+            "x": 960,
+            "y": 220,
+            "scrollHeight": 1145,
+            "clientHeight": 1080,
+            "max": 65
+          },
+          "før": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 0
+          },
+          "efter": {
+            ".ejer-mail-raekker": 0,
+            ".ejer-mail-samtale": 0,
+            ".ejer-mail-ai": 0,
+            "html": 65
+          },
+          "ændrede": [
+            "html"
+          ],
+          "isolationOk": true,
+          "graenser": {
+            "bundFoer": 65,
+            "max": 65,
+            "bundEfter": 65,
+            "topEfter": 0
+          }
+        }
+      ]
+    }
+  },
+  "overblikOverlap": {
+    "normal1440": {
+      "tilstand": "1440×900 · 100 %",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "maerke": {
+        "x": 1151.5625,
+        "y": 368.6875,
+        "width": 99.5,
+        "height": 23.9375,
+        "right": 1251.0625,
+        "bottom": 392.625,
+        "text": "TESTADAPTER"
+      },
+      "titel": {
+        "x": 1026.625,
+        "y": 401.625,
+        "width": 349.375,
+        "height": 24.640625,
+        "right": 1376,
+        "bottom": 426.265625,
+        "text": "1 ny forespørgsel er opsummeret"
+      },
+      "tekst": {
+        "x": 1026.625,
+        "y": 444.265625,
+        "width": 349.375,
+        "height": 60.890625,
+        "right": 1376,
+        "bottom": 505.15625,
+        "text": "Tallet følger samme statusgrundlag som “Nye henvendelser”. Derudover afventer 2 sager vores svar."
+      },
+      "overlapMaerkeTitel": false,
+      "overlapMaerkeTekst": false,
+      "horizontalOverflow": false
+    },
+    "zoom125LangTekst": {
+      "tilstand": "1440×900 · 125 % · lang syntetisk tekst",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "maerke": {
+        "x": 1132.8125,
+        "y": 461.125,
+        "width": 124.375,
+        "height": 29.9375,
+        "right": 1257.1875,
+        "bottom": 491.0625,
+        "text": "TESTADAPTER"
+      },
+      "titel": {
+        "x": 1029.75,
+        "y": 502.3125,
+        "width": 330.5,
+        "height": 61.625,
+        "right": 1360.25,
+        "bottom": 563.9375,
+        "text": "1 ny forespørgsel er opsummeret"
+      },
+      "tekst": {
+        "x": 1029.75,
+        "y": 586.4375,
+        "width": 330.5,
+        "height": 126.875,
+        "right": 1360.25,
+        "bottom": 713.3125,
+        "text": "Lang syntetisk kontroltekst: Kunden ønsker en samlet løsning på tværs af køretøjer, brugere, lokationer og en trinvis indfasning med tydelige afklaringspunkter."
+      },
+      "overlapMaerkeTitel": false,
+      "overlapMaerkeTekst": false,
+      "horizontalOverflow": false
+    },
+    "normal1920": {
+      "tilstand": "1920×1080 · 100 %",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "maerke": {
+        "x": 1543.328125,
+        "y": 368.6875,
+        "width": 99.5,
+        "height": 23.9375,
+        "right": 1642.828125,
+        "bottom": 392.625,
+        "text": "TESTADAPTER"
+      },
+      "titel": {
+        "x": 1330.15625,
+        "y": 401.625,
+        "width": 525.84375,
+        "height": 24.640625,
+        "right": 1856,
+        "bottom": 426.265625,
+        "text": "1 ny forespørgsel er opsummeret"
+      },
+      "tekst": {
+        "x": 1330.15625,
+        "y": 444.265625,
+        "width": 525.84375,
+        "height": 40.59375,
+        "right": 1856,
+        "bottom": 484.859375,
+        "text": "Tallet følger samme statusgrundlag som “Nye henvendelser”. Derudover afventer 2 sager vores svar."
+      },
+      "overlapMaerkeTitel": false,
+      "overlapMaerkeTekst": false,
+      "horizontalOverflow": false
+    }
+  },
+  "mobilListe360": {
+    "viewport": {
+      "width": 360,
+      "height": 800
+    },
+    "horizontalOverflow": false,
+    "listeBredde": 340.828125
+  },
+  "mobilKladde": {
+    "path": "/main/mail/indbakker",
+    "sag": "review-nordlys",
+    "tekst": "Lokalt V6-udkast bevares ved tilbage-navigation.",
+    "bevaret": true,
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "horizontalOverflow": false
+  },
+  "accepteretTilbud": {
+    "accepteretOgLaast": true,
+    "gemKladde": false,
+    "indsaetForslag": false,
+    "redigerRateblad": false
+  },
+  "aiStale": {
+    "advarsel": true,
+    "indsaetDeaktiveret": true,
+    "manuelTekst": "Nyere manuelt skrevet kundetekst."
+  }
+}

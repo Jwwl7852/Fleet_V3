@@ -1,0 +1,25 @@
+{
+  "route": "/main/salg/tilbud",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "kunde": "Aurora Mobilitet ApS — syntetisk V6.2-kunde",
+  "kundeSynlig": true,
+  "mobilkladdeBevaret": true,
+  "horizontalOverflow": false,
+  "fonts": {
+    "status": "loaded",
+    "interVariableLoaded": true
+  },
+  "body": {
+    "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "fontSize": "14px",
+    "lineHeight": "20.3px"
+  },
+  "input": {
+    "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "fontSize": "14px",
+    "lineHeight": "20.3px"
+  }
+}

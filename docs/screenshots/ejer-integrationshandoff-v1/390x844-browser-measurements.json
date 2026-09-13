@@ -1,0 +1,33 @@
+{
+  "composer": {
+    "bottom": 718,
+    "height": 171,
+    "top": 547
+  },
+  "cssViewport": {
+    "dpr": 0.6700000166893005,
+    "height": 843,
+    "width": 389
+  },
+  "font": {
+    "family": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+    "lineHeight": "17.4px",
+    "size": "12px"
+  },
+  "history": {
+    "bottom": 536,
+    "clientHeight": 281,
+    "height": 281,
+    "overflowY": "auto",
+    "scrollHeight": 1893,
+    "scrollTop": 1612,
+    "top": 255
+  },
+  "knownExchange": "dennis\n13.09.2026, 15.57\n\nBekræft dokumenteret løsning og nævn kun sikre næste trin.\n\nLokal Support-AI\n13.09.2026, 15.57\n\nDokumenterede fakta\nKunde: Nordlys Syntetisk Drift\nModul: FLEET\nVersion: 3.0.0\nProblem: Jeg kan ikke finde min enhed efter et filter\nForsøgt: Ukendt\n\nVurdering\nDokumenteret løsning fundet i kundegodkendt produktviden. Fejlteksten er et signal, men beviser ikke alene årsagen.\n\nDokumenterede kilder\nFLEET filtersøgning · v3 · kundegodkendt\nIntern FLEET-diagnose · v2 · kun intern\n\nUkendt / næste spørgsmål\nBed om præcis fejltekst eller logudsnit, allerede udførte fejlsøgningstrin.\n\nBegrænsning\nInterne kilder er kun baggrund og må ikke kopieres til kunden uden særskilt godkendelse.",
+  "pageScrollTop": 705.9701538085938,
+  "requestedScreenshot": {
+    "height": 844,
+    "width": 390
+  },
+  "unsentValue": "Usendt tekst skal bevares efter en revisionskonflikt."
+}

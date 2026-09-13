@@ -27,11 +27,14 @@
     "ejer:vis": "node scripts/ejer.mjs vis",
     "ejer:giv": "node scripts/ejer.mjs giv",
     "ejer:fjern": "node scripts/ejer.mjs fjern",
+    "ejer:migration:v1": "node scripts/ejer-migration-v1.mjs",
+    "ejer:review:seed": "node --env-file=.env.owner-emulator.local scripts/seed-owner-review-emulator.mjs",
     "devtester:vis": "node scripts/dev-tester.mjs vis",
     "devtester:giv": "node scripts/dev-tester.mjs giv",
     "devtester:fjern": "node scripts/dev-tester.mjs fjern"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
     "firebase": "^10.12.2",
     "qrcode": "1.5.4",
     "react": "^18.3.1",

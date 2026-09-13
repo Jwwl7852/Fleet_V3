@@ -1,0 +1,31 @@
+{
+  "_fixture": "Kun isoleret migrationsprøve — ingen officielle priser eller kundedata",
+  "udbyder": {
+    "fakturagrundlag": {
+      "2026-07": {
+        "tenant-fixture-a": {
+          "laast": true,
+          "linjer": [{ "tekst": "Fixture", "beloebOere": 10000 }],
+          "beloebOere": 10000,
+          "momsOere": 2500,
+          "ialtOere": 12500
+        },
+        "tenant-fixture-b": {
+          "laast": true,
+          "forretningsnoegle": "faktura:2026-07:tenant-fixture-b:ordinaer",
+          "beloebOere": 20000
+        }
+      }
+    },
+    "fakturajobs": {
+      "job-a": { "periode": "2026-07", "tenantId": "tenant-fixture-a", "status": "afventer" },
+      "job-b": { "periode": "2026-07", "tenantId": "tenant-fixture-b", "forretningsnoegle": "faktura:2026-07:tenant-fixture-b:ordinaer" }
+    },
+    "tilbud": {
+      "tilbud-fixture": {
+        "accepteretVersion": 1,
+        "versioner": { "1": { "totalOere": 987654, "status": "accepteret" } }
+      }
+    }
+  }
+}

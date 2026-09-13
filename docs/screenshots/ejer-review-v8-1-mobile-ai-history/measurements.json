@@ -1,0 +1,54 @@
+{
+  "version": "V8.1 mobil AI-historik",
+  "capturedAtUtc": "2026-09-13T12:00:23.644Z",
+  "base": "http://127.0.0.1:5211",
+  "known": {
+    "top": {
+      "panelHeight": 685,
+      "historyClientHeight": 374,
+      "historyScrollHeight": 1017,
+      "historyScrollTop": 0,
+      "historyScrollMax": 643,
+      "historyVisibleLineCapacity": 18.42,
+      "historyOverflowY": "auto",
+      "historyVisible": true,
+      "composerVisible": true,
+      "unsentText": "Usendt mobiltekst bevares ved faneskift",
+      "horizontalOverflow": false
+    },
+    "readableAnswer": true,
+    "unsentPreserved": true,
+    "scroll": {
+      "before": 0,
+      "after": 643,
+      "max": 643,
+      "advanced": true
+    }
+  },
+  "unknown": {
+    "bottom": {
+      "panelHeight": 641,
+      "historyClientHeight": 330,
+      "historyScrollHeight": 996,
+      "historyScrollTop": 666,
+      "historyScrollMax": 666,
+      "historyVisibleLineCapacity": 16.26,
+      "historyOverflowY": "auto",
+      "historyVisible": true,
+      "composerVisible": true,
+      "unsentText": "Usendt afklaring bevares",
+      "horizontalOverflow": false
+    },
+    "questionsVisible": {
+      "version": true,
+      "error": true,
+      "attempts": true
+    },
+    "unsentPreserved": true
+  },
+  "screenshots": [
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-mobile-ai-history\\390x844-kendt-svar-og-usendt-tekst.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-mobile-ai-history\\390x844-kendt-historik-rullet.png",
+    "C:\\Users\\DennisChristensen\\Documents\\GitHub\\Fleet_V3-ejer-integrated\\docs\\screenshots\\ejer-review-v8-1-mobile-ai-history\\360x800-ukendt-spoergsmaal-og-usendt-tekst.png"
+  ]
+}

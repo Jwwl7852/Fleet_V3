@@ -1,0 +1,609 @@
+{
+  "normalLoginReload": true,
+  "indbakke": {
+    "route": "/main/mail/indbakker?postkasse=faelles",
+    "overviewWithoutSelectedCase": true,
+    "renderedRows": 25,
+    "visibleRows": 7,
+    "totalText": "Viser 1–25 af 116\n← Forrige\nSide 1 af 5\nNæste →",
+    "aiPoints": 8,
+    "aiSources": 8,
+    "horizontalOverflow": false
+  },
+  "aiEmptyState": true,
+  "tilbage": {
+    "status": "afventer_os",
+    "side": "2",
+    "rowFocus": true
+  },
+  "nyMail": {
+    "modal": "true",
+    "hasCancel": true,
+    "focusInside": true,
+    "externalSendAvailable": false
+  },
+  "faner": [
+    "Svarudkast",
+    "AI-chat",
+    "Oplysninger"
+  ],
+  "forbundetAiSvarudkast": {
+    "activeTab": "Svarudkast",
+    "instruction": "Gør tonen mere personlig, behold de bekræftede antal og forklar næste skridt",
+    "factsText": "Bekræftet og mangler\nSe alle i Oplysninger\nBekræftet\n25 enheder · 3 måneder · 5 brugere i alt · 2 af de 5 brugere\nMangler\nCVR, Ønsket startdato, OBD-antal",
+    "latestRevision": true,
+    "proposalText": "Hej Maria.\n\nTak for din besked om pilotforløbet med 25 enheder, 3 måneder, 5 brugere i alt.\n\n2 af de 5 brugere får administratoradgang; de indgår i det samlede brugerantal.\n\nFor at tage næste skridt vil jeg kun bede jer bekræfte hvilken startdato I ønsker og hvor mange OBD-enheder der skal indgå.\n\nHvis det er nemmere, foreslår jeg en kort telefonsamtale.\n\nVenlig hilsen\nDennis Testejer",
+    "explicitInsert": true,
+    "automaticOverwrite": false,
+    "sharedInputCleared": true
+  },
+  "uafhaengigRulning": {
+    "foer": {
+      "left": 0,
+      "right": 0
+    },
+    "efterVenstreHjul": {
+      "left": 223,
+      "right": 0
+    },
+    "efterHoejreHjul": {
+      "left": 223,
+      "right": 420
+    },
+    "trustedWheelEvents": true
+  },
+  "aiForslagUdsnit": {
+    "panelTop": 426,
+    "panelBottom": 804,
+    "forslagTop": 434,
+    "forslagBottom": 837,
+    "overskriftSynlig": true
+  },
+  "reviewAdskillerInternData": true,
+  "svarflow": {
+    "aiForslag": true,
+    "forslagFoerIndsaettelse": true,
+    "indsatEksplicit": true,
+    "gemt": true,
+    "reviewFoerGodkendelse": true,
+    "godkendt": true,
+    "sendt": false
+  },
+  "efterGodkendelseAendret": {
+    "sendVisible": false,
+    "reviewDisabled": true,
+    "reviewText": "Gem og gennemse igen",
+    "warning": "Ugemte ændringer · en tidligere godkendelse gælder ikke. Gem kladden, og gennemse den igen før afsendelse.",
+    "afsendKaldFoer": 0,
+    "afsendKaldEfter": 0,
+    "transportKald": 0
+  },
+  "reviewModal": {
+    "fra": true,
+    "til": true,
+    "emne": true,
+    "indhold": true,
+    "godkendelse": true
+  },
+  "oplysninger": {
+    "fiveUsers": true,
+    "twoAdmins": true,
+    "cvrMissing": true,
+    "sellerContext": true
+  },
+  "internSag": {
+    "kundeOprettet": false,
+    "internMappe": true,
+    "correctCounterparty": true,
+    "wrongCustomerLabel": false
+  },
+  "support": {
+    "sharedCaseVisible": true,
+    "route": "/main/support?sag=v7-support-dennis",
+    "joern": true,
+    "notUnallocated": true,
+    "status": true
+  },
+  "opfoelgning": {
+    "defaultTab": "Til godkendelse1",
+    "joernLeak": false,
+    "mineLabel": true
+  },
+  "mobilListe390": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "documentScroll": {
+      "x": 0,
+      "y": 0,
+      "height": 908
+    },
+    "rowWidth": 360,
+    "cardWidth": 362,
+    "ratio": 0.994475138121547,
+    "horizontalOverflow": false,
+    "wordBreak": "normal",
+    "overflowWrap": "normal",
+    "firstTwoRows": [
+      {
+        "index": 0,
+        "top": 384,
+        "bottom": 459,
+        "height": 75,
+        "fullyVisible": true
+      },
+      {
+        "index": 1,
+        "top": 459,
+        "bottom": 527,
+        "height": 68,
+        "fullyVisible": true
+      }
+    ],
+    "fullyVisibleRows": 3,
+    "toolsOpen": "false"
+  },
+  "mobilBetjening": {
+    "aabnet": {
+      "filtersVisible": true,
+      "foldersVisible": true,
+      "searchVisible": true
+    },
+    "aktivtFilter": "Fælles kundekorrespondance\nTestdata · frakoblet\n Ny mail\nLuk værktøjer\n1 aktive filtre\nNulstil",
+    "nulstillet": true,
+    "lukket": true
+  },
+  "mobil": {
+    "draftPreserved": true,
+    "horizontalOverflow": false,
+    "activePanel": "Svar og AI",
+    "reachedBottom": true
+  },
+  "breakpoint": {
+    "width": 899,
+    "horizontalOverflow": false,
+    "columns": "871px",
+    "fullyVisibleRows": 3
+  },
+  "breakpoint900": {
+    "width": 900,
+    "horizontalOverflow": false,
+    "columns": "872px",
+    "fullyVisibleRows": 3
+  },
+  "mobilListe360": {
+    "viewport": {
+      "width": 360,
+      "height": 800
+    },
+    "documentScroll": {
+      "x": 0,
+      "y": 0,
+      "height": 864
+    },
+    "ratio": 0.9939759036144579,
+    "horizontalOverflow": false,
+    "firstTwoRows": [
+      {
+        "index": 0,
+        "top": 384,
+        "bottom": 459,
+        "height": 75,
+        "fullyVisible": true
+      },
+      {
+        "index": 1,
+        "top": 459,
+        "bottom": 527,
+        "height": 68,
+        "fullyVisible": true
+      }
+    ],
+    "fullyVisibleRows": 3
+  },
+  "scrollFlows": [
+    {
+      "navn": "samtale-mod-svarudkast",
+      "route": "/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys",
+      "fane": "Svarudkast",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "paneler": {
+        "venstre": {
+          "selector": ".ejer-mail-beskeder",
+          "left": 257,
+          "top": 369,
+          "right": 825,
+          "bottom": 765,
+          "max": 444,
+          "x": 540.953125,
+          "y": 548.8125
+        },
+        "hoejre": {
+          "selector": ".ejer-mail-ai-panel",
+          "left": 866,
+          "top": 426,
+          "right": 1399,
+          "bottom": 804,
+          "max": 298,
+          "x": 1132.453125,
+          "y": 606.109375
+        }
+      },
+      "foer": {
+        "venstre": 0,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterVenstre": {
+        "venstre": 360,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterHoejre": {
+        "venstre": 360,
+        "hoejre": 298,
+        "dokument": 0
+      },
+      "trustedWheelEvents": true
+    },
+    {
+      "navn": "samtale-mod-ai-chat",
+      "route": "/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys",
+      "fane": "AI-chat",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "paneler": {
+        "venstre": {
+          "selector": ".ejer-mail-beskeder",
+          "left": 257,
+          "top": 369,
+          "right": 825,
+          "bottom": 765,
+          "max": 444,
+          "x": 540.953125,
+          "y": 548.8125
+        },
+        "hoejre": {
+          "selector": ".ejer-mail-ai-panel",
+          "left": 866,
+          "top": 426,
+          "right": 1399,
+          "bottom": 804,
+          "max": 2940,
+          "x": 1132.453125,
+          "y": 606.109375
+        }
+      },
+      "foer": {
+        "venstre": 0,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterVenstre": {
+        "venstre": 360,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterHoejre": {
+        "venstre": 360,
+        "hoejre": 360,
+        "dokument": 0
+      },
+      "trustedWheelEvents": true
+    },
+    {
+      "navn": "samtale-mod-oplysninger",
+      "route": "/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys",
+      "fane": "Oplysninger",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "paneler": {
+        "venstre": {
+          "selector": ".ejer-mail-beskeder",
+          "left": 257,
+          "top": 369,
+          "right": 825,
+          "bottom": 765,
+          "max": 444,
+          "x": 540.953125,
+          "y": 548.8125
+        },
+        "hoejre": {
+          "selector": ".ejer-mail-ai-panel",
+          "left": 866,
+          "top": 426,
+          "right": 1399,
+          "bottom": 804,
+          "max": 333,
+          "x": 1132.453125,
+          "y": 606.109375
+        }
+      },
+      "foer": {
+        "venstre": 0,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterVenstre": {
+        "venstre": 360,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterHoejre": {
+        "venstre": 360,
+        "hoejre": 333,
+        "dokument": 0
+      },
+      "trustedWheelEvents": true
+    },
+    {
+      "navn": "mailliste-mod-samlet-ai-overblik",
+      "route": "/main/mail/indbakker?postkasse=faelles",
+      "fane": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "paneler": {
+        "venstre": {
+          "selector": ".ejer-mail-raekker",
+          "left": 424,
+          "top": 300,
+          "right": 1082,
+          "bottom": 863,
+          "max": 1325,
+          "x": 753,
+          "y": 480.078125
+        },
+        "hoejre": {
+          "selector": ".ejer-mail-ai-overblik",
+          "left": 1094,
+          "top": 261,
+          "right": 1414,
+          "bottom": 937,
+          "max": 696,
+          "x": 1254,
+          "y": 440.6875
+        }
+      },
+      "foer": {
+        "venstre": 0,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterVenstre": {
+        "venstre": 360,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterHoejre": {
+        "venstre": 360,
+        "hoejre": 360,
+        "dokument": 0
+      },
+      "trustedWheelEvents": true
+    },
+    {
+      "navn": "samtale-mod-svarudkast",
+      "route": "/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys",
+      "fane": "Svarudkast",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "paneler": {
+        "venstre": {
+          "selector": ".ejer-mail-beskeder",
+          "left": 257,
+          "top": 369,
+          "right": 1072,
+          "bottom": 945,
+          "max": 223,
+          "x": 664.5546875,
+          "y": 548.8125
+        },
+        "hoejre": {
+          "selector": ".ejer-mail-ai-panel",
+          "left": 1113,
+          "top": 426,
+          "right": 1879,
+          "bottom": 984,
+          "max": 118,
+          "x": 1496.0546875,
+          "y": 606.109375
+        }
+      },
+      "foer": {
+        "venstre": 0,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterVenstre": {
+        "venstre": 223,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterHoejre": {
+        "venstre": 223,
+        "hoejre": 118,
+        "dokument": 0
+      },
+      "trustedWheelEvents": true
+    },
+    {
+      "navn": "samtale-mod-ai-chat",
+      "route": "/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys",
+      "fane": "AI-chat",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "paneler": {
+        "venstre": {
+          "selector": ".ejer-mail-beskeder",
+          "left": 257,
+          "top": 369,
+          "right": 1072,
+          "bottom": 945,
+          "max": 223,
+          "x": 664.5546875,
+          "y": 548.8125
+        },
+        "hoejre": {
+          "selector": ".ejer-mail-ai-panel",
+          "left": 1113,
+          "top": 426,
+          "right": 1879,
+          "bottom": 984,
+          "max": 2375,
+          "x": 1496.0546875,
+          "y": 606.109375
+        }
+      },
+      "foer": {
+        "venstre": 0,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterVenstre": {
+        "venstre": 223,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterHoejre": {
+        "venstre": 223,
+        "hoejre": 360,
+        "dokument": 0
+      },
+      "trustedWheelEvents": true
+    },
+    {
+      "navn": "samtale-mod-oplysninger",
+      "route": "/main/mail/indbakker?postkasse=faelles&sag=v7-pilot-nordlys",
+      "fane": "Oplysninger",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "paneler": {
+        "venstre": {
+          "selector": ".ejer-mail-beskeder",
+          "left": 257,
+          "top": 369,
+          "right": 1072,
+          "bottom": 945,
+          "max": 223,
+          "x": 664.5546875,
+          "y": 548.8125
+        },
+        "hoejre": {
+          "selector": ".ejer-mail-ai-panel",
+          "left": 1113,
+          "top": 426,
+          "right": 1879,
+          "bottom": 984,
+          "max": 153,
+          "x": 1496.0546875,
+          "y": 606.109375
+        }
+      },
+      "foer": {
+        "venstre": 0,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterVenstre": {
+        "venstre": 223,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterHoejre": {
+        "venstre": 223,
+        "hoejre": 153,
+        "dokument": 0
+      },
+      "trustedWheelEvents": true
+    },
+    {
+      "navn": "mailliste-mod-samlet-ai-overblik",
+      "route": "/main/mail/indbakker?postkasse=faelles",
+      "fane": null,
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "paneler": {
+        "venstre": {
+          "selector": ".ejer-mail-raekker",
+          "left": 424,
+          "top": 300,
+          "right": 1562,
+          "bottom": 1043,
+          "max": 1145,
+          "x": 993,
+          "y": 480.078125
+        },
+        "hoejre": {
+          "selector": ".ejer-mail-ai-overblik",
+          "left": 1574,
+          "top": 261,
+          "right": 1894,
+          "bottom": 1117,
+          "max": 516,
+          "x": 1734,
+          "y": 440.6875
+        }
+      },
+      "foer": {
+        "venstre": 0,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterVenstre": {
+        "venstre": 360,
+        "hoejre": 0,
+        "dokument": 0
+      },
+      "efterHoejre": {
+        "venstre": 360,
+        "hoejre": 360,
+        "dokument": 0
+      },
+      "trustedWheelEvents": true
+    }
+  ],
+  "styles": {
+    "fonts": {
+      "status": "loaded",
+      "interVariableLoaded": true
+    },
+    "body": {
+      "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "fontSize": "14px",
+      "lineHeight": "20.3px",
+      "minHeight": "0px"
+    },
+    "button": {
+      "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "fontSize": "14px",
+      "lineHeight": "20.3px",
+      "minHeight": "38px"
+    },
+    "input": {
+      "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "fontSize": "14px",
+      "lineHeight": "20.3px",
+      "minHeight": "auto"
+    },
+    "cardRadius": "12px",
+    "focusRule": "2px (verificeret af design-token-test og :focus-visible-regel)"
+  }
+}

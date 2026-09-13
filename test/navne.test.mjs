@@ -134,6 +134,11 @@ const PLANNING_KOERETOEJ_UNDTAGELSER = [
 
 const UNDTAGET = [
   {
+    fil: "src/moduler/udbyder/EjerKunderDesign.jsx", ord: "køretøj",
+    hvorfor: "Den tidligere, ikke-routede ejerprototype bevares som historisk designreference; "
+      + "den aktive ejerflade er EjerKunderDesignV2 og bruger det fælles enhedsbegreb.",
+  },
+  {
     fil: "src/fleet/demo-etaper.js", ord: "køretøj",
     hvorfor: "console.warn til en udvikler, ved siden af `koeretoejId`. "
       + "Dev-beskeder følger kodens navne, ikke skærmens.",

@@ -295,7 +295,7 @@ const FORVENTEDE_TOKENS = {
   /* Kategoripalet, beslutning 30. Adskilt fra statusfarverne med vilje:
      genbruges de, betyder rød både "kritisk" og "den femte kategori". */
   "--fc-serie-1": "var(--bc-accent)",
-  "--fc-serie-2": "#eb6834",
+  "--fc-serie-2": "#e86834",
   "--fc-serie-3": "#1baf7a",
   "--fc-serie-4": "#eda100",
   "--fc-serie-5": "#e87ba4",

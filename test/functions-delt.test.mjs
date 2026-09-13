@@ -124,7 +124,8 @@ const funktionskode = () =>
     .replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 test("Brugerfunktionerne tager tenanten fra tokenet", () => {
-  const kode = funktionskode();
+  const heleKoden = funktionskode();
+  const kode = heleKoden.slice(0, ejergraense(heleKoden));
   assert.match(kode, /const tenantId = auth\.token\?\.tenant/,
     "kraevBrugeradmin læser ikke tenant fra tokenet.");
   assert.doesNotMatch(kode, /\bd\.tenant(Id)?\b/,
@@ -269,7 +270,7 @@ test("Kun admin har brugere.skriv", async () => {
    EJERFUNKTIONERNE — den anden krydsning af tenant-grænsen
    ══════════════════════════════════════════════════════════════════════ */
 
-const EJERFUNKTIONER = ["kundeopret", "kundemoduler", "kundestatus", "kundeadmin"];
+const EJERFUNKTIONER = ["kundeopret", "kundemoduler", "kundestatus"];
 
 /** Hvor ejerblokken begynder. ⚠ ET KODEMAERKE — se noten nedenfor. */
 function ejergraense(kode) {
@@ -278,7 +279,7 @@ function ejergraense(kode) {
   return i;
 }
 
-test("De fire ejerfunktioner findes og hedder det klienten kalder", () => {
+test("De oprindelige ejerfunktioner findes og hedder det klienten kalder", () => {
   /* ⚠ SMÅ BOGSTAVER. En 2. generations funktion bliver til en Cloud
      Run-tjeneste, og et tjenestenavn må kun være småt. */
   const kode = funktionskode();
@@ -301,16 +302,13 @@ test("Hver ejerfunktion kræver udbyder-claim'et som FØRSTE handling", () => {
   }
 });
 
-test("Udbydertjekket er et CLAIM, ikke en node i basen", () => {
-  /* Slog vi op i en ejerliste i basen, ville en skrivning til den liste være
-     en vej til at give sig selv adgang — og så skulle DEN skrivning
-     beskyttes af noget. Ring. */
+test("Udbydertjekket kræver signeret claim og håndhæver serverstyret revocation", () => {
   const kode = funktionskode();
   const i = kode.indexOf("function kraevUdbyder");
   const krop = kode.slice(i, i + 500);
-  assert.match(krop, /auth\.token\?\.udbyder !== true/);
-  assert.doesNotMatch(krop, /getDatabase\(\)/,
-    "kraevUdbyder slår op i basen — ejerskab skal komme fra tokenet.");
+  assert.match(krop, /erEjerClaims\(auth\.token\)/);
+  assert.match(krop, /REVOCATION_NODE/);
+  assert.match(krop, /erTokenEfterRevocation/);
 });
 
 test("Ejerfunktionerne kan ikke give ejerskab", () => {
@@ -406,19 +404,18 @@ test("Hver ejerhandling logges hos KUNDEN", () => {
   }
 });
 
-test("kundeadmin og opretbruger deler ÉN oprettelse", () => {
-  /* ⚠ TO KOPIER VILLE DRIVE, og den ene ville glemme at skrive indekset
-     eller at sætte claims. De har forskellig ADGANGSKONTROL og samme
-     oprettelse — det er præcis det en delt funktion er til for. */
+test("kundeadmin er lukket; kun invitationen må oprette første kundeadgang", () => {
   const kode = funktionskode();
   assert.match(kode, /async function opretKonto\(/);
-  for (const navn of ["opretbruger", "kundeadmin"]) {
-    const i = kode.indexOf(`export const ${navn} = onCall`);
-    const slut = kode.indexOf("export const", i + 10);
-    const krop = kode.slice(i, slut > 0 ? slut : undefined);
-    assert.match(krop, /opretKonto\(/, `${navn} opretter kontoen selv.`);
-    assert.doesNotMatch(krop, /createUser\(/, `${navn} har sin egen kopi af oprettelsen.`);
-  }
+  const brugerStart = kode.indexOf("export const opretbruger = onCall");
+  const brugerKrop = kode.slice(brugerStart, kode.indexOf("export const", brugerStart + 10));
+  assert.match(brugerKrop, /opretKonto\(/, "kundens egen brugeradministration genbruger ikke opretKonto.");
+  const adminStart = kode.indexOf("export const kundeadmin = onCall");
+  const adminKrop = kode.slice(adminStart, kode.indexOf("export const", adminStart + 10));
+  assert.match(adminKrop, /kraevUdbyder\(req\)/);
+  assert.match(adminKrop, /failed-precondition/);
+  assert.match(adminKrop, /tidsbegrænset invitation/);
+  assert.doesNotMatch(adminKrop, /opretKonto\(|createUser\(/);
 });
 
 test("Kun ejerfunktionerne tager tenanten fra nyttelasten", () => {
@@ -514,7 +511,7 @@ test("prislisteopret taber ikke et felt modellen kraever", () => {
   assert.ok(i > 0, "prislisteopret findes ikke");
   const krop = kode.slice(i, kode.indexOf("export const", i + 10));
 
-  for (const felt of ["gyldigFraMs", "momssats", "platform", "moduler"]) {
+  for (const felt of ["gyldigFraMs", "momssats", "platform", "moduler", "tilbudslinjer"]) {
     assert.ok(krop.includes(`${felt}:`),
       `prislisteopret sender ikke ${felt} videre — validerPrisliste kigger på det, ` +
       `og listen ville blive afvist på et felt funktionen selv havde tabt.`);

@@ -1,0 +1,16 @@
+{
+  "cssViewport": {
+    "dpr": 0.6700000166893005,
+    "height": 900,
+    "width": 1440
+  },
+  "history": {
+    "clientHeight": 141,
+    "overflowY": "auto",
+    "scrollHeight": 1488,
+    "scrollTop": 1348
+  },
+  "pageScrollTop": 0,
+  "panelFont": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+  "unsentValue": "Usendt tekst skal bevares efter en revisionskonflikt."
+}

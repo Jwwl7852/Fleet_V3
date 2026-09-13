@@ -100,6 +100,26 @@ const Supportoverblik = lazy(() => import("./moduler/support/Overblik.jsx"));
 const Supportsag = lazy(() => import("./moduler/support/Sag.jsx"));
 const Konsol = lazy(() => import("./moduler/udbyder/Konsol.jsx"));
 const Prisliste = lazy(() => import("./moduler/udbyder/Prisliste.jsx"));
+const EjerRamme = lazy(() => import("./moduler/udbyder/EjerRamme.jsx"));
+const EjerOverblik = lazy(() => import("./moduler/udbyder/EjerOverblikDesign.jsx"));
+const EjerSalg = lazy(() => import("./moduler/udbyder/EjerSalg.jsx"));
+const EjerKunderDesign = lazy(() => import("./moduler/udbyder/EjerKunderDesignV2.jsx"));
+const EjerKundekonto = lazy(() => import("./moduler/udbyder/EjerKundekonto.jsx"));
+const EjerTilbud = lazy(() => import("./moduler/udbyder/EjerTilbud.jsx"));
+const EjerFakturaer = lazy(() => import("./moduler/udbyder/EjerFakturaer.jsx"));
+const EjerKreditnotaer = lazy(() => import("./moduler/udbyder/EjerKreditnotaer.jsx"));
+const EjerBilagsindbakke = lazy(() => import("./moduler/udbyder/EjerBilagsindbakke.jsx"));
+const EjerOmkostninger = lazy(() => import("./moduler/udbyder/EjerOmkostninger.jsx"));
+const EjerOekonomiOverblik = lazy(() => import("./moduler/udbyder/EjerOekonomiDesign.jsx"));
+const EjerMailV7 = lazy(() => import("./moduler/udbyder/EjerMailV7.jsx"));
+const EjerSupportV2 = lazy(() => import("./moduler/udbyder/EjerSupportV2.jsx"));
+const EjerOpfoelgninger = lazy(() => import("./moduler/udbyder/EjerOpfoelgninger.jsx"));
+const EjerVidensbase = lazy(() => import("./moduler/udbyder/EjerVidensbaseDesignV2.jsx"));
+const EjerIntegrationer = lazy(() => import("./moduler/udbyder/EjerIntegrationerDesign.jsx"));
+const EjerLeverandoerer = lazy(() => import("./moduler/udbyder/EjerLeverandoerer.jsx"));
+const EjerRapporter = lazy(() => import("./moduler/udbyder/EjerRapporter.jsx"));
+const EjerMailSignatur = lazy(() => import("./moduler/udbyder/EjerMailSignatur.jsx"));
+const InvitationAccept = lazy(() => import("./moduler/InvitationAccept.jsx"));
 /* Chaufførappen — beslutning 103. Doven som resten: en telefon på en
    landevej skal ikke hente 55 kontorskærme for at melde afgang. */
 const AppForside = lazy(() => import("./moduler/app/Forside.jsx"));
@@ -130,33 +150,6 @@ const DEMO_BRUGER = {
   rolle: "admin", rolleLabel: "Administrator", tenant: "demo",
   perms: permStrengFraRolle("admin"),
 };
-
-/**
- * Rammen om ejerkonsollen.
- *
- * ⚠ IKKE AppShell. Shellen ejer sidebar, tenant-vælger og periodevælger, og
- * alle tre hører til en KUNDEKONTEKST. En ejer står ikke i en — han har ingen
- * tenant. En sidebar med kundens moduler ville desuden antyde at han kunne
- * klikke sig ind i dem, og det kan han ikke: reglerne kender kun hans claim,
- * og det rækker til tre noder pr. kunde.
- */
-function Udbyderramme({ bruger, logUd, children }) {
-  return (
-    <div className="fc-app fc-udbyder">
-      <header className="fc-top">
-        <div className="fc-med-ikon" style={{ gap: 12 }}>
-          <VeyroLogo variant="header" />
-          <span className="fc-hint">Ejerkonsol</span>
-        </div>
-        <div className="fc-med-ikon" style={{ gap: 12 }}>
-          <span className="fc-hint">{bruger?.email}</span>
-          <button type="button" className="fc-btn" onClick={logUd}>Log ud</button>
-        </div>
-      </header>
-      <main className="fc-slot">{children}</main>
-    </div>
-  );
-}
 
 /**
  * Låseskærmen. Vises når kundens abonnement ikke er aktivt.
@@ -474,15 +467,38 @@ export default function App() {
   if (erUdbyder) {
     return (
       <BrowserRouter>
-        <Udbyderramme bruger={bruger} logUd={() => auth?.signOut()}>
-          <Suspense fallback={<div className="fc-empty">Henter skærmen …</div>}>
-          <Routes>
-            <Route path="/main" element={<Konsol bruger={bruger} />} />
-            <Route path="/main/priser" element={<Prisliste />} />
-            <Route path="*" element={<Navigate to="/main" replace />} />
-          </Routes>
-          </Suspense>
-        </Udbyderramme>
+        <Suspense fallback={<div className="fc-boot">Henter ejerkonsollen …</div>}>
+          <EjerRamme bruger={bruger} logUd={() => auth?.signOut()}>
+            <Routes>
+              <Route path="/main" element={<EjerOverblik bruger={bruger} />} />
+              <Route path="/main/salg/pipeline" element={<EjerSalg visning="pipeline" bruger={bruger} />} />
+              <Route path="/main/salg/kunder" element={<EjerKunderDesign />} />
+              <Route path="/main/kunder/:tenantId" element={<EjerKundekonto />} />
+              <Route path="/main/salg/aktiviteter" element={<EjerOpfoelgninger bruger={bruger} />} />
+              <Route path="/main/salg/aktiviteter/alle" element={<EjerSalg visning="aktiviteter" bruger={bruger} />} />
+              <Route path="/main/salg/tilbud" element={<EjerTilbud />} />
+              <Route path="/main/salg/indbakke" element={<EjerMailV7 bruger={bruger} visning="indbakker" />} />
+              <Route path="/main/mail/indbakker" element={<EjerMailV7 bruger={bruger} visning="indbakker" />} />
+              <Route path="/main/mail/opfoelgning" element={<EjerOpfoelgninger bruger={bruger} />} />
+              <Route path="/main/mail/sager" element={<EjerMailV7 bruger={bruger} visning="sager" />} />
+              <Route path="/main/mail/sendt" element={<EjerMailV7 bruger={bruger} visning="sendt" />} />
+              <Route path="/main/support" element={<EjerSupportV2 bruger={bruger} />} />
+              <Route path="/main/salg/vidensbase" element={<EjerVidensbase />} />
+              <Route path="/main/priser" element={<Prisliste />} />
+              <Route path="/main/abonnementer" element={<Konsol bruger={bruger} />} />
+              <Route path="/main/oekonomi" element={<EjerOekonomiOverblik />} />
+              <Route path="/main/oekonomi/fakturaer" element={<EjerFakturaer />} />
+              <Route path="/main/oekonomi/kreditnotaer" element={<EjerKreditnotaer />} />
+              <Route path="/main/oekonomi/bilag" element={<EjerBilagsindbakke />} />
+              <Route path="/main/oekonomi/omkostninger" element={<EjerOmkostninger />} />
+              <Route path="/main/rapporter" element={<EjerRapporter />} />
+              <Route path="/main/integrationer" element={<EjerIntegrationer />} />
+              <Route path="/main/indstillinger/leverandoerer" element={<EjerLeverandoerer />} />
+              <Route path="/main/indstillinger/mail-signatur" element={<EjerMailSignatur />} />
+              <Route path="*" element={<Navigate to="/main" replace />} />
+            </Routes>
+          </EjerRamme>
+        </Suspense>
       </BrowserRouter>
     );
   }
@@ -535,6 +551,11 @@ export default function App() {
             Login-ruten er derfor IKKE doven: uden en grænse omkring sig
             ville en doven Login vise et tomt vindue. Beslutning 97. */}
         <Routes>
+          <Route path="/invitation/:id" element={
+            <Suspense fallback={<div className="fc-boot">Henter invitation …</div>}>
+              <InvitationAccept bruger={bruger} />
+            </Suspense>
+          } />
           {!harAdgang && (
             <>
               {/* Logget ind uden tenant-claim er en ANDEN fejl end forkert

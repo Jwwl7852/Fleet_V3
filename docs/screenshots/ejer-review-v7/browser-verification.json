@@ -1,0 +1,81 @@
+{
+  "indbakke": {
+    "route": "/main/mail/indbakker?postkasse=faelles",
+    "overviewWithoutSelectedCase": true,
+    "renderedRows": 25,
+    "visibleRows": 7,
+    "totalText": "Viser 1–25 af 116\n← Forrige\nSide 1 af 5\nNæste →",
+    "aiPoints": 8,
+    "aiSources": 8,
+    "horizontalOverflow": false
+  },
+  "aiEmptyState": true,
+  "tilbage": {
+    "status": "afventer_os",
+    "side": "2",
+    "rowFocus": true
+  },
+  "nyMail": {
+    "modal": "true",
+    "hasCancel": true,
+    "focusInside": true,
+    "externalSendAvailable": false
+  },
+  "svarflow": {
+    "aiForslag": true,
+    "indsat": true,
+    "gemt": true,
+    "godkendt": true,
+    "sendt": false
+  },
+  "internSag": {
+    "kundeOprettet": false,
+    "internMappe": true,
+    "dokumenter": true
+  },
+  "support": {
+    "sharedCaseVisible": true,
+    "route": "/main/support?sag=v7-support-dennis"
+  },
+  "opfoelgning": {
+    "defaultTab": "Til godkendelse1",
+    "joernLeak": false,
+    "mineLabel": true
+  },
+  "mobil": {
+    "draftPreserved": true,
+    "horizontalOverflow": false,
+    "activePanel": "Svar og AI"
+  },
+  "breakpoint": {
+    "width": 899,
+    "horizontalOverflow": false,
+    "mobileLayout": "grid"
+  },
+  "styles": {
+    "fonts": {
+      "status": "loaded",
+      "interVariableLoaded": true
+    },
+    "body": {
+      "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "fontSize": "14px",
+      "lineHeight": "20.3px",
+      "minHeight": "0px"
+    },
+    "button": {
+      "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "fontSize": "14px",
+      "lineHeight": "20.3px",
+      "minHeight": "38px"
+    },
+    "input": {
+      "fontFamily": "\"Inter Variable\", Inter, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif",
+      "fontSize": "14px",
+      "lineHeight": "20.3px",
+      "minHeight": "auto"
+    },
+    "cardRadius": "12px",
+    "focusRule": "2px (verificeret af design-token-test og :focus-visible-regel)"
+  }
+}

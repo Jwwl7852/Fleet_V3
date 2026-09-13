@@ -25,9 +25,14 @@
  */
 import { after, before, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
-import { initializeTestEnvironment, assertFails } from "./rules-test-claims.mjs";
+import {
+  initializeUnwrappedTestEnvironment,
+  testClaimsV2,
+  assertFails,
+} from "./rules-test-claims.mjs";
 import { ref as storageRef, uploadBytes, getBytes } from "firebase/storage";
 import { PERM, ALLE_PERMS, permStreng } from "../src/fleet/permissions.js";
+import { byggEjerClaims } from "../src/fleet/ejeradgang.js";
 
 const T = "tenantStorage";
 const ANDEN_TENANT = "tenantStorageAnden";
@@ -38,7 +43,7 @@ let miljoe;
 
 const somMed = (uid, perms, tenant = T) =>
   miljoe.authenticatedContext(uid, {
-    tenant, rolle: "admin", perms: permStreng(perms),
+    ...testClaimsV2({ tenant, rolle: "admin", perms: permStreng(perms) }),
   }).storage();
 
 const dokPath = (tenant, fakturaId, dokumentId) =>
@@ -54,7 +59,7 @@ const OPGAVE = "op-1";
 const NOGLE_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
 
 before(async () => {
-  miljoe = await initializeTestEnvironment({
+  miljoe = await initializeUnwrappedTestEnvironment({
     projectId: "fc-rules-storage",
     storage: {
       rules: readFileSync("storage.rules", "utf8"),
@@ -121,6 +126,32 @@ describe("⚠ INGEN ANDEN STI ER ÅBEN — kun fakturabilag og opgavedokumenter 
     const storage = somMed("uid-andensti", ALLE_PERMS);
     const fil = storageRef(storage, "et/andet/sted.pdf");
     await assertFails(uploadBytes(fil, NOGLE_BYTES, { contentType: "application/pdf" }));
+  });
+});
+
+describe("Ejerens tilbuds-PDF kan kun hentes gennem den adgangskontrollerede serverfunktion", () => {
+  it("afviser direkte upload og download for den tenantløse ejer", async () => {
+    const storage = miljoe.authenticatedContext("ejer-storage", byggEjerClaims({})).storage();
+    const fil = storageRef(storage, "ejer/tilbud/t1/v1.pdf");
+    await assertFails(uploadBytes(fil, NOGLE_BYTES, { contentType: "application/pdf" }));
+    await assertFails(getBytes(fil));
+  });
+
+  it("afviser også en kundeadmin på ejerens dokumentsti", async () => {
+    const storage = somMed("kunde-ejersti", ALLE_PERMS);
+    const fil = storageRef(storage, "ejer/tilbud/t1/v1.pdf");
+    await assertFails(uploadBytes(fil, NOGLE_BYTES, { contentType: "application/pdf" }));
+    await assertFails(getBytes(fil));
+  });
+
+  it("afviser direkte adgang til faktura- og kreditnotadokumenter", async () => {
+    const ejer = miljoe.authenticatedContext("ejer-regnskabsdokumenter", byggEjerClaims({})).storage();
+    const kunde = somMed("kunde-regnskabsdokumenter", ALLE_PERMS);
+    for (const sti of ["ejer/fakturagrundlag/2026-08/kunde-a/v1.pdf", "ejer/kreditnotaer/faktura-1/kredit-1/v1.pdf", "ejer/bilag/bilag-1/original.pdf"]) {
+      await assertFails(uploadBytes(storageRef(ejer, sti), NOGLE_BYTES, { contentType: "application/pdf" }));
+      await assertFails(getBytes(storageRef(ejer, sti)));
+      await assertFails(getBytes(storageRef(kunde, sti)));
+    }
   });
 });
 
