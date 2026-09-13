@@ -883,3 +883,31 @@ autorisation og afventer produktbeslutning. Certifikat-upload er ikke
 implementeret i checkpointet. Integrationen er emulatorverificeret Milepæl A
 med udvalgte serverfunktioner; den er ikke en deployment eller en tilslutning
 til eksterne løn-, mail- eller certifikattjenester.
+
+## 16. WAREHOUSE integreret — 2026-09-13
+
+Det præcise rettelsescheckpoint
+`37bba72ec73e33369479b236454a1a1e913a208c` er med fuld historik integreret i
+merge-commit `130a89de34400e54822fe46e0655c7e280c2a7bb`. Det erstatter
+`b2650eaae5f2b491fbc3ddc481c8d18eb918bb38`, som er en forfader og derfor ikke
+er dubleret. Integrationstilpasningerne ligger særskilt i `b93191e`.
+
+Fælles fysisk unitidentitet, rå QR, strukturerede lokationer og append-only
+bevægelseshistorik er bevaret. WAREHOUSEs fysiske callable kræver nu den viste
+`forventetPladsId`, og Rules lukker direkte klientændring af `pladsId`, fysisk
+status og historik. Idempotens kontrolleres før preconditionen, mens unit,
+booking og bevægelse opdateres i én tenanttransaktion. Separate route-gates
+lukker WAREHOUSE og UNITBOOKING før modulskærmene indlæses ved manglende
+abonnement.
+
+Isoleret Auth/Functions/Database/Storage-QA bestod for WAREHOUSE-only,
+UNIT-only, begge moduler, tenant-/permissionafvisning, direkte fysisk
+skrivebeskyttelse, idempotens og samtidighed. Den komplette Rules-gate bestod
+4.535/4.535. Målrettet slutregression bestod 59/59, root lint og build bestod,
+og browser-QA viste korrekt direkte ruteafvisning samt samme
+`QA-UNIT-SHARED` og placering i begge faktiske brugerflader.
+
+WAREHOUSE kan derfor markeres selvstændigt backend-verificeret. Den fulde
+booking → udlevering → retur → modtagelsesplads → slutplacering på tværs af
+begge nyere moduler afventer fortsat et særskilt brugerautoriseret UNIT-merge.
+Detaljerne står i `docs/VEYRO_WAREHOUSE_INTEGRATIONSRESULTAT_V1.md`.

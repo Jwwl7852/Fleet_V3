@@ -77,3 +77,26 @@ har kørt dem mod den samlede emulator:
 - samtidige modstridende handlinger;
 - forkert tenant og manglende rettigheder.
 
+## Resultat i integrationssporet 2026-09-13
+
+WAREHOUSE-checkpointet `37bba72ec73e33369479b236454a1a1e913a208c`
+er integreret med fuld historik. Samlingssporet har lukket direkte
+klientskrivning til `pladsId` og de fysiske statusværdier, og den isolerede
+Auth/Functions/Database/Storage-QA har bestået for:
+
+- WAREHOUSE alene og UNIT alene på servergrænsen;
+- fælles unit-id, QR og lokation;
+- idempotent oprettelse, flytning og retur;
+- præcis én vinder ved to samtidige, modstridende handlinger;
+- afvisning af fremmed tenant, manglende permission og direkte fysisk skriv;
+- en WAREHOUSE-retur, der lukker en syntetisk allerede-udlånt booking.
+
+Browserkontrollen har desuden verificeret skjult navigation og lukket direkte
+rute i begge retninger samt samme `QA-UNIT-SHARED` og placering gennem de to
+faktiske brugerflader. Den gamle integrerede UNIT-klient er ikke brugt som
+bevis for hele bookingens serverflow. Booking → klargøring → udlevering →
+WAREHOUSE → retur → modtagelsesplads → endelig placering afventer fortsat et
+eksplicit afleveret og autoriseret UNIT-checkpoint i integrationshistorikken.
+
+Det maskinlæsbare WAREHOUSE-bevis ligger i
+`artifacts/warehouse-v2/runtime/WAREHOUSE_AUTH_FUNCTIONS_QA.json`.
