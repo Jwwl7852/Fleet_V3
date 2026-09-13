@@ -1,6 +1,6 @@
 # Veyro – integrationsforberedelse V2
 
-Dato: 12. september 2026
+Dato: 13. september 2026
 
 Modtagerside: `codex/veyro-integration-v1`
 
@@ -16,9 +16,11 @@ PROCURE-ruter og en basal ejerflade, men **ikke** de nye leverancer fra
 `codex/ejer-integrated-development`.
 
 PROCURE har afleveret en særskilt rapport på sin lokale branch. Ejerkonsollen
-har omfattende nyere historik og igangværende, ikke-committet arbejde, men endnu
-ikke et entydigt overleveringscheckpoint. Endelig integrationsrækkefølge og
-konfliktløsning fastlægges derfor ikke i dette dokument.
+har nu et afgrænset V8.1-supportprodukt, men den fulde ejerleverance mangler
+stadig ét entydigt overleveringscheckpoint. Det tværgående kundesupportspor har
+desuden færdiggjort fælles supportendpoints og et lokalt forbindelsesbevis;
+denne kode er ikke indarbejdet i integrationsbranchen. Endelig
+integrationsrækkefølge og konfliktløsning fastlægges derfor ikke endnu.
 
 Denne opgave har ikke ændret produktkode, andre worktrees, lokale browserdata,
 emulatorindhold, backend eller deployment. Der er ikke foretaget merge,
@@ -33,16 +35,17 @@ arbejdsbranches.
 | --- | --- |
 | Worktree | `C:/Users/DennisChristensen/Documents/GitHub/Fleet_V3-integration` |
 | Branch | `codex/veyro-integration-v1` |
-| HEAD | `39963337a52d4464f619077683d1f39aa81eff1e` |
+| HEAD før denne opdatering | `6e164c9a0987096f1491a1d64c1846535b14683a` |
 | Upstream | `origin/codex/veyro-integration-v1` |
-| Remote HEAD | `39963337a52d4464f619077683d1f39aa81eff1e` |
-| Ahead/behind før dokumentet | `0/0` |
+| Remote HEAD, read-only verificeret 13. september | `39963337a52d4464f619077683d1f39aa81eff1e` |
+| Ahead/behind før denne opdatering | `1/0` |
 | Origin | `https://github.com/Jwwl7852/Fleet_V3.git` |
 | Arbejdsstatus før dokumentet | Ren |
 | Sikret fælles produktbase | `989dbb87db639efed0ba1b5a1e271560f7659a0c` |
 
 Commit `39963337…` ligger ét dokumentationscommit foran produktbasen og tilføjer
-kun `docs/VEYRO_MODULUDVIKLINGSSPOR_V1.md`.
+kun `docs/VEYRO_MODULUDVIKLINGSSPOR_V1.md`. Commit `6e164c9…` tilføjer første
+version af denne integrationsforberedelse. Ingen af dem ændrer produktkode.
 
 Følgende styrende dokumenter er læst som grundlag:
 
@@ -119,20 +122,57 @@ som en blind filkopi eller ved generelt valg af `ours`/`theirs`.
 | --- | --- |
 | Worktree | `C:/Users/DennisChristensen/Documents/GitHub/Fleet_V3-ejer-integrated` |
 | Branch | `codex/ejer-integrated-development` |
-| HEAD | `3de7b32990a03c651870c83070325b772ee34476` |
+| HEAD | `7fa23cdd7f189e9adec8e56fb36168ad2d547fc3` |
+| Afgrænset V8.1-supportprodukt | `2c25c196ae980995849a12b06f805551c98f9f63` |
 | Fælles forfader | `989dbb87db639efed0ba1b5a1e271560f7659a0c` |
-| Divergens fra integration | Integration 1 commit / Ejerkonsol 58 commits |
+| Divergens fra fælles produktbase | Ejerkonsolens nyere V8/V8.1-historik ligger kun lokalt |
 | Upstream/origin-ref | Ingen |
-| Lokal status | 28 statusposter: 11 ændrede sporede filer og 17 ikke-sporede poster |
+| Lokal status | Tracked ren; ikke-sporede reviewarkiver og screenshots er bevaret |
 | Endelig overleveringsrapport/checkpoint | Mangler endnu |
 
 Den committede branch udvider ejerområdet under `/main/*` med egen lazy-loadet
 `EjerRamme`, salg, kunder, tilbud, mail, support, økonomi, rapporter,
-integrationer og ejerindstillinger. Aktuelt lokalt arbejde efter HEAD omfatter
-blandt andet `src/App.jsx`, `functions/index.js`, ejer-mail/support,
-salgsindbakke, CSS, tests, scripts og review V7.3. Derfor kan `3de7b329…` ikke
-betragtes som endelig leverance, før modulsporet har afgrænset, testet og
-committet sit arbejde og udpeget én præcis overleveringshash.
+integrationer og ejerindstillinger. `2c25c196…` er det afgrænsede V8.1-
+supportprodukt. De efterfølgende commits dokumenterer review og udvider den
+mobile AI-historik; de ændrer ikke den fælles supportserver. Den fulde
+Ejerkonsol kan først integreres, når ejerchatten udpeger ét samlet checkpoint
+og en komplet overleveringsrapport.
+
+### 3.4 Tværgående Support V1.1
+
+| Punkt | Aktuel read-only observation |
+| --- | --- |
+| Worktree | `C:/Users/DennisChristensen/Documents/GitHub/Fleet_V3-support-kundeplatform` |
+| Branch | `codex/support-kundeplatform-development` |
+| Produktcheckpoint | `aa269edc0e757ff6b5c2f2beddd628c643057c71` |
+| Fælles forfader med integration | `6e164c9a0987096f1491a1d64c1846535b14683a` |
+| Upstream/origin-ref | Ingen; `git ls-remote` viste ingen publiceret supportbranch |
+| Lokal status | Produktet er committet; urelaterede UNIT/Warehouse/Workforce-reviewfiler er untracked og bevaret |
+
+Supportsporet tilføjer kundens `/support`, én autoritativ `support/`-model,
+kundevendt lokal AI, ejerprojektion samt endpoints til kø, overtagelse, intern
+AI, intern baggrund, note, kladde, godkendelse og portaltransport. Et isoleret
+bevis viste samme sag gennem begge faktiske UI'er. Ejerens permanente
+V8.1-adapterændring er fortsat ejerchattens ansvar. Supportkoden er **ikke**
+indeholdt i den aktuelle integrationsbranch og må integreres som en selvstændig
+leverance, ikke skjult i PROCURE- eller Ejerkonsol-mergen.
+
+Read-only GitHub-kontrol viste kun
+`origin/codex/veyro-integration-v1 = 39963337…` og den historiske
+`origin/codex/fakturacenter-intake-v1-dev = deb1615f…` blandt de relevante
+navne. Support-, PROCURE- og Ejerbranches er ikke publiceret under deres lokale
+branch-navne. Der blev ikke fundet en nyere publiceret Fakturacenterleverance.
+
+De ældre Fakturacenter-spor er også afklaret lokalt:
+`codex/fakturacenter-intake-v1` står på
+`375531f39bd46f9e964a9643ec2432a2a8aeeca6`, mens
+`codex/fakturacenter-intake-v1-dev` og dens origin-ref står på det integrerede
+checkpoint `deb1615f58926bb0857714c40b62037fb6c1414e`. Checkpointet ligger to
+commits foran den ældre branch: Reference Contract V1
+`e66a75108f1d6e46eb365db9bc2d90cb246cd61b` og selve workflowcheckpointet.
+Der er således ingen nyere Fakturacenter-commit, som bør indarbejdes før den
+fulde Ejerkonsol; fremtidigt Fakturacenterarbejde skal komme fra det
+integrerede udviklingsspor med et nyt eksplicit checkpoint.
 
 ## 4. Modtagersidens platformbaseline
 
@@ -260,7 +300,7 @@ desuden den allerede dokumenterede processlokale indstilling
 | `npm run lint` | Bestået |
 | `npm run test:design` | 11/11 bestået |
 | `npm run build` | Bestået; Vite 5.4.21 transformerede 565 moduler |
-| `npm run test:rules` | 4.289/4.289 bestået, 877 suites, 0 fejl |
+| `npm run test:rules` på integrations-HEAD | 4.289/4.289 bestået, 877 suites, 0 fejl |
 | `node --check functions/index.js` | Bestået |
 | `node --test test/functions-delt.test.mjs` | 29/29 bestået |
 | `git diff --check` | Bestået |
@@ -287,6 +327,12 @@ Der blev ikke startet browser- eller modulservere og derfor ikke udført en ny
 browser-smoke i denne dokumentationsopgave. De tidligere browserbeviser og
 brugerens manuelle godkendelser er historik, ikke en ny måling.
 
+Supportproduktet blev senere prøvet separat uden at ændre integrationskoden:
+78/78 målrettede tests, lint, build og en fuld Rules-gate på 4.304/4.304 tests
+bestod. Det højere antal skyldes supporttestens nye kontrakt- og Rules-dækning;
+det er ikke et testresultat på integrationsbranchen. Browserbeviset brugte
+samme syntetiske sag i kunde- og ejer-UI og fandt ingen intern datalækage.
+
 ### 5.3 Dependency-sårbarheder
 
 Read-only `npm audit --json` blev kørt uden `npm audit fix`:
@@ -299,10 +345,12 @@ Read-only `npm audit --json` blev kørt uden `npm audit fix`:
 
 ## 6. Lokale servere, porte og dataområder der skal bevares
 
-Ved den aktuelle procesmåling lyttede ingen Vite-, Node-, Java- eller
-Firebase-processer på de relevante porte. Det betyder kun, at tjenesterne var
-stoppet på måletidspunktet; de dokumenterede port- og datagrænser gælder
-fortsat.
+Ved den første procesmåling lyttede ingen Vite-, Node-, Java- eller
+Firebaseprocesser på de relevante integrationsporte. Under den efterfølgende,
+isolerede supportprøve var den allerede eksisterende port 5214 optaget og blev
+ikke rørt. Supportprøven brugte midlertidigt kunde 5216, ejer 5215 samt Auth
+9198, Database 9290 og Functions 5099. Disse porte er ikke fælles standarder,
+og de midlertidige processer skal stoppes efter bevisindsamlingen.
 
 | Formål | Port / område |
 | --- | --- |
@@ -422,6 +470,8 @@ sikkerhedsgrænser.
 ### 8.6 Menu og arbejdsområdezoom
 
 - Venstremenuen tilbyder Normal og Kompakt visning.
+- Skiftet vises som en centreret pileknap på menuens højre kant. I Kompakt
+  visning åbnes undermenuer ved hover/fokus uden at udvide hele menuen.
 - Arbejdsområdezoom må kun påvirke modulindholdet, aldrig sidebar, topbjælke,
   dialogportal eller browserens almindelige zoom.
 - Shift + musehjul over arbejdsområdet samt synlige zoomknapper ændrer kun
@@ -542,6 +592,10 @@ fælles konfliktområder er:
 - Fælles leverandør-, faktura-, dokument-, mail- og indkøbskontrakter samt
   Reference Contract V1.
 - Root `package.json`/lock og build-/testscripts.
+- Supportoverlap: `src/App.jsx`, `AppShell`, navigation, `src/firebase.js`,
+  `functions/index.js`, Rules og fælles videns-/mailkontrakter. Den kanoniske
+  `support/`-model må ikke erstattes af ejerens salgstråde, og PROCURE må ikke
+  indføre en parallel support- eller beskedtransport.
 
 Konflikter løses efter begge ændringers hensigt og med den aktuelle
 integrationskode som sikkerhedsbaseline. Modulets egne filer kan normalt følge
@@ -578,8 +632,9 @@ forbindelser.
 
 ## 12. Mangler før konkret sammenlægningsinstruks
 
-1. Ejerkonsollens separate overleveringsrapport med ét fuldt, committet
-   checkpoint efter afklaring af de nuværende 28 lokale statusposter.
+1. Ejerkonsollens separate, samlede overleveringsrapport med ét fuldt,
+   committet checkpoint for hele modulet; V8.1-supportproduktet alene er ikke
+   et komplet Ejerkonsol-checkpoint.
 2. Ejerkonsollens komplette filinventar, migrations-/lagringsadfærd,
    dependencies, sikkerhedsgrænser, præcise testkommandoer/resultater og kendte
    begrænsninger.
@@ -594,3 +649,7 @@ forbindelser.
 6. En særskilt godkendelse af, hvilke serverdele der kun skal med i Milepæl A,
    og hvilke der først må aktiveres/deployes som Milepæl B. Ingen login- eller
    sikkerhedsregel må omgås for at demonstrere UI'et.
+7. Ejerchattens permanente implementering og checkpoint for Support V1.1-
+   adapteren samt beslutning om supportleverancen integreres før eller efter
+   Ejerkonsolens fulde checkpoint. Den fælles supportserver har ét ejerskab i
+   integrations-/supportsporet.
