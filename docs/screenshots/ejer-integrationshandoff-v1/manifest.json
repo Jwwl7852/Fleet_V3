@@ -1,0 +1,58 @@
+{
+  "date": "2026-09-13",
+  "ownerStartCheckpoint": "7fa23cdd7f189e9adec8e56fb36168ad2d547fc3",
+  "ownerAdapterCheckpoint": "f7325ea94044a577a9660b323270f965ae4ac8a7",
+  "supportProductCheckpoint": "aa269edc0e757ff6b5c2f2beddd628c643057c71",
+  "supportTestedCheckpoint": "aae761d18e8835cc2c572316068f8f51e50aaee8",
+  "projectId": "demo-veyro-support-samling",
+  "caseId": "-P1Q20URMCth2sShxsA6",
+  "caseNumber": "SUP-2026-00001",
+  "font": "Inter Variable, Inter, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+  "captures": [
+    {
+      "file": "1440x900-revisionskonflikt-usendt-ai.png",
+      "testedCssViewport": "1440x900",
+      "pngPixels": "2115x1342",
+      "proof": "Revision 11→12 udløser aborted; usendt AI-tekst er bevaret."
+    },
+    {
+      "file": "1920x1080-oplysninger-og-kilder.png",
+      "testedCssViewport": "1919x1080",
+      "requestedCssViewport": "1920x1080",
+      "pngPixels": "2831x1612",
+      "proof": "Oplysninger viser to kilder og særskilt intern baggrund."
+    },
+    {
+      "file": "360x800-ai-historik-og-usendt-tekst.png",
+      "testedCssViewport": "359x800",
+      "requestedCssViewport": "360x800",
+      "pngPixels": "503x1194",
+      "proof": "240 px uafhængig historik, fast komposer og usendt tekst."
+    },
+    {
+      "file": "390x844-ai-historik-og-usendt-tekst.png",
+      "testedCssViewport": "389x843",
+      "requestedCssViewport": "390x844",
+      "pngPixels": "548x1258",
+      "proof": "281 px uafhængig historik og fast komposer."
+    },
+    {
+      "file": "390x844-ai-historik-rullet.png",
+      "testedCssViewport": "389x843",
+      "requestedCssViewport": "390x844",
+      "pngPixels": "548x1258",
+      "proof": "Historikken er rullet til 1612 px; flere hele svarlinjer kan læses."
+    },
+    {
+      "file": "1910x1074-genindlaest-portaldata.png",
+      "testedCssViewport": "1910x1074",
+      "pngPixels": "2818x1603",
+      "proof": "Sag, samtale og kundekladde er vedvarende efter nyt login og eksplicit reload."
+    }
+  ],
+  "notes": [
+    "In-app-browseren havde en én-pixel kalibreringsgrænse ved de målte 360-, 390- og 1920-mål.",
+    "PNG-eksportens pixels følger browserens interne outputskalering; CSS-målingerne i de tilhørende JSON-filer er autoritative.",
+    "Alle data er syntetiske; ingen ekstern AI eller mailtransport blev kaldt."
+  ]
+}

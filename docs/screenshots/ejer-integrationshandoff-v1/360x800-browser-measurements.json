@@ -1,0 +1,27 @@
+{
+  "composer": {
+    "bottom": 727,
+    "height": 171,
+    "top": 556
+  },
+  "cssViewport": {
+    "dpr": 0.6700000166893005,
+    "height": 800,
+    "width": 359
+  },
+  "history": {
+    "bottom": 545,
+    "clientHeight": 240,
+    "height": 240,
+    "overflowY": "auto",
+    "scrollHeight": 1954,
+    "scrollTop": 0,
+    "top": 305
+  },
+  "pageScrollTop": 705.9701538085938,
+  "requestedScreenshot": {
+    "height": 800,
+    "width": 360
+  },
+  "unsentValue": "Usendt tekst skal bevares efter en revisionskonflikt."
+}
