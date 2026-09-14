@@ -59,8 +59,8 @@ aktuelle kodegrundlag.
 | FL-10 | Sagsmappe | Godkendt samlet design uden fanebjælke, kompakt enhedsrække, foldesektioner og tilstands-/permissionstyret næste handling. | CaseFolder og CSS | åben | Sagsflow, billeder/dokumenter/historik, afslutningsgate | Autoritative statusser og fakturaafklaring bevares |
 | FL-11 | Kompakt kø | Permanent Flyt sag fjernes; statusændring bevares i sagsmappe/diskret menu; kolonner ruller. | WorkQueue og CSS | implementeret lokalt | Kolonne-/statusregression | Tabelvisning og sagsmappe bevarer lovlige statushandlinger; workflowstadier er uændrede |
 | FL-12 | Leverandører | Værksteder læses fra fælles leverandørregister; autoriseret oprettelse bevarer sagskladde. | FLEET vendor adapter, fælles leverandører | åben | Opret/vælg og afvist rolle | Ekstern portal må ikke få intern adgang |
-| FL-13 | Service | Dateret seneste service/måler, kalender/km/timer, varsler, faste hændelser og forklarlig næste grænse. | Service domain/UI | åben | Domæne- og browserprøver | Kombinationsregel skal følge eksisterende domæne; ellers dokumenteres beslutningsbehov |
-| FL-14 | Serviceautomatik | Én indberetning pr. krav/cyklus, idempotens/samtidighed, manglende grundlag, gennemførsel og ændring/deaktivering. | Service automation, Functions/Rules | åben | Scheduler-/emulatorprøve | Varig automatik skal være serverstyret |
+| FL-13 | Service | Dateret seneste service/måler, kalender/km/timer, varsler, faste hændelser og forklarlig næste grænse. | Service domain/UI | implementeret som lokal prototype | 24/24 Service-domæne-/komponenttests | Den først nåede dato- eller målergrænse udløser behovet; tallet `500` er målerinterval i den viste enheds km eller driftstimer |
+| FL-14 | Serviceautomatik | Én indberetning pr. krav/cyklus, idempotens/samtidighed, manglende grundlag, gennemførsel og ændring/deaktivering. | Service automation, Functions/Rules | lokalt implementeret; serverdel blokeret | ServiceAutomation dækker gentagelse, samtidige fanekald, manglende grundlag, deaktivering og ny cyklus | Den aktuelle kontrol kører kun ved appstart/hvert minut i browseren; varig serverstyret scheduler og emulatorbevis mangler |
 | FL-15 | Kategorier | Kundestyret opret/redigér/sortér/deaktivér med historiske referencer og eksplicit rapportmapping. | Opsætning, category repository/adapter | åben | Permission, historik og mobil/desktop | Én autoritativ kategori pr. formål |
 | FL-16 | OBD-statistik | Kun faktiske målinger vises/filtreres/eksporteres; kilde/periode/enhed mærkes; manglende forbindelse er tydelig. | FLEET statistik | åben | Datafeltinventar og syntetisk UI-test | Ekstern OBD er ikke del af opgaven |
 | FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | FLEET economy domain/UI | åben | Beregnings-/drilldowntests | Estimat, kontrolleret og bogført holdes adskilt |
@@ -194,3 +194,31 @@ aktuelle kodegrundlag.
   oprette data.
 - `ReportFlow.test.jsx`, `CaseFolderFlow.test.jsx` og
   `CaseFolderWorkflow.test.js` bestod 15/15. Root lint bestod.
+
+### Etape 6 — kompakt arbejdskø, eksport og serviceinventar
+
+- Kanbankortenes permanente `Flyt sag`-felt er fjernet. Kortet åbner fortsat
+  sagen, mens tabelvisningen og sagsmappens kontroller bevarer de eksisterende
+  lovlige statusændringer og bekræftelsen ved tilbageførsel til Ny.
+- Browserens faktiske kanban viste otte kompakte sagskort uden hurtigvælger.
+  De ni autoritative workflowkolonner og deres optællinger er uændrede.
+- Økonomi-CSV starter nu med de faktiske UTF-8 BOM-bytes
+  `EF BB BF`; danske overskrifter og decimal-komma kontrolleres i domænetesten.
+  Manuel åbning i dansk Excel og mere detaljerede moms-/kildesøjler udestår.
+- Serviceformularens tidligere uklare `500`-værdi er
+  `Serviceinterval måler`; label og hjælpetekst skifter konkret mellem km og
+  driftstimer efter den valgte enhed. Grunddato/-måler, kalenderinterval,
+  årlig dato og varslingsgrænser findes allerede.
+- Serviceberegningen bruger den først nåede registrerede dato- eller
+  målergrænse. Manglende grundlag vises som manglende og bliver ikke nul eller
+  en opfundet frist. Gennemført værkstedsservice flytter grundlaget; booking
+  eller sagslukning gør ikke.
+- Den lokale automatik reserverer én stabil forekomst og opretter højst én
+  indberetning/sag pr. cyklus, også ved samtidige repositorykald. Den er
+  eksplicit en browserprototype: uden en serverstyret scheduler sker der intet,
+  når appen er lukket.
+- `EconomyWorkflow.test.js`, `ReportFlow.test.jsx`,
+  `CaseFolderFlow.test.jsx` og `StageCompletionFlow.test.jsx`: 17/17 bestået.
+  `ServiceWorkflow.test.js`, `ServiceAutomation.test.js` og
+  `ServiceFlow.test.jsx`: 24/24 bestået. Root lint, designkontrol og
+  produktionsbuild bestod; buildens kendte store-chunk-advarsel består.
