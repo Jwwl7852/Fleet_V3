@@ -995,3 +995,23 @@ er fortsat rød på syv fælles blokeringer; den væsentligste er den eksisteren
 WAREHOUSE-omgåelse af beskyttede fysiske unitfelter. Hele afgrænsningen,
 testmatricen og den lokale prøveadgang står i
 `docs/VEYRO_LOGIN_OG_INAKTIVITET_V1.md`.
+
+## 19. Kundespecifikt loginbilledkatalog — 2026-09-14
+
+Loginforslag E har nu 16 billeder: præcis to til FLEET, FACILITY, PLANNING,
+PROCURE, FAKTURACENTER, WORKFORCE, WAREHOUSE og UNIT BOOKING. “Samlet drift”
+er klassificeret som FLEET nr. 2, og SUPPORT er helt uden for kataloget.
+
+Modulmotiver vises først efter en minimal servervalidering af den eksakte
+kundespecifikke login-origin. Klienten læser ikke beskyttede abonnementer,
+tenantdata eller permissions før login. Ukendt adresse, fejlet projektion og
+billedfejl viser kun en neutral petrolflade med det originale Veyro-logo. Den
+lokale seneste-billede-nøgle er afgrænset med et opaque offentligt kontekst-ID,
+så kundeskift ikke genbruger et motiv fra en anden kontekst.
+
+Den serverstyrede originmapping ligger i Secret Manager-konfiguration og er
+ikke oprettet eller deployet i denne runde. Før ekstern brug skal hver
+kundeadresse valideres og få sin særskilte offentlige visningsallowlist. De
+målrettede tests beviser 16/16 katalogposter, to pr. modul, neutral fail-closed
+adfærd og at en kunde uden FACILITY ikke får FACILITY ved genvalg, reload eller
+kontekstskift. Detaljerne står i `docs/VEYRO_LOGIN_OG_INAKTIVITET_V1.md`.
