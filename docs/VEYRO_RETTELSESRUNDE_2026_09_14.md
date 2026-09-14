@@ -51,8 +51,8 @@ aktuelle kodegrundlag.
 | FL-02 | Drift | Dag/uge/måned/kvartal/år ændrer registreret datagrundlag og akser. | FLEET overblik/domæne | åben | Periodeprøver mod syntetisk registreret historik | Ingen opfundet fortid |
 | FL-03 | Omkostning/nedetid | Måneder virker; datadækning, nul/mangler, sidste år og sammensmeltede tidsintervaller håndteres. | FLEET overblik/økonomidomæne | åben | Beregningstests og UI | Sammenligning kun når data findes |
 | FL-04 | Livekort | Kort-wheel og +/−, ingen dobbeltzoom, popup pr. enhed, cluster/samme position kan vælges, tydelig kilde/friskhed. | FLEET LiveMap/GeoMap | åben | Mus, tastatur, popup/fokus og marker-klynger | Ingen ekstern OBD aktiveres |
-| FL-05 | Enhedsregister | Moderne FLEET-kartotek bliver primær skærm i Opsætning med autoritativ mapping og gamle dybe links. | Root-routes/nav, FLEET repository/adapters | åben | Route-, permission- og referenceprøver med PLANNING | UNIT/WAREHOUSE-unit er et særskilt domæneobjekt |
-| FL-06 | Enhedsformular | Typefaner fjernes; typefilter bevares; indvendige mål, fire udstyrsvalg og energikilde med ukendt/ikke relevant. | UnitCatalog, UnitFormDialog, datamodel | åben | Opret/redigér/profil uden datatab | Trækkrog og hængertræk er separate |
+| FL-05 | Enhedsregister | Moderne FLEET-kartotek bliver primær skærm i Opsætning med autoritativ mapping og gamle dybe links. | Root-routes/nav, FLEET repository/adapters | implementeret lokalt | Route-, permission- og referenceprøver med PLANNING | Moderne kartotek åbner på `/opsaetning/enheder`; `/fleet-v2/enheder` bevares som kompatibelt dybt link. UNIT/WAREHOUSE-unit er fortsat et særskilt domæneobjekt. |
+| FL-06 | Enhedsformular | Typefaner fjernes; typefilter bevares; indvendige mål, fire udstyrsvalg og energikilde med ukendt/ikke relevant. | UnitCatalog, UnitFormDialog, UnitProfile, unitSelectors | implementeret lokalt | 18/18 målrettede komponenttests og integreret browserverifikation | Trækkrog, hængertræk, kran og lift er separate værdier. Eksisterende ukendte drivmiddelværdier bevares ved redigering. |
 | FL-07 | Indberetninger | Stabil trepanelstruktur, fuld bredde, justering/hukommelse/scroll og semantiske statustokens. | ReportTriage og CSS | åben | Før/efter valg/reload; mus/tastatur | Ingen |
 | FL-08 | Manuel sag | Læsbar dialog med enhed, beskrivelse, prioritet, validering, lukning og inputbevaring ved fejl. | ManualCaseDialog | åben | Opret + fejlforløb desktop/mobil | Ingen |
 | FL-09 | Arbejdskø | Nye indberetninger åbner flytbar detaljedialog; under vurdering åbner genbrugt sagsmappe; mobil stabil. | WorkQueue, case components | åben | Drag-grænser, fokus, mobil og permissions | Ingen |
@@ -115,3 +115,31 @@ aktuelle kodegrundlag.
 - Browser: 19 syntetiske fakturaer i Indbakke, én i Arkiv, modulfilter og
   bekræftelsesdialog for alle 19 synlige poster blev kontrolleret. Dialogen
   blev annulleret, så browserens prototypetilstand ikke blev ændret.
+
+### Etape 3 — fælles FLEET-enhedsregister
+
+- Det moderne FLEET v2-kartotek er monteret som den primære
+  enhedsregistrering under Opsætning på `/opsaetning/enheder`. Det bruger
+  fortsat FLEETs tenantafgrænsede repository; flytningen opretter ikke en
+  parallel datakopi.
+- Det tidligere dybe link `/fleet-v2/enheder` og profilerne under begge
+  routefamilier virker fortsat. Det ældre kartotek er fjernet fra
+  navigationen, men ingen lokale data er slettet eller migreret.
+- Typefanerne over kartoteket er fjernet. Det eksisterende typefilter er
+  bevaret.
+- Formularen understøtter indvendig længde, bredde og højde i cm,
+  energikilde/drivmiddel samt særskilte valg for trækkrog, hængertræk, kran
+  og lift. Værdierne vises på enhedsprofilen.
+- Nye indvendige mål valideres med samme positive danske talregel som
+  udvendige mål. Eksisterende ikke-standardiserede drivmiddelværdier bevares
+  som en synlig eksisterende værdi ved redigering.
+- `npm run lint` bestod. `UnitEnhancements.test.jsx` og
+  `UnitCatalogProfile.test.jsx` bestod samlet 18/18 med syntetisk
+  memory-repository.
+- Den faktiske integrerede app blev kontrolleret på `/opsaetning/enheder`:
+  alle nye felter var synlige, og dialogen blev annulleret uden lagring.
+  `/fleet-v2/enheder` blev derefter åbnet direkte og viste samme moderne
+  kartotek.
+- PLANNINGs læseadapter til de fælles FLEET-enhedsreferencer ændres ikke i
+  denne etape. En fuld serverautoritativ fælles stamdatakilde er fortsat
+  senere Milepæl B-arbejde.

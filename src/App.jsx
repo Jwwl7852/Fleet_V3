@@ -52,7 +52,6 @@ const Medarbejdere = lazy(() => import("./moduler/Medarbejdere.jsx"));
 const Kompetencer = lazy(() => import("./moduler/Kompetencer.jsx"));
 const Fravaer = lazy(() => import("./moduler/Fravaer.jsx"));
 const WorkforceV2Module = lazy(() => import("./moduler/workforce/WorkforceV2Module.jsx"));
-const FlaadeOversigt = lazy(() => import("./moduler/flaade/Oversigt.jsx"));
 const FlaadeOverblik = lazy(() => import("./moduler/flaade/Overblik.jsx"));
 const Vaerkstedskalender = lazy(() => import("./moduler/flaade/Vaerkstedskalender.jsx"));
 const Indberetninger = lazy(() => import("./moduler/flaade/Indberetninger.jsx"));
@@ -745,7 +744,8 @@ export default function App() {
             {/* Enhedskartoteket. Komponenten bliver liggende i moduler/flaade/,
                 fordi modulnoeglen, noden og permissionen alle hedder flaade —
                 det er MENUPLADSEN der flyttede, ikke ejerskabet. */}
-            <Route path="opsaetning/enheder" element={<FlaadeOversigt />} />
+            <Route path="opsaetning/enheder" element={<FleetV2Module />} />
+            <Route path="opsaetning/enheder/:id" element={<FleetV2Module />} />
             {/* ⚠ STAMDATA. Komponenterne bliver liggende i moduler/ og
                 moduler/kunder/, fordi modulnoeglerne, noderne og
                 permissionerne er uaendrede — det er MENUPLADSEN der

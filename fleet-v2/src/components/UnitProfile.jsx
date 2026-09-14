@@ -41,6 +41,17 @@ function DetailList({ unit }) {
       ["Udvendig bredde", formatDimension(unit.dimensions.widthCm)],
       ["Udvendig højde", formatDimension(unit.dimensions.heightCm)],
     ] : []),
+    ...(unit.interiorDimensions ? [
+      ["Indvendig længde", formatDimension(unit.interiorDimensions.lengthCm)],
+      ["Indvendig bredde", formatDimension(unit.interiorDimensions.widthCm)],
+      ["Indvendig højde", formatDimension(unit.interiorDimensions.heightCm)],
+    ] : []),
+    ...(unit.equipment ? [["Udstyr", [
+      unit.equipment.towHook && "Trækkrog",
+      unit.equipment.trailerCoupling && "Hængertræk",
+      unit.equipment.crane && "Kran",
+      unit.equipment.lift && "Lift",
+    ].filter(Boolean).join(", ") || "Intet valgt"]] : []),
     ["Afdeling", unit.department],
     ["Målerart", unit.meterType === "hours" ? "Driftstimer" : "Kilometer"],
     ["Aktuel målerstand", formatMeter(unit)],

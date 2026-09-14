@@ -66,6 +66,11 @@ export function validateUnit(values, units, currentId = null) {
       if (values[key] !== "" && !Number.isFinite(parsePositiveDanishNumber(values[key]))) errors[key] = "Angiv et positivt tal eller lad feltet være tomt.";
     });
   }
+  if (values.interiorDimensionsEnabled) {
+    ["interiorLengthCm", "interiorWidthCm", "interiorHeightCm"].forEach((key) => {
+      if (values[key] !== "" && !Number.isFinite(parsePositiveDanishNumber(values[key]))) errors[key] = "Angiv et positivt tal eller lad feltet være tomt.";
+    });
+  }
   return errors;
 }
 

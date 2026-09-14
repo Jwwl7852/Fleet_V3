@@ -10,6 +10,8 @@ const emptyValues = {
   department: "", year: "", firstRegistrationDate: "", fuel: "", color: "", curbWeightKg: "", grossWeightKg: "",
   meterType: "km", meter: "0", status: "operation", notes: "", dimensionsEnabled: false,
   lengthCm: "", widthCm: "", heightCm: "",
+  interiorDimensionsEnabled: false, interiorLengthCm: "", interiorWidthCm: "", interiorHeightCm: "",
+  towHook: false, trailerCoupling: false, crane: false, lift: false,
 };
 
 const valuesFromUnit = (unit) => unit ? {
@@ -23,7 +25,19 @@ const valuesFromUnit = (unit) => unit ? {
   lengthCm: unit.dimensions?.lengthCm == null ? "" : String(unit.dimensions.lengthCm).replace(".", ","),
   widthCm: unit.dimensions?.widthCm == null ? "" : String(unit.dimensions.widthCm).replace(".", ","),
   heightCm: unit.dimensions?.heightCm == null ? "" : String(unit.dimensions.heightCm).replace(".", ","),
+  interiorDimensionsEnabled: Boolean(unit.interiorDimensions),
+  interiorLengthCm: unit.interiorDimensions?.lengthCm == null ? "" : String(unit.interiorDimensions.lengthCm).replace(".", ","),
+  interiorWidthCm: unit.interiorDimensions?.widthCm == null ? "" : String(unit.interiorDimensions.widthCm).replace(".", ","),
+  interiorHeightCm: unit.interiorDimensions?.heightCm == null ? "" : String(unit.interiorDimensions.heightCm).replace(".", ","),
+  towHook: Boolean(unit.equipment?.towHook), trailerCoupling: Boolean(unit.equipment?.trailerCoupling),
+  crane: Boolean(unit.equipment?.crane), lift: Boolean(unit.equipment?.lift),
 } : emptyValues;
+
+const FUEL_OPTIONS = [
+  ["", "Ukendt / ikke oplyst"], ["not_applicable", "Ikke relevant"],
+  ["diesel", "Diesel"], ["petrol", "Benzin"], ["electric", "El"],
+  ["hybrid", "Hybrid"], ["hydrogen", "Brint"], ["lpg", "Gas"],
+];
 
 const LOOKUP_FIELDS = [
   ["make", "Mærke"], ["model", "Model"], ["variant", "Variant"], ["type", "Enhedstype"],
@@ -141,6 +155,14 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
     if (!checked && values.dimensionsEnabled && [values.lengthCm, values.widthCm, values.heightCm].some((value) => String(value).trim()) && !globalThis.confirm("De udfyldte udvendige mål fjernes, når enheden gemmes. Vil du fortsætte?")) return;
     setValues((current) => ({ ...current, dimensionsEnabled: checked, ...(checked ? {} : { lengthCm: "", widthCm: "", heightCm: "" }) }));
   };
+  const toggleInteriorDimensions = (event) => {
+    const checked = event.target.checked;
+    if (!checked && values.interiorDimensionsEnabled
+      && [values.interiorLengthCm, values.interiorWidthCm, values.interiorHeightCm].some((value) => String(value).trim())
+      && !globalThis.confirm("De udfyldte indvendige mål fjernes, når enheden gemmes. Vil du fortsætte?")) return;
+    setValues((current) => ({ ...current, interiorDimensionsEnabled: checked,
+      ...(checked ? {} : { interiorLengthCm: "", interiorWidthCm: "", interiorHeightCm: "" }) }));
+  };
 
   const submit = async (event) => {
     event.preventDefault(); setSubmitted(true); setSaveError("");
@@ -148,6 +170,7 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
     setSaving(true);
     const id = unit?.id || `unit-local-${globalThis.crypto?.randomUUID?.() || Date.now().toString(36)}`;
     const dimensions = values.dimensionsEnabled ? { unit: "cm", lengthCm: parsePositiveDanishNumber(values.lengthCm), widthCm: parsePositiveDanishNumber(values.widthCm), heightCm: parsePositiveDanishNumber(values.heightCm) } : null;
+    const interiorDimensions = values.interiorDimensionsEnabled ? { unit: "cm", lengthCm: parsePositiveDanishNumber(values.interiorLengthCm), widthCm: parsePositiveDanishNumber(values.interiorWidthCm), heightCm: parsePositiveDanishNumber(values.interiorHeightCm) } : null;
     try {
       await onSave({
         ...(unit || {}), id, tenantId, number: values.number.trim(), type: values.type, make: values.make.trim(), model: values.model.trim(),
@@ -155,6 +178,8 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
         department: values.department.trim(), year: values.year ? Number(values.year) : null, meterType: values.meterType,
         meter: Number(values.meter), status: values.status, notes: values.notes.trim(), noteCount: unit?.noteCount || 0, image, dimensions,
         vehicleDetails: { variant: values.variant.trim() || null, firstRegistrationDate: values.firstRegistrationDate || null, fuel: values.fuel.trim() || null, color: values.color.trim() || null, curbWeightKg: values.curbWeightKg === "" ? null : Number(values.curbWeightKg), grossWeightKg: values.grossWeightKg === "" ? null : Number(values.grossWeightKg) },
+        interiorDimensions,
+        equipment: { towHook: values.towHook, trailerCoupling: values.trailerCoupling, crane: values.crane, lift: values.lift },
         updatedAt: new Date().toISOString(),
       });
       onClose();
@@ -175,12 +200,14 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
           <Field label="Mærke *" error={submitted ? errors.make : null}><input value={values.make} onChange={set("make")} /></Field><Field label="Model *" error={submitted ? errors.model : null}><input value={values.model} onChange={set("model")} /></Field>
           <Field label="Variant"><input value={values.variant} onChange={set("variant")} /></Field><Field label="VIN / serienummer" hint="Valgfrit, når enheden ikke har et nummer."><input value={values.serialNumber} onChange={set("serialNumber")} /></Field>
           <Field label="Afdeling *" error={submitted ? errors.department : null}><input value={values.department} onChange={set("department")} /></Field><Field label="Produktionsår / modelår" error={submitted ? errors.year : null}><input inputMode="numeric" value={values.year} onChange={set("year")} /></Field>
-          <Field label="Første registreringsdato" hint="Holdes adskilt fra modelår."><input type="date" value={values.firstRegistrationDate} onChange={set("firstRegistrationDate")} /></Field><Field label="Drivmiddel"><input value={values.fuel} onChange={set("fuel")} /></Field>
+          <Field label="Første registreringsdato" hint="Holdes adskilt fra modelår."><input type="date" value={values.firstRegistrationDate} onChange={set("firstRegistrationDate")} /></Field><Field label="Drivmiddel / energikilde"><select value={values.fuel} onChange={set("fuel")}>{values.fuel && !FUEL_OPTIONS.some(([value]) => value === values.fuel) ? <option value={values.fuel}>{values.fuel} (eksisterende værdi)</option> : null}{FUEL_OPTIONS.map(([value,label]) => <option value={value} key={value}>{label}</option>)}</select></Field>
           <Field label="Farve"><input value={values.color} onChange={set("color")} /></Field><Field label="Egenvægt i kg"><input inputMode="decimal" type="number" min="0" value={values.curbWeightKg} onChange={set("curbWeightKg")} /></Field>
           <Field label="Totalvægt i kg"><input inputMode="decimal" type="number" min="0" value={values.grossWeightKg} onChange={set("grossWeightKg")} /></Field><Field label="Målerart *" error={submitted ? errors.meterType : null}><select value={values.meterType} onChange={set("meterType")}><option value="km">Kilometer</option><option value="hours">Driftstimer</option></select></Field>
           <Field label="Målerstand *" error={submitted ? errors.meter : null}><input inputMode="numeric" min="0" step="1" type="number" value={values.meter} onChange={set("meter")} /></Field><Field label="Driftsstatus *" error={submitted ? errors.status : null}><select value={values.status} onChange={set("status")}>{Object.entries(UNIT_STATUSES).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></Field>
           <Field label="Internt ID" hint="Stabilt og ikke redigerbart."><input disabled value={unit?.id || "Oprettes automatisk"} /></Field>
           <section className="dimensions-section"><label className="dimensions-toggle"><input type="checkbox" checked={values.dimensionsEnabled} onChange={toggleDimensions} /><span><strong>Tilføj udvendige mål</strong><small>Udvendige mål – ikke lastrum eller indvendige mål.</small></span></label>{values.dimensionsEnabled ? <div className="dimensions-grid"><Field label="Længde i cm" error={submitted ? errors.lengthCm : null}><input inputMode="decimal" value={values.lengthCm} onChange={set("lengthCm")} placeholder="Fx 599,5" /></Field><Field label="Bredde i cm" error={submitted ? errors.widthCm : null}><input inputMode="decimal" value={values.widthCm} onChange={set("widthCm")} /></Field><Field label="Højde i cm" error={submitted ? errors.heightCm : null}><input inputMode="decimal" value={values.heightCm} onChange={set("heightCm")} /></Field></div> : null}</section>
+          <section className="dimensions-section"><label className="dimensions-toggle"><input type="checkbox" checked={values.interiorDimensionsEnabled} onChange={toggleInteriorDimensions} /><span><strong>Tilføj indvendige mål</strong><small>Lastrum eller anvendelige indvendige mål i cm.</small></span></label>{values.interiorDimensionsEnabled ? <div className="dimensions-grid"><Field label="Indvendig længde i cm" error={submitted ? errors.interiorLengthCm : null}><input inputMode="decimal" value={values.interiorLengthCm} onChange={set("interiorLengthCm")} /></Field><Field label="Indvendig bredde i cm" error={submitted ? errors.interiorWidthCm : null}><input inputMode="decimal" value={values.interiorWidthCm} onChange={set("interiorWidthCm")} /></Field><Field label="Indvendig højde i cm" error={submitted ? errors.interiorHeightCm : null}><input inputMode="decimal" value={values.interiorHeightCm} onChange={set("interiorHeightCm")} /></Field></div> : null}</section>
+          <fieldset className="dimensions-section"><legend>Udstyr</legend><div className="equipment-grid">{[["towHook","Trækkrog"],["trailerCoupling","Hængertræk"],["crane","Kran"],["lift","Lift"]].map(([key,label]) => <label key={key}><input type="checkbox" checked={values[key]} onChange={(event) => setValues((current) => ({ ...current, [key]: event.target.checked }))} /><span>{label}</span></label>)}</div></fieldset>
           <ImageEditor image={image} onChange={setImage} imageProcessor={imageProcessor} />
           <Field label="Noter" wide><textarea rows="3" value={values.notes} onChange={set("notes")} /></Field>
         </div>

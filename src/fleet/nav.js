@@ -230,7 +230,7 @@ export const NAV = [
       { key: "fleetV2Overblik", sti: "/fleet-v2", label: "Overblik",
         kraeverPerm: "koeretoejer.laes", titel: "FLEET – overblik",
         under: "Samlet lokalt prototypeoverblik over flådens drift." },
-      { key: "fleetV2Enheder", sti: "/fleet-v2/enheder", label: "Enheder",
+      { key: "fleetV2Enheder", sti: "/fleet-v2/enheder", label: "Tidligere Enheder", skjulINav: true,
         kraeverPerm: "koeretoejer.laes", titel: "FLEET – enheder",
         under: "Enheder, profiler, billeder og stamdata i lokal prototypelagring." },
       { key: "fleetV2Indberetninger", sti: "/fleet-v2/indberetninger", label: "Indberetninger",
@@ -601,7 +601,7 @@ export const NAV = [
          han <Datatilstand> og ikke en hvid skærm. Menuen er en KOMMERCIEL
          kontrol, reglerne er sikkerhedskontrollen — se moduler.js. */
       { key: "enheder", sti: "/opsaetning/enheder", label: "Enheder",
-        kraeverModul: "flaade",
+        kraeverModul: "flaade", kraeverPerm: "koeretoejer.laes",
         titel: "Enheder", under: "Stamdata for flåden. Arten styrer feltskemaet." },
       /* ⚠ KASSELISTEN ER STAMDATA — samme snit som Enheder ovenfor. Planche 1
          flytter den hertil, og typerne oprettes samme sted. En kasse oprettes

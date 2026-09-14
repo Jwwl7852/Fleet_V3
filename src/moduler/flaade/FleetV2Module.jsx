@@ -22,6 +22,8 @@ export default function FleetV2Module() {
   const hasPermission = harPerm(bruger?.perms, requiredPermission);
   const databaseName = import.meta.env.VITE_FLEET_V2_DATABASE_NAME
     || FLEET_V2_INTEGRATION_DATABASE;
+  const basePath = location.pathname.startsWith("/opsaetning/enheder")
+    ? "/opsaetning" : FLEET_V2_ROUTE_PREFIX;
   const repository = useMemo(() => createIndexedDbUnitRepository({
     databaseName,
     tenantId,
@@ -45,7 +47,7 @@ export default function FleetV2Module() {
   return (
     <FleetV2App
       actor={actor}
-      basePath={FLEET_V2_ROUTE_PREFIX}
+      basePath={basePath}
       embedded
       onNavigate={navigate}
       pathname={location.pathname}

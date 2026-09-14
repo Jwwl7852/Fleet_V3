@@ -127,6 +127,34 @@ describe("FLEET v2 enhedsforbedringer", () => {
     expect(screen.getByText("599,5 cm")).toBeTruthy();
   });
 
+  it("gemmer indvendige mål og særskilte udstyrsvalg og viser dem på profilen", async () => {
+    const repository = createMemoryUnitRepository();
+    render(<FleetV2App repository={repository} />);
+    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    fireEvent.click(screen.getByRole("button", { name: "Opret enhed" }));
+    const dialog = screen.getByRole("dialog");
+    fillRequired(dialog, "QA-924");
+    fireEvent.change(within(dialog).getByLabelText("Drivmiddel / energikilde"), { target: { value: "electric" } });
+    fireEvent.click(within(dialog).getByLabelText(/Tilføj indvendige mål/));
+    fireEvent.change(within(dialog).getByLabelText("Indvendig længde i cm"), { target: { value: "312,5" } });
+    fireEvent.change(within(dialog).getByLabelText("Indvendig bredde i cm"), { target: { value: "180" } });
+    fireEvent.click(within(dialog).getByLabelText("Trækkrog"));
+    fireEvent.click(within(dialog).getByLabelText("Hængertræk"));
+    fireEvent.click(within(dialog).getByLabelText("Lift"));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Opret enhed" }));
+    const created = await waitFor(() => repository.inspect().units.find((item) => item.number === "QA-924"));
+    expect(created.interiorDimensions).toEqual({ unit: "cm", lengthCm: 312.5, widthCm: 180, heightCm: null });
+    expect(created.equipment).toEqual({ towHook: true, trailerCoupling: true, crane: false, lift: true });
+    expect(created.vehicleDetails.fuel).toBe("electric");
+    act(() => {
+      window.history.pushState({}, "", `/enheder/${created.id}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(await screen.findByText("Indvendig længde")).toBeTruthy();
+    expect(screen.getByText("312,5 cm")).toBeTruthy();
+    expect(screen.getByText("Trækkrog, Hængertræk, Lift")).toBeTruthy();
+  });
+
   it("validerer negative mål og bekræfter før eksisterende mål fjernes", async () => {
     const dataset = createFixtureDataset();
     const target = dataset.units.find((item) => item.number === "NB-001");

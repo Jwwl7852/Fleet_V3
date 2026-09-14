@@ -63,8 +63,6 @@ export function UnitCatalog({ onNavigate, onNotice, vehicleLookup, imageProcesso
   if (loading) return <main className="workspace-page loading-state" id="main-content"><span className="loading-spinner" /><p>Indlæser lokale demodata …</p></main>;
   if (error) return <main className="workspace-page empty-state" id="main-content"><Icon name="warning" size={32} /><h1>Lokale data kunne ikke åbnes</h1><p>{error.message}</p></main>;
 
-  const tabEntries = [["all", "Alle"], ...Object.entries(UNIT_TYPES).map(([key, meta]) => [key, meta.plural])];
-
   return (
     <main className="workspace-page catalog-page" id="main-content">
       <header className="page-heading-row">
@@ -75,13 +73,6 @@ export function UnitCatalog({ onNavigate, onNotice, vehicleLookup, imageProcesso
           <button className="primary-button" type="button" onClick={() => setCreating(true)}><Icon name="plus" size={19} />Opret enhed</button>
         </div>
       </header>
-
-      <div className="unit-tabs" role="tablist" aria-label="Enhedstyper">
-        {tabEntries.map(([key, label]) => {
-          const count = key === "all" ? units.length : units.filter((unit) => unit.type === key).length;
-          return <button role="tab" aria-selected={filters.tab === key} className={filters.tab === key ? "is-active" : ""} key={key} type="button" onClick={() => setFilters((current) => ({ ...current, tab: key }))}>{label} <span>({count})</span></button>;
-        })}
-      </div>
 
       <section className="catalog-toolbar" aria-label="Filtrering af enheder">
         <label className="catalog-search"><Icon name="search" size={18} /><input aria-label="Søg i enheder" placeholder="Søg i enheder …" value={filters.query} onChange={setFilter("query")} /></label>
