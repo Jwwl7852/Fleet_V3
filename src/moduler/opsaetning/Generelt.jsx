@@ -54,6 +54,8 @@ const STAMDATA = [
     note: "En udløbet kompetence blokerer i disponeringen, den advarer ikke." },
   { hvad: "Enheder og påhæng", hvor: "/opsaetning/enheder", label: "Opsætning → Enheder",
     note: "Arten styrer feltskemaet." },
+  { hvad: "FLEET-kategorier", hvor: "/opsaetning/fleet-kategorier", label: "Opsætning → FLEET-kategorier",
+    note: "Én kategorikilde til indberetninger og økonomi; inaktive kategorier bevarer historikken." },
   { hvad: "Kunder og prisgrupper", hvor: "/opsaetning/kunder", label: "Opsætning → Kunder",
     note: "Prisgruppen peger på et satssæt; satserne selv ligger i Bookingopsætning." },
   { hvad: "Satser og tillæg", hvor: "/booking/opsaetning", label: "Booking → Bookingopsætning",

@@ -197,6 +197,32 @@ describe("køretøjer", () => {
   });
 });
 
+describe("fælles FLEET-kategorier", () => {
+  const KATEGORI = {
+    navn: "Dæk og hjul", aktiv: true, sortering: 10,
+    brugIndberetning: true, brugOmkostning: true,
+    oprettetMs: 1, oprettetAf: "uid-kat",
+    opdateretMs: 1, opdateretAf: "uid-kat",
+  };
+
+  it("kan læses med koeretoejer.laes og skrives med koeretoejer.skriv", async () => {
+    const skriver = medPerms("uid-kat", [PERM.koeretoejerSkriv, PERM.koeretoejerLaes]);
+    await assertSucceeds(set(ref(skriver, sti("fleetKategorier", "daek")), KATEGORI));
+    const laeser = medPerms("uid-kat-laes", [PERM.koeretoejerLaes]);
+    await assertSucceeds(get(ref(laeser, `tenants/${T}/fleetKategorier`)));
+    const udenSkriv = medPerms("uid-kat-nej", ALLE_PERMS.filter((perm) => perm !== PERM.koeretoejerSkriv));
+    await assertFails(set(ref(udenSkriv, sti("fleetKategorier", "nej")), KATEGORI));
+  });
+
+  it("afviser hardsletning, ændret oprettelsesaudit og kategori uden anvendelse", async () => {
+    const db = medPerms("uid-kat", [PERM.koeretoejerSkriv, PERM.koeretoejerLaes]);
+    await assertFails(remove(ref(db, sti("fleetKategorier", "daek"))));
+    await assertFails(set(ref(db, sti("fleetKategorier", "daek")), { ...KATEGORI, oprettetAf: "en-anden" }));
+    await assertFails(set(ref(db, sti("fleetKategorier", "tom")), { ...KATEGORI, brugIndberetning: false, brugOmkostning: false }));
+    await assertSucceeds(set(ref(db, sti("fleetKategorier", "daek")), { ...KATEGORI, aktiv: false, opdateretMs: 2 }));
+  });
+});
+
 /* ---- Flådelogikken, uden emulator ----------------------------------- */
 
 describe("flaade.js", () => {

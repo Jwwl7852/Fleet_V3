@@ -1015,3 +1015,25 @@ kundeadresse valideres og få sin særskilte offentlige visningsallowlist. De
 målrettede tests beviser 16/16 katalogposter, to pr. modul, neutral fail-closed
 adfærd og at en kunde uden FACILITY ikke får FACILITY ved genvalg, reload eller
 kontekstskift. Detaljerne står i `docs/VEYRO_LOGIN_OG_INAKTIVITET_V1.md`.
+
+## 20. Fælles FLEET-kategorier — 2026-09-15
+
+FLEETs indberetningskategorier og økonomikategorier er samlet omkring én
+tenantafgrænset stamdatakilde `fleetKategorier`. Kategorien har et stabilt ID,
+navn, sorteringsnøgle, aktivstatus, eksplicit anvendelse til indberetninger og/
+eller økonomi samt oprettelses- og ændringsaudit. Fælles Opsætning er den eneste
+redigerbare kilde; rapportguiden og økonomi er læseforbrugere.
+
+Forretningsposter gemmer kategori-ID og et snapshot af navn og anvendelse.
+Deaktivering forhindrer nye valg, men ændrer ikke historiske poster. Rules
+afviser hard delete, ugyldige anvendelser, manglende audit og ændring af den
+oprindelige oprettelsesaudit. Læsning kræver FLEET-abonnement og
+`koeretoejer.laes`; ændring kræver `koeretoejer.skriv`.
+
+Overgangen er bevidst todelt. Kategori-stamdata kan nu lagres autoritativt i
+RTDB, mens eksisterende FLEET-indberetninger og økonomiposter fortsat ligger i
+den lokale prototype. Adapteren oversætter eksisterende navne til stabile ID'er
+og bevarer ukendte historiske referencer som inaktive snapshots; den opretter
+ikke parallelle redigerbare kopier. Før FL-15 kan lukkes samlet, skal de
+forbrugende forretningsposter flyttes til samme servergrænse med migration,
+tenantkontrol og revisionsbeskyttelse. Ingen produktionsmigration er kørt.

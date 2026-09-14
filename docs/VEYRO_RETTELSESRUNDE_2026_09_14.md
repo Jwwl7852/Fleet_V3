@@ -61,12 +61,12 @@ aktuelle kodegrundlag.
 | FL-12 | Leverandører | FLEET v2 brugte sit lokale `relations.workshops` som en parallel leverandørstamme. Eksterne værksteder læses nu fra fælles `leverandoerer`; interne ressourcer og historiske referencer bevares uden at kopiere fælles stamdata til IndexedDB. Autoriseret oprettelse går til samme register med værksted forvalgt og sikker retur til den bevarede sagskladde. | `FleetV2Module`, `supplierWorkshopAdapter`, `supplierReturn`, `WorkshopAssignment`, fælles leverandører | implementeret og verificeret | 7/7 adapter-/returtests; fuld FLEET-suite 179/179; integreret browser ved 1919×1080 CSS-pixel/100 % arbejdsområdezoom | Ekstern portal får ingen intern adgang. Produktlagring er fortsat det eksisterende tenantafgrænsede leverandørregister; mailafsendelse er ikke aktiveret. |
 | FL-13 | Service | Dateret seneste service/måler, kalender/km/timer, varsler, faste hændelser og forklarlig næste grænse. | Service domain/UI | implementeret som lokal prototype | 24/24 Service-domæne-/komponenttests | Den først nåede dato- eller målergrænse udløser behovet; tallet `500` er målerinterval i den viste enheds km eller driftstimer |
 | FL-14 | Serviceautomatik | Én indberetning pr. krav/cyklus, idempotens/samtidighed, manglende grundlag, gennemførsel og ændring/deaktivering. | Service automation, Functions/Rules | lokalt implementeret; serverdel blokeret | ServiceAutomation dækker gentagelse, samtidige fanekald, manglende grundlag, deaktivering og ny cyklus | Den aktuelle kontrol kører kun ved appstart/hvert minut i browseren; varig serverstyret scheduler og emulatorbevis mangler |
-| FL-15 | Kategorier | Kundestyret opret/redigér/sortér/deaktivér med historiske referencer og eksplicit rapportmapping. | Opsætning, category repository/adapter | åben | Permission, historik og mobil/desktop | Én autoritativ kategori pr. formål |
+| FL-15 | Kategorier | Indberetninger brugte fri tekst, mens økonomi brugte en separat hardkodet liste. Der er nu én tenantafgrænset kategori-stamdata med opret/redigér/sortér/deaktivér, anvendelsesmapping og historiske snapshots. | `src/moduler/opsaetning/FleetKategorier.jsx`, `fleetCategories`, `categoryAdapter`, Reports/Økonomi, Rules | delvist implementeret | 5/5 kategoridomænetests; fuld FLEET-suite 184/184; fuld Rules-/platformsgate 4.599/4.599; browser desktop/mobil og begge forbrugere | Kategoristamdata lagres serverstyret. Selve indberetningerne og økonomiposterne er fortsat lokal FLEET-prototype og skal flyttes til den autoritative servergrænse, før kravet lukkes samlet. |
 | FL-16 | OBD-statistik | Kun faktiske målinger vises/filtreres/eksporteres; kilde/periode/enhed mærkes; manglende forbindelse er tydelig. | FLEET statistik | åben | Datafeltinventar og syntetisk UI-test | Ekstern OBD er ikke del af opgaven |
 | FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | FLEET economy domain/UI | åben | Beregnings-/drilldowntests | Estimat, kontrolleret og bogført holdes adskilt |
 | FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET economy export | delvist implementeret lokalt | Domænetest af dansk indhold og UTF-8-rundtur | Download har nu UTF-8 BOM; manuel åbning i dansk Excel og udvidede momskolonner udestår |
-| REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.597/4.597 grøn i isoleret emulator. Målrettet Fakturacenter-callable 21 assertions, UNIT/WAREHOUSE/modul 48/48 og tenant 24/24. | FL-14 og øvrige kommende serverfunktioner kræver egne emulatorbeviser før deres samlede krav kan lukkes. |
-| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint og build grøn; Rules-/platformsgate 4.597/4.597 grøn; FLEET 179/179 grøn efter Etape 12 | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
+| REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.599/4.599 grøn i isoleret emulator. Målrettet Fakturacenter-callable 21 assertions, UNIT/WAREHOUSE/modul 48/48, tenant 24/24 og kategori-Rules inkl. hard-delete/audit/ugyldig mapping. | FL-14 og øvrige kommende serverfunktioner kræver egne emulatorbeviser før deres samlede krav kan lukkes. |
+| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint og build grøn; Rules-/platformsgate 4.599/4.599 grøn; FLEET 184/184 grøn efter Etape 13 | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
 | REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | i gang | Ny Etape-7-pakke dækker sagsmappe/dialog ved alle fire viewports, normal/kompakt menu, 100/125 % og Nulstil; Fakturacenter/menu/manuel sag ved 1440×900 | Samme matrix skal fortsat køres på resterende FLEET-, service-, kategori- og økonomiskærme |
 
 ## Baseline
@@ -536,3 +536,45 @@ før/efter-beviser for de prioriterede synlige fejl.
 | --- | --- | --- | --- | --- | --- | --- |
 | FL-12 | Implementeret og verificeret i den integrerede app | Implementeret og verificeret for mapping, aktive valg, historik og retur | Implementeret og verificeret: fælles RTDB-kilde; kun midlertidig sagskladde i tenant-/sagsafgrænset sessionlager | Implementeret og verificeret med `leverandoerer.laes`/`leverandoerer.skriv` og afvist usikker retur | 7/7 adapter-/returtests, 6/6 sagsflowtests, 179/179 FLEET og to nye browserbilleder | Implementeret og verificeret |
 | REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | FLEET 179/179; root lint og produktionsbuild grøn | Delvist implementeret |
+
+### Etape 13 — fælles FLEET-kategorier
+
+- Den faktiske årsag var to konkurrerende modeller: indberetninger gemte
+  kategorinavnet som fri tekst, mens økonomi brugte en separat hardkodet
+  kategoriliste. Begge forløb bruger nu et stabilt kategori-ID og gemmer et
+  navn-/anvendelsessnapshot på forretningsposten, så senere omdøbning eller
+  deaktivering ikke ændrer historikken.
+- Den fælles Opsætning-rute er `/opsaetning/fleet-kategorier`. En autoriseret
+  bruger kan oprette, redigere, sortere, deaktivere og genaktivere. Hard delete
+  er afvist i Rules. Oprettelses- og ændringsaudit samt anvendelserne
+  `reports`/`economy` valideres servermæssigt.
+- FLEET læser stamdata fra `fleetKategorier` under den aktuelle tenant. Kun
+  kategorier med relevant anvendelse vises i henholdsvis indberetningsguiden
+  og økonomifiltret. Kategorier, der stadig refereres af historiske lokale
+  poster, bevares som inaktive snapshots i adapterlaget og tilbydes ikke til
+  nye poster.
+- Demoen bruger mærkede standardkategorier, når der ikke findes en Firebase-
+  forbindelse. En autentificeret tom eller afvist serverkilde skifter ikke
+  skjult til demodata.
+- Mobilkontrollen fandt først en reel breddefejl: tabelrækken var 533,56 px i
+  et 389 px viewport. Tabellen skifter nu til semantiske kort på små skærme.
+  Efter rettelsen måltes dokumentets `scrollWidth` til 367 px og selve tabellen
+  til 288,2 px ved 389×843 CSS-pixel. Ved desktop måltes dokumentet til
+  1.897 px og kategorikortet til 1.757,07 px i et 1.919×1.080 CSS-viewport.
+- Browserbevis ved arbejdsområdezoom 100 %:
+  `docs/beviser/etape-13/fleet-kategorier-1920x1080.png`,
+  `docs/beviser/etape-13/fleet-kategorier-390x844.png`,
+  `docs/beviser/etape-13/fleet-indberetning-kategorier-390x844.png` og
+  `docs/beviser/etape-13/fleet-oekonomi-kategorier-1920x1080.png`.
+- Teknisk gate på etapegrundlaget: 5/5 nye kategoridomænetests; hele
+  FLEET-suiten 184/184 i 30 filer; root lint og produktionsbuild grøn; fuld
+  isoleret Auth/Database/Functions/Storage-gate 4.599/4.599 grøn. Database-
+  emulatoren startede med den dokumenterede proceslokale `TEMP`/`TMP`-
+  håndtering; ingen Rules eller negative tests blev fjernet eller svækket.
+
+#### Delstatus efter Etape 13
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FL-15 | Implementeret og verificeret på desktop og mobil; samme kilde ses i Opsætning, indberetning og økonomi | Implementeret og verificeret for stabile ID'er, anvendelsesmapping, sortering, deaktivering og historiske snapshots | Delvist implementeret: kategori-stamdata er tenantafgrænset RTDB; de forbrugende FLEET-forretningsposter er fortsat lokal prototype | Implementeret og verificeret med `koeretoejer.laes`/`koeretoejer.skriv`, tenant-/modulgate, auditvalidering og afvist hard delete | 5/5 kategoritests, FLEET 184/184, fuld gate 4.599/4.599 og fire nye browserbilleder | Delvist implementeret |
+| REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, FLEET 184/184 og fuld gate 4.599/4.599 | Delvist implementeret |

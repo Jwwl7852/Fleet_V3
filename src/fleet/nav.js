@@ -603,6 +603,9 @@ export const NAV = [
       { key: "enheder", sti: "/opsaetning/enheder", label: "Enheder",
         kraeverModul: "flaade", kraeverPerm: "koeretoejer.laes",
         titel: "Enheder", under: "Stamdata for flåden. Arten styrer feltskemaet." },
+      { key: "fleetKategorier", sti: "/opsaetning/fleet-kategorier", label: "FLEET-kategorier",
+        kraeverModul: "flaade", kraeverPerm: "koeretoejer.laes",
+        titel: "FLEET-kategorier", under: "Fælles kategorier til indberetninger og økonomi" },
       /* ⚠ KASSELISTEN ER STAMDATA — samme snit som Enheder ovenfor. Planche 1
          flytter den hertil, og typerne oprettes samme sted. En kasse oprettes
          een gang og roeres sjaeldent; det operationelle er udlaanet. */

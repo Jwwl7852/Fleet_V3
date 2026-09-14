@@ -10,6 +10,7 @@ import { applyDocumentArchive, applyDocumentRelationRemoval, applyDocumentUpdate
 import { applyContractReviewSave, applyLeaseAutomation, applyLeaseDeliveryUpdate, applyLeaseSaveWithContract, ensureLeasingRegistry, migrateLeaseDemoMeterObservations, saveMeterObservation } from "./leasingWorkflow";
 import { applyManualCostSave } from "./economyWorkflow";
 import { datasetForLocalPersistence, mergeSharedWorkshops } from "./supplierWorkshopAdapter";
+import { datasetWithoutSharedCategories, mergeSharedCategories } from "./categoryAdapter";
 
 export const PROTOTYPE_DATABASE_NAME = "veyro-fleet-v2-prototype";
 const DATABASE_VERSION = 1;
@@ -119,21 +120,27 @@ const transaction = async (databaseName, mode, operation) => {
   }
 };
 
-const mutateStoredDataset = async (databaseName, tenantId, mutate, sharedSuppliers) => transaction(databaseName, "readwrite", (store) => new Promise((resolve, reject) => {
+const withSharedRegisters = (dataset, sharedSuppliers, sharedCategories) =>
+  mergeSharedCategories(mergeSharedWorkshops(dataset, sharedSuppliers), sharedCategories);
+
+const forLocalPersistence = (dataset, localDataset) =>
+  datasetWithoutSharedCategories(datasetForLocalPersistence(dataset, localDataset), localDataset);
+
+const mutateStoredDataset = async (databaseName, tenantId, mutate, sharedSuppliers, sharedCategories) => transaction(databaseName, "readwrite", (store) => new Promise((resolve, reject) => {
   const request = store.get(tenantId);
   request.onerror = () => reject(request.error);
   request.onsuccess = () => {
     try {
       const current = migrateDataset(request.result || createFixtureDataset(tenantId));
-      const working = mergeSharedWorkshops(current, sharedSuppliers);
+      const working = withSharedRegisters(current, sharedSuppliers, sharedCategories);
       const rawResult = mutate(working);
       const result = { ...rawResult, dataset: ensureDocumentRegistry(ensureLeasingRegistry(rawResult.dataset)) };
-      const persistedDataset = datasetForLocalPersistence(result.dataset, current);
+      const persistedDataset = forLocalPersistence(result.dataset, current);
       const put = store.put(clone(persistedDataset));
       put.onerror = () => reject(put.error);
       put.onsuccess = () => resolve(clone({
         ...result,
-        dataset: mergeSharedWorkshops(result.dataset, sharedSuppliers),
+        dataset: withSharedRegisters(result.dataset, sharedSuppliers, sharedCategories),
       }));
     } catch (error) {
       reject(error);
@@ -145,9 +152,10 @@ export function createIndexedDbUnitRepository({
   databaseName = PROTOTYPE_DATABASE_NAME,
   tenantId = DEMO_TENANT_ID,
   sharedSuppliers,
+  sharedCategories,
 } = {}) {
   const runTransaction = (mode, operation) => transaction(databaseName, mode, operation);
-  const mutate = (operation) => mutateStoredDataset(databaseName, tenantId, operation, sharedSuppliers);
+  const mutate = (operation) => mutateStoredDataset(databaseName, tenantId, operation, sharedSuppliers, sharedCategories);
   return {
     kind: "indexeddb-prototype",
     databaseName,
@@ -163,11 +171,11 @@ export function createIndexedDbUnitRepository({
         if (stored.version !== CURRENT_DATASET_VERSION) {
           await runTransaction("readwrite", (store) => store.put(clone(migrated)));
         }
-        return clone(mergeSharedWorkshops(migrated, sharedSuppliers));
+        return clone(withSharedRegisters(migrated, sharedSuppliers, sharedCategories));
       }
       const initial = migrateDataset(createFixtureDataset(tenantId));
       await runTransaction("readwrite", (store) => store.put(clone(initial)));
-      return clone(mergeSharedWorkshops(initial, sharedSuppliers));
+      return clone(withSharedRegisters(initial, sharedSuppliers, sharedCategories));
     },
     async saveUnit(unit) {
       const result = await mutate((dataset) => {

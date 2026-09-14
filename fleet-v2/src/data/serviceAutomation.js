@@ -36,6 +36,7 @@ function automationReportInput(requirement, unit, evaluation, reference, occurre
     reference,
     unitId: unit.id,
     type: "service",
+    categoryId: "service",
     category: SERVICE_CATEGORIES[requirement.category] || requirement.category || "Service",
     severity: evaluation.underlyingStatus === "overdue" ? "high" : "moderate",
     title: requirement.title,

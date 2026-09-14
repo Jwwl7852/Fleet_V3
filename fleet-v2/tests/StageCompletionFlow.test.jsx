@@ -38,7 +38,7 @@ describe("statuskorrektion, mobilflow, økonomi og fælles billeder",()=>{
     expect(screen.getByRole("status").textContent).toMatch(/ikke adgang/);
     fireEvent.click(screen.getByRole("button",{name:/SC-104/}));
     fireEvent.click(screen.getByRole("button",{name:/Fortsæt/}));
-    fireEvent.change(screen.getByLabelText("Kategori"),{target:{value:"Bremser"}});fireEvent.change(screen.getByLabelText("Titel"),{target:{value:"Mobil fejlrapport"}});fireEvent.change(screen.getByLabelText("Beskrivelse"),{target:{value:"Bremserne afgiver en tydelig lyd ved lav fart."}});
+    fireEvent.change(screen.getByLabelText("Indberetningskategori"),{target:{value:"damage"}});fireEvent.change(screen.getByLabelText("Titel"),{target:{value:"Mobil fejlrapport"}});fireEvent.change(screen.getByLabelText("Beskrivelse"),{target:{value:"Bremserne afgiver en tydelig lyd ved lav fart."}});
     fireEvent.click(screen.getByRole("button",{name:"Gem kladde"}));
     await waitFor(()=>expect(repository.inspect().relations.reportDrafts.some((item)=>item.reporterId==="mobile-mette"&&item.savedStep===2)).toBe(true));
     fireEvent.click(screen.getByRole("button",{name:/Fortsæt/}));

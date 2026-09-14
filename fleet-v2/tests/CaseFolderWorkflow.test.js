@@ -20,7 +20,7 @@ describe("sagsmappe, referencer og Fakturacenter-grænse", () => {
   it("bevarer en kladdes reference og beskytter gentagen indsendelse", async () => {
     const repository = createMemoryUnitRepository();
     const draft = await repository.saveReportDraft({ unitId: "unit-nb-001", type: "damage", title: "Skade", incident: {}, images: [] }, { id: "draft", now: "2026-09-07T09:00:00Z" });
-    const input = { draftId: draft.draft.id, reference: draft.draft.reference, clientSubmissionId: "submit-once", unitId: "unit-nb-001", type: "damage", category: "Karrosseri", severity: "high", title: "Skade", description: "Skade på venstre sidespejl.", images: [], media: [], incident: { location: "Depot" }, meterObservation: { value: 100, unit: "km", observedAt: "2026-09-07T09:10:00Z" }, usability: "usable", reporterId: "demo-mette", reporterName: "Mette" };
+    const input = { draftId: draft.draft.id, reference: draft.draft.reference, clientSubmissionId: "submit-once", unitId: "unit-nb-001", type: "damage", categoryId: "damage", category: "Skader", severity: "high", title: "Skade", description: "Skade på venstre sidespejl.", images: [], media: [], incident: { location: "Depot" }, meterObservation: { value: 100, unit: "km", observedAt: "2026-09-07T09:10:00Z" }, usability: "usable", reporterId: "demo-mette", reporterName: "Mette" };
     const first = await repository.submitReport(input, { id: "submit", now: "2026-09-07T09:10:00Z" });
     const second = await repository.submitReport(input, { id: "submit-again", now: "2026-09-07T09:11:00Z" });
     expect(first.caseItem.reference).toBe(draft.draft.reference);

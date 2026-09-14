@@ -1,15 +1,12 @@
+import { DEFAULT_FLEET_CATEGORIES, categoryById } from "./fleetCategories";
+
 const uid = () => crypto.randomUUID();
 const dateFromMonth = (month) => month ? `${month}-15` : null;
 const amountMinor = (item) => Number.isFinite(item.amountMinor) ? item.amountMinor : Number.isFinite(item.amount) ? Math.round(item.amount * 100) : null;
 
-export const ECONOMY_CATEGORIES = {
-  workshop: "Værksted og reparation",
-  service: "Service",
-  leasing: "Leasing",
-  energy: "Brændstof og energi",
-  insurance: "Forsikring",
-  other: "Øvrige enhedsomkostninger",
-};
+export const ECONOMY_CATEGORIES = Object.freeze(Object.fromEntries(
+  DEFAULT_FLEET_CATEGORIES.filter((item) => item.usages.cost).map((item) => [item.id, item.name]),
+));
 
 export const COST_STATES = { actual: "Registreret faktisk", provisional: "Foreløbigt eksternt beløb", estimate: "Estimat / tilbud", contractual: "Kontraktlig forventning" };
 
@@ -23,21 +20,24 @@ export function categoryKey(value = "") {
   return "other";
 }
 
-export function normalizeCost(item) {
+export function normalizeCost(item, categories = DEFAULT_FLEET_CATEGORIES) {
   const state = item.state || (item.actual === false ? "provisional" : item.source === "external_provisional" ? "provisional" : "actual");
-  return { ...item, date: item.date || dateFromMonth(item.month), month: item.month || item.date?.slice(0, 7), categoryKey: item.categoryKey || categoryKey(item.category), category: ECONOMY_CATEGORIES[item.categoryKey || categoryKey(item.category)], amountMinor: amountMinor(item), currency: item.currency || "DKK", vatBasis: item.vatBasis || "unknown", state, source: item.source || "legacy_local_demo" };
+  const categoryId = item.categoryId || item.categoryKey || categoryKey(item.category);
+  const category = categoryById(categories, categoryId);
+  return { ...item, date: item.date || dateFromMonth(item.month), month: item.month || item.date?.slice(0, 7), categoryId, categoryKey: categoryId, category: item.categorySnapshot || item.category || category?.name || "Udgået kategori", amountMinor: amountMinor(item), currency: item.currency || "DKK", vatBasis: item.vatBasis || "unknown", state, source: item.source || "legacy_local_demo" };
 }
 
 export function buildEconomyEntries(dataset) {
-  const costs = (dataset.relations.costs || []).map(normalizeCost).filter((item) => item.amountMinor != null);
+  const categories = dataset.relations.fleetCategories || DEFAULT_FLEET_CATEGORIES;
+  const costs = (dataset.relations.costs || []).map((item) => normalizeCost(item, categories)).filter((item) => item.amountMinor != null);
   const existingTaskIds = new Set(costs.map((item) => item.taskId).filter(Boolean));
   const taskRows = (dataset.relations.workshopTasks || []).flatMap((task) => {
     if (existingTaskIds.has(task.id)) return [];
     const rows = [];
-    if (Number.isFinite(task.expectedCost)) rows.push({ id: `estimate-${task.id}`, unitId: task.unitId, caseId: task.caseId, taskId: task.id, date: task.createdAt?.slice(0, 10), categoryKey: "workshop", category: ECONOMY_CATEGORIES.workshop, amountMinor: Math.round(task.expectedCost * 100), currency: "DKK", vatBasis: "excl_vat", state: "estimate", source: "workshop_estimate" });
+    if (Number.isFinite(task.expectedCost)) rows.push({ id: `estimate-${task.id}`, unitId: task.unitId, caseId: task.caseId, taskId: task.id, date: task.createdAt?.slice(0, 10), categoryId: "workshop", categoryKey: "workshop", category: categoryById(categories, "workshop")?.name || "Værksted og reparation", amountMinor: Math.round(task.expectedCost * 100), currency: "DKK", vatBasis: "excl_vat", state: "estimate", source: "workshop_estimate" });
     return rows;
   });
-  const leaseRows = (dataset.relations.leases || []).filter((lease) => Number.isFinite(lease.payment?.recurringMinor)).map((lease) => ({ id: `contract-${lease.id}`, unitId: lease.unitId, leaseId: lease.id, date: lease.startDate, categoryKey: "leasing", category: ECONOMY_CATEGORIES.leasing, amountMinor: lease.payment.recurringMinor, currency: lease.payment.currency || "DKK", vatBasis: lease.payment.vat || "unknown", state: "contractual", source: "lease_contract", note: `${lease.payment.interval || "monthly"} kontraktlig ydelse; depositum er ikke medregnet.` }));
+  const leaseRows = (dataset.relations.leases || []).filter((lease) => Number.isFinite(lease.payment?.recurringMinor)).map((lease) => ({ id: `contract-${lease.id}`, unitId: lease.unitId, leaseId: lease.id, date: lease.startDate, categoryId: "leasing", categoryKey: "leasing", category: categoryById(categories, "leasing")?.name || "Leasing", amountMinor: lease.payment.recurringMinor, currency: lease.payment.currency || "DKK", vatBasis: lease.payment.vat || "unknown", state: "contractual", source: "lease_contract", note: `${lease.payment.interval || "monthly"} kontraktlig ydelse; depositum er ikke medregnet.` }));
   return [...costs, ...taskRows, ...leaseRows];
 }
 
@@ -84,17 +84,20 @@ export function unitDowntime(unitId, dataset, from, to) {
 
 export function applyManualCostSave(dataset, input, actor, options = {}) {
   const errors = {};
+  const categories = dataset.relations.fleetCategories || DEFAULT_FLEET_CATEGORIES;
+  const category = categoryById(categories, input.categoryId || input.categoryKey);
   if (!dataset.units.some((unit) => unit.id === input.unitId)) errors.unitId = "Vælg en eksisterende enhed.";
   if (!input.date) errors.date = "Angiv dato.";
-  if (!ECONOMY_CATEGORIES[input.categoryKey]) errors.categoryKey = "Vælg kategori.";
+  if (!category?.active || !category.usages.cost) errors.categoryKey = "Vælg en aktiv omkostningskategori.";
   const parsed = Number(String(input.amount).replace(",", "."));
   if (!Number.isFinite(parsed) || parsed <= 0) errors.amount = "Angiv et positivt beløb.";
   if (!input.currency) errors.currency = "Angiv valuta.";
   if (Object.keys(errors).length) { const error = new Error(Object.values(errors)[0]); error.validation = errors; throw error; }
   const at = options.now || new Date().toISOString();
   const costs = [...(dataset.relations.costs || [])]; const index = input.id ? costs.findIndex((item) => item.id === input.id) : -1;
-  const previous = index >= 0 ? normalizeCost(costs[index]) : null;
-  const item = { ...previous, id: previous?.id || `cost-manual-${options.id || uid()}`, tenantId: dataset.tenantId, unitId: input.unitId, date: input.date, month: input.date.slice(0,7), categoryKey: input.categoryKey, category: ECONOMY_CATEGORIES[input.categoryKey], amountMinor: Math.round(parsed * 100), amount: parsed, currency: input.currency, vatBasis: input.vatBasis || "unknown", source: "manual_local", state: "actual", note: input.note?.trim() || "", caseId: input.caseId || null, taskId: input.taskId || null, leaseId: input.leaseId || null, createdAt: previous?.createdAt || at, updatedAt: at, history: [...(previous?.history || []), ...(previous ? [{ at, actorId: actor?.id, actorName: actor?.name, previous }] : [])] };
+  const previous = index >= 0 ? normalizeCost(costs[index], categories) : null;
+  const categoryId = category.id;
+  const item = { ...previous, id: previous?.id || `cost-manual-${options.id || uid()}`, tenantId: dataset.tenantId, unitId: input.unitId, date: input.date, month: input.date.slice(0,7), categoryId, categoryKey: categoryId, category: category.name, categorySnapshot: category.name, amountMinor: Math.round(parsed * 100), amount: parsed, currency: input.currency, vatBasis: input.vatBasis || "unknown", source: "manual_local", state: "actual", note: input.note?.trim() || "", caseId: input.caseId || null, taskId: input.taskId || null, leaseId: input.leaseId || null, createdAt: previous?.createdAt || at, updatedAt: at, history: [...(previous?.history || []), ...(previous ? [{ at, actorId: actor?.id, actorName: actor?.name, previous }] : [])] };
   if (index >= 0) costs[index] = item; else costs.push(item);
   return { dataset: { ...dataset, relations: { ...dataset.relations, costs } }, cost: item };
 }

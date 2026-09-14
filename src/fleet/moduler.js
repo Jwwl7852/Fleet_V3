@@ -315,6 +315,7 @@ export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
 /** Node → modul. Kun de noder et modul EJER alene. */
 export const NODE_MODUL = {
   koeretoejer: "flaade",
+  fleetKategorier: "flaade",
   "sensitive/koeretoejer": "flaade",
   /* ⚠ KOM MED SENSITIVE-NODEN.  har hele tiden staaet her;
      dens klassificerede satellit fandtes bare ikke i regelfilen — selv om

@@ -19,24 +19,26 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   // øvrige læsbare noder under claims-migreringen.
   // Ejerens tenantløse udbydergrænse bruger ikke legacy-tenantallowlisten.
   // WAREHOUSEs fælles unitbevægelseshistorik tilføjer én tenantbundet
-  // dual-read. UNIT-importens læsbare kladde løfter den videre til 103.
-  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 103);
+  // dual-read. UNIT-importens læsbare kladde løftede den til 103; FLEETs
+  // fælles kategorier tilføjer en læse- og en skriverregel.
+  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 105);
   // WAREHOUSE må ikke oprette fælles unittyper eller units direkte. De to
   // skrivegrene er derfor fjernet, mens den læsbare PROCURE-godkendelseskø
   // fortsat har både den kompakte indkoeb.laes-gate og legacy-permissionen.
-  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 172);
+  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 176);
   // PROCUREs serverlukkede kladder/opsætning, linjespor og læsbare
   // godkendelseskø udvider den målte regelkontrakt med ca. 3 kB. Bevar et
   // snævert loft, så senere ukontrolleret vækst fortsat opdages.
   // Git kan checke filen ud med CRLF på Windows. Loftet måler den
   // versionsstyrede regelkilde (LF), ikke arbejdsplatformens linjeender.
   // Den samlede PROCURE-, ejer-, WORKFORCE- og WAREHOUSE-regelmodel udvider
-  // kilden kontrolleret. WAREHOUSEs serverstyrede unit-/bevægelseskontrakt
-  // løfter den målte LF-normaliserede kilde til 463.047 byte.
-  assert.ok(Buffer.byteLength(rules.replace(/\r\n/g, "\n"), "utf8") < 470_000);
+  // kilden kontrolleret. FLEET-kategoriernes eksplicitte læse-, skrive- og
+  // feltvalideringer løfter den målte LF-normaliserede kilde til 474.228 byte.
+  assert.ok(Buffer.byteLength(rules.replace(/\r\n/g, "\n"), "utf8") < 478_000);
   // WAREHOUSEs nye læseregel kontrollerer både revocationens eksistens og
-  // tidspunkt. UNIT-importens læser løfter den målte forekomst videre til 252.
-  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 252);
+  // tidspunkt. UNIT-importens læser løftede den målte forekomst til 252;
+  // FLEET-kategoriernes to auth-regler tilføjer fire forekomster.
+  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 256);
   assert.match(rules, /"authRevocations"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /"legacyClaimsAllowlist"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /child\('tenant'\)\.val\(\) === auth\.token\.tenant/);

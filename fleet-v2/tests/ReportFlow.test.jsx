@@ -15,7 +15,7 @@ async function fillWizard({ withImage = false } = {}) {
   fireEvent.click(screen.getByRole("button", { name: /Fortsæt/ }));
   await screen.findByRole("heading", { name: "Beskriv problemet" });
   fireEvent.click(screen.getByRole("button", { name: /Skade/ }));
-  fireEvent.change(screen.getByLabelText("Kategori"), { target: { value: "Karrosseri" } });
+  fireEvent.change(screen.getByLabelText("Indberetningskategori"), { target: { value: "damage" } });
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Skade ved spejl" } });
   fireEvent.change(screen.getByLabelText("Beskrivelse"), { target: { value: "Spejlet er beskadiget og sidder løst." } });
   fireEvent.click(screen.getByRole("button", { name: /Fortsæt/ }));

@@ -2306,6 +2306,29 @@
           }
         },
 
+        // FLEET-KATEGORIER ER FAELLES STAMDATA, IKKE TO LISTER.
+        // Samme stabile id kan bruges af indberetninger og omkostninger.
+        // En kategori deaktiveres; den hardslettes ikke, fordi historiske
+        // poster fortsat peger paa id'et og baerer deres navne-snapshot.
+        "fleetKategorier": {
+          ".read": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && (((auth.token.pv === 2 && auth.token.perms.contains('|10|')) || (auth.token.pv == null && auth.token.perms.contains('|koeretoejer.laes|')))) && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)",
+          ".indexOn": ["sortering", "aktiv"],
+          "$kategoriId": {
+            ".write": "auth != null && (!root.child('authRevocations').child(auth.uid).child('revokeTime').exists() || (auth.token.auth_time != null && auth.token.auth_time > root.child('authRevocations').child(auth.uid).child('revokeTime').val())) && ((auth.token.pv === 2) || (auth.token.pv == null && auth.token.perms != null && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').isString() && root.child('legacyClaimsAllowlist').child(auth.uid).child('tenant').val() === auth.token.tenant && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').isNumber() && root.child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now)) && auth.token.tenant === $tenantId && root.child('tenants').child($tenantId).child('_findes').exists() && (!root.child('tenants').child($tenantId).child('abonnement').child('status').exists() || root.child('tenants').child($tenantId).child('abonnement').child('status').val() === 'aktiv') && auth.token.perms != null && (((auth.token.pv === 2 && auth.token.perms.contains('|03|')) || (auth.token.pv == null && auth.token.perms.contains('|koeretoejer.skriv|')))) && newData.exists() && (!root.child('tenants').child($tenantId).child('moduler').exists() || root.child('tenants').child($tenantId).child('moduler').child('flaade').val() === true)",
+            ".validate": "newData.hasChildren(['navn', 'aktiv', 'sortering', 'brugIndberetning', 'brugOmkostning', 'oprettetMs', 'oprettetAf', 'opdateretMs', 'opdateretAf']) && (newData.child('brugIndberetning').val() === true || newData.child('brugOmkostning').val() === true)",
+            "navn": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+            "aktiv": { ".validate": "newData.isBoolean()" },
+            "sortering": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 9999" },
+            "brugIndberetning": { ".validate": "newData.isBoolean()" },
+            "brugOmkostning": { ".validate": "newData.isBoolean()" },
+            "oprettetMs": { ".validate": "newData.isNumber() && (!data.exists() || newData.val() === data.val())" },
+            "oprettetAf": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && (!data.exists() || newData.val() === data.val())" },
+            "opdateretMs": { ".validate": "newData.isNumber()" },
+            "opdateretAf": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+            "$andet": { ".validate": false }
+          }
+        },
+
         // Chauffører må oprette, men ikke redigere andres. km er TOTAL
         // målerstand, ikke km siden sidste tankning.
         // ⚠ forloeb KRAEVES KUN AF DRIFTSHAENDELSER — BESLUTNING 106.

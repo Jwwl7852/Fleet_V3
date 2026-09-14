@@ -6,8 +6,7 @@ import "../../../fleet-v2/src/styles/fleet-v2.css";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harModul } from "../../fleet/moduler.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
-import { useListe } from "../../fleet/useListe.js";
-import { DEMO_LEVERANDOERER } from "../../fleet/demo-indkoeb.js";
+import { useFleetSharedData } from "./useFleetSharedData.js";
 import {
   FLEET_V2_INTEGRATION_DATABASE,
   FLEET_V2_ROUTE_PREFIX,
@@ -24,12 +23,9 @@ export default function FleetV2Module() {
   const hasPermission = harPerm(bruger?.perms, requiredPermission);
   const mayReadSuppliers = harPerm(bruger?.perms, PERM.leverandoererLaes);
   const mayCreateSuppliers = harPerm(bruger?.perms, PERM.leverandoererSkriv);
-  const suppliers = useListe("leverandoerer", {
-    ordnPaa: "navn",
-    vindue: "alle",
-    graense: 500,
-    demo: DEMO_LEVERANDOERER,
-    hent: mayReadSuppliers,
+  const { categories, suppliers } = useFleetSharedData({
+    mayReadCategories: hasPermission,
+    mayReadSuppliers,
   });
   const databaseName = import.meta.env.VITE_FLEET_V2_DATABASE_NAME
     || FLEET_V2_INTEGRATION_DATABASE;
@@ -38,13 +34,19 @@ export default function FleetV2Module() {
     () => suppliers.henter ? undefined : JSON.parse(supplierPayload),
     [supplierPayload, suppliers.henter],
   );
+  const categoryPayload = JSON.stringify(categories.data);
+  const sharedCategories = useMemo(
+    () => categories.henter ? undefined : JSON.parse(categoryPayload),
+    [categoryPayload, categories.henter],
+  );
   const basePath = location.pathname.startsWith("/opsaetning/enheder")
     ? "/opsaetning" : FLEET_V2_ROUTE_PREFIX;
   const repository = useMemo(() => createIndexedDbUnitRepository({
     databaseName,
     tenantId,
     sharedSuppliers,
-  }), [databaseName, sharedSuppliers, tenantId]);
+    sharedCategories,
+  }), [databaseName, sharedCategories, sharedSuppliers, tenantId]);
   const actor = useMemo(() => fleetV2ActorFromUser(bruger), [bruger]);
 
   if (!hasModule || !hasPermission) {

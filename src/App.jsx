@@ -72,6 +72,7 @@ const ProcureModule = lazy(() => import("./moduler/indkoeb/ProcureModule.jsx"));
 const Fakturaer = lazy(() => import("./moduler/indkoeb/Fakturaer.jsx"));
 const Leverandoerer = lazy(() => import("./moduler/indkoeb/Leverandoerer.jsx"));
 const ProcureGodkendelsesregler = lazy(() => import("./moduler/opsaetning/ProcureGodkendelsesregler.jsx"));
+const FleetKategorier = lazy(() => import("./moduler/opsaetning/FleetKategorier.jsx"));
 const UnitbookingKasser = lazy(() => import("./moduler/unitbooking/Kasser.jsx"));
 const Reolpladser = lazy(() => import("./moduler/unitbooking/Reolpladser.jsx"));
 const Kasseudlaan = lazy(() => import("./moduler/unitbooking/Udlaan.jsx"));
@@ -757,6 +758,7 @@ export default function App() {
                 det er MENUPLADSEN der flyttede, ikke ejerskabet. */}
             <Route path="opsaetning/enheder" element={<FleetV2Module />} />
             <Route path="opsaetning/enheder/:id" element={<FleetV2Module />} />
+            <Route path="opsaetning/fleet-kategorier" element={<FleetKategorier />} />
             {/* ⚠ STAMDATA. Komponenterne bliver liggende i moduler/ og
                 moduler/kunder/, fordi modulnoeglerne, noderne og
                 permissionerne er uaendrede — det er MENUPLADSEN der

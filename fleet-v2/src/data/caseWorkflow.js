@@ -115,6 +115,13 @@ export function createReportRecords(dataset, input, options = {}) {
   let referenceSequence = (dataset.relations.cases || []).length + (dataset.relations.reportDrafts || []).length + 1;
   let reference = input.reference;
   while (!reference || existingReferences.has(reference) && reference !== input.reference) reference = `VYR-${new Date(now).getUTCFullYear()}-${String(referenceSequence++).padStart(5, "0")}`;
+  const categories = dataset.relations.fleetCategories || DEFAULT_FLEET_CATEGORIES;
+  const category = categoryById(categories, input.categoryId);
+  if (!category?.active || !category.usages.report) {
+    const error = new Error("Vælg en aktiv indberetningskategori.");
+    error.validation = { categoryId: error.message };
+    throw error;
+  }
   const report = {
     id: reportId,
     tenantId: dataset.tenantId,
@@ -122,7 +129,9 @@ export function createReportRecords(dataset, input, options = {}) {
     reference,
     unitId: input.unitId,
     type: input.type,
-    category: input.category.trim(),
+    categoryId: category.id,
+    category: category.name,
+    categorySnapshot: category.name,
     severity: input.severity,
     title: input.title.trim(),
     description: input.description.trim(),
@@ -230,3 +239,4 @@ export function applyCaseChange(dataset, caseId, change, actor = DEMO_ACTORS[1],
   nextCases[index] = next;
   return { dataset: { ...dataset, relations: { ...dataset.relations, cases: nextCases, caseEvents: [...(dataset.relations.caseEvents || []), ...events] } }, caseItem: next, events };
 }
+import { DEFAULT_FLEET_CATEGORIES, categoryById } from "./fleetCategories";

@@ -3,7 +3,7 @@ import { applyCaseChange, applyReportSubmission, deriveUnitUsability, filterAndS
 import { createFixtureDataset } from "../src/data/fleetFixtures";
 import { createMemoryUnitRepository, migrateDataset } from "../src/data/unitRepository";
 
-const input = { unitId: "unit-nb-001", type: "damage", category: "Karrosseri", severity: "high", title: "Skade på sidespejl", description: "Spejlet sidder løst efter kontakt med port.", images: [{ id: "img-1", blob: new Blob(["x"], { type: "image/png" }) }], meterObservation: { value: 124600, unit: "km", observedAt: "2026-09-07T10:00:00Z" }, usability: "blocked", reporterId: "demo-mette", reporterName: "Mette Larsen" };
+const input = { unitId: "unit-nb-001", type: "damage", categoryId: "damage", category: "Skader", severity: "high", title: "Skade på sidespejl", description: "Spejlet sidder løst efter kontakt med port.", images: [{ id: "img-1", blob: new Blob(["x"], { type: "image/png" }) }], meterObservation: { value: 124600, unit: "km", observedAt: "2026-09-07T10:00:00Z" }, usability: "blocked", reporterId: "demo-mette", reporterName: "Mette Larsen" };
 
 describe("fælles indberetnings- og sagsforløb", () => {
   it("opretter én indberetning og én sag atomisk med stabile relationer og billede", async () => {
