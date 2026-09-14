@@ -6,7 +6,7 @@
  * Reglen står ved magt: et modul må stadig ikke bygge sin egen sidebar,
  * tenant-vælger eller periodevælger. Skal en af dem tilbage, hører den HER.
  */
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useFleet, DEMO_ROLLER } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV, GRUPPE_ORDEN, GRUPPE_LABEL, modulNavnFor } from "./nav.js";
@@ -119,6 +119,8 @@ export default function AppShell() {
     brugerId: bruger?.uid, kontekst: visningsKontekst, skaerm: pathname, egenskab: "zoom", standard: 100,
   });
   const menuKompakt = menuvisning === "kompakt";
+  const [bredNavigation, setBredNavigation] = useState(() => window.matchMedia("(min-width: 721px)").matches);
+  const kompaktAktiv = menuKompakt && bredNavigation;
   const skiftZoom = (retning) => setZoom((aktuel) => begraensZoom(Number(aktuel) + retning));
   const nulstilVisning = () => {
     nulstilMenuvisning();
@@ -170,10 +172,69 @@ export default function AppShell() {
      at rulle den sammen igen" — modulLukket er brugerens eksplicitte
      overstyring af den ellers automatiske "aktiv ⇒ åben"-visning, IKKE en
      ny synlighedsregel; ruten og dens permissions er upåvirkede. */
-  const [modulLukket, saetModulLukket] = useState({});
+  const [modulAaben, saetModulAaben] = useVisningsvalg({
+    brugerId: bruger?.uid, kontekst: visningsKontekst, skaerm: "kundeshell", egenskab: "moduler", standard: {},
+  });
+  const [kompaktAaben, saetKompaktAaben] = useState(null);
+  const [kompaktTop, saetKompaktTop] = useState({});
+  const kompaktAnker = useRef(null);
+  const kompaktLukTimer = useRef(null);
   const [fakturacenterAntal, setFakturacenterAntal] = useState({});
-  const skifModul = (key) =>
-    saetModulLukket((forrige) => ({ ...forrige, [key]: !forrige[key] }));
+  const erModulAaben = (key, aktiv) => Object.hasOwn(modulAaben || {}, key)
+    ? !!modulAaben[key] : aktiv;
+  const skifModul = (key, aktiv) =>
+    saetModulAaben((forrige) => ({ ...forrige, [key]: !erModulAaben(key, aktiv) }));
+  const lukKompaktMenu = ({ fokus = false } = {}) => {
+    if (kompaktLukTimer.current) window.clearTimeout(kompaktLukTimer.current);
+    saetKompaktAaben(null);
+    if (fokus) kompaktAnker.current?.focus();
+  };
+  const aabnKompaktMenu = (key, anker) => {
+    if (!kompaktAktiv) return;
+    if (kompaktLukTimer.current) window.clearTimeout(kompaktLukTimer.current);
+    kompaktAnker.current = anker;
+    const top = anker?.getBoundingClientRect?.().top || 0;
+    const maksHoejde = Math.min(window.innerHeight * 0.72, 620);
+    saetKompaktTop((forrige) => ({
+      ...forrige,
+      [key]: Math.min(0, window.innerHeight - top - maksHoejde - 12),
+    }));
+    saetKompaktAaben(key);
+  };
+  const planlaegKompaktLuk = () => {
+    if (kompaktLukTimer.current) window.clearTimeout(kompaktLukTimer.current);
+    kompaktLukTimer.current = window.setTimeout(() => saetKompaktAaben(null), 220);
+  };
+
+  useEffect(() => {
+    if (!kompaktAktiv) saetKompaktAaben(null);
+  }, [kompaktAktiv]);
+
+  useEffect(() => {
+    const forespoergsel = window.matchMedia("(min-width: 721px)");
+    const opdater = (event) => setBredNavigation(event.matches);
+    forespoergsel.addEventListener("change", opdater);
+    return () => forespoergsel.removeEventListener("change", opdater);
+  }, []);
+
+  useEffect(() => {
+    const lukVedEscape = (event) => {
+      if (event.key !== "Escape" || !kompaktAaben) return;
+      event.preventDefault();
+      lukKompaktMenu({ fokus: true });
+    };
+    const lukVedKlikUdenfor = (event) => {
+      if (!kompaktAaben || event.target.closest(".fc-nav-modul")) return;
+      lukKompaktMenu();
+    };
+    document.addEventListener("keydown", lukVedEscape);
+    document.addEventListener("pointerdown", lukVedKlikUdenfor);
+    return () => {
+      document.removeEventListener("keydown", lukVedEscape);
+      document.removeEventListener("pointerdown", lukVedKlikUdenfor);
+      if (kompaktLukTimer.current) window.clearTimeout(kompaktLukTimer.current);
+    };
+  }, [kompaktAaben]);
 
   /**
    * De underpunkter der faktisk tegnes — ÉT sted, fordi svaret bruges to
@@ -220,7 +281,10 @@ export default function AppShell() {
           <button type="button" className="fc-menu-toggle"
             aria-label={menuKompakt ? "Åbn normal menu" : "Fold menuen sammen"}
             aria-pressed={menuKompakt}
-            onClick={() => setMenuvisning(menuKompakt ? "normal" : "kompakt")}>{menuKompakt ? "›" : "‹"}</button>
+            title={menuKompakt ? "Åbn normal menu" : "Fold menuen sammen"}
+            onClick={() => setMenuvisning(menuKompakt ? "normal" : "kompakt")}>
+            <span aria-hidden="true">{menuKompakt ? "›" : "‹"}</span>
+          </button>
 
           {/* ⚠ HER STOD GODS/BUS-VÆLGEREN — beslutning 9, fjernet i 70.
               Argumentet der bar den, faldt sammen med sin egen præmis:
@@ -291,7 +355,8 @@ export default function AppShell() {
                        ruten findes uændret, og skærmen svarer med en afvisning hvis
                        man taster stien. Håndhævelsen ligger i reglerne. */
                     const born = synligeBorn(m);
-                    const visBorn = menuKompakt ? born.length > 0 : aktiv && born.length > 1 && !modulLukket[m.key];
+                    const modulErAaben = erModulAaben(m.key, aktiv);
+                    const visBorn = kompaktAktiv ? born.length > 0 : born.length > 0 && modulErAaben;
                     const fakturacenterSektioner = m.fakturacenterSektioner || [];
                     const aktivFakturacenterSektion =
                       fakturacenterSektioner.some((sektion) =>
@@ -299,20 +364,35 @@ export default function AppShell() {
                         ? new URLSearchParams(location.search).get("sektion")
                         : fakturacenterSektioner[0]?.id;
                     if (fakturacenterSektioner.length) {
-                      const undermenuAaben = menuKompakt || aktiv && !modulLukket[m.key];
+                      const undermenuAaben = kompaktAktiv || modulErAaben;
                       return (
-                        <div key={m.key} className="fc-fakturacenter-nav fc-nav-modul" data-modul-label={m.label}>
+                        <div key={m.key}
+                          className={`fc-fakturacenter-nav fc-nav-modul${kompaktAaben === m.key ? " fc-kompakt-aaben" : ""}${undermenuAaben ? " fc-modul-aaben" : ""}`}
+                          data-modul-label={m.label}
+                          style={{ "--fc-kompakt-top": `${kompaktTop[m.key] || 0}px` }}
+                          onMouseEnter={(event) => aabnKompaktMenu(m.key, event.currentTarget.querySelector("button"))}
+                          onMouseLeave={planlaegKompaktLuk}
+                          onFocus={(event) => aabnKompaktMenu(m.key, event.currentTarget.querySelector("button"))}
+                          onBlur={(event) => {
+                            if (!event.currentTarget.contains(event.relatedTarget)) planlaegKompaktLuk();
+                          }}>
                           <div className="fc-fakturacenter-main">
-                            <NavLink to={m.sti} end className={aktiv ? "fc-link fc-on" : "fc-link"}>
+                            <button type="button" className={aktiv ? "fc-link fc-on" : "fc-link"}
+                              aria-label={kompaktAktiv ? m.label : undefined}
+                              aria-expanded={kompaktAktiv ? kompaktAaben === m.key : undermenuAaben}
+                              onClick={(event) => {
+                                if (kompaktAktiv) {
+                                  aabnKompaktMenu(m.key, event.currentTarget);
+                                  return;
+                                }
+                                skifModul(m.key, aktiv);
+                              }}>
                               <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                 <path d={ICO[m.key]} />
                               </svg>
                               <span>{m.label}</span>
-                            </NavLink>
-                            <button type="button" className="fc-fakturacenter-toggle"
-                              onClick={() => skifModul(m.key)} aria-expanded={undermenuAaben}
-                              aria-label={`Fold Fakturacentersektioner ${undermenuAaben ? "sammen" : "ud"}`}>
-                              <svg className={undermenuAaben ? "fc-chevron" : "fc-chevron fc-chevron-lukket"}
+                              <svg className={(kompaktAktiv ? kompaktAaben === m.key : undermenuAaben)
+                                ? "fc-chevron" : "fc-chevron fc-chevron-lukket"}
                                 viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                 <path d="M6 9l6 6 6-6" />
                               </svg>
@@ -341,32 +421,49 @@ export default function AppShell() {
                       );
                     }
                     return (
-                      <div key={m.key} className="fc-nav-modul" data-modul-label={m.label}>
-                        <NavLink to={m.sti} end={m.sti === "/"} className={aktiv ? "fc-link fc-on" : "fc-link"}
-                                 onClick={(e) => {
-                                   /* Klik på et allerede-aktivt punkt med undermenu skal folde
-                                      den sammen/ud igen, ikke bare navigere til sig selv. */
-                                   if (aktiv && born.length > 1) {
-                                     e.preventDefault();
-                                     skifModul(m.key);
-                                   }
-                                 }}>
+                      <div key={m.key}
+                        className={`fc-nav-modul${kompaktAaben === m.key ? " fc-kompakt-aaben" : ""}${visBorn ? " fc-modul-aaben" : ""}`}
+                        data-modul-label={m.label}
+                        style={{ "--fc-kompakt-top": `${kompaktTop[m.key] || 0}px` }}
+                        onMouseEnter={(event) => born.length && aabnKompaktMenu(m.key, event.currentTarget.querySelector("button,a"))}
+                        onMouseLeave={planlaegKompaktLuk}
+                        onFocus={(event) => born.length && aabnKompaktMenu(m.key, event.currentTarget.querySelector("button,a"))}
+                        onBlur={(event) => {
+                          if (!event.currentTarget.contains(event.relatedTarget)) planlaegKompaktLuk();
+                        }}>
+                        {born.length ? <button type="button" className={aktiv ? "fc-link fc-on" : "fc-link"}
+                          aria-label={kompaktAktiv ? m.label : undefined}
+                          aria-expanded={kompaktAktiv ? kompaktAaben === m.key : visBorn}
+                          onClick={(event) => {
+                            if (kompaktAktiv) {
+                              aabnKompaktMenu(m.key, event.currentTarget);
+                              return;
+                            }
+                            skifModul(m.key, aktiv);
+                          }}>
                           <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <path d={ICO[m.key]} />
                           </svg>
                           <span>{m.label}</span>
-                          {born.length > 1 && (
+                          {born.length > 0 && (
                             <svg className={visBorn ? "fc-chevron" : "fc-chevron fc-chevron-lukket"}
                                  viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                               <path d="M6 9l6 6 6-6" />
                             </svg>
                           )}
-                        </NavLink>
+                        </button> : <NavLink to={m.sti} end={m.sti === "/"}
+                          className={aktiv ? "fc-link fc-on" : "fc-link"}>
+                          <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d={ICO[m.key]} />
+                          </svg>
+                          <span>{m.label}</span>
+                        </NavLink>}
                         {visBorn && (
                           <div className="fc-sub">
                             <strong className="fc-kompakt-modulnavn">{m.label}</strong>
                             {born.map((b) => (
                               <NavLink key={b.key} to={b.sti} end
+                                       onClick={() => lukKompaktMenu()}
                                        className={modul.key === b.key ? "fc-sublink fc-on" : "fc-sublink"}>
                                 {b.label}
                               </NavLink>

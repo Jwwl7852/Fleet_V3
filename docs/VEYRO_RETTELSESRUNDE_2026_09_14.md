@@ -32,11 +32,11 @@ aktuelle kodegrundlag.
 
 | ID | Område | Krav / faktisk årsag | Berørt kode | Status | Kontrol / bevis | Afhængighed eller beslutning |
 | --- | --- | --- | --- | --- | --- | --- |
-| UX-01 | Zoom | Første besøg 100 %, genindlæs af bruger-/kontekst-/skærmafgrænset valg og fungerende nulstilling. | `src/fleet/useVisningsvalg.js`, `src/fleet/AppShell.jsx` | i gang | Enhedstest samt browser ved flere zoomniveauer | Ingen |
-| UX-02 | Sidebar | Menu/topbjælke påvirkes ikke af arbejdsområdezoom; menutekst flytter sig ikke ved scrollbar. | `src/fleet/fleet.css` | åben | Før/efter ved åbne/lukkede grupper, 1440 og 1920 px | Ingen |
-| UX-03 | Navigation | Hele moduloverskriften folder uden samtidig navigation; underpunkter navigerer. | `src/fleet/AppShell.jsx` | åben | Mus, Enter/Space, direkte URL og frem/tilbage | Ingen |
-| UX-04 | Kompakt menu | Flyout bevares fra ikon til menu, ligger over indhold, håndterer kanter/lange lister, ESC/udenfor, mus/tastatur/touch. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | åben | Browserbevis normal/kompakt og mobil | Ingen |
-| UX-05 | Foldeknap | Variant B, afrundet flig ca. 30×34 med mindst 44×44 klikmål, tokens og korrekt chevron/aria. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | åben | Fokus, tooltip og beregnede mål | Ingen |
+| UX-01 | Zoom | Første besøg 100 %, genindlæs af bruger-/kontekst-/skærmafgrænset valg og fungerende nulstilling. | `src/fleet/useVisningsvalg.js`, `src/fleet/AppShell.jsx` | implementeret | Design/navigationstest, build og browser ved 100 % samt nulstilling | Ingen |
+| UX-02 | Sidebar | Menu/topbjælke påvirkes ikke af arbejdsområdezoom; menutekst flytter sig ikke ved scrollbar. | `src/fleet/fleet.css` | implementeret | Stabil scrollbarplads og énlinjet menutekst verificeret i browser | Ingen |
+| UX-03 | Navigation | Hele moduloverskriften folder uden samtidig navigation; underpunkter navigerer. | `src/fleet/AppShell.jsx` | implementeret | Fakturacenter foldet på Dashboard uden URL-skift; underlinks eksponeret semantisk | Ingen |
+| UX-04 | Kompakt menu | Flyout bevares fra ikon til menu, ligger over indhold, håndterer kanter/lange lister, ESC/udenfor, mus/tastatur/touch. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | implementeret | FLEET-flyout vist over workspace; alle 11 tilladte underlinks; ESC lukkede og returnerede fokus; mobilklik eksponerede underlinks | Ingen |
+| UX-05 | Foldeknap | Variant B, afrundet flig ca. 30×34 med mindst 44×44 klikmål, tokens og korrekt chevron/aria. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | implementeret | Beregnet klikmål 43,98×43,98 px; synlig pseudo-flig 30×34; titel, aria og korrekt chevron | Ingen |
 | UX-06 | Navigation | Meningsfuld tilbagefunktion med bevaret visningstilstand; direkte åbning har fallback. | Fælles route-/visningskomponenter | åben | Browser frem/tilbage, reload og direkte URL | Skærmspecifik tilpasning |
 | UX-07 | Dialog | ESC, X, Annuller, ugemte data, fokusretur, bekræft Gem/Slet og fejlbevaring. | Fælles og berørte moduldialoger | åben | Tastatur- og fejlforløb | Domæner må fortsat bruge arkivering, hvor hard delete er forbudt |
 | FC-01 | Navigation | Synligt forløb er Indbakke, betinget Ekstra kontrol og Arkiv; gamle dybe links mappes uden historiktab. | `src/fleet/fakturacenter-intake.js`, `src/moduler/oekonomi/Fakturacenter.jsx`, `src/fleet/nav.js` | åben | Kontrakt-/route-tests og browser | Bevar interne domænestatusser |
@@ -82,4 +82,17 @@ aktuelle kodegrundlag.
 
 ## Afleveringslog
 
-Udfyldes efter hver etape med commit, testgrundlag og billedbevis.
+### Etape 1 — fælles menu, zoom og grundlayout
+
+- Root `npm run lint`: bestået.
+- `npm run build`: bestået; eksisterende chunk-størrelsesadvarsel består.
+- `node --test test/design-tokens.test.mjs test/skive1-navigation.test.mjs
+  test/skive2a-navigation.test.mjs test/skive2b-navvisning.test.mjs`: 33/33
+  bestået.
+- Browser: moduloverskrift foldede uden URL-skift; kompakt FLEET-menu viste
+  alle tilladte underpunkter og blev lukket med ESC med fokusretur.
+- Beregnede desktopmål: kompakt sidebar 71,99 px, foldeknappens klikmål
+  43,98×43,98 px og workspacezoom `1` ved 100 %.
+- Mobil: underpunkterne kan åbnes med klik og ligger i en scrollbar, uden at
+  ændre browserens zoom. Den visuelle slutmatrix køres igen efter de øvrige
+  etaper, hvor navigationsteksterne er endelige.
