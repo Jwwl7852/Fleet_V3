@@ -9,6 +9,7 @@ import { applyPositionDemo, applyPositionMeasurement, normalizePosition } from "
 import { applyDocumentArchive, applyDocumentRelationRemoval, applyDocumentUpdate, applyDocumentUpload, applyDocumentVersion, ensureDocumentRegistry } from "./documentWorkflow";
 import { applyContractReviewSave, applyLeaseAutomation, applyLeaseDeliveryUpdate, applyLeaseSaveWithContract, ensureLeasingRegistry, migrateLeaseDemoMeterObservations, saveMeterObservation } from "./leasingWorkflow";
 import { applyManualCostSave } from "./economyWorkflow";
+import { datasetForLocalPersistence, mergeSharedWorkshops } from "./supplierWorkshopAdapter";
 
 export const PROTOTYPE_DATABASE_NAME = "veyro-fleet-v2-prototype";
 const DATABASE_VERSION = 1;
@@ -118,17 +119,22 @@ const transaction = async (databaseName, mode, operation) => {
   }
 };
 
-const mutateStoredDataset = async (databaseName, tenantId, mutate) => transaction(databaseName, "readwrite", (store) => new Promise((resolve, reject) => {
+const mutateStoredDataset = async (databaseName, tenantId, mutate, sharedSuppliers) => transaction(databaseName, "readwrite", (store) => new Promise((resolve, reject) => {
   const request = store.get(tenantId);
   request.onerror = () => reject(request.error);
   request.onsuccess = () => {
     try {
       const current = migrateDataset(request.result || createFixtureDataset(tenantId));
-      const rawResult = mutate(current);
+      const working = mergeSharedWorkshops(current, sharedSuppliers);
+      const rawResult = mutate(working);
       const result = { ...rawResult, dataset: ensureDocumentRegistry(ensureLeasingRegistry(rawResult.dataset)) };
-      const put = store.put(clone(result.dataset));
+      const persistedDataset = datasetForLocalPersistence(result.dataset, current);
+      const put = store.put(clone(persistedDataset));
       put.onerror = () => reject(put.error);
-      put.onsuccess = () => resolve(clone(result));
+      put.onsuccess = () => resolve(clone({
+        ...result,
+        dataset: mergeSharedWorkshops(result.dataset, sharedSuppliers),
+      }));
     } catch (error) {
       reject(error);
     }
@@ -138,9 +144,10 @@ const mutateStoredDataset = async (databaseName, tenantId, mutate) => transactio
 export function createIndexedDbUnitRepository({
   databaseName = PROTOTYPE_DATABASE_NAME,
   tenantId = DEMO_TENANT_ID,
+  sharedSuppliers,
 } = {}) {
   const runTransaction = (mode, operation) => transaction(databaseName, mode, operation);
-  const mutate = (operation) => mutateStoredDataset(databaseName, tenantId, operation);
+  const mutate = (operation) => mutateStoredDataset(databaseName, tenantId, operation, sharedSuppliers);
   return {
     kind: "indexeddb-prototype",
     databaseName,
@@ -156,19 +163,21 @@ export function createIndexedDbUnitRepository({
         if (stored.version !== CURRENT_DATASET_VERSION) {
           await runTransaction("readwrite", (store) => store.put(clone(migrated)));
         }
-        return clone(migrated);
+        return clone(mergeSharedWorkshops(migrated, sharedSuppliers));
       }
       const initial = migrateDataset(createFixtureDataset(tenantId));
       await runTransaction("readwrite", (store) => store.put(clone(initial)));
-      return clone(initial);
+      return clone(mergeSharedWorkshops(initial, sharedSuppliers));
     },
     async saveUnit(unit) {
-      const dataset = await this.load();
-      const index = dataset.units.findIndex((item) => item.id === unit.id);
-      if (index >= 0) dataset.units[index] = clone(unit);
-      else dataset.units.push(clone(unit));
-      await runTransaction("readwrite", (store) => store.put(dataset));
-      return clone(unit);
+      const result = await mutate((dataset) => {
+        const units = [...dataset.units];
+        const index = units.findIndex((item) => item.id === unit.id);
+        if (index >= 0) units[index] = clone(unit);
+        else units.push(clone(unit));
+        return { dataset: { ...dataset, units }, unit: clone(unit) };
+      });
+      return result.unit;
     },
     async submitReport(input, options) {
       return mutate((dataset) => applyReportSubmission(dataset, input, options));
