@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { FleetV2App } from "../src/FleetV2App";
 import { createMemoryUnitRepository } from "../src/data/unitRepository";
+import { createFixtureDataset } from "../src/data/fleetFixtures";
 
 describe("Livekort", () => {
   beforeEach(() => {
@@ -62,5 +63,31 @@ describe("Livekort", () => {
     const main = await screen.findByRole("main");
     const text = main.textContent.toLocaleLowerCase("da");
     ["rutehistorik", "dagens opgaver", "planlagte stop", "besøgsrækkefølge", "chaufførplanlægning"].forEach((term) => expect(text).not.toContain(term));
+  });
+
+  it("zoomer kortet med almindeligt musehjul men overlader Shift-hjulet til arbejdsområdet", async () => {
+    const { container } = render(<FleetV2App repository={createMemoryUnitRepository()} />);
+    await screen.findByRole("heading", { name: "Livekort" });
+    const map = screen.getByRole("application", { name: /Geografisk kort/ });
+    const before = container.querySelector(".map-tiles img")?.getAttribute("src");
+    fireEvent.wheel(map, { deltaY: -100 });
+    const after = container.querySelector(".map-tiles img")?.getAttribute("src");
+    expect(after).not.toBe(before);
+    fireEvent.wheel(map, { deltaY: -100, shiftKey: true });
+    expect(container.querySelector(".map-tiles img")?.getAttribute("src")).toBe(after);
+  });
+
+  it("lader brugeren vælge hver enhed på samme position fra en klyngeliste", async () => {
+    const dataset = createFixtureDataset();
+    dataset.relations.positions[1].latitude = dataset.relations.positions[0].latitude;
+    dataset.relations.positions[1].longitude = dataset.relations.positions[0].longitude;
+    render(<FleetV2App repository={createMemoryUnitRepository(dataset)} />);
+    await screen.findByRole("heading", { name: "Livekort" });
+    fireEvent.click(screen.getAllByRole("button", { name: /enheder tæt på hinanden/ })[0]);
+    const list = screen.getByLabelText("Vælg enhed i klynge");
+    expect(within(list).getByRole("button", { name: /SC-104/ })).toBeTruthy();
+    expect(within(list).getByRole("button", { name: /NB-001/ })).toBeTruthy();
+    fireEvent.click(within(list).getByRole("button", { name: /NB-001/ }));
+    expect(screen.getByRole("button", { name: /NB-001/ }).getAttribute("aria-pressed")).toBe("true");
   });
 });

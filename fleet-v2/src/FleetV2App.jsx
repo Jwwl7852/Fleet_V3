@@ -83,9 +83,10 @@ export function FleetV2App({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const controlled = typeof pathname === "string" && typeof onNavigate === "function";
-  const [localPathname, setLocalPathname] = useState(() => window.location.pathname);
+  const [localPathname, setLocalPathname] = useState(() => `${window.location.pathname}${window.location.search}`);
   const activePathname = controlled ? pathname : localPathname;
   const route = useMemo(() => routeFromPath(activePathname, basePath), [activePathname, basePath]);
+  const statusFilter = new URLSearchParams(activePathname.split("?")[1] || "").get("status") || "";
 
   const showUnavailable = (label) => {
     setNotice(`${label}: Ikke implementeret i denne etape`);
@@ -100,7 +101,7 @@ export function FleetV2App({
 
   useEffect(() => {
     if (controlled) return undefined;
-    const handlePopState = () => setLocalPathname(window.location.pathname);
+    const handlePopState = () => setLocalPathname(`${window.location.pathname}${window.location.search}`);
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [controlled]);
@@ -111,12 +112,12 @@ export function FleetV2App({
       onNavigate(target);
       return;
     }
-    if (window.location.pathname !== target) window.history.pushState({}, "", target);
+    if (`${window.location.pathname}${window.location.search}` !== target) window.history.pushState({}, "", target);
     setLocalPathname(target);
   };
 
   let content;
-  if (route.kind === "catalog") content = <UnitCatalog onNavigate={navigate} onNotice={setNotice} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} />;
+  if (route.kind === "catalog") content = <UnitCatalog initialStatus={statusFilter} onNavigate={navigate} onNotice={setNotice} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} />;
   else if (route.kind === "profile") content = <UnitProfile unitId={route.unitId} onNavigate={navigate} onNotice={setNotice} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} />;
   else if (route.kind === "new-report") content = <ReportWizard onNavigate={navigate} imageProcessor={imageProcessor} />;
   else if (route.kind === "triage") content = <ReportTriage reportId={route.reportId} onNavigate={navigate} />;

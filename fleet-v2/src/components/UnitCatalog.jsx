@@ -33,9 +33,9 @@ function exportCsv(units, costs) {
   URL.revokeObjectURL(url);
 }
 
-export function UnitCatalog({ onNavigate, onNotice, vehicleLookup, imageProcessor }) {
+export function UnitCatalog({ initialStatus = "", onNavigate, onNotice, vehicleLookup, imageProcessor }) {
   const { units, relations, loading, error, saveUnit, tenantId } = useFleetData();
-  const [filters, setFilters] = useState(initialFilters);
+  const [filters, setFilters] = useState(() => ({ ...initialFilters, status: initialStatus }));
   const [page, setPage] = useState(1);
   const [view, setView] = useState("table");
   const [editing, setEditing] = useState(null);
@@ -47,6 +47,7 @@ export function UnitCatalog({ onNavigate, onNotice, vehicleLookup, imageProcesso
 
   useEffect(() => setPage(1), [filters]);
   useEffect(() => { if (page > pageCount) setPage(pageCount); }, [page, pageCount]);
+  useEffect(() => { setFilters((current) => ({ ...current, status: initialStatus })); }, [initialStatus]);
 
   const setFilter = (key) => (event) => setFilters((current) => ({ ...current, [key]: event.target.value }));
   const openUnit = (unit) => onNavigate(`/enheder/${unit.id}`);

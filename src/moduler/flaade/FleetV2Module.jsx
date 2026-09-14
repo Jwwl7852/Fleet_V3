@@ -50,7 +50,7 @@ export default function FleetV2Module() {
       basePath={basePath}
       embedded
       onNavigate={navigate}
-      pathname={location.pathname}
+      pathname={`${location.pathname}${location.search}`}
       repository={repository}
     />
   );

@@ -15,9 +15,9 @@ function CardHeader({ title, children }) {
   return <div className="card-header"><h2>{title}</h2>{children}</div>;
 }
 
-function KpiCard({ icon, tone, value, label, percent, change, changeTone, caption, progress }) {
+function KpiCard({ icon, tone, value, label, percent, change, changeTone, caption, progress, onClick }) {
   return (
-    <section className={`kpi-card ${tone}`}>
+    <button type="button" className={`kpi-card ${tone}`} onClick={onClick} aria-label={`Åbn ${label}: ${value}`}>
       <span className="kpi-icon"><Icon name={icon} size={30} strokeWidth={2} /></span>
       <div className="kpi-main">
         <strong>{value}</strong>
@@ -27,23 +27,24 @@ function KpiCard({ icon, tone, value, label, percent, change, changeTone, captio
       <span className={`kpi-change ${changeTone || "positive"}`}>{change}</span>
       <small>{caption}</small>
       {progress ? <span className="progress-track"><i style={{ width: progress }} /></span> : null}
-    </section>
+    </button>
   );
 }
 
-function ActionList({ items, onUnavailable, onNavigate }) {
+function ActionList({ items, total, onNavigate }) {
   return (
     <section className="card action-card">
-      <CardHeader title="Kræver handling nu"><LinkButton onClick={() => onUnavailable("Alle handlinger")}>Se alle ({items.length})</LinkButton></CardHeader>
+      <CardHeader title="Kræver handling nu"><LinkButton onClick={() => onNavigate("/arbejdsko")}>Se alle ({total})</LinkButton></CardHeader>
       <div className="action-list">
         {items.map((item) => (
-          <button type="button" key={`${item.unit}-${item.reportId}`} className={`action-row ${item.level}`} onClick={() => item.reportId ? onNavigate(`/indberetninger/${item.reportId}`) : onUnavailable(`Enhed ${item.unit}`)}>
+          <button type="button" key={`${item.unit}-${item.reportId}`} className={`action-row ${item.level}`} onClick={() => item.reportId ? onNavigate(`/indberetninger/${item.reportId}`) : onNavigate("/arbejdsko")}>
             <span className="action-icon"><Icon name="warning" size={16} strokeWidth={2.3} /></span>
             <span className="action-copy"><strong>{item.unit}</strong><small>{item.title}</small></span>
             <time>{item.time}</time>
           </button>
         ))}
       </div>
+      <small className="action-scope">Viser {items.length} af {total} åbne sager med status Ny eller Under vurdering.</small>
     </section>
   );
 }
@@ -118,10 +119,10 @@ export function Overview({ onUnavailable, onNavigate }) {
       </section>
 
       <section className="kpi-grid" aria-label="Flådens nøgletal">
-        <KpiCard icon="unit" tone="blue" value={data.totals.units} label="enheder" change="Lokalt" caption="beregnet fra prototypens enhedsregister" />
-        <KpiCard icon="check" tone="green" value={data.totals.inOperation} label="i drift" percent={pct(data.totals.inOperation)} change="Demo" caption="" progress={pct(data.totals.inOperation)} />
-        <KpiCard icon="wrench" tone="red" value={data.totals.workshop} label="på værksted" percent={pct(data.totals.workshop)} change="Demo" changeTone="negative" caption="" progress={pct(data.totals.workshop)} />
-        <KpiCard icon="warning" tone="orange" value={data.totals.needsAction} label="kræver handling" percent={pct(data.totals.needsAction)} change="Demo" changeTone="negative" caption="" progress={pct(data.totals.needsAction)} />
+        <KpiCard icon="unit" tone="blue" value={data.totals.units} label="enheder" change="Lokalt" caption="beregnet fra prototypens enhedsregister" onClick={() => onNavigate("/enheder")} />
+        <KpiCard icon="check" tone="green" value={data.totals.inOperation} label="i drift" percent={pct(data.totals.inOperation)} change="Demo" caption="åbn enhedsregisteret og vælg status I drift" progress={pct(data.totals.inOperation)} onClick={() => onNavigate("/enheder?status=operation")} />
+        <KpiCard icon="wrench" tone="red" value={data.totals.workshop} label="på værksted" percent={pct(data.totals.workshop)} change="Demo" changeTone="negative" caption="åbn værkstedsforløb" progress={pct(data.totals.workshop)} onClick={() => onNavigate("/vaerksted")} />
+        <KpiCard icon="warning" tone="orange" value={data.totals.needsAction} label="kræver handling" percent={pct(data.totals.needsAction)} change="Demo" changeTone="negative" caption="åbn samlet arbejdskø" progress={pct(data.totals.needsAction)} onClick={() => onNavigate("/arbejdsko")} />
       </section>
 
       <section className="middle-grid">
@@ -134,7 +135,7 @@ export function Overview({ onUnavailable, onNavigate }) {
           <CardHeader title="Livekort"><span className="map-count"><i />{(relations.positions || []).length} positioner</span><button className="map-link" type="button" onClick={() => onNavigate("/livekort")}>Åbn livekort <Icon name="external" size={14} /></button></CardHeader>
           <GeoMap positions={relations.positions || []} units={units} compact controls={false} onSelect={(unitId) => onNavigate(`/enheder/${unitId}`)} />
         </section>
-        <ActionList items={data.actionItems} onUnavailable={onUnavailable} onNavigate={onNavigate} />
+        <ActionList items={data.actionItems} total={data.totals.needsAction} onNavigate={onNavigate} />
       </section>
 
       <section className="bottom-grid">

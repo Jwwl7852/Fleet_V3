@@ -47,10 +47,10 @@ aktuelle kodegrundlag.
 | FC-06 | Upload | Filnavn, modtaget/behandler/fejlet, tydelig fremdrift, dubletværn og idempotent genforsøg; demo mærkes. | Fakturacenter intake/UI | åben | Upload- og fejlforløb | Permanent lagring må kun oplyses efter datakildekvittering |
 | FC-07 | Layout | Kompakt top og tre selvscrollende, justerbare, huskede paneler; demospecifik tekst fjernes fra normal struktur. | Fakturacenter workspace/CSS | i gang | Tre interne scrollområder og panelbredder består test; top og liste er komprimeret | Bruger-/tenantafgrænsning af ældre panelnøgle mangler endnu |
 | FC-08 | Opsætning | Mail og forbindelser flyttes ud af arbejdsnavigationen til fælles Opsætning uden at aktivere transport. | Nav, routes, opsætning | implementeret | Produktionsbuild indeholder lazy chunk; gammelt mail-link redirecter; adgang filtreres på `fakturaer.godkend` | Ekstern mail forbliver deaktiveret |
-| FL-01 | Overblik | KPI-kort og handlingsposter/Se alle åbner relevante filtre; optællinger og udsnit forklares. | `fleet-v2/src/components/Overview.jsx` og afledninger | åben | Klik, tastatur og talparitet | Ingen |
+| FL-01 | Overblik | KPI-kort og handlingsposter/Se alle åbner relevante filtre; optællinger og udsnit forklares. | `fleet-v2/src/components/Overview.jsx`, FleetV2App og UnitCatalog | implementeret lokalt | Komponenttest og faktisk browserroute/filter | Handlingslisten forklarer nu, at den viser 5 af det samlede antal. |
 | FL-02 | Drift | Dag/uge/måned/kvartal/år ændrer registreret datagrundlag og akser. | FLEET overblik/domæne | åben | Periodeprøver mod syntetisk registreret historik | Ingen opfundet fortid |
 | FL-03 | Omkostning/nedetid | Måneder virker; datadækning, nul/mangler, sidste år og sammensmeltede tidsintervaller håndteres. | FLEET overblik/økonomidomæne | åben | Beregningstests og UI | Sammenligning kun når data findes |
-| FL-04 | Livekort | Kort-wheel og +/−, ingen dobbeltzoom, popup pr. enhed, cluster/samme position kan vælges, tydelig kilde/friskhed. | FLEET LiveMap/GeoMap | åben | Mus, tastatur, popup/fokus og marker-klynger | Ingen ekstern OBD aktiveres |
+| FL-04 | Livekort | Kort-wheel og +/−, ingen dobbeltzoom, popup pr. enhed, cluster/samme position kan vælges, tydelig kilde/friskhed. | FLEET LiveMap/GeoMap | delvist implementeret | 8/8 LiveMap-tests og faktisk browserprøve af kortknap/klyngeliste | Markørvalg bruger den eksisterende detaljeside frem for en flydende popup. Ingen ekstern OBD aktiveres. |
 | FL-05 | Enhedsregister | Moderne FLEET-kartotek bliver primær skærm i Opsætning med autoritativ mapping og gamle dybe links. | Root-routes/nav, FLEET repository/adapters | implementeret lokalt | Route-, permission- og referenceprøver med PLANNING | Moderne kartotek åbner på `/opsaetning/enheder`; `/fleet-v2/enheder` bevares som kompatibelt dybt link. UNIT/WAREHOUSE-unit er fortsat et særskilt domæneobjekt. |
 | FL-06 | Enhedsformular | Typefaner fjernes; typefilter bevares; indvendige mål, fire udstyrsvalg og energikilde med ukendt/ikke relevant. | UnitCatalog, UnitFormDialog, UnitProfile, unitSelectors | implementeret lokalt | 18/18 målrettede komponenttests og integreret browserverifikation | Trækkrog, hængertræk, kran og lift er separate værdier. Eksisterende ukendte drivmiddelværdier bevares ved redigering. |
 | FL-07 | Indberetninger | Stabil trepanelstruktur, fuld bredde, justering/hukommelse/scroll og semantiske statustokens. | ReportTriage og CSS | åben | Før/efter valg/reload; mus/tastatur | Ingen |
@@ -143,3 +143,31 @@ aktuelle kodegrundlag.
 - PLANNINGs læseadapter til de fælles FLEET-enhedsreferencer ændres ikke i
   denne etape. En fuld serverautoritativ fælles stamdatakilde er fortsat
   senere Milepæl B-arbejde.
+
+### Etape 4 — FLEET-overblik og Livekort
+
+- Alle fire nøgletalskort er nu semantiske knapper. Enheder åbner
+  enhedsregisteret, I drift åbner registeret med `status=operation`, På
+  værksted åbner værkstedsforløbene, og Kræver handling åbner arbejdskøen.
+- Handlingslistens rækker åbner indberetningen eller arbejdskøen. `Se alle`
+  viser det samlede antal, mens hjælpeteksten forklarer det viste udsnit og
+  de to medtagne sagsstatusser.
+- Livekortets egne plus/minus-knapper virker gennem den integrerede app.
+  Almindeligt musehjul ændrer kortzoom; Shift-hjul overlades til den fælles
+  arbejdsområdezoom, og Ctrl/Cmd overtages ikke.
+- En markørklynge åbner en tastaturbetjent liste over de enkelte enheder og
+  en særskilt mulighed for at zoome ind. Kortets drag-funktion ignorerer
+  knapper og links, så kontrollerne ikke længere opsluges af pointer capture.
+- Den eksisterende højre detaljeside viser valgt enheds registrering,
+  positionstid, kontakt, datakilde, friskhed og profillink. Der er ikke
+  tilføjet en konkurrerende flydende popup.
+- `LiveMapFlow.test.jsx` og `FleetV2App.test.jsx` bestod 14/14 før den ekstra
+  KPI-filterprøve blev tilføjet; hele målgruppen genkøres ved commit-gaten.
+- Browsermåling i den aktuelle lokale IndexedDB viste 20 enheder, 13 i
+  drift, 3 på værksted og 6 kræver handling; listen viste 5 af 6. Klik på I
+  drift åbnede `/fleet-v2/enheder?status=operation` med 13 af 20 synlige.
+  Kortets zoomknap ændrede tile-zoom, og en klynge åbnede en liste med de
+  individuelle enheder.
+- Periodehistorik, sidste-år-sammenligning og beregnet historisk nedetid er
+  ikke afsluttet. Den nuværende prototypehistorik må derfor ikke bruges som
+  produktionsbevis for FL-02/FL-03.

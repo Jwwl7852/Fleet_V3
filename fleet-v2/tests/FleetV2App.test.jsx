@@ -30,6 +30,15 @@ describe("FLEET v2 navigation", () => {
     expect(window.location.pathname).toBe("/indberetninger");
   });
 
+  it("åbner overblikkets nøgletal med det relevante arbejdsfilter", async () => {
+    renderApp();
+    await screen.findByRole("heading", { name: "God aften, Dennis" });
+    fireEvent.click(screen.getByRole("button", { name: /Åbn i drift/ }));
+    expect(await screen.findByRole("heading", { name: "Enhedskartotek" })).toBeTruthy();
+    expect(screen.getByLabelText("Status").value).toBe("operation");
+    expect(window.location.search).toBe("?status=operation");
+  });
+
   it("viser platformshierarkiet og folder kun FLEET uden at skifte side", async () => {
     const repository = createMemoryUnitRepository();
     const { unmount } = render(<FleetV2App repository={repository} />);
