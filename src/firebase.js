@@ -56,6 +56,26 @@ export const brugerLokaleEmulatorer =
   && /^demo-/.test(cfg.projectId || "")
   && emulatorerAnmodet;
 
+function gyldigOffentligLoginKontekstUrl(værdi) {
+  if (!værdi) return null;
+  try {
+    const url = new URL(værdi);
+    const lokal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(url.hostname);
+    if (url.username || url.password || (url.protocol !== "https:" && !(url.protocol === "http:" && lokal))) return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+const konfigureretLoginKontekstUrl = import.meta.env.VITE_LOGIN_KONTEKST_URL;
+export const offentligLoginKontekstUrl = gyldigOffentligLoginKontekstUrl(konfigureretLoginKontekstUrl)
+  || (brugerLokaleEmulatorer
+    ? `http://127.0.0.1:${funktionerEmulatorPort}/${cfg.projectId}/europe-west1/offentligloginkontekst`
+    : cfg.projectId
+      ? `https://europe-west1-${cfg.projectId}.cloudfunctions.net/offentligloginkontekst`
+      : null);
+
 if (emulatorerAnmodet && !brugerLokaleEmulatorer) {
   throw new Error(
     "Firebase-emulatorer må kun aktiveres i lokal DEV med et demo-*-projekt.",

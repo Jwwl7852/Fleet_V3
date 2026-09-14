@@ -69,6 +69,7 @@ import {
   SALGS_AI_INSTRUKTION, byggOpenAiAnmodning, kaldOpenAi,
 } from "./openai-salgsassistent.js";
 import { koerMailjobWorker, MailjobWorkerFejl } from "./mailjob-worker.js";
+import { findOffentligLoginKontekst } from "./offentlig-login-kontekst.js";
 
 import {
   AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff, forfaldnePartitioner
@@ -215,6 +216,7 @@ const WEBFORM_HMAC_SECRET = defineSecret("WEBFORM_HMAC_SECRET");
 const DINERO_CLIENT_SECRET = defineSecret("DINERO_CLIENT_SECRET");
 const DINERO_API_KEY = defineSecret("DINERO_API_KEY");
 const UNITBOOKING_EXTRACTION_API_KEY = defineSecret("UNITBOOKING_EXTRACTION_API_KEY");
+const VEYRO_OFFENTLIGE_LOGIN_KONTEKSTER_JSON = defineSecret("VEYRO_OFFENTLIGE_LOGIN_KONTEKSTER_JSON");
 /* ⚠ IKKE-DESTRUKTIV — beslutning 115. simulerRetention() og erUndtaget() er
    rene funktioner; ingen af dem sletter eller anonymiserer noget. Se noten
    i retention-regler.js. */
@@ -288,6 +290,30 @@ initializeApp(lokalStorageBucket ? {
 } : undefined);
 
 const REGION = "europe-west1";
+
+/* Minimal præ-loginprojektion. Den eksponerer hverken tenant-id, navn,
+   permissions eller abonnementsdata. Et eksakt, serverkonfigureret Origin er
+   den eneste nøgle; ukendte adresser får ingen CORS-adgang og ingen katalog. */
+export const offentligloginkontekst = onRequest({
+  region: REGION,
+  cors: false,
+  secrets: [VEYRO_OFFENTLIGE_LOGIN_KONTEKSTER_JSON],
+}, (req, res) => {
+  const origin = String(req.headers.origin || "");
+  const kontekst = findOffentligLoginKontekst({
+    origin,
+    råKonfiguration: VEYRO_OFFENTLIGE_LOGIN_KONTEKSTER_JSON.value(),
+  });
+  res.set("Vary", "Origin");
+  res.set("Cache-Control", "private, no-store");
+  if (!kontekst) { res.status(404).json({ fejl: "Ukendt loginadresse." }); return; }
+  res.set("Access-Control-Allow-Origin", origin);
+  res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Accept");
+  if (req.method === "OPTIONS") { res.status(204).end(); return; }
+  if (req.method !== "GET") { res.status(405).json({ fejl: "Metoden understøttes ikke." }); return; }
+  res.status(200).json(kontekst);
+});
 
 const erLokalStorageEmulator = () => process.env.FUNCTIONS_EMULATOR === "true"
   && Boolean(process.env.FIREBASE_STORAGE_EMULATOR_HOST);

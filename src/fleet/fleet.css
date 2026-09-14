@@ -557,12 +557,13 @@ body:has(.fc-login-side){margin:0}
 .fc-login-side{display:grid;grid-template-columns:minmax(0,3fr) minmax(420px,2fr);min-height:100vh;
   color:var(--bc-text);background:var(--veyro-app-background);
   font:14px/1.45 "Inter",-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
-.fc-login-hero{position:relative;isolation:isolate;min-height:100vh;overflow:hidden;background:var(--veyro-deep-navy)}
+.fc-login-hero{position:relative;isolation:isolate;min-height:100vh;overflow:hidden;background:var(--veyro-teal)}
 .fc-login-hero-billede{position:absolute;inset:0;z-index:-3;width:100%;height:100%;object-fit:cover;opacity:0;
   transition:opacity .28s ease}
 .fc-login-hero.er-klar .fc-login-hero-billede{opacity:1}
 .fc-login-hero-toning{position:absolute;inset:0;z-index:-2;background:
   linear-gradient(180deg,var(--veyro-navy-dark) 0%,transparent 44%,var(--veyro-navy-dark) 100%);opacity:.72}
+.fc-login-hero:not(.har-billede) .fc-login-hero-toning{display:none}
 .fc-login-logo-felt{position:absolute;top:clamp(24px,4vw,56px);left:clamp(24px,4vw,64px);width:min(340px,45%);
   padding:10px 14px;border-radius:10px;background:var(--veyro-navy-dark);box-shadow:0 12px 35px rgba(0,0,0,.16)}
 .veyro-logo--login-hero{width:100%;height:auto;margin:0}

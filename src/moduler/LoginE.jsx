@@ -2,14 +2,15 @@
  * ejet af firebase.js og App.jsx; dette er alene loginbrugerfladen. */
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { auth, miljoe, projektId } from "../firebase.js";
+import { auth, miljoe, offentligLoginKontekstUrl, projektId } from "../firebase.js";
 import { Knap } from "../fleet/ui.jsx";
 import VeyroLogo from "../fleet/VeyroLogo.jsx";
 import {
-  LOGIN_BILLEDER,
-  LOGIN_SENESTE_BILLEDE_NOGLE,
+  loginBillederForModuler,
+  loginSenesteBilledeNøgle,
   vaelgLoginBillede,
 } from "../fleet/login-billeder.js";
+import { hentOffentligLoginKontekst } from "../fleet/login-kundekonfiguration.js";
 import { INAKTIVITET_LOGOUT_BESKED_NOGLE } from "../fleet/inaktivitet.js";
 
 const FEJLTEKST = {
@@ -27,12 +28,7 @@ const DEV_UDFYLD = miljoe === "dev"
     }
   : null;
 
-function hentFørsteBillede() {
-  const forrigeId = window.localStorage.getItem(LOGIN_SENESTE_BILLEDE_NOGLE);
-  return vaelgLoginBillede({ billeder: LOGIN_BILLEDER, forrigeId });
-}
-
-export default function LoginE({ uprovisioneret = false }) {
+export default function LoginE({ uprovisioneret = false, hentLoginKontekst = hentOffentligLoginKontekst }) {
   const [email, setEmail] = useState(DEV_UDFYLD?.email || "");
   const [kode, setKode] = useState(DEV_UDFYLD?.kode || "");
   const [visKode, setVisKode] = useState(false);
@@ -40,7 +36,7 @@ export default function LoginE({ uprovisioneret = false }) {
   const [sender, setSender] = useState(false);
   const [nulstiller, setNulstiller] = useState(false);
   const [nulstilSvar, setNulstilSvar] = useState(null);
-  const [billede] = useState(hentFørsteBillede);
+  const [billede, setBillede] = useState(null);
   const [billedeKlar, setBilledeKlar] = useState(false);
   const [billedeFejl, setBilledeFejl] = useState(false);
   const [inaktivitetsbesked] = useState(
@@ -49,9 +45,23 @@ export default function LoginE({ uprovisioneret = false }) {
   const fra = useLocation().state?.fra;
 
   useEffect(() => {
-    if (billede?.id) window.localStorage.setItem(LOGIN_SENESTE_BILLEDE_NOGLE, billede.id);
+    const controller = new AbortController();
+    let aktiv = true;
+    hentLoginKontekst({ url: offentligLoginKontekstUrl, signal: controller.signal }).then((kontekst) => {
+      if (!aktiv || kontekst?.status !== "kendt") return;
+      const billeder = loginBillederForModuler(kontekst.moduler);
+      const nøgle = loginSenesteBilledeNøgle(kontekst.contextId);
+      const valgt = vaelgLoginBillede({ billeder, forrigeId: window.localStorage.getItem(nøgle) });
+      if (!valgt) return;
+      window.localStorage.setItem(nøgle, valgt.id);
+      setBillede(valgt);
+    });
+    return () => { aktiv = false; controller.abort(); };
+  }, [hentLoginKontekst]);
+
+  useEffect(() => {
     window.sessionStorage.removeItem(INAKTIVITET_LOGOUT_BESKED_NOGLE);
-  }, [billede]);
+  }, []);
 
   async function logInd(event) {
     event.preventDefault();
@@ -98,7 +108,7 @@ export default function LoginE({ uprovisioneret = false }) {
 
   return (
     <div className="fc-login-side">
-      <section className={`fc-login-hero${billedeKlar ? " er-klar" : ""}${billedeFejl ? " har-fejl" : ""}`} aria-label="Veyro Systems">
+      <section className={`fc-login-hero${billede && !billedeFejl ? " har-billede" : ""}${billedeKlar ? " er-klar" : ""}${billedeFejl ? " har-fejl" : ""}`} aria-label="Veyro Systems">
         {billede && !billedeFejl && (
           <img
             className="fc-login-hero-billede"
@@ -112,11 +122,11 @@ export default function LoginE({ uprovisioneret = false }) {
         )}
         <div className="fc-login-hero-toning" aria-hidden="true" />
         <div className="fc-login-logo-felt"><VeyroLogo variant="login-hero" /></div>
-        <div className="fc-login-motiv">
-          <p className="fc-login-motiv-navn">{billede?.motiv || "Veyro Systems"}</p>
-          <p>{billede?.tekst || "Din arbejdsdag samlet ét sted."}</p>
+        {billede && !billedeFejl && <div className="fc-login-motiv">
+          <p className="fc-login-motiv-navn">{billede.motiv}</p>
+          <p>{billede.tekst}</p>
           <small>AI-genereret illustration</small>
-        </div>
+        </div>}
       </section>
 
       <main className="fc-login-panel">

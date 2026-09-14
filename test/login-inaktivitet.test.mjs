@@ -43,23 +43,25 @@ test("kun gyldige positive aktivitetstidsstempler genbruges", () => {
   assert.equal(læsAktivitet("ikke-et-tal"), null);
 });
 
-test("loginforslag E har de ni godkendte generelle motivpar og det originale logo", () => {
+test("loginforslag E har præcis to billeder for hvert af de otte moduler", () => {
   const katalog = readFileSync("src/fleet/login-billeder.js", "utf8");
   const login = readFileSync("src/moduler/LoginE.jsx", "utf8");
-  const ids = [...katalog.matchAll(/\{ id: "([^"]+)"/g)].map((match) => match[1]);
+  const poster = [...katalog.matchAll(/\{ id: "([^"]+)", modul: "([^"]+)", nummer: (\d)/g)]
+    .map((match) => ({ id: match[1], modul: match[2], nummer: Number(match[3]) }));
+  const ids = poster.map((post) => post.id);
   assert.deepEqual(ids, [
-    "fleet", "facility", "planning", "procure", "fakturacenter",
-    "workforce", "warehouse", "unit-booking", "samlet-drift",
+    "fleet-1", "fleet-2", "facility-1", "facility-2", "planning-1", "planning-2",
+    "procure-1", "procure-2", "fakturacenter-1", "fakturacenter-2",
+    "workforce-1", "workforce-2", "warehouse-1", "warehouse-2",
+    "unit-booking-1", "unit-booking-2",
   ]);
-  for (const tekst of [
-    "Overblik over flåden.", "Struktur omkring dine bygninger.",
-    "Overblik over næste opgave.", "Fra behov til levering.",
-    "Overblik over bilag og omkostninger.", "Mennesker og opgaver i balance.",
-    "Plads til overblik.", "Styr på enhedernes vej.",
-    "Din arbejdsdag samlet ét sted.",
-  ]) assert.match(katalog, new RegExp(tekst.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const modul of ["fleet", "facility", "planning", "procure", "fakturacenter", "workforce", "warehouse", "unit-booking"]) {
+    assert.deepEqual(poster.filter((post) => post.modul === modul).map((post) => post.nummer), [1, 2]);
+  }
+  assert.match(katalog, /fleet2 from "\.\.\/assets\/login\/web\/samlet-drift\.jpg"/);
+  assert.doesNotMatch(katalog.toLowerCase(), /support/);
   assert.match(login, /<VeyroLogo variant="login-hero"/);
-  assert.match(login, /AI-genereret illustration/);
+  assert.match(login, /billede && !billedeFejl && <div className="fc-login-motiv">/);
   assert.match(login, /auth\.signInWithEmailAndPassword/);
   assert.match(login, /auth\.sendPasswordResetEmail/);
 });
@@ -69,7 +71,19 @@ test("billedvalget udelukker det seneste motiv, når serien har flere billeder",
   const login = readFileSync("src/moduler/LoginE.jsx", "utf8");
   assert.match(katalog, /billeder\.filter\(\(billede\) => billede\.id !== forrigeId\)/);
   assert.match(katalog, /tilfældig\(\) \* mulige\.length/);
-  assert.match(login, /const \[billede\] = useState\(hentFørsteBillede\)/);
+  assert.match(login, /const \[billede, setBillede\] = useState\(null\)/);
+  assert.match(login, /loginSenesteBilledeNøgle\(kontekst\.contextId\)/);
+});
+
+test("præ-login læser kun den minimale serverprojektion og fejler neutralt", () => {
+  const login = readFileSync("src/moduler/LoginE.jsx", "utf8");
+  const klient = readFileSync("src/fleet/login-kundekonfiguration.js", "utf8");
+  const funktion = readFileSync("functions/index.js", "utf8");
+  assert.match(login, /hentLoginKontekst\(\{ url: offentligLoginKontekstUrl/);
+  assert.match(klient, /credentials: "omit"/);
+  assert.match(klient, /status: "ukendt", moduler: \[\]/);
+  assert.match(funktion, /VEYRO_OFFENTLIGE_LOGIN_KONTEKSTER_JSON/);
+  assert.doesNotMatch(`${login}\n${klient}`, /tenants\/|abonnementer\/|firebase\.database|\.ref\(/);
 });
 
 test("vagten reagerer kun på brugerhændelser og afslutter Firebase-sessionen", () => {
