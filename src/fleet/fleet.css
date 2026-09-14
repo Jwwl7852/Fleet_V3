@@ -223,7 +223,8 @@
   padding:7px 0; border-radius:6px; font:inherit; font-weight:600; font-size:var(--fc-t-m)}
 .fc-div button[aria-pressed="true"]{background:var(--bc-accent); color:#fff}
 
-.fc-nav{display:flex; flex-direction:column; gap:0; flex:1; overflow-y:auto;scrollbar-gutter:stable}
+.fc-nav{display:flex; flex-direction:column; gap:0; flex:1; overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}
+.fc-nav::-webkit-scrollbar{width:0;height:0;display:none}
 /* ⚠ SKIVE 2A — GRUPPEOVERSKRIFTER. Genbruger #9aa7b8 og --fc-t-tight, som
    allerede står i FORVENTEDE_RAA_FARVER/tokenlisten (test/design-tokens) —
    ingen ny farve, ingen nyt token. */
