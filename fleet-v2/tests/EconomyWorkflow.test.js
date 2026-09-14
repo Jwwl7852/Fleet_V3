@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFixtureDataset } from "../src/data/fleetFixtures";
-import { actualCostSummary, applyManualCostSave, buildEconomyEntries, mergeDowntimeIntervals, periodDistance } from "../src/data/economyWorkflow";
+import { actualCostSummary, applyManualCostSave, buildEconomyEntries, economyCsv, mergeDowntimeIntervals, periodDistance } from "../src/data/economyWorkflow";
 
 describe("økonomi og flådestatistik", () => {
   it("holder faktiske, foreløbige, estimater og kontraktlige ydelser adskilt", () => {
@@ -28,5 +28,14 @@ describe("økonomi og flådestatistik", () => {
   it("dobbelttæller ikke overlappende nedetidsintervaller", () => {
     const merged=mergeDowntimeIntervals([{start:"2026-01-01T00:00:00Z",end:"2026-01-02T00:00:00Z"},{start:"2026-01-01T12:00:00Z",end:"2026-01-03T00:00:00Z"}]);
     expect(merged).toEqual([{start:"2026-01-01T00:00:00Z",end:"2026-01-03T00:00:00Z"}]);
+  });
+
+  it("eksporterer danske overskrifter og decimaler som UTF-8 CSV-indhold", () => {
+    const dataset = createFixtureDataset();
+    const csv = economyCsv(buildEconomyEntries(dataset), dataset.units);
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+    expect(csv).toContain("Beløb");
+    expect(csv).toMatch(/\"\d+,\d{2}\"/);
+    expect([...new TextEncoder().encode(csv).slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
   });
 });

@@ -101,5 +101,5 @@ export function applyManualCostSave(dataset, input, actor, options = {}) {
 
 export function economyCsv(entries, units) {
   const quote = (value) => `"${String(value ?? "").replaceAll('"','""')}"`;
-  return ["Dato;Enhed;Kategori;Beløb;Valuta;Status;Kilde;Reference", ...entries.map((item) => [item.date, units.find((unit) => unit.id === item.unitId)?.number, item.category, (item.amountMinor/100).toFixed(2).replace(".",","), item.currency, COST_STATES[item.state], item.source, item.caseId || item.taskId || item.leaseId || ""].map(quote).join(";"))].join("\r\n");
+  return `\ufeff${["Dato;Enhed;Kategori;Beløb;Valuta;Status;Kilde;Reference", ...entries.map((item) => [item.date, units.find((unit) => unit.id === item.unitId)?.number, item.category, (item.amountMinor/100).toFixed(2).replace(".",","), item.currency, COST_STATES[item.state], item.source, item.caseId || item.taskId || item.leaseId || ""].map(quote).join(";"))].join("\r\n")}`;
 }
