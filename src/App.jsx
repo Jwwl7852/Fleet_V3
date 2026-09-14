@@ -101,6 +101,7 @@ const Fakturering = lazy(() => import("./moduler/Fakturering.jsx"));
 const Generelt = lazy(() => import("./moduler/opsaetning/Generelt.jsx"));
 const Brugere = lazy(() => import("./moduler/opsaetning/Brugere.jsx"));
 const Integrationer = lazy(() => import("./moduler/opsaetning/Integrationer.jsx"));
+const FakturacenterOpsaetning = lazy(() => import("./moduler/opsaetning/FakturacenterOpsaetning.jsx"));
 const Hjaelp = lazy(() => import("./moduler/support/Hjaelp.jsx"));
 const Supportoverblik = lazy(() => import("./moduler/support/Overblik.jsx"));
 const Supportsag = lazy(() => import("./moduler/support/Sag.jsx"));
@@ -757,6 +758,7 @@ export default function App() {
             <Route path="opsaetning/aftalepriser/:kundeId" element={<Kundepriser />} />
             <Route path="opsaetning/brugere" element={<Brugere />} />
             <Route path="opsaetning/integrationer" element={<Integrationer />} />
+            <Route path="opsaetning/fakturacenter" element={<FakturacenterOpsaetning />} />
             <Route path="opsaetning/procure/godkendelsesregler" element={<ProcureGodkendelsesregler />} />
 
             {/* v1.4-stier holdes i live, så gamle links og bogmærker virker */}

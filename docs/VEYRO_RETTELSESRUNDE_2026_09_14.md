@@ -33,20 +33,20 @@ aktuelle kodegrundlag.
 | ID | Område | Krav / faktisk årsag | Berørt kode | Status | Kontrol / bevis | Afhængighed eller beslutning |
 | --- | --- | --- | --- | --- | --- | --- |
 | UX-01 | Zoom | Første besøg 100 %, genindlæs af bruger-/kontekst-/skærmafgrænset valg og fungerende nulstilling. | `src/fleet/useVisningsvalg.js`, `src/fleet/AppShell.jsx` | implementeret | Design/navigationstest, build og browser ved 100 % samt nulstilling | Ingen |
-| UX-02 | Sidebar | Menu/topbjælke påvirkes ikke af arbejdsområdezoom; menutekst flytter sig ikke ved scrollbar. | `src/fleet/fleet.css` | implementeret | Stabil scrollbarplads og énlinjet menutekst verificeret i browser | Ingen |
+| UX-02 | Sidebar | Menu/topbjælke påvirkes ikke af arbejdsområdezoom; menutekst flytter sig ikke ved scrollbar. | `src/fleet/fleet.css` | implementeret | Synlig Windows-scrollbar skjult; menuen måltes fortsat scrollbar fra 0 til 89,55 px (`1059/970 px`) og teksten er énlinjet | Ingen |
 | UX-03 | Navigation | Hele moduloverskriften folder uden samtidig navigation; underpunkter navigerer. | `src/fleet/AppShell.jsx` | implementeret | Fakturacenter foldet på Dashboard uden URL-skift; underlinks eksponeret semantisk | Ingen |
 | UX-04 | Kompakt menu | Flyout bevares fra ikon til menu, ligger over indhold, håndterer kanter/lange lister, ESC/udenfor, mus/tastatur/touch. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | implementeret | FLEET-flyout vist over workspace; alle 11 tilladte underlinks; ESC lukkede og returnerede fokus; mobilklik eksponerede underlinks | Ingen |
 | UX-05 | Foldeknap | Variant B, afrundet flig ca. 30×34 med mindst 44×44 klikmål, tokens og korrekt chevron/aria. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | implementeret | Beregnet klikmål 43,98×43,98 px; synlig pseudo-flig 30×34; titel, aria og korrekt chevron | Ingen |
 | UX-06 | Navigation | Meningsfuld tilbagefunktion med bevaret visningstilstand; direkte åbning har fallback. | Fælles route-/visningskomponenter | åben | Browser frem/tilbage, reload og direkte URL | Skærmspecifik tilpasning |
 | UX-07 | Dialog | ESC, X, Annuller, ugemte data, fokusretur, bekræft Gem/Slet og fejlbevaring. | Fælles og berørte moduldialoger | åben | Tastatur- og fejlforløb | Domæner må fortsat bruge arkivering, hvor hard delete er forbudt |
-| FC-01 | Navigation | Synligt forløb er Indbakke, betinget Ekstra kontrol og Arkiv; gamle dybe links mappes uden historiktab. | `src/fleet/fakturacenter-intake.js`, `src/moduler/oekonomi/Fakturacenter.jsx`, `src/fleet/nav.js` | åben | Kontrakt-/route-tests og browser | Bevar interne domænestatusser |
-| FC-02 | Kontrol | Succes fjerner posten fra arbejdsliste, bliver i Indbakke og vælger næste; fejl bevarer posten. | Fakturacenter UI/domæne | åben | Enkeltkontrol med/uden næste post | Ingen |
-| FC-03 | Ekstra kontrol | Tilstande ingen/alle/over beløbsgrænse ekskl. moms; anden person; kundestyret allowlist; serveraudit. | Opsætning, fælles kontrakt, Functions/Rules | åben | Rolle-, revision-, tenant- og auditprøver i emulator | Roller/personer udpeges af kunden; eksisterende beskyttelse må ikke svækkes |
-| FC-04 | Massekontrol | Checkbox, synligt omfang, én bekræftelse, adgang/revision/gates pr. faktura, delsvar og idempotent genforsøg. | Fakturacenter UI/domæne | åben | Blandede syntetiske resultater og afvisninger | Ingen |
-| FC-05 | Filtre | Matchkategori bevares; standard nyeste først erstattes som kontrol af modul inkl. uafklaret/flere fordelinger. | Fakturacenter UI | åben | Filter- og sorteringstest | Ingen |
+| FC-01 | Navigation | Synligt forløb er Indbakke, betinget Ekstra kontrol og Arkiv; gamle dybe links mappes uden historiktab. | `src/fleet/fakturacenter-intake.js`, `src/moduler/oekonomi/Fakturacenter.jsx`, `src/fleet/nav.js` | implementeret | 100/100 målrettede tests; browser viste kun Indbakke og Arkiv, mens Ekstra kontrol er korrekt skjult før aktivering | Interne domænestatusser er bevaret |
+| FC-02 | Kontrol | Succes fjerner posten fra arbejdsliste, bliver i Indbakke og vælger næste; fejl bevarer posten. | Fakturacenter UI/domæne | implementeret | Domænetest og browserwiring; succes flytter til intern kontrolleret/Arkiv-status uden sektionsskift | Lokal prototype, ikke serverlagring |
+| FC-03 | Ekstra kontrol | Tilstande ingen/alle/over beløbsgrænse ekskl. moms; anden person; kundestyret allowlist; serveraudit. | Opsætning, fælles kontrakt, Functions/Rules | blokeret | Ren kontrakttest for netto og anden udpeget kontrollant; opsætningsrute viser afstemt kontrakt uden aktivering | Autoritativ brugeradapter, serverlagring, audit og Rules/Functions mangler; UI-værdier giver ikke adgang |
+| FC-04 | Massekontrol | Checkbox, synligt omfang, én bekræftelse, adgang/revision/gates pr. faktura, delsvar og idempotent genforsøg. | Fakturacenter UI/domæne | implementeret | 100/100 målrettede tests; browser viste 19 synlige valg og bekræftelsesdialog med per-faktura-gates | Lokal prototype, ikke serverlagring |
+| FC-05 | Filtre | Matchkategori bevares; standard nyeste først erstattes som kontrol af modul inkl. uafklaret/flere fordelinger. | Fakturacenter UI | implementeret | Filtertest dækker FLEET, flere moduler og uafklaret; browser viste modulfilter og fast nyeste rækkefølge | Ingen |
 | FC-06 | Upload | Filnavn, modtaget/behandler/fejlet, tydelig fremdrift, dubletværn og idempotent genforsøg; demo mærkes. | Fakturacenter intake/UI | åben | Upload- og fejlforløb | Permanent lagring må kun oplyses efter datakildekvittering |
-| FC-07 | Layout | Kompakt top og tre selvscrollende, justerbare, huskede paneler; demospecifik tekst fjernes fra normal struktur. | Fakturacenter workspace/CSS | åben | Bredder, scroll og mobile visninger | Ingen |
-| FC-08 | Opsætning | Mail og forbindelser flyttes ud af arbejdsnavigationen til fælles Opsætning uden at aktivere transport. | Nav, routes, opsætning | åben | Permission- og route-test | Ekstern mail forbliver deaktiveret |
+| FC-07 | Layout | Kompakt top og tre selvscrollende, justerbare, huskede paneler; demospecifik tekst fjernes fra normal struktur. | Fakturacenter workspace/CSS | i gang | Tre interne scrollområder og panelbredder består test; top og liste er komprimeret | Bruger-/tenantafgrænsning af ældre panelnøgle mangler endnu |
+| FC-08 | Opsætning | Mail og forbindelser flyttes ud af arbejdsnavigationen til fælles Opsætning uden at aktivere transport. | Nav, routes, opsætning | implementeret | Produktionsbuild indeholder lazy chunk; gammelt mail-link redirecter; adgang filtreres på `fakturaer.godkend` | Ekstern mail forbliver deaktiveret |
 | FL-01 | Overblik | KPI-kort og handlingsposter/Se alle åbner relevante filtre; optællinger og udsnit forklares. | `fleet-v2/src/components/Overview.jsx` og afledninger | åben | Klik, tastatur og talparitet | Ingen |
 | FL-02 | Drift | Dag/uge/måned/kvartal/år ændrer registreret datagrundlag og akser. | FLEET overblik/domæne | åben | Periodeprøver mod syntetisk registreret historik | Ingen opfundet fortid |
 | FL-03 | Omkostning/nedetid | Måneder virker; datadækning, nul/mangler, sidste år og sammensmeltede tidsintervaller håndteres. | FLEET overblik/økonomidomæne | åben | Beregningstests og UI | Sammenligning kun når data findes |
@@ -73,8 +73,7 @@ aktuelle kodegrundlag.
 
 - Root `npm run lint`: bestået på start-HEAD.
 - Root build og direkte Node-testkørsel blev ved første forsøg blokeret af
-  køremiljøets `spawn EPERM`; dette er en miljøblokering og genprøves i en
-  proceskontekst, hvor Vite/esbuild og Node-testarbejdere må starte.
+  køremiljøets `spawn EPERM`; genprøve i den godkendte proceskontekst bestod.
 - Word-dokumentets 22 billeder er visuelt gennemgået. De viser blandt andet
   flyout-overlap, menutekst der skifter linje, Fakturacenterets lange demo-top,
   FLEETs indsnævrede triage, den ulæselige manuelle sag, den godkendte
@@ -96,3 +95,23 @@ aktuelle kodegrundlag.
 - Mobil: underpunkterne kan åbnes med klik og ligger i en scrollbar, uden at
   ændre browserens zoom. Den visuelle slutmatrix køres igen efter de øvrige
   etaper, hvor navigationsteksterne er endelige.
+
+### Etape 2 — Fakturacenter
+
+- Synlig navigation er Indbakke, betinget Ekstra kontrol og Arkiv. Gamle
+  sektionlinks mappes; mailopsætning er flyttet til
+  `/opsaetning/fakturacenter`.
+- Indbakken er fast sorteret nyeste først og kan filtreres på match og modul.
+  Massevalg angiver det præcise synlige omfang og kræver en samlet
+  bekræftelse; den eksisterende domænefunktion kontrollerer hver faktura og
+  returnerer delsvar.
+- Ekstra-kontrolkontrakten bruger nettobeløb ekskl. moms og afviser første
+  kontrollant. Aktivering er bevidst blokeret, indtil autoritativ serverlagring,
+  audit, brugerallowlist og Rules/Functions findes; en lokal formular må ikke
+  give rettigheder.
+- `npm run lint`: bestået. `node --test
+  test/fakturacenter-intake-v1.test.mjs`: 100/100 bestået. `npm run build`:
+  bestået med den kendte chunk-størrelsesadvarsel.
+- Browser: 19 syntetiske fakturaer i Indbakke, én i Arkiv, modulfilter og
+  bekræftelsesdialog for alle 19 synlige poster blev kontrolleret. Dialogen
+  blev annulleret, så browserens prototypetilstand ikke blev ændret.

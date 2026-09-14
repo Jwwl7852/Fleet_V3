@@ -17,6 +17,15 @@ export const MATCHSORTERING = Object.freeze({
   uafklarede: "uafklarede-foerst",
 });
 
+export const MODULFILTER = Object.freeze({
+  alle: "alle-moduler",
+  fleet: "FLEET",
+  facility: "FACILITY",
+  procure: "PROCURE",
+  uafklaret: "uafklaret",
+  flere: "flere-moduler",
+});
+
 export const PANEL_LAYOUT_STORAGE_KEY = "veyro:fakturacenter:panel-layout:v1";
 export const STANDARD_PANEL_LAYOUT = Object.freeze({
   version: 1,
@@ -111,6 +120,7 @@ function nyesteVærdi(scenarie) {
 export function filtrerOgSorterFakturaer(scenarier, {
   søgning = "",
   matchfilter = MATCHFILTER.alle,
+  modulfilter = MODULFILTER.alle,
   sortering = MATCHSORTERING.nyeste,
 } = {}) {
   const filterVærdi = MATCHFILTER_VÆRDIER.has(matchfilter) ? matchfilter : MATCHFILTER.alle;
@@ -123,6 +133,14 @@ export function filtrerOgSorterFakturaer(scenarier, {
     match: udledMatchvisning(scenarie),
   })).filter(({ scenarie, match }) => {
     if (filterVærdi !== MATCHFILTER.alle && match.id !== filterVærdi) return false;
+    const moduler = new Set([
+      ...(scenarie?.faktura?.fordelinger || []).map((post) => post?.modul),
+      scenarie?.match?.placering?.modul,
+    ].filter(Boolean));
+    if (modulfilter === MODULFILTER.uafklaret && moduler.size !== 0) return false;
+    if (modulfilter === MODULFILTER.flere && moduler.size < 2) return false;
+    if (![MODULFILTER.alle, MODULFILTER.uafklaret, MODULFILTER.flere].includes(modulfilter)
+      && !moduler.has(modulfilter)) return false;
     if (!søg) return true;
     const tekst = [
       scenarie.titel,

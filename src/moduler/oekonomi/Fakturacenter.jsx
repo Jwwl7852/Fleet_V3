@@ -3,7 +3,7 @@
  * Kun syntetiske fixtures og browserlokal tilstand; ingen eksterne kald.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useOutletContext, useSearchParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
@@ -11,6 +11,7 @@ import {
   behandlLokalePrototypeFiler,
   effektivAflæsning,
   FAKTURACENTER_SEKTIONER,
+  FAKTURACENTER_LEGACY_SEKTION,
   FAKTURAART,
   FAKTURAVINDUE,
   genåbnFaktura,
@@ -31,20 +32,15 @@ import {
 import {
   DEMO_DESTINATIONER,
   DEMO_FAKTURACENTER_SCENARIER,
-  DEMO_KOMMENDE_OPGAVER,
-  DEMO_MAILBOX,
   DEMO_NU_MS,
   DEMO_TENANT_ID,
-  DEMO_VEYRO_MAIL,
   opretSyntetiskTestfaktura,
 } from "../../fleet/demo-fakturacenter-intake.js";
 import FakturacenterWorkspace from "./FakturacenterWorkspace.jsx";
 import { Dialog } from "../../fleet/ui.jsx";
 import {
-  ArkivPrototypePanel,
   FakturacenterPanelnavigation,
   Filmodtagelse,
-  MailForbindelserPanel,
   MasseResultat,
   PanelSeparator,
 } from "./FakturacenterPrototypeDele.jsx";
@@ -55,6 +51,7 @@ import {
   læsPanelLayout,
   MATCHFILTER,
   MATCHSORTERING,
+  MODULFILTER,
   nulstilPanelLayout,
   opdaterMassevalg,
   tilpasPanelLayout,
@@ -64,6 +61,7 @@ import "./FakturacenterIntake.css";
 
 const STATUS_LABEL = {
   [INDBAKKE_SEKTION.indbakke]: "Indbakke",
+  [INDBAKKE_SEKTION.ekstraKontrol]: "Ekstra kontrol",
   [INDBAKKE_SEKTION.behandling]: "Kræver behandling",
   [INDBAKKE_SEKTION.match]: "Match og fordeling",
   [INDBAKKE_SEKTION.kontrol]: "Til kontrol",
@@ -82,18 +80,23 @@ function kroner(oere) {
 function sektionMatcher(scenarie, sektion) {
   if (sektion === INDBAKKE_SEKTION.indbakke) {
     return scenarie.sektion !== INDBAKKE_SEKTION.kontrolleret
+      && scenarie.sektion !== INDBAKKE_SEKTION.ekstraKontrol
       && scenarie.sektion !== INDBAKKE_SEKTION.arkiv;
   }
   if (sektion === INDBAKKE_SEKTION.behandling) {
     return scenarie.sektion === INDBAKKE_SEKTION.behandling
       || scenarie.sektion === INDBAKKE_SEKTION.match;
   }
+  if (sektion === INDBAKKE_SEKTION.arkiv) {
+    return scenarie.sektion === INDBAKKE_SEKTION.kontrolleret
+      || scenarie.sektion === INDBAKKE_SEKTION.arkiv;
+  }
   return scenarie.sektion === sektion;
 }
 
 function erArbejdslisteSektion(sektion) {
-  return [INDBAKKE_SEKTION.indbakke, INDBAKKE_SEKTION.behandling,
-    INDBAKKE_SEKTION.kontrol, INDBAKKE_SEKTION.kontrolleret].includes(sektion);
+  return [INDBAKKE_SEKTION.indbakke, INDBAKKE_SEKTION.ekstraKontrol,
+    INDBAKKE_SEKTION.arkiv].includes(sektion);
 }
 
 function kortHash(hash) {
@@ -128,11 +131,14 @@ export default function Fakturacenter() {
 
 function FakturacenterPrototype() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const outletContext = useOutletContext();
   const setFakturacenterAntal = outletContext?.setFakturacenterAntal;
   const ønsketSektion = searchParams.get("sektion");
+  const legacyMål = FAKTURACENTER_LEGACY_SEKTION[ønsketSektion];
   const sektion = FAKTURACENTER_SEKTIONER.some(({ id }) => id === ønsketSektion)
-    ? ønsketSektion : INDBAKKE_SEKTION.indbakke;
+    ? ønsketSektion
+    : legacyMål && legacyMål !== "opsaetning" ? legacyMål : INDBAKKE_SEKTION.indbakke;
   const [scenarier, setScenarier] = useState(() =>
     DEMO_FAKTURACENTER_SCENARIER.map((scenarie) => ({
       ...scenarie,
@@ -142,8 +148,10 @@ function FakturacenterPrototype() {
   const [valgteTilMasse, setValgteTilMasse] = useState([]);
   const [filter, setFilter] = useState("");
   const [matchfilter, setMatchfilter] = useState(MATCHFILTER.alle);
-  const [sortering, setSortering] = useState(MATCHSORTERING.nyeste);
+  const [modulfilter, setModulfilter] = useState(MODULFILTER.alle);
+  const sortering = MATCHSORTERING.nyeste;
   const [masseResultater, setMasseResultater] = useState([]);
+  const [masseBekræftAaben, setMasseBekræftAaben] = useState(false);
   const [dropAktiv, setDropAktiv] = useState(false);
   const [lokaleFiler, setLokaleFiler] = useState([]);
   const [lokalBesked, setLokalBesked] = useState(null);
@@ -164,8 +172,9 @@ function FakturacenterPrototype() {
   const synlige = useMemo(() => filtrerOgSorterFakturaer(sektionsScenarier, {
     søgning: filter,
     matchfilter,
+    modulfilter,
     sortering,
-  }), [filter, matchfilter, sektionsScenarier, sortering]);
+  }), [filter, matchfilter, modulfilter, sektionsScenarier, sortering]);
   const valgt = synlige.find((scenarie) => scenarie.id === valgtId) || synlige[0] || null;
   const synligeFakturaIder = useMemo(() => synlige
     .map((scenarie) => scenarie.faktura.fakturaId), [synlige]);
@@ -187,10 +196,21 @@ function FakturacenterPrototype() {
   const kontrolleretNettoOere = useMemo(() =>
     kontrolleretOmkostning(scenarier.map((scenarie) => scenarie.faktura)), [scenarier]);
   const sektionsAntal = useMemo(() => Object.fromEntries(
-    FAKTURACENTER_SEKTIONER.map(({ id }) => [id, id === INDBAKKE_SEKTION.mail
-      ? [DEMO_VEYRO_MAIL, DEMO_MAILBOX].length
-      : scenarier.filter((scenarie) => sektionMatcher(scenarie, id)).length]),
+    [...FAKTURACENTER_SEKTIONER.map(({ id }) => [id,
+      scenarier.filter((scenarie) => sektionMatcher(scenarie, id)).length]),
+    ["__ekstraKontrolAktiv", false]],
   ), [scenarier]);
+
+  useEffect(() => {
+    if (!ønsketSektion || FAKTURACENTER_SEKTIONER.some(({ id }) => id === ønsketSektion)) return;
+    if (legacyMål === "opsaetning") {
+      navigate("/opsaetning/fakturacenter", { replace: true });
+      return;
+    }
+    const næste = new URLSearchParams(searchParams);
+    næste.set("sektion", legacyMål || INDBAKKE_SEKTION.indbakke);
+    setSearchParams(næste, { replace: true });
+  }, [legacyMål, navigate, ønsketSektion, searchParams, setSearchParams]);
 
   useEffect(() => {
     setFakturacenterAntal?.(sektionsAntal);
@@ -199,6 +219,7 @@ function FakturacenterPrototype() {
   useEffect(() => {
     setFilter("");
     setMatchfilter(MATCHFILTER.alle);
+    setModulfilter(MODULFILTER.alle);
     setAktivtPanel("liste");
     setValgteTilMasse([]);
     setMasseResultater([]);
@@ -448,7 +469,7 @@ function FakturacenterPrototype() {
     }));
     if (resultat.fordeling.ok) {
       setValgtId(valgt.id);
-      skiftSektion(INDBAKKE_SEKTION.kontrol);
+      skiftSektion(INDBAKKE_SEKTION.indbakke);
       setAktivtPanel("behandling");
     }
     setLokalBesked(resultat.fordeling.ok
@@ -483,7 +504,7 @@ function FakturacenterPrototype() {
     }));
     setBegrundelse("");
     setValgtId(valgt.id);
-    skiftSektion(INDBAKKE_SEKTION.kontrol);
+    skiftSektion(INDBAKKE_SEKTION.indbakke);
     setAktivtPanel("behandling");
   };
 
@@ -507,13 +528,15 @@ function FakturacenterPrototype() {
       setLokalBesked(`Kan ikke markeres Kontrolleret: ${resultat.blokeringer.join(", ")}`);
       return;
     }
-    opdatérScenarie(valgt.id, (scenarie) => ({
+    const behandletId = valgt.id;
+    const næsteSynlige = synlige.find((scenarie) => scenarie.id !== behandletId)?.id || null;
+    opdatérScenarie(behandletId, (scenarie) => ({
       ...scenarie, sektion: INDBAKKE_SEKTION.kontrolleret, faktura: resultat.faktura,
     }));
-    setValgtId(valgt.id);
-    skiftSektion(INDBAKKE_SEKTION.kontrolleret);
-    setAktivtPanel("behandling");
-    setLokalBesked("Fakturaen blev låst og markeret Kontrolleret i den lokale demo.");
+    setValgtId(næsteSynlige);
+    skiftSektion(INDBAKKE_SEKTION.indbakke);
+    setAktivtPanel(næsteSynlige ? "dokument" : "liste");
+    setLokalBesked("Fakturaen blev låst og flyttet til Arkiv i den lokale prototype. Du er stadig i Indbakke.");
   };
 
   const genåbn = () => {
@@ -528,7 +551,7 @@ function FakturacenterPrototype() {
     }));
     setBegrundelse("");
     setValgtId(valgt.id);
-    skiftSektion(INDBAKKE_SEKTION.behandling);
+    skiftSektion(INDBAKKE_SEKTION.indbakke);
     setAktivtPanel("behandling");
     setLokalBesked("Fakturaen blev genåbnet lokalt; statistikken genberegnes af kontrakten.");
   };
@@ -549,6 +572,7 @@ function FakturacenterPrototype() {
     setMasseResultater(resultat.resultater);
     setLokalBesked(`Massekontrol: ${bestået} lykkedes, ${resultat.resultater.length - bestået} afvist.`);
     setValgteTilMasse([]);
+    setMasseBekræftAaben(false);
   };
 
   const genåbnDestination = (destination) => {
@@ -626,16 +650,16 @@ function FakturacenterPrototype() {
       </section>
 
       <header className="fic-hero">
-        <div><p className="fic-eyebrow">Dokumenter, match og omkostningsstruktur</p>
+        <div><p className="fic-eyebrow">Fakturakontrol</p>
           <h1>Fakturacenter</h1>
-          <p>Modtag dokumentet, kontrollér de aflæste oplysninger, og placér nettobeløbet
-            på den rigtige opgave eller bestilling. Kontrol er ikke betalingsgodkendelse eller bogføring.</p></div>
+          <p>Modtag, match, fordel og kontrollér fakturaer. Arkiv betyder afsluttet
+            Veyro-kontrol — ikke bogføring eller betaling.</p></div>
         <div className="fic-hero-actions">
           <button ref={modtagKnapRef} type="button" className="fic-primary fic-receive-button"
             onClick={() => setModtagAaben(true)}>Modtag faktura</button>
           <div className="fic-hero-stats">
             <Stat label="I indbakken" værdi={scenarier.filter((s) => sektionMatcher(s, INDBAKKE_SEKTION.indbakke)).length} />
-            <Stat label="Kræver behandling" værdi={scenarier.filter((s) => s.sektion === INDBAKKE_SEKTION.behandling).length} />
+            <Stat label="I arkiv" værdi={scenarier.filter((s) => sektionMatcher(s, INDBAKKE_SEKTION.arkiv)).length} />
             <Stat label="Kontrolleret netto · demo" værdi={kroner(kontrolleretNettoOere)} />
           </div>
         </div>
@@ -652,25 +676,26 @@ function FakturacenterPrototype() {
         </Dialog>
       )}
 
+      {masseBekræftAaben && (
+        <Dialog titel="Bekræft massekontrol" onLuk={() => setMasseBekræftAaben(false)}
+          under={`${aktiveValgte.length} synlige fakturaer er valgt i den aktuelle filtrerede Indbakke.`}>
+          <p>Hver faktura kontrolleres særskilt for adgang, revision, fordeling og
+            blokeringer. Fakturaer, der ikke består kontrollen, bliver i Indbakke.</p>
+          <div className="fc-formular-knapper">
+            <button type="button" className="fic-secondary"
+              onClick={() => setMasseBekræftAaben(false)}>Annuller</button>
+            <button type="button" className="fic-primary" onClick={masseKontrol}>
+              Bekræft og markér som kontrolleret
+            </button>
+          </div>
+        </Dialog>
+      )}
+
       <main className="fic-workbench">
         {lokalBesked && (
           <div className="fic-message" role="status" aria-live="polite">
             {lokalBesked}
             <button type="button" onClick={() => setLokalBesked(null)} aria-label="Luk besked">×</button>
-          </div>
-        )}
-
-        {sektion === INDBAKKE_SEKTION.mail && (
-          <div className="fic-section-viewport fic-section-viewport-mail"
-               role="region" aria-label="Mailopsætning · internt scrollområde" tabIndex="0">
-            <MailForbindelserPanel veyroMail={DEMO_VEYRO_MAIL} mailbox={DEMO_MAILBOX} />
-          </div>
-        )}
-
-        {sektion === INDBAKKE_SEKTION.arkiv && (
-          <div className="fic-section-viewport fic-section-viewport-archive"
-               role="region" aria-label="Arkivprototype · internt scrollområde" tabIndex="0">
-            <ArkivPrototypePanel />
           </div>
         )}
 
@@ -684,7 +709,7 @@ function FakturacenterPrototype() {
             <FakturacenterPanelnavigation aktivtPanel={aktivtPanel} onSkift={setAktivtPanel} />
             <aside className="fic-inbox" aria-label={`${STATUS_LABEL[sektion]} · arbejdsliste`}>
           <div className="fic-panel-head">
-            <div><span className="fic-kicker">Syntetiske scenarier</span><h2>{STATUS_LABEL[sektion]}</h2></div>
+            <div><span className="fic-kicker">Fakturaer</span><h2>{STATUS_LABEL[sektion]}</h2></div>
             <div className="fic-panel-head-actions">
               <span className="fic-count">{synlige.length}</span>
               <button type="button" className="fic-panel-reset" onClick={nulstilPanelbredder}
@@ -713,19 +738,33 @@ function FakturacenterPrototype() {
                   <option value={MATCHFILTER.delvis}>Delvist fordelt</option>
                 </select>
               </label>
-              <label><span>Sortering</span>
-                <select value={sortering} onChange={(event) => setSortering(event.target.value)}>
-                  <option value={MATCHSORTERING.nyeste}>Nyeste først</option>
-                  <option value={MATCHSORTERING.matchede}>Matchede først</option>
-                  <option value={MATCHSORTERING.uafklarede}>Uafklarede først</option>
+              <label><span>Modul</span>
+                <select value={modulfilter} onChange={(event) => {
+                  setModulfilter(event.target.value);
+                  rydMassevalg("Valget blev ryddet, fordi modulfilteret ændrede arbejdsliste-sættet.");
+                }}>
+                  <option value={MODULFILTER.alle}>Alle moduler</option>
+                  <option value={MODULFILTER.fleet}>FLEET</option>
+                  <option value={MODULFILTER.facility}>FACILITY</option>
+                  <option value={MODULFILTER.procure}>PROCURE</option>
+                  <option value={MODULFILTER.flere}>Flere moduler</option>
+                  <option value={MODULFILTER.uafklaret}>Uafklaret destination</option>
                 </select>
               </label>
             </div>
+            {synligeFakturaIder.length > 0 && (
+              <label className="fic-select-all">
+                <input type="checkbox"
+                  checked={aktiveValgte.length === synligeFakturaIder.length}
+                  onChange={(event) => setValgteTilMasse(event.target.checked ? synligeFakturaIder : [])} />
+                <span>Vælg alle {synligeFakturaIder.length} synlige fakturaer</span>
+              </label>
+            )}
           </div>
 
           <div className="fic-inbox-list" role="region" tabIndex="0"
                aria-label={`Synlige fakturaer · ${STATUS_LABEL[sektion]} · internt scrollområde`}>
-            {synlige.length === 0 && <p className="fic-empty">Ingen scenarier i denne sektion.</p>}
+            {synlige.length === 0 && <p className="fic-empty">Ingen fakturaer i denne visning.</p>}
             {synlige.map((scenarie) => {
               const matchvisning = udledMatchvisning(scenarie);
               return (
@@ -774,8 +813,9 @@ function FakturacenterPrototype() {
               <div><b>{aktiveValgte.length} valgt{aktiveValgte.length === 1 ? "" : "e"}</b>
                 <span>Fluebenet vælger kun til denne massehandling. Kun synlige poster behandles.</span></div>
               <div className="fic-bulk-actions">
-                <button type="button" className="fic-primary" onClick={masseKontrol}>
-                  Markér valgte som kontrolleret
+                <button type="button" className="fic-primary"
+                  onClick={() => setMasseBekræftAaben(true)}>
+                  Markér som kontrolleret
                 </button>
                 <button type="button" className="fic-secondary" onClick={rydMassevalg}>
                   Ryd valg
@@ -817,9 +857,6 @@ function FakturacenterPrototype() {
           </section>
         )}
 
-        <footer className="fic-coming"><b>Kommende kontrakter</b>
-          <span>Menutæller · Mine opgaver · dashboardfrister · in-app-notifikationer</span>
-          <span>E-mailpåmindelser: {DEMO_KOMMENDE_OPGAVER.mail}</span></footer>
       </main>
     </div>
   );

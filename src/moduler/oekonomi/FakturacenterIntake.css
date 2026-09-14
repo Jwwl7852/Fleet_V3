@@ -121,6 +121,10 @@
 .fic-channel small { margin-top: 8px; color: var(--bc-text); font-size: var(--fc-t-tight); }
 .fic-channel-disabled { margin-top: auto; padding-top: 8px; color: var(--bc-muted); font-size: var(--fc-t-tight); font-weight: 700; }
 .fic-setup-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.fic-settings-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 11px; margin-top: 14px; }
+.fic-settings-field { display: grid; align-content: start; gap: 6px; min-width: 0; }
+.fic-settings-field > span { color: var(--bc-text); font-size: var(--fc-t-s); font-weight: 600; }
+.fic-settings-field input, .fic-settings-field select { box-sizing: border-box; width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid var(--bc-line); border-radius: 8px; background: var(--bc-card); color: var(--bc-text); font: inherit; }
 .fic-setup-explainer { min-width: 0; padding: 15px; background: var(--bc-card); border: 1px solid var(--bc-line); border-radius: var(--fc-r); }
 .fic-setup-explainer h3 { margin: 11px 0 5px; font-size: var(--fc-t-m); }
 .fic-setup-explainer p { margin: 0; color: var(--bc-muted); font-size: var(--fc-t-tight); line-height: 1.45; }

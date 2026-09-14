@@ -7,6 +7,7 @@ import {
   filtrerOgSorterFakturaer,
   gemPanelLayout,
   læsPanelLayout,
+  MODULFILTER,
   nulstilPanelLayout,
   opdaterMassevalg,
   PANEL_LAYOUT_STORAGE_KEY,
@@ -28,7 +29,9 @@ import {
   dokumenttypeFraFilnavn,
   DUBLET_STATUS,
   effektivAflæsning,
+  EKSTRA_KONTROL_MODEL,
   erAabenForFaktura,
+  FAKTURACENTER_LEGACY_SEKTION,
   FAKTURACENTER_SEKTIONER,
   FAKTURAART,
   FAKTURAVINDUE,
@@ -42,6 +45,7 @@ import {
   kontrolleretOmkostning,
   markérKontrolleret,
   masseKontrollér,
+  måEkstraKontrollere,
   MATCHNIVEAU,
   matchFaktura,
   MODUL,
@@ -53,6 +57,7 @@ import {
   normaliserStelSerie,
   referenceTokens,
   retAflæsning,
+  kræverEkstraKontrol,
   skiftFakturavindue,
   TEKNISK_FEJLKODE,
   validérFordeling,
@@ -159,6 +164,26 @@ describe("Fakturacenterets matchvisning, filtrering og massevalg", () => {
     }).map(({ id }) => id), ["b", "c", "a"]);
   });
 
+  test("modulfilter skelner ét, flere og uafklarede destinationer", () => {
+    const medModuler = [
+      bygUiFaktura({ id: "fleet", modtagetMs: 3, placering: { destinationId: "f1", modul: "FLEET" } }),
+      bygUiFaktura({ id: "flere", modtagetMs: 2, fordelinger: [
+        { fordelingId: "a", modul: "FLEET", nettoOere: 5_000 },
+        { fordelingId: "b", modul: "FACILITY", nettoOere: 5_000 },
+      ] }),
+      bygUiFaktura({ id: "ingen", modtagetMs: 1 }),
+    ];
+    assert.deepEqual(filtrerOgSorterFakturaer(medModuler, {
+      modulfilter: MODULFILTER.fleet,
+    }).map(({ id }) => id), ["fleet", "flere"]);
+    assert.deepEqual(filtrerOgSorterFakturaer(medModuler, {
+      modulfilter: MODULFILTER.flere,
+    }).map(({ id }) => id), ["flere"]);
+    assert.deepEqual(filtrerOgSorterFakturaer(medModuler, {
+      modulfilter: MODULFILTER.uafklaret,
+    }).map(({ id }) => id), ["ingen"]);
+  });
+
   test("massemål afgrænses til hele det filtrerede listesæt, ikke scrollviewporten", () => {
     assert.deepEqual(afgrænsMassevalg(["a", "b", "skjult"], rækker.map(({ id }) => id)), ["a", "b"]);
   });
@@ -200,7 +225,7 @@ describe("Fakturacenterets panel- og valgwiring", () => {
     const rækkeKlik = kilde.match(/aria-label=\{`Åbn[\s\S]*?\}\}>/)?.[0] || "";
     assert.doesNotMatch(rækkeKlik, /rydMassevalg/);
     assert.match(kilde, /Matchfilter/);
-    assert.match(kilde, /Sortering/);
+    assert.match(kilde, /Alle moduler/);
   });
 
   test("begge separatorer har pointer capture, tastatursemantik og nulstilling", () => {
@@ -1197,12 +1222,11 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     assert.match(samletUi, /onDrop=/);
     assert.match(samletUi, /PDF · JPG\/JPEG · PNG · XML · OIOUBL/);
     assert.match(samletUi, /Markér som kontrolleret/);
-    for (const sektion of ["Indbakke", "Kræver behandling", "Til kontrol",
-      "Kontrollerede", "Mail og forbindelser", "Arkiv"]) {
+    for (const sektion of ["Indbakke", "Ekstra kontrol", "Arkiv"]) {
       assert.match(samletUi + kontrakt, new RegExp(sektion));
     }
     assert.doesNotMatch(samletUi, /useListe|firebase\/|uploadFakturaDokument/);
-    assert.match(samletUi, /Kontrol er ikke betalingsgodkendelse eller bogføring/);
+    assert.match(samletUi, /ikke bogføring eller betaling/);
     assert.doesNotMatch(samletUi, /Markér som (betalt|bogført)|Godkend betaling/i);
     assert.match(samletUi, /aria-current=/);
     assert.match(samletUi, /aria-pressed=/);
@@ -1214,27 +1238,47 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     assert.doesNotMatch(lagerblok, /fakturaId|filmetadata|historik|massemarkering/);
   });
 
-  test("navigationen har præcis de seks aftalte sektioner", () => {
+  test("navigationen har det samlede tretrinsforløb", () => {
     assert.deepEqual(FAKTURACENTER_SEKTIONER.map(({ label }) => label), [
       "Indbakke",
-      "Kræver behandling",
-      "Til kontrol",
-      "Kontrollerede",
-      "Mail og forbindelser",
+      "Ekstra kontrol",
       "Arkiv",
     ]);
+    assert.equal(FAKTURACENTER_SEKTIONER[1].betinget, true);
   });
 
-  test("de seks sektioner har én fælles sidebar-navigation", () => {
+  test("sektionerne har én fælles sidebar-navigation", () => {
     const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
     const shell = readFileSync("src/fleet/AppShell.jsx", "utf8");
     const nav = readFileSync("src/fleet/nav.js", "utf8");
     assert.match(nav, /fakturacenterSektioner:\s*FAKTURACENTER_SEKTIONER/);
-    assert.ok(shell.includes("aria-label={`Fold Fakturacentersektioner"));
-    assert.match(shell, /aria-expanded=\{undermenuAaben\}/);
+    assert.match(shell, /aria-expanded=\{kompaktAktiv \? kompaktAaben === m\.key : undermenuAaben\}/);
     assert.match(shell, /aria-current=\{aktivFakturacenterSektion === sektion\.id \? "page" : undefined\}/);
     assert.doesNotMatch(ui, /<Sektionsnavigation\b/);
     assert.doesNotMatch(ui, /<SektionIntroduktion\b/);
+  });
+
+  test("gamle dybe links mappes uden at ændre historiske domænestatusser", () => {
+    assert.equal(FAKTURACENTER_LEGACY_SEKTION["til-kontrol"], "indbakke");
+    assert.equal(FAKTURACENTER_LEGACY_SEKTION[intakeDomæne.INDBAKKE_SEKTION.kontrolleret], "arkiv");
+    assert.equal(FAKTURACENTER_LEGACY_SEKTION["mail-og-forbindelser"], "opsaetning");
+  });
+
+  test("ekstra kontrol bruger nettobeløb og kræver en anden udpeget kontrollant", () => {
+    const opsætning = {
+      aktiv: true,
+      model: EKSTRA_KONTROL_MODEL.overBeloeb,
+      graenseNettoOere: 100_000,
+      kontrollantIder: ["anden"],
+    };
+    assert.equal(kræverEkstraKontrol({ nettoOere: 100_001, totalOere: 1 }, opsætning), true);
+    assert.equal(kræverEkstraKontrol({ nettoOere: 100_000, totalOere: 999_999 }, opsætning), false);
+    assert.equal(måEkstraKontrollere({
+      brugerId: "anden", førsteKontrollantId: "første", opsætning,
+    }), true);
+    assert.equal(måEkstraKontrollere({
+      brugerId: "første", førsteKontrollantId: "første", opsætning,
+    }), false);
   });
 
   test("modtagelse ligger i en dialog og ikke i venstre arbejdsliste", () => {
@@ -1262,7 +1306,7 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
     const css = readFileSync("src/moduler/oekonomi/FakturacenterIntake.css", "utf8");
     assert.match(ui, /aktiveValgte\.length > 0 &&/);
-    assert.match(ui, /Markér valgte som kontrolleret/);
+    assert.match(ui, /Markér som kontrolleret/);
     assert.match(ui, /Ryd valg/);
     assert.match(ui, /title=\{scenarie\.titel\}/);
     assert.match(ui, /fic-invoice-supplier/);
@@ -1278,7 +1322,7 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     const dele = readFileSync("src/moduler/oekonomi/FakturacenterPrototypeDele.jsx", "utf8");
     assert.doesNotMatch(ui, /<SektionIntroduktion\b/);
     assert.match(ui, /Fluebenet vælger kun til denne massehandling/);
-    assert.match(ui, /Kontrol er ikke betalingsgodkendelse eller bogføring/);
+    assert.match(ui, /ikke bogføring eller betaling/);
     assert.match(dele, /Valgfri integration · deaktiveret/);
     assert.match(dele, /Permanent opbevaring er ikke implementeret/);
   });
@@ -1321,11 +1365,11 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     assert.doesNotMatch(samlet, /match(score|procent)|confidence/i);
   });
 
-  test("mail og arkiv bruger samme viewportprincip som behandlingssektionerne", () => {
+  test("mail er flyttet til Opsætning, mens Arkiv genbruger trepanelvisningen", () => {
     const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
-    const css = readFileSync("src/moduler/oekonomi/FakturacenterIntake.css", "utf8");
-    assert.match(ui, /fic-section-viewport fic-section-viewport-mail/);
-    assert.match(ui, /fic-section-viewport fic-section-viewport-archive/);
-    assert.match(css, /\.fic-section-viewport\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s);
+    const opsætning = readFileSync("src/moduler/opsaetning/FakturacenterOpsaetning.jsx", "utf8");
+    assert.match(ui, /navigate\("\/opsaetning\/fakturacenter"/);
+    assert.match(ui, /INDBAKKE_SEKTION\.arkiv\]\.includes\(sektion\)/);
+    assert.match(opsætning, /MailForbindelserPanel/);
   });
 });

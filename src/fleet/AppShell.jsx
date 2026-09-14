@@ -401,7 +401,8 @@ export default function AppShell() {
                           {undermenuAaben && (
                             <div className="fc-sub fc-sub-fakturacenter" aria-label="Fakturacentersektioner">
                               <strong className="fc-kompakt-modulnavn">{m.label}</strong>
-                              {fakturacenterSektioner.map((sektion) => {
+                              {fakturacenterSektioner.filter((sektion) =>
+                                !sektion.betinget || fakturacenterAntal.__ekstraKontrolAktiv).map((sektion) => {
                                 const antal = fakturacenterAntal[sektion.id];
                                 return (
                                   <Link key={sektion.id} to={`${m.sti}?sektion=${sektion.id}`}

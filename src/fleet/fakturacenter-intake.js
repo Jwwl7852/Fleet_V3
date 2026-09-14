@@ -198,6 +198,7 @@ export const KONTROL_STATUS = Object.freeze({
 
 export const INDBAKKE_SEKTION = Object.freeze({
   indbakke: "indbakke",
+  ekstraKontrol: "ekstra-kontrol",
   behandling: "kraever-behandling",
   match: "match-og-fordeling",
   kontrol: "til-kontrol",
@@ -209,12 +210,49 @@ export const INDBAKKE_SEKTION = Object.freeze({
 /** Stabil visningsrækkefølge. Labels er UI-metadata, ikke et datasæt. */
 export const FAKTURACENTER_SEKTIONER = Object.freeze([
   { id: INDBAKKE_SEKTION.indbakke, label: "Indbakke" },
-  { id: INDBAKKE_SEKTION.behandling, label: "Kræver behandling" },
-  { id: INDBAKKE_SEKTION.kontrol, label: "Til kontrol" },
-  { id: INDBAKKE_SEKTION.kontrolleret, label: "Kontrollerede" },
-  { id: INDBAKKE_SEKTION.mail, label: "Mail og forbindelser" },
+  { id: INDBAKKE_SEKTION.ekstraKontrol, label: "Ekstra kontrol", betinget: true },
   { id: INDBAKKE_SEKTION.arkiv, label: "Arkiv" },
 ]);
+
+/**
+ * Gamle visnings-id'er bevares som indgående kompatibilitet. De er ikke nye
+ * domænestatusser: behandling/match/kontrol er fortsat tilstande inde i den
+ * samlede Indbakke, mens allerede kontrollerede poster findes i Arkiv.
+ * Mailopsætning har sin egen fælles Opsætningsrute.
+ */
+export const FAKTURACENTER_LEGACY_SEKTION = Object.freeze({
+  [INDBAKKE_SEKTION.behandling]: INDBAKKE_SEKTION.indbakke,
+  [INDBAKKE_SEKTION.match]: INDBAKKE_SEKTION.indbakke,
+  [INDBAKKE_SEKTION.kontrol]: INDBAKKE_SEKTION.indbakke,
+  [INDBAKKE_SEKTION.kontrolleret]: INDBAKKE_SEKTION.arkiv,
+  [INDBAKKE_SEKTION.mail]: "opsaetning",
+  arbejdsbord: INDBAKKE_SEKTION.indbakke,
+  afvigelser: INDBAKKE_SEKTION.indbakke,
+});
+
+export const EKSTRA_KONTROL_MODEL = Object.freeze({
+  ingen: "ingen",
+  alle: "alle",
+  overBeloeb: "over-beloeb",
+});
+
+/** Ren beslutningskontrakt. Beløbsgrænsen er altid ekskl. moms. */
+export function kræverEkstraKontrol(faktura, opsætning) {
+  if (!opsætning || opsætning.aktiv !== true) return false;
+  if (opsætning.model === EKSTRA_KONTROL_MODEL.alle) return true;
+  if (opsætning.model !== EKSTRA_KONTROL_MODEL.overBeloeb) return false;
+  return Number.isSafeInteger(faktura?.nettoOere)
+    && Number.isSafeInteger(opsætning.graenseNettoOere)
+    && faktura.nettoOere > opsætning.graenseNettoOere;
+}
+
+/** Ekstra kontrollant skal være udpeget og må ikke være første kontrollant. */
+export function måEkstraKontrollere({ brugerId, førsteKontrollantId, opsætning } = {}) {
+  return typeof brugerId === "string" && brugerId.length > 0
+    && brugerId !== førsteKontrollantId
+    && Array.isArray(opsætning?.kontrollantIder)
+    && opsætning.kontrollantIder.includes(brugerId);
+}
 
 export const TEKNISK_FEJLKODE = Object.freeze({
   ugyldigtDokument: "INTAKE_INVALID_DOCUMENT",

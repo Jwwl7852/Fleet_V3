@@ -655,6 +655,10 @@ export const NAV = [
         under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes ved siden af under Medarbejdere." },
       { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer", skjulINav: true,
         titel: "Integrationer", under: "Kort, brændstofkort, regnskab og løn" },
+      { key: "fakturacenterOpsaetning", sti: "/opsaetning/fakturacenter",
+        label: "Fakturacenter", kraeverPerm: "fakturaer.godkend",
+        titel: "Fakturacenter – opsætning",
+        under: "Ekstra kontrol, kontrollanter og deaktiverede mailforbindelser." },
       /* ⚠ PROCURE TARGET, TRIN 4 (produktejer-review 2026-09-02) — FLYTTET
          HERTIL FRA Godkendelser.jsx. Dette er kun ADMINISTRATIONS-UI'et: hvem
          der må godkende, og hvornår. Selve KØEN af ordrer der venter, og
