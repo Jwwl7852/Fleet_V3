@@ -973,3 +973,25 @@ bevidst en lokal demo-/UI-tilstand uden Firebase- eller
 produktionstilslutning. Det fulde test- og konfliktbevis samt resterende
 produktionsarbejde står i
 `docs/VEYRO_UNITBOOKING_INTEGRATIONSRESULTAT_V1.md`.
+
+## 18. Fælles login og 45 minutters inaktivitetslogout — 2026-09-14
+
+Det godkendte loginforslag E er monteret som fælles loginflade uden at ændre
+Firebase-login, claims-v2, abonnement, modul- eller permissionhåndhævelse. De
+ni godkendte generelle motiver ligger både som bevarede kilder og optimerede
+webaktiver. SUPPORT-motivet er efter Dennis' afsluttende beslutning helt
+udeladt fra katalog, aktiver og build.
+
+En central vagt varsler efter 43 minutter og kalder den rigtige
+`auth.signOut()` efter 45 minutters manglende brugeraktivitet. Aktivitet deles
+kun mellem faner for samme bruger, sikkerhedskontekst og login-session. Demo
+uden Firebase-session foregiver ikke at være omfattet. Grænsen er en
+klientfunktion og erstatter ikke Rules, revocation eller serverpermissions.
+
+Login-, komponent-, design-, skrift-, statustals-, lint- og buildkontrollerne
+bestod. Normalt login, to faner, faktisk logout og direkte ruteafvisning er
+afprøvet mod isoleret Auth/Database-emulator. Den fulde Rules-gate kørte, men
+er fortsat rød på syv fælles blokeringer; den væsentligste er den eksisterende
+WAREHOUSE-omgåelse af beskyttede fysiske unitfelter. Hele afgrænsningen,
+testmatricen og den lokale prøveadgang står i
+`docs/VEYRO_LOGIN_OG_INAKTIVITET_V1.md`.
