@@ -21,10 +21,10 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   // WAREHOUSEs fælles unitbevægelseshistorik tilføjer én tenantbundet
   // dual-read. UNIT-importens læsbare kladde løfter den videre til 103.
   assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 103);
-  // 166 → 168: den læsbare PROCURE-godkendelseskø har både den kompakte
-  // indkoeb.laes-gate og den tidsbegrænsede legacy-permission; kladde og
-  // opsætning er fortsat helt serverlukkede.
-  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 174);
+  // WAREHOUSE må ikke oprette fælles unittyper eller units direkte. De to
+  // skrivegrene er derfor fjernet, mens den læsbare PROCURE-godkendelseskø
+  // fortsat har både den kompakte indkoeb.laes-gate og legacy-permissionen.
+  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 172);
   // PROCUREs serverlukkede kladder/opsætning, linjespor og læsbare
   // godkendelseskø udvider den målte regelkontrakt med ca. 3 kB. Bevar et
   // snævert loft, så senere ukontrolleret vækst fortsat opdages.

@@ -145,7 +145,6 @@ const UDEN_KRAEVERPERM = {
   warehousePluk: "samme: `kunder.laes`.",
   warehouseLabels: "`booking.laes` og `kunder.laes` — begge hos alle seks.",
   warehouseSporbarhed: "samme: `kunder.laes`.",
-  enheder: "`koeretoejer.laes`, som alle seks roller har.",
   servicebog: "samme: `koeretoejer.laes`, som alle seks roller har — §9.10's "
     + "servicepunkter bor på koeretoejer-posten selv.",
   flaadeStatistik: "`koeretoejer.laes`, som alle seks roller har. `indkoeb.laes` "
@@ -187,7 +186,7 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(prototype, /eksterneKald:\s*false/);
         continue;
       }
-      if (p.key.startsWith("fleetV2")) {
+      if (p.key.startsWith("fleetV2") || p.key === "enheder") {
         /* FLEET v2 læser med vilje ikke en Firebase-node i milepæl A. Dets
            lokale IndexedDB-ruter skal derfor bevise permission-gaten i den
            fælles adapter i stedet for at foregive serverhåndhævelse. */

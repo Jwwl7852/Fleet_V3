@@ -1226,7 +1226,7 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
       assert.match(samletUi + kontrakt, new RegExp(sektion));
     }
     assert.doesNotMatch(samletUi, /useListe|firebase\/|uploadFakturaDokument/);
-    assert.match(samletUi, /ikke bogføring eller betaling/);
+    assert.match(samletUi, /ikke betalingsgodkendelse eller bogføring/);
     assert.doesNotMatch(samletUi, /Markér som (betalt|bogført)|Godkend betaling/i);
     assert.match(samletUi, /aria-current=/);
     assert.match(samletUi, /aria-pressed=/);
@@ -1322,7 +1322,7 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     const dele = readFileSync("src/moduler/oekonomi/FakturacenterPrototypeDele.jsx", "utf8");
     assert.doesNotMatch(ui, /<SektionIntroduktion\b/);
     assert.match(ui, /Fluebenet vælger kun til denne massehandling/);
-    assert.match(ui, /ikke bogføring eller betaling/);
+    assert.match(ui, /ikke betalingsgodkendelse eller bogføring/);
     assert.match(dele, /Valgfri integration · deaktiveret/);
     assert.match(dele, /Permanent opbevaring er ikke implementeret/);
   });

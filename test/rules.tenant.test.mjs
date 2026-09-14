@@ -52,6 +52,8 @@ const LAESNING_NAEGTET = new Set([
   "procureMobilKladder",
   "procureOpsaetning",
   "procureQrMaerkater",
+  "unitbookingImportHashes",
+  "unitbookingImportOperationer",
   "vagter",
   "workforceGodkendelsesomfang",
   "_workforceAnmodninger",

@@ -160,7 +160,13 @@ describe("den fælles fysiske unit", () => {
   it("åbner ikke direkte WAREHOUSE-skrivning til den kanoniske unit", async () => {
     const db = som(KUN_WMS);
     await assertFails(update(ref(db, t(KUN_WMS, "kasser/UNIT-101")), { pladsId: "p2" }));
+    await assertFails(set(ref(db, t(KUN_WMS, "kasser/UNIT-102")), {
+      type: "lagerunit", status: "ledig", pladsId: "p1",
+    }));
     await assertFails(set(ref(db, t(KUN_WMS, "kassetyper/ny")), { navn: "Ny type" }));
+    await assertSucceeds(update(ref(db, t(KUN_WMS, "kasser/UNIT-101")), {
+      note: "Syntetisk stamdatarettelse uden fysisk flytning.",
+    }));
   });
 
   it("lukker UNIT-klientens direkte vej til fysisk placering og serverstatus", async () => {

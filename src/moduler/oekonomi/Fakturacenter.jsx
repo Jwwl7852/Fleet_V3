@@ -653,7 +653,7 @@ function FakturacenterPrototype() {
         <div><p className="fic-eyebrow">Fakturakontrol</p>
           <h1>Fakturacenter</h1>
           <p>Modtag, match, fordel og kontrollér fakturaer. Arkiv betyder afsluttet
-            Veyro-kontrol — ikke bogføring eller betaling.</p></div>
+            Veyro-kontrol — ikke betalingsgodkendelse eller bogføring.</p></div>
         <div className="fic-hero-actions">
           <button ref={modtagKnapRef} type="button" className="fic-primary fic-receive-button"
             onClick={() => setModtagAaben(true)}>Modtag faktura</button>

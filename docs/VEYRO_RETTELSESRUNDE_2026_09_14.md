@@ -46,7 +46,7 @@ aktuelle kodegrundlag.
 | FC-05 | Filtre | Matchkategori bevares; standard nyeste først erstattes som kontrol af modul inkl. uafklaret/flere fordelinger. | Fakturacenter UI | implementeret | Filtertest dækker FLEET, flere moduler og uafklaret; browser viste modulfilter og fast nyeste rækkefølge | Ingen |
 | FC-06 | Upload | Filnavn, modtaget/behandler/fejlet, tydelig fremdrift, dubletværn og idempotent genforsøg; demo mærkes. | Fakturacenter intake/UI | i gang | Integreret browsertest viste filnavn, lokal `ikke gemt`-kvittering og samme SHA-256 på dublethold; `1440x900-fakturacenter-uploadfeedback.png` | Permanent modtagelse/pipeline og backendkvittering mangler; UI påstår ikke varig lagring |
 | FC-07 | Layout | Kompakt top og tre selvscrollende, justerbare, huskede paneler; demospecifik tekst fjernes fra normal struktur. Den ruteisolerede CSS ramte tidligere ikke den indskudte zoom-wrapper, så arbejdsbordet voksede til ca. 2.086 px i stedet for at give panelerne en viewportshøjde. | Fakturacenter workspace/CSS og AppShell zoom-wrapper | implementeret | Ved 1440×900: workspace 1.172×642 px; paneler 280/423/450 px; scrollHeight/clientHeight 1874/440, 824/566 og 1106/566. Tastaturbredde 22→24 % bestod reload. | Forretningsdata er fortsat lokal prototype; panelpræferencens scope gennemgås igen i samlet regression |
-| FC-08 | Opsætning | Mail og forbindelser flyttes ud af arbejdsnavigationen til fælles Opsætning uden at aktivere transport. | Nav, routes, opsætning | implementeret | Produktionsbuild indeholder lazy chunk; gammelt mail-link redirecter; adgang filtreres på `fakturaer.godkend` | Ekstern mail forbliver deaktiveret |
+| FC-08 | Opsætning | Mail og forbindelser flyttes ud af arbejdsnavigationen til fælles Opsætning uden at aktivere transport. | Nav, routes, opsætning | implementeret | Produktionsbuild indeholder lazy chunk; gammelt mail-link redirecter. Den lokale kontraktformular giver ikke i sig selv en serverrettighed. | Ekstern mail forbliver deaktiveret; serverstyret opsætning etableres under FC-03 |
 | FL-01 | Overblik | KPI-kort og handlingsposter/Se alle åbner relevante filtre; optællinger og udsnit forklares. | `fleet-v2/src/components/Overview.jsx`, FleetV2App og UnitCatalog | implementeret lokalt | Komponenttest og faktisk browserroute/filter | Handlingslisten forklarer nu, at den viser 5 af det samlede antal. |
 | FL-02 | Drift | Dag/uge/måned/kvartal/år ændrer registreret datagrundlag og akser. | FLEET overblik/domæne | åben | Periodeprøver mod syntetisk registreret historik | Ingen opfundet fortid |
 | FL-03 | Omkostning/nedetid | Måneder virker; datadækning, nul/mangler, sidste år og sammensmeltede tidsintervaller håndteres. | FLEET overblik/økonomidomæne | åben | Beregningstests og UI | Sammenligning kun når data findes |
@@ -65,8 +65,8 @@ aktuelle kodegrundlag.
 | FL-16 | OBD-statistik | Kun faktiske målinger vises/filtreres/eksporteres; kilde/periode/enhed mærkes; manglende forbindelse er tydelig. | FLEET statistik | åben | Datafeltinventar og syntetisk UI-test | Ekstern OBD er ikke del af opgaven |
 | FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | FLEET economy domain/UI | åben | Beregnings-/drilldowntests | Estimat, kontrolleret og bogført holdes adskilt |
 | FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET economy export | delvist implementeret lokalt | Domænetest af dansk indhold og UTF-8-rundtur | Download har nu UTF-8 BOM; manuel åbning i dansk Excel og udvidede momskolonner udestår |
-| REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | **blokeret** | Den fulde Rules-suite blev kørt i isolerede emulatorer med proceslokal JDK 21 | WAREHOUSE-reglen tillod direkte klientændring af `kasser/UNIT-101.pladsId`; fysisk placering kan dermed ændres uden den krævede append-only bevægelse. Produktarbejdet stoppede uden at svække regler eller tests. |
-| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | ikke godkendt | Kontrakt-, browser- og sikkerhedsgate | Den afsluttende samlede sikkerhedsgate er ikke bestået, og tværmodulgaten kan derfor ikke markeres grøn. |
+| REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.586/4.586 grøn i isoleret emulator. Målrettet UNIT/WAREHOUSE/modul 48/48 og tenant 21/21. | De serverfunktioner, der endnu ikke er implementeret i FC-03/FC-04/FL-14, kræver egne emulatorbeviser før deres samlede krav kan lukkes. |
+| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint og build grøn; Rules-/platformsgate 4.586/4.586 grøn | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
 | REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | i gang | Ny Etape-7-pakke dækker sagsmappe/dialog ved alle fire viewports, normal/kompakt menu, 100/125 % og Nulstil; Fakturacenter/menu/manuel sag ved 1440×900 | Samme matrix skal fortsat køres på resterende FLEET-, service-, kategori- og økonomiskærme |
 
 ## Baseline
@@ -292,7 +292,7 @@ Et samlet krav markeres ikke færdigt, hvis en relevant serverdel mangler.
 | FL-10 | Implementeret og verificeret | Implementeret og verificeret lokalt | Ikke implementeret servermæssigt | Delvist implementeret via eksisterende handlinger | Implementeret og verificeret | Delvist implementeret |
 | REG-03 | Delvist implementeret | Ikke relevant | Ikke relevant | Ikke relevant | Delvist implementeret | Delvist implementeret |
 
-## Afsluttende kontrol og stopårsag
+## Kontrolhistorik
 
 ### FLEET-regression
 
@@ -308,7 +308,7 @@ Et samlet krav markeres ikke færdigt, hvis en relevant serverdel mangler.
   aktuelle produktgrundlag. Builden har fortsat den kendte advarsel om en stor
   chunk.
 
-### Rules- og sikkerhedsgate
+### Rules- og sikkerhedsgate — første auditkørsel
 
 - Emulatorerne blev startet mod det syntetiske projekt
   `demo-fleetcontrol-rules-test`. Der var ingen produktionsfallback.
@@ -320,14 +320,12 @@ Et samlet krav markeres ikke færdigt, hvis en relevant serverdel mangler.
   dokumenterede proceslokale løsning blev brugt: arvede `TEMP` og `TMP` blev
   fjernet alene for emulatorprocessen. Firebase CLI 15.29.0 startede derefter
   Database- og Storage-emulatorerne og kørte den fulde Rules-suite.
-- Sikkerhedsgaten **bestod ikke**. Den alvorlige fejl er i
-  `test/rules.warehouse.test.mjs`: testen
-  “åbner ikke direkte WAREHOUSE-skrivning til den kanoniske unit” forventede,
-  at en direkte klientopdatering af `kasser/UNIT-101.pladsId` blev afvist, men
-  opdateringen blev tilladt. Det omgår den bindende bevægelseshistorik og den
-  autoritative callable-operation. `firebase.rules.json` er uændret siden
-  rettelsesrundens start-HEAD; fejlen er derfor en eksisterende blokering i
-  integrationsgrundlaget, ikke skabt af denne UI-runde.
+- Sikkerhedsgaten **bestod ikke**. Den første audittekst placerede fejlen på
+  den første assertion i testen
+  “åbner ikke direkte WAREHOUSE-skrivning til den kanoniske unit”. En målrettet
+  genkørsel viste, at dette var upræcist: den direkte opdatering af
+  `kasser/UNIT-101.pladsId` blev allerede afvist. Fejlen lå på den efterfølgende
+  assertion: WAREHOUSE kunne oprette `kassetyper/ny` direkte.
 - Følgende øvrige fejl blev også registreret i den fulde kørsel:
   - Fakturacenterets statiske kontrakttest mangler den tidligere synlige tekst
     om, at kontrol ikke er betalingsgodkendelse eller bogføring.
@@ -339,15 +337,60 @@ Et samlet krav markeres ikke færdigt, hvis en relevant serverdel mangler.
     inventar, selv om reglen selv er lukket med `.read: false` og `.write: false`.
   - Navigationens dokumenterede statustal er nu én for lavt efter det nye
     enhedslink under Opsætning.
-- Der er ikke slået tests eller adgangskontrol fra, og Rules er ikke ændret for
-  at få et grønt resultat. I overensstemmelse med stopkravet er yderligere
-  produktændringer og den resterende slutverifikation standset her.
+- Ingen test eller negativ adgangskontrol blev slået fra. Denne blok beskriver
+  alene den historiske første auditkørsel; løsningen og den grønne genkørsel
+  står i Etape 8 nedenfor.
 
-### Ikke afsluttet på grund af sikkerhedsstop
+### Resterende arbejde efter auditten
 
 Følgende krav er fortsat åbne eller kun delvist gennemført: UX-06/UX-07,
 FC-06/FC-07, FL-02/FL-03, FL-04's flydende popup, FL-08's fælles
 gem-bekræftelse, FL-09/FL-10/FL-12, serverdelen af FL-14,
 FL-15/FL-16/FL-17, manuel dansk Excel-kontrol under FL-18 samt hele den
-nummererede visuelle viewportmatrix i REG-03. Der er derfor ikke oprettet en
-fuld før/efter-screenshotpakke for denne rettelsesrunde.
+nummererede visuelle viewportmatrix i REG-03. Etape 7 indeholder dog nye
+før/efter-beviser for de prioriterede synlige fejl.
+
+### Etape 8 — emulatorgrundlag og WAREHOUSE-regler
+
+- Den aktuelle Java-loopback/WEPoll-fejl blev reproduceret med Database- og
+  Storage-emulatorerne. Den dokumenterede proceslokale løsning virker fortsat:
+  portable JDK 21 vælges kun i processen, og arvede `TEMP`/`TMP` fjernes kun
+  for emulatorprocessen. Ingen global miljøvariabel eller installation blev
+  ændret.
+- Den præcise WAREHOUSE-fejl lå ikke i den første `pladsId`-assertion. Denne
+  fysiske ændring blev allerede afvist. Den næste assertion viste, at en
+  WAREHOUSE-klient kunne oprette en fælles kassetype direkte. Samme brede
+  skrivegren tillod også direkte unitoprettelse.
+- Kontrakten i `src/fleet/moduler.js`, klientforløbet og
+  `unitlageropret`-callablen viser den autoritative grænse: UNIT Booking ejer
+  type-/unitstamdata, mens WAREHOUSE opretter atomisk gennem servercallablen og
+  får bevægelseshistorikken med. Rules tillader derfor fortsat læsning og
+  ikke-fysiske rettelser for WAREHOUSE, men ikke direkte type-/unitoprettelse
+  eller fysisk placering/status.
+- Negative tests dækker nu særskilt direkte `pladsId`, ny unit, ny type og
+  append-only bevægelse. En positiv test bevarer WAREHOUSEs lovlige
+  ikke-fysiske noterettelse, så løsningen ikke gør registeret unødigt
+  skrivebeskyttet.
+- Legacy-modulfejlen var et for bredt testgrundlag. Originale importmails og
+  bilag kræver fortsat et eksplicit UNIT-modul, og de to idempotensindekser er
+  altid serverinterne. Testen kræver nu fail-closed for disse tre noder i
+  stedet for at åbne dem for tenants uden `moduler`-node.
+- Fakturacenterets forklaring siger igen præcist, at Arkiv er afsluttet
+  Veyro-kontrol og ikke betalingsgodkendelse eller bogføring. Det nye
+  enhedslink er koblet til den eksisterende FLEET-routegate. Den lokale,
+  ikke-lagrende Fakturacenter-opsætning bærer ikke længere en misvisende
+  menugate, som Rules ikke kunne håndhæve; controls er fortsat deaktiverede
+  uden den eksisterende godkendelsespermission.
+- Målrettede resultater: tenant-inventar 21/21; UNIT Booking, WAREHOUSE og
+  modulgrænser 48/48. Den fulde isolerede Rules-/platformsgate bestod
+  4.586/4.586. Root lint og produktionsbuild bestod; kun den kendte
+  chunk-størrelsesadvarsel består.
+
+#### Delstatus efter Etape 8
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FC-08 | Implementeret og verificeret | Implementeret og verificeret for den lokale kontrakt | Ikke implementeret for ekstra-kontrolopsætning | Ingen falsk menugate; serverpermission etableres med FC-03 | Implementeret og verificeret | Delvist implementeret |
+| FL-05 | Implementeret og verificeret | Implementeret og verificeret for fælles FLEET-reference og særskilt UNIT-identitet | Delvist implementeret; WAREHOUSE-oprettelse går gennem eksisterende callable | Implementeret og verificeret for direkte Rules-grænse | 48/48 målrettede emulatorprøver | Delvist implementeret |
+| REG-01 | Ikke relevant | Implementeret og verificeret for eksisterende sikkerhedskontrakter | Implementeret og verificeret for eksisterende Rules/callables | Implementeret og verificeret for eksisterende Rules-grænser | 4.586/4.586 | Delvist implementeret, fordi kommende serverfunktioner kræver nye beviser |
+| REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build og fuld platformsgate grøn | Delvist implementeret |

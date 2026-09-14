@@ -64,11 +64,12 @@ describe("samme unitregister i begge moduler", () => {
     await assertSucceeds(set(ref(db, t(KUN_UNIT, "kasser/MDT-102")), unit()));
   });
 
-  it("WAREHOUSE-only kan læse og registrere samme kassetype, id og lokation", async () => {
+  it("WAREHOUSE-only læser registeret, men opretter gennem servercallablen", async () => {
     const db = som(KUN_WAREHOUSE);
     await assertSucceeds(get(ref(db, t(KUN_WAREHOUSE, "kasser/MDT-101"))));
-    await assertSucceeds(set(ref(db, t(KUN_WAREHOUSE, "kasser/WH-102")), unit()));
-    await assertSucceeds(set(ref(db, t(KUN_WAREHOUSE, "kassetyper/TR")), { navn: "Trækasse" }));
+    await assertSucceeds(get(ref(db, t(KUN_WAREHOUSE, "kassetyper/AL"))));
+    await assertFails(set(ref(db, t(KUN_WAREHOUSE, "kasser/WH-102")), unit()));
+    await assertFails(set(ref(db, t(KUN_WAREHOUSE, "kassetyper/TR")), { navn: "Trækasse" }));
   });
 
   it("tillader valgfri hjemplads, men ikke direkte ændring af aktuel placering", async () => {

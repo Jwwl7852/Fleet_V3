@@ -38,6 +38,16 @@ const MED = "modulMed";      /* har alle moduler */
 const UDEN = "modulUden";    /* har KUN dashboard — alt valgfrit er fravalgt */
 const INGEN = "modulIngenNode"; /* har ingen moduler-node overhovedet */
 
+/* Originale mails/bilag og de to idempotensindekser er ikke almindelige
+   moduldata. De må ikke blive klientlæsbare alene, fordi en gammel tenant
+   mangler sin moduler-node. Importudkastet kræver et eksplicit UNIT-modul;
+   indeksnoderne er altid serverinterne. */
+const FAIL_LUKKET_UDEN_MODULNODE = new Set([
+  "unitbookingImporter",
+  "unitbookingImportHashes",
+  "unitbookingImportOperationer",
+]);
+
 let miljoe;
 
 /* Data at prøve at nå. Formen er ligegyldig for læsningen; skrivningen
@@ -218,6 +228,11 @@ describe("En tenant UDEN moduler-node har alt", () => {
     for (const node of Object.keys(MODUL_NODER).flatMap((m) => MODUL_NODER[m])) {
       if (node.includes("/")) continue;   /* sensitive/* kræver egne perms */
 
+      if (FAIL_LUKKET_UDEN_MODULNODE.has(node)) {
+        await assertFails(get(ref(db, `tenants/${INGEN}/${node}`)));
+        continue;
+      }
+
       /**
        * ⚠ EN BEHOLDER LÆSES ÉT NIVEAU NEDE — beslutning 107.
        *
@@ -234,7 +249,12 @@ describe("En tenant UDEN moduler-node har alt", () => {
       const wildcard = Object.keys(regel || {}).find((k) => k.startsWith("$"));
       const sti = (!regel?.[".read"] && wildcard)
         ? `${node}/enPerson` : node;
-      await assertSucceeds(get(ref(db, `tenants/${INGEN}/${sti}`)));
+      try {
+        await assertSucceeds(get(ref(db, `tenants/${INGEN}/${sti}`)));
+      } catch (fejl) {
+        fejl.message = `${node} (${sti}): ${fejl.message}`;
+        throw fejl;
+      }
     }
   });
 });

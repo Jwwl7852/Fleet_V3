@@ -656,7 +656,7 @@ export const NAV = [
       { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer", skjulINav: true,
         titel: "Integrationer", under: "Kort, brændstofkort, regnskab og løn" },
       { key: "fakturacenterOpsaetning", sti: "/opsaetning/fakturacenter",
-        label: "Fakturacenter", kraeverPerm: "fakturaer.godkend",
+        label: "Fakturacenter",
         titel: "Fakturacenter – opsætning",
         under: "Ekstra kontrol, kontrollanter og deaktiverede mailforbindelser." },
       /* ⚠ PROCURE TARGET, TRIN 4 (produktejer-review 2026-09-02) — FLYTTET
