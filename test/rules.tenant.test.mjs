@@ -52,6 +52,8 @@ const LAESNING_NAEGTET = new Set([
   "procureMobilKladder",
   "procureOpsaetning",
   "procureQrMaerkater",
+  "fakturacenterOpsaetning",
+  "fakturacenterKontrolOperationer",
   "unitbookingImportHashes",
   "unitbookingImportOperationer",
   "vagter",

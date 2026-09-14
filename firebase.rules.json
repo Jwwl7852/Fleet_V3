@@ -3619,6 +3619,44 @@
           }
         },
 
+        // Serverstyret Fakturacenter-opsætning og idempotensledger.
+        "fakturacenterOpsaetning": {
+          ".read": false,
+          ".write": false,
+          "model": { ".validate": "newData.isString() && newData.val().matches(/^(ingen|alle|over-beloeb)$/)" },
+          "graenseNettoOere": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+          "kontrollantUids": {
+            "$indeks": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" }
+          },
+          "revision": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+          "opdateretAf": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+          "opdateretMs": { ".validate": "newData.isNumber()" },
+          "sidsteMutationId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+          "sidsteMutationHash": { ".validate": "newData.isString() && newData.val().matches(/^[a-f0-9]{64}$/)" },
+          "$andet": { ".validate": false }
+        },
+        "fakturacenterKontrolOperationer": {
+          ".read": false,
+          ".write": false,
+          "$uid": {
+            "$requestId": {
+              ".validate": "newData.hasChildren(['fingeraftryk', 'fakturaId', 'handling', 'oprettetMs', 'resultat'])",
+              "fingeraftryk": { ".validate": "newData.isString() && newData.val().matches(/^[a-f0-9]{64}$/)" },
+              "fakturaId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 68 && root.child('tenants').child($tenantId).child('fakturaer').child(newData.val()).exists()" },
+              "handling": { ".validate": "newData.isString() && newData.val().matches(/^(kontroller|ekstra-godkend|ekstra-afvis)$/)" },
+              "oprettetMs": { ".validate": "newData.isNumber()" },
+              "resultat": {
+                "ok": { ".validate": "newData.isBoolean()" },
+                "fakturaId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 68 && root.child('tenants').child($tenantId).child('fakturaer').child(newData.val()).exists()" },
+                "status": { ".validate": "newData.isString() && newData.val().matches(/^(indbakke|ekstra-kontrol|arkiveret)$/)" },
+                "revision": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+                "$andet": { ".validate": false }
+              },
+              "$andet": { ".validate": false }
+            }
+          }
+        },
+
         // Bogførte poster slettes ALDRIG. Kun slettet: true med spor.
         // ⚠ SKIVE 4A — LÆSE-PERMISSIONEN DER MANGLEDE, ER NU fakturaer.laes.
         // De ti oevrige kommercielle noder havde laenge en (grundlag.laes,
@@ -3652,7 +3690,7 @@
           // hele noden ned og filtrerer i klienten med en advarsel i
           // konsollen. Det er noejagtig den fejl der stod her foer, hvor
           // indekset pegede paa "godkendelsesstatus", et felt ingen post bar.
-          ".indexOn": ["fakturadatoMs", "leverandoerId", "status", "destinationId", "destinationArt", "kreditererFakturaId"],
+          ".indexOn": ["fakturadatoMs", "leverandoerId", "status", "kontrolstatus", "destinationId", "destinationArt", "kreditererFakturaId"],
 
           "$fakturaId": {
             // Noden er .write: false, saa det her er ikke en spaerring mod en
@@ -3728,18 +3766,6 @@
             // ordre allerede taget". Et destination/{art,id} ville vaere
             // paenere og uindekserbart.
             //
-            // ⚠ OG OMDOEBNINGEN VAR BILLIG NU OG DYR SENERE. Maalt i den
-            // udrullede base foer en linje blev roert: 20 fakturaer i alt,
-            // alle seedede. Samme argument som modulomdoebningerne — det sker
-            // foer den foerste kunde krydser feltet af, eller slet ikke.
-            //
-            // ⚠ SIDEGEVINST: "ordreId" betoed i forvejen TO ting i basen — en
-            // indkoebsordre her og en PLUKORDRE i Warehouse. Det navn holder
-            // op med at vaere tvetydigt.
-            //
-            // ⚠ MATCHSCOREN GEMMES STADIG IKKE. Den regnes af posterne hos
-            // forbrugeren; et gemt tal driver fra sit grundlag foerste gang
-            // nogen retter et beloeb. Det der gemmes, er AFGOERELSEN.
             "destinationArt": { ".validate": "newData.isString() && newData.val().matches(/^(fleet|facility|procure|lager|ingen)$/)" },
             // ⚠ EN HAENGENDE REFERENCE ER VAERRE END INGEN — og hvad den skal
             // ramme, afhaenger af arten. Fleet og Facility peger begge paa
@@ -3769,6 +3795,26 @@
             "afvistMs": { ".validate": "newData.isNumber()" },
             "begrundelse": { ".validate": "newData.isString() && newData.val().length <= 250" },
             "bogfoertMs": { ".validate": "newData.isNumber()" },
+            // Separat Veyro-kontrol; ændrer ikke betalingsstatus ovenfor.
+            "kontrolstatus": { ".validate": "newData.isString() && newData.val().matches(/^(indbakke|ekstra-kontrol|arkiveret)$/)" },
+            "kontrolRevision": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+            "kontrolleretAf": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+            "kontrolleretMs": { ".validate": "newData.isNumber()" },
+            "ekstraKontrolleretAf": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+            "ekstraKontrolleretMs": { ".validate": "newData.isNumber()" },
+            "kontrolHistorik": {
+              "$haendelseId": {
+                ".validate": "newData.hasChildren(['handling', 'fra', 'til', 'uid', 'ms', 'operationId'])",
+                "handling": { ".validate": "newData.isString() && newData.val().matches(/^(kontroller|ekstra-godkend|ekstra-afvis)$/)" },
+                "fra": { ".validate": "newData.isString() && newData.val().matches(/^(indbakke|ekstra-kontrol|arkiveret)$/)" },
+                "til": { ".validate": "newData.isString() && newData.val().matches(/^(indbakke|ekstra-kontrol|arkiveret)$/)" },
+                "uid": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+                "ms": { ".validate": "newData.isNumber()" },
+                "operationId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+                "begrundelse": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 250" },
+                "$andet": { ".validate": false }
+              }
+            },
             "note": { ".validate": "newData.isString() && newData.val().length <= 250" },
             "modtagetMs": { ".validate": "newData.isNumber()" },
             "reference": { ".validate": "newData.isString() && newData.val().length <= 60" },

@@ -125,6 +125,13 @@
 .fic-settings-field { display: grid; align-content: start; gap: 6px; min-width: 0; }
 .fic-settings-field > span { color: var(--bc-text); font-size: var(--fc-t-s); font-weight: 600; }
 .fic-settings-field input, .fic-settings-field select { box-sizing: border-box; width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid var(--bc-line); border-radius: 8px; background: var(--bc-card); color: var(--bc-text); font: inherit; }
+.fic-reviewer-field { margin: 0; padding: 0; border: 0; }
+.fic-reviewer-field legend { margin: 0 0 6px; padding: 0; color: var(--bc-text); font-size: var(--fc-t-s); font-weight: 600; }
+.fic-reviewer-choice { display: flex; align-items: center; gap: 9px; min-height: 38px; padding: 7px 9px; border: 1px solid var(--bc-line); border-radius: 8px; background: var(--bc-card); }
+.fic-reviewer-choice + .fic-reviewer-choice { margin-top: 6px; }
+.fic-reviewer-choice input { width: 18px; min-height: 18px; margin: 0; }
+.fic-reviewer-choice span { display: grid; gap: 1px; min-width: 0; }
+.fic-reviewer-choice small { color: var(--bc-muted); }
 .fic-setup-explainer { min-width: 0; padding: 15px; background: var(--bc-card); border: 1px solid var(--bc-line); border-radius: var(--fc-r); }
 .fic-setup-explainer h3 { margin: 11px 0 5px; font-size: var(--fc-t-m); }
 .fic-setup-explainer p { margin: 0; color: var(--bc-muted); font-size: var(--fc-t-tight); line-height: 1.45; }

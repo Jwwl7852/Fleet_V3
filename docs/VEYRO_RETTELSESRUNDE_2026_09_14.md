@@ -41,8 +41,8 @@ aktuelle kodegrundlag.
 | UX-07 | Dialog | ESC, X, Annuller, ugemte data, fokusretur, bekræft Gem/Slet og fejlbevaring. | Fælles og berørte moduldialoger | i gang | Ny FLEET-rutedialog har fokusfælde, ESC/X/baggrund, fokusretur og dirty-bekræftelse; Manuel sag bevarer input ved fejl. 10/10 berørte komponenttests og browserforløb består. | Øvrige moduldialoger skal fortsat auditeres; domæner må bruge arkivering, hvor hard delete er forbudt |
 | FC-01 | Navigation | Synligt forløb er Indbakke, betinget Ekstra kontrol og Arkiv; gamle dybe links mappes uden historiktab. | `src/fleet/fakturacenter-intake.js`, `src/moduler/oekonomi/Fakturacenter.jsx`, `src/fleet/nav.js` | implementeret | 100/100 målrettede tests; browser viste kun Indbakke og Arkiv, mens Ekstra kontrol er korrekt skjult før aktivering | Interne domænestatusser er bevaret |
 | FC-02 | Kontrol | Succes fjerner posten fra arbejdsliste, bliver i Indbakke og vælger næste; fejl bevarer posten. | Fakturacenter UI/domæne | implementeret | Domænetest og browserwiring; succes flytter til intern kontrolleret/Arkiv-status uden sektionsskift | Lokal prototype, ikke serverlagring |
-| FC-03 | Ekstra kontrol | Tilstande ingen/alle/over beløbsgrænse ekskl. moms; anden person; kundestyret allowlist; serveraudit. | Opsætning, fælles kontrakt, Functions/Rules | blokeret | Ren kontrakttest for netto og anden udpeget kontrollant; opsætningsrute viser afstemt kontrakt uden aktivering | Autoritativ brugeradapter, serverlagring, audit og Rules/Functions mangler; UI-værdier giver ikke adgang |
-| FC-04 | Massekontrol | Checkbox, synligt omfang, én bekræftelse, adgang/revision/gates pr. faktura, delsvar og idempotent genforsøg. | Fakturacenter UI/domæne | implementeret | 100/100 målrettede tests; browser viste 19 synlige valg og bekræftelsesdialog med per-faktura-gates | Lokal prototype, ikke serverlagring |
+| FC-03 | Ekstra kontrol | Tilstande ingen/alle/over beløbsgrænse ekskl. moms; anden person; kundestyret allowlist; serveraudit. | Opsætning, fælles kontrakt, Functions/Rules | delvist implementeret | Opsætningen lagres nu tenantafgrænset gennem callable; beløbsgrænsen bruger beløbet ekskl. moms, egen godkendelse afvises, udpegede brugere valideres mod effektiv permission, og 21 callable-assertions samt fuld gate 4.597/4.597 består | Den nuværende syntetiske arbejdsflade er endnu ikke koblet til de serverlagrede fakturaer; den præcise kundearbejdsgang skal derfor browserverificeres efter adapterkoblingen |
+| FC-04 | Massekontrol | Checkbox, synligt omfang, én bekræftelse, adgang/revision/gates pr. faktura, delsvar og idempotent genforsøg. | Fakturacenter UI/domæne/Functions | delvist implementeret | Serveren kontrollerer permission, revision og hvert fakturagrundlag, bruger tenantafgrænset idempotens og returnerer resultat pr. faktura; 21 callable-assertions og fuld gate 4.597/4.597 består | Checkbox-/bekræftelsesforløbet kører fortsat på den lokale syntetiske prototype og skal kalde den nye masse-callable, før kravet kan lukkes |
 | FC-05 | Filtre | Matchkategori bevares; standard nyeste først erstattes som kontrol af modul inkl. uafklaret/flere fordelinger. | Fakturacenter UI | implementeret | Filtertest dækker FLEET, flere moduler og uafklaret; browser viste modulfilter og fast nyeste rækkefølge | Ingen |
 | FC-06 | Upload | Filnavn, modtaget/behandler/fejlet, tydelig fremdrift, dubletværn og idempotent genforsøg; demo mærkes. | Fakturacenter intake/UI | i gang | Integreret browsertest viste filnavn, lokal `ikke gemt`-kvittering og samme SHA-256 på dublethold; `1440x900-fakturacenter-uploadfeedback.png` | Permanent modtagelse/pipeline og backendkvittering mangler; UI påstår ikke varig lagring |
 | FC-07 | Layout | Kompakt top og tre selvscrollende, justerbare, huskede paneler; demospecifik tekst fjernes fra normal struktur. Den ruteisolerede CSS ramte tidligere ikke den indskudte zoom-wrapper, så arbejdsbordet voksede til ca. 2.086 px i stedet for at give panelerne en viewportshøjde. | Fakturacenter workspace/CSS og AppShell zoom-wrapper | implementeret | Ved 1440×900: workspace 1.172×642 px; paneler 280/423/450 px; scrollHeight/clientHeight 1874/440, 824/566 og 1106/566. Tastaturbredde 22→24 % bestod reload. | Forretningsdata er fortsat lokal prototype; panelpræferencens scope gennemgås igen i samlet regression |
@@ -65,7 +65,7 @@ aktuelle kodegrundlag.
 | FL-16 | OBD-statistik | Kun faktiske målinger vises/filtreres/eksporteres; kilde/periode/enhed mærkes; manglende forbindelse er tydelig. | FLEET statistik | åben | Datafeltinventar og syntetisk UI-test | Ekstern OBD er ikke del af opgaven |
 | FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | FLEET economy domain/UI | åben | Beregnings-/drilldowntests | Estimat, kontrolleret og bogført holdes adskilt |
 | FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET economy export | delvist implementeret lokalt | Domænetest af dansk indhold og UTF-8-rundtur | Download har nu UTF-8 BOM; manuel åbning i dansk Excel og udvidede momskolonner udestår |
-| REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.586/4.586 grøn i isoleret emulator. Målrettet UNIT/WAREHOUSE/modul 48/48 og tenant 21/21. | De serverfunktioner, der endnu ikke er implementeret i FC-03/FC-04/FL-14, kræver egne emulatorbeviser før deres samlede krav kan lukkes. |
+| REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.597/4.597 grøn i isoleret emulator. Målrettet Fakturacenter-callable 21 assertions, UNIT/WAREHOUSE/modul 48/48 og tenant 24/24. | FL-14 og øvrige kommende serverfunktioner kræver egne emulatorbeviser før deres samlede krav kan lukkes. |
 | REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint og build grøn; Rules-/platformsgate 4.586/4.586 grøn | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
 | REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | i gang | Ny Etape-7-pakke dækker sagsmappe/dialog ved alle fire viewports, normal/kompakt menu, 100/125 % og Nulstil; Fakturacenter/menu/manuel sag ved 1440×900 | Samme matrix skal fortsat køres på resterende FLEET-, service-, kategori- og økonomiskærme |
 
@@ -344,7 +344,7 @@ Et samlet krav markeres ikke færdigt, hvis en relevant serverdel mangler.
 ### Resterende arbejde efter auditten
 
 Følgende krav er fortsat åbne eller kun delvist gennemført: UX-06/UX-07,
-FC-06/FC-07, FL-02/FL-03, FL-04's flydende popup, FL-08's fælles
+FC-03/FC-04/FC-06/FC-07, FL-02/FL-03, FL-04's flydende popup, FL-08's fælles
 gem-bekræftelse, FL-09/FL-10/FL-12, serverdelen af FL-14,
 FL-15/FL-16/FL-17, manuel dansk Excel-kontrol under FL-18 samt hele den
 nummererede visuelle viewportmatrix i REG-03. Etape 7 indeholder dog nye
@@ -394,3 +394,40 @@ før/efter-beviser for de prioriterede synlige fejl.
 | FL-05 | Implementeret og verificeret | Implementeret og verificeret for fælles FLEET-reference og særskilt UNIT-identitet | Delvist implementeret; WAREHOUSE-oprettelse går gennem eksisterende callable | Implementeret og verificeret for direkte Rules-grænse | 48/48 målrettede emulatorprøver | Delvist implementeret |
 | REG-01 | Ikke relevant | Implementeret og verificeret for eksisterende sikkerhedskontrakter | Implementeret og verificeret for eksisterende Rules/callables | Implementeret og verificeret for eksisterende Rules-grænser | 4.586/4.586 | Delvist implementeret, fordi kommende serverfunktioner kræver nye beviser |
 | REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build og fuld platformsgate grøn | Delvist implementeret |
+
+### Etape 9 — serverstyret ekstra fakturakontrol og massehandling
+
+- Den autoritative kontroltilstand er adskilt fra betaling og bogføring:
+  `indbakke`, `ekstra-kontrol` og `arkiveret` beskriver alene Veyros
+  kontrolforløb. Arkiv fremstilles fortsat ikke som betalt eller bogført.
+- Kundens opsætning lagres nu tenantafgrænset gennem Functions og kan være
+  ingen ekstra kontrol, alle fakturaer eller fakturaer over en beløbsgrænse.
+  Grænsen beregnes af fakturaens beløb ekskl. moms. De udpegede kontrollanter
+  skal findes i kunden, må ikke være blokerede og skal via deres effektive
+  rolle have `fakturaer.godkend`, før opsætningen kan aktiveres.
+- Første kontrol, ekstra godkendelse og tilbagesendelse kører gennem samme
+  delte domænemaskine. Serveren afviser egen ekstra godkendelse, kræver en
+  udpeget anden person og kræver begrundelse ved tilbagesendelse.
+- Enkelt- og massekald kontrollerer tenant, modul, permission, forventet
+  revision og det aktuelle fakturagrundlag. Operationer er idempotente pr.
+  bruger og tenant; masseforløbet returnerer et selvstændigt resultat for hver
+  faktura, så en blokeret post ikke skjuler de øvrige resultater.
+- Klienter kan hverken læse eller skrive opsætnings- og operationsledgeren
+  direkte. Rules validerer samtidig, at ledgerens faktura-id findes i samme
+  tenant. Ingen negativ test eller permission er fjernet eller svækket.
+- Testbevis på dette kodegrundlag: delte domænetests og Functions-kopiparitet
+  37/37; isoleret callable-integration 21 assertions; målrettet Rules- og
+  tenantinventar 24/24; fuld lokal Rules-/platformsgate 4.597/4.597. Rules-filen
+  er 469.907 normaliserede UTF-8-byte og ligger under den målte grænse.
+- Restarbejde: `/oekonomi/fakturacenter` viser stadig den eksplicit mærkede,
+  lokale syntetiske prototype. Dens checkbox-, kontrol- og uploadhandlinger er
+  ikke skjult serverlagring. Arbejdsfladen skal kobles til de nye callables og
+  autoritative fakturaposter, før FC-03 og FC-04 kan markeres samlet færdige.
+
+#### Delstatus efter Etape 9
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FC-03 | Implementeret og verificeret for opsætningsskærmen; arbejdslistekobling mangler | Implementeret og verificeret | Implementeret og verificeret | Implementeret og verificeret | 37/37 domæne/kopiparitet, 21 callable-assertions og fuld gate 4.597/4.597 | Delvist implementeret |
+| FC-04 | Implementeret og verificeret i den lokale prototype; serveradapteren er endnu ikke koblet til knappen | Implementeret og verificeret | Implementeret og verificeret | Implementeret og verificeret | 21 callable-assertions med blandede resultater, revision og genafspilning | Delvist implementeret |
+| REG-01 | Ikke relevant | Implementeret og verificeret for Fakturacenter-kontrollen | Implementeret og verificeret for Fakturacenter-kontrollen | Implementeret og verificeret for Fakturacenter-kontrollen | Fuld gate 4.597/4.597 | Delvist implementeret, fordi de resterende serveretaper endnu ikke er afsluttet |

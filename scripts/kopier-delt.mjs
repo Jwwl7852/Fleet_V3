@@ -54,7 +54,7 @@ export const DELTE_FILER = [
      tre sprog. */
   "sprog.js",
   "forbrugsvarer.js",
-  "fakturacenter.js",
+  "fakturacenter.js", "fakturacenter-kontrol.js",
   "audit-regler.js", "permissions.js", "claims-migration.js", "ejeradgang.js", "moduler.js", "ejer-crm-regler.js", "ejer-tilbud-regler.js", "abonnement.js",
   /* ⚠ beloeb.js SKAL MED FØR priser.js KAN BRUGES SERVER-SIDE. Den funktion
      der fryser en faktureringsperiode, regner i øre — og gjorde den det med

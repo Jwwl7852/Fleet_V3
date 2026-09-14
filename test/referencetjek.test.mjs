@@ -188,6 +188,12 @@ const UDEN_TJEK = {
   "fakturaer/$fakturaId/importRequestId":
     "en klientgenereret idempotensnøgle for importkaldet, ikke en reference til en "
     + "anden post; backend bruger den som stabil faktura-id.",
+  "fakturacenterOpsaetning/sidsteMutationId":
+    "en klientgenereret idempotensnøgle, ikke en reference til en databasepost; "
+    + "serveren binder den til payloadens hash.",
+  "fakturaer/$fakturaId/kontrolHistorik/$haendelseId/operationId":
+    "serverafledt idempotensreference til den klientlukkede operationsledger; "
+    + "historikken og ledgeren skrives i samme tenanttransaktion.",
   "fakturaer/$fakturaId/linjer/$linjeId/vareId":
     "et historisk varesnapshot må overleve sletning eller omgruppering i kataloget; "
     + "backend kopierer id'et fra ordrelinjen, men kræver ikke fortsat katalogeksistens.",

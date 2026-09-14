@@ -42,6 +42,48 @@ async function kald(navn, data, standardfejl) {
   }
 }
 
+const nyRequestId = (praefiks) => `${praefiks}-${globalThis.crypto?.randomUUID?.()
+  || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`.slice(0, 60);
+
+/** Henter/gemmer den serverhåndhævede kundekonfiguration. Den kræver en
+ * autentificeret tenant; der findes ingen browserlokal fallback. */
+export async function hentFakturacenterOpsaetning() {
+  return kald("fakturacenterOpsaetningHent", {}, "Opsætningen kunne ikke hentes.");
+}
+
+export async function gemFakturacenterOpsaetning({ opsaetning, forventetRevision, mutationId } = {}) {
+  return kald("fakturacenterOpsaetningGem", {
+    opsaetning,
+    forventetRevision: Number(forventetRevision),
+    mutationId: mutationId || nyRequestId("fc-opsaetning"),
+  }, "Opsætningen kunne ikke gemmes.");
+}
+
+/** Veyro-kontrol ændrer ikke betalings-/bogføringsstatus. */
+export async function udførFakturakontrol({ fakturaId, handling = "kontroller",
+  forventetRevision, begrundelse, requestId } = {}) {
+  return kald("fakturakontrolUdfoer", {
+    fakturaId,
+    handling,
+    forventetRevision: Number(forventetRevision),
+    begrundelse: begrundelse ? String(begrundelse).trim() : undefined,
+    requestId: requestId || nyRequestId("fc-kontrol"),
+  }, "Fakturakontrollen kunne ikke gennemføres.");
+}
+
+export async function udførFakturakontrolMasse({ poster, requestId } = {}) {
+  if (!Array.isArray(poster) || poster.length === 0) {
+    return { ok: false, art: "afvist", besked: "Vælg mindst én faktura.", data: null };
+  }
+  return kald("fakturakontrolMasse", {
+    poster: poster.map((post) => ({
+      fakturaId: post.fakturaId,
+      forventetRevision: Number(post.forventetRevision),
+    })),
+    requestId: requestId || nyRequestId("fc-masse"),
+  }, "Massekontrollen kunne ikke gennemføres.");
+}
+
 /**
  * matchFaktura({ fakturaId, ordreId })          → bekræft et match
  * matchFaktura({ fakturaId, handling: "fjern" }) → tag matchet af igen

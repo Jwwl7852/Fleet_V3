@@ -159,6 +159,12 @@ import {
   DESTINATIONSART, kanSaetteDestination,
 } from "./delt/fakturacenter.js";
 import {
+  FAKTURAKONTROL_HANDLING,
+  STANDARD_FAKTURAKONTROL_OPSAETNING,
+  anvendFakturakontrol, normaliserFakturakontrolOpsaetning,
+  validerFakturakontrolOpsaetning, vurderFakturakontrol,
+} from "./delt/fakturacenter-kontrol.js";
+import {
   valideBehov, valideOrdre, behovTilLinje, ORDRE_PRAEFIKS, ORDRESERIE,
   valideGodkendelsesregler, STANDARD_GODKENDELSESREGLER,
   kanSkifteIndkoebsordre, ordreOpdatering, kraeverGodkendelse,
@@ -9666,6 +9672,249 @@ async function procureDoer(req, { perm, modul }) {
   }
   return { db, rod, tenantId, uid: auth.uid, perms };
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FAKTURACENTER — Veyro-kontrol, ekstra kontrol og massehandling
+
+   Fakturaens eksisterende `status` er betalings-/bogfoeringsstatus. Dette
+   forloeb skriver kun `kontrol*`-felterne og kan derfor aldrig komme til at
+   kalde et Veyro-arkiv for betalt eller bogfoert. Opsaetning, revision og
+   idempotens ligger bag Admin SDK; ingen klient kan selv udpege sig som
+   kontrollant eller omskrive historikken.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const kontrolFingeraftryk = (data) => createHash("sha256")
+  .update(JSON.stringify(data)).digest("hex");
+
+const kontrolHistorikId = (uid, requestId) => `h_${createHash("sha256")
+  .update(`${uid}:${requestId}`).digest("hex").slice(0, 32)}`;
+
+function fakturakontrolFejlkode(kode) {
+  if (kode === "revisionskonflikt") return "aborted";
+  if (["egen-godkendelse", "ikke-udpeget"].includes(kode)) return "permission-denied";
+  if (["ugyldig-handling", "ugyldig-revision", "mangler-bruger", "mangler-begrundelse"].includes(kode)) {
+    return "invalid-argument";
+  }
+  return "failed-precondition";
+}
+
+function validerKontrollanterITenant(tenantData, opsaetning) {
+  for (const uid of opsaetning.kontrollantUids) {
+    const bruger = tenantData?.brugere?.[uid];
+    if (!bruger || bruger.spaerret === true) {
+      return `Den valgte kontrollant ${uid} findes ikke eller har et spærret login.`;
+    }
+    if (!permsForTenant(bruger.rolle, tenantData?.roller || {}).includes(PERM.fakturaerGodkend)) {
+      return `Den valgte kontrollant ${uid} har ikke ${PERM.fakturaerGodkend}.`;
+    }
+  }
+  return null;
+}
+
+export const fakturacenterOpsaetningHent = onCall({ region: REGION }, async (req) => {
+  const { rod } = await procureDoer(req, { perm: "fakturaer.laes" });
+  const snap = await rod.child("fakturacenterOpsaetning").once("value");
+  const gemt = snap.exists() ? snap.val() : STANDARD_FAKTURAKONTROL_OPSAETNING;
+  return { opsaetning: { ...normaliserFakturakontrolOpsaetning(gemt), opdateretAf: gemt.opdateretAf || null, opdateretMs: gemt.opdateretMs || null } };
+});
+
+export const fakturacenterOpsaetningGem = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "brugere.skriv" });
+  const forventetRevision = Number(req.data?.forventetRevision);
+  const mutationId = kortStreng(req.data?.mutationId, 60);
+  if (!Number.isSafeInteger(forventetRevision) || forventetRevision < 0
+    || !mutationId || !erGyldigtSendRequestId(mutationId)) {
+    throw new HttpsError("invalid-argument", "Forventet revision eller gemmereference er ugyldig.");
+  }
+  const valideret = validerFakturakontrolOpsaetning(req.data?.opsaetning || {});
+  if (!valideret.ok) {
+    throw new HttpsError("invalid-argument", Object.values(valideret.fejl)[0], { fejl: valideret.fejl });
+  }
+  const fingeraftryk = kontrolFingeraftryk({ forventetRevision, opsaetning: valideret.opsaetning });
+  let afvist = null;
+  let resultat = null;
+  let gentaget = false;
+  const nu = Date.now();
+  /* Admin SDK kalder ellers transaction-callbacken med en kold lokal null
+     før serverværdien er hentet. En null er her "ikke indlæst", ikke bevis
+     for at tenanten mangler; varm roden op før den atomiske afgørelse. */
+  const tenantFoerSnap = await rod.once("value");
+  const tenantFoer = tenantFoerSnap.val();
+  let koldCacheFallback = tenantFoerSnap.exists();
+  const tx = await rod.transaction((tenantData) => {
+    afvist = null; resultat = null; gentaget = false;
+    if (!tenantData && koldCacheFallback) tenantData = structuredClone(tenantFoer);
+    koldCacheFallback = false;
+    if (!tenantData) { afvist = { kode: "not-found", besked: "Tenant findes ikke." }; return; }
+    const nuvaerende = tenantData.fakturacenterOpsaetning || STANDARD_FAKTURAKONTROL_OPSAETNING;
+    if (nuvaerende.sidsteMutationId === mutationId) {
+      if (nuvaerende.sidsteMutationHash !== fingeraftryk) {
+        afvist = { kode: "already-exists", besked: "Gemmereferencen er allerede brugt til en anden ændring." };
+        return;
+      }
+      gentaget = true;
+      resultat = nuvaerende;
+      return tenantData;
+    }
+    const revision = Number(nuvaerende.revision || 0);
+    if (revision !== forventetRevision) {
+      afvist = { kode: "aborted", besked: "Opsætningen er ændret i en anden session. Genindlæs før du gemmer." };
+      return;
+    }
+    const kontrollantFejl = validerKontrollanterITenant(tenantData, valideret.opsaetning);
+    if (kontrollantFejl) {
+      afvist = { kode: "failed-precondition", besked: kontrollantFejl };
+      return;
+    }
+    resultat = {
+      ...valideret.opsaetning,
+      revision: revision + 1,
+      opdateretAf: uid,
+      opdateretMs: nu,
+      sidsteMutationId: mutationId,
+      sidsteMutationHash: fingeraftryk,
+    };
+    tenantData.fakturacenterOpsaetning = resultat;
+    return tenantData;
+  });
+  if (!tx.committed || afvist) {
+    throw new HttpsError(afvist?.kode || "aborted", afvist?.besked || "Opsætningen kunne ikke gemmes.");
+  }
+  if (!gentaget) {
+    await logProcure(tenantId, uid, AUDIT.aendre, "fakturacenterOpsaetning", tenantId,
+      null, { status: resultat.model, revision: resultat.revision }, "kundens ekstra fakturakontrol ændret");
+  }
+  return { opsaetning: normaliserFakturakontrolOpsaetning(resultat), gentaget };
+});
+
+async function udførFakturakontrol({ rod, tenantId, uid, fakturaId, handling,
+  forventetRevision, requestId, begrundelse }) {
+  const kortFakturaId = kortStreng(fakturaId, 68);
+  const kortRequestId = kortStreng(requestId, 60);
+  const kortBegrundelse = kortStreng(begrundelse, 250);
+  if (!kortFakturaId || !kortRequestId || !erGyldigtSendRequestId(kortRequestId)
+    || !Number.isSafeInteger(forventetRevision) || forventetRevision < 0) {
+    throw new HttpsError("invalid-argument", "Faktura, revision eller handlingsreference er ugyldig.");
+  }
+  const fingeraftryk = kontrolFingeraftryk({
+    fakturaId: kortFakturaId, handling, forventetRevision, begrundelse: kortBegrundelse || null,
+  });
+  const operationId = kontrolHistorikId(uid, kortRequestId);
+  let afvist = null;
+  let resultat = null;
+  let gentaget = false;
+  const nu = Date.now();
+  const tenantFoerSnap = await rod.once("value");
+  const tenantFoer = tenantFoerSnap.val();
+  let koldCacheFallback = tenantFoerSnap.exists();
+  const tx = await rod.transaction((tenantData) => {
+    afvist = null; resultat = null; gentaget = false;
+    if (!tenantData && koldCacheFallback) tenantData = structuredClone(tenantFoer);
+    koldCacheFallback = false;
+    if (!tenantData) { afvist = { kode: "not-found", besked: "Tenant findes ikke." }; return; }
+    tenantData.fakturacenterKontrolOperationer = tenantData.fakturacenterKontrolOperationer || {};
+    tenantData.fakturacenterKontrolOperationer[uid] = tenantData.fakturacenterKontrolOperationer[uid] || {};
+    const tidligere = tenantData.fakturacenterKontrolOperationer[uid][kortRequestId];
+    if (tidligere) {
+      if (tidligere.fingeraftryk !== fingeraftryk) {
+        afvist = { kode: "already-exists", besked: "Handlingsreferencen er allerede brugt til en anden handling." };
+        return;
+      }
+      gentaget = true;
+      resultat = tidligere.resultat;
+      return tenantData;
+    }
+    const faktura = tenantData.fakturaer?.[kortFakturaId];
+    if (!faktura) { afvist = { kode: "not-found", besked: "Fakturaen findes ikke." }; return; }
+    const opsaetning = tenantData.fakturacenterOpsaetning || STANDARD_FAKTURAKONTROL_OPSAETNING;
+    const vurdering = vurderFakturakontrol({
+      faktura, opsaetning, handling, uid, forventetRevision, begrundelse: kortBegrundelse,
+    });
+    if (!vurdering.ok) {
+      afvist = { kode: fakturakontrolFejlkode(vurdering.kode), besked: vurdering.besked, detalje: vurdering.kode };
+      return;
+    }
+    const ændring = anvendFakturakontrol({
+      faktura, opsaetning, handling, uid, nu, operationId, begrundelse: kortBegrundelse,
+    });
+    ændring.faktura.kontrolHistorik = ændring.faktura.kontrolHistorik || {};
+    ændring.faktura.kontrolHistorik[operationId] = ændring.historik;
+    tenantData.fakturaer[kortFakturaId] = ændring.faktura;
+    resultat = { ok: true, fakturaId: kortFakturaId, status: ændring.status, revision: ændring.revision };
+    tenantData.fakturacenterKontrolOperationer[uid][kortRequestId] = {
+      fingeraftryk,
+      fakturaId: kortFakturaId,
+      handling,
+      oprettetMs: nu,
+      resultat,
+    };
+    return tenantData;
+  });
+  if (!tx.committed || afvist) {
+    const fejl = new HttpsError(afvist?.kode || "aborted", afvist?.besked || "Kontrollen kunne ikke gennemføres.",
+      afvist?.detalje ? { kode: afvist.detalje, fakturaId: kortFakturaId } : undefined);
+    throw fejl;
+  }
+  if (!gentaget) {
+    await logProcure(tenantId, uid, AUDIT.aendre, "fakturaer", kortFakturaId,
+      null, { status: resultat.status, revision: resultat.revision }, `Veyro-kontrol: ${handling}`);
+  }
+  return { ...resultat, gentaget };
+}
+
+export const fakturakontrolUdfoer = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "fakturaer.godkend" });
+  return udførFakturakontrol({
+    rod, tenantId, uid,
+    fakturaId: req.data?.fakturaId,
+    handling: req.data?.handling,
+    forventetRevision: Number(req.data?.forventetRevision),
+    requestId: req.data?.requestId,
+    begrundelse: req.data?.begrundelse,
+  });
+});
+
+export const fakturakontrolMasse = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: "fakturaer.godkend" });
+  const requestId = kortStreng(req.data?.requestId, 60);
+  const poster = Array.isArray(req.data?.poster) ? req.data.poster : [];
+  if (!requestId || !erGyldigtSendRequestId(requestId) || poster.length === 0 || poster.length > 100) {
+    throw new HttpsError("invalid-argument", "Massehandlingen skal have 1-100 fakturaer og en gyldig reference.");
+  }
+  const set = new Set();
+  const resultater = [];
+  for (const post of poster) {
+    const fakturaId = kortStreng(post?.fakturaId, 68);
+    if (!fakturaId || set.has(fakturaId)) {
+      resultater.push({ ok: false, fakturaId: fakturaId || null, kode: "dublet", besked: "Fakturaen er valgt mere end én gang eller mangler id." });
+      continue;
+    }
+    set.add(fakturaId);
+    const enkeltRequestId = `m_${kontrolFingeraftryk({ requestId, fakturaId }).slice(0, 40)}`;
+    try {
+      resultater.push(await udførFakturakontrol({
+        rod, tenantId, uid, fakturaId,
+        handling: FAKTURAKONTROL_HANDLING.kontroller,
+        forventetRevision: Number(post?.forventetRevision),
+        requestId: enkeltRequestId,
+      }));
+    } catch (fejl) {
+      resultater.push({
+        ok: false,
+        fakturaId,
+        kode: String(fejl?.details?.kode || fejl?.code || "fejl").replace(/^functions\//, ""),
+        besked: fejl?.message || "Fakturaen kunne ikke kontrolleres.",
+      });
+    }
+  }
+  return {
+    ok: resultater.every((post) => post.ok),
+    antal: resultater.length,
+    gennemfoert: resultater.filter((post) => post.ok).length,
+    blokeret: resultater.filter((post) => !post.ok).length,
+    resultater,
+  };
+});
 
 /* SERVERGEMT MOBILKLADDE OG LINJEGODKENDELSE (PROCURE næste runde).
    Kladden er brugerbundet under den signerede tenant. Alle ændringer bærer
