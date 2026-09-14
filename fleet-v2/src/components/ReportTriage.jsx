@@ -6,11 +6,12 @@ import { CaseActionPanel } from "./CaseActionPanel";
 import { Icon } from "./Icon";
 import { ReportImage } from "./ReportImage";
 import { UnitThumbnail } from "./UnitThumbnail";
+import { ThreePanelWorkspace } from "./ThreePanelWorkspace";
 
 const dateTime = (value) => new Date(value).toLocaleString("da-DK", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
 export function ReportTriage({ reportId, onNavigate }) {
-  const { units, relations, loading, updateCase } = useFleetData();
+  const { units, relations, loading, updateCase, actor, tenantId } = useFleetData();
   const [filters, setFilters] = useState({ query: "", status: "", severity: "", type: "", department: "", unitId: "" });
   const [mobileDetail, setMobileDetail] = useState(Boolean(reportId));
   const [lightbox, setLightbox] = useState(null);
@@ -35,7 +36,7 @@ export function ReportTriage({ reportId, onNavigate }) {
       <select aria-label="Afdelingsfilter" value={filters.department} onChange={(event) => setFilters({...filters,department:event.target.value})}><option value="">Alle afdelinger</option>{[...new Set(units.map((item) => item.department))].sort().map((value) => <option key={value}>{value}</option>)}</select>
       <select aria-label="Enhedsfilter" value={filters.unitId} onChange={(event) => setFilters({...filters,unitId:event.target.value})}><option value="">Alle enheder</option>{units.map((item) => <option key={item.id} value={item.id}>{item.number}</option>)}</select>
     </section>
-    <section className="triage-layout">
+    <ThreePanelWorkspace className="triage-layout" actorId={actor.id} tenantId={tenantId} screen="/fleet-v2/indberetninger">
       <aside className="triage-list-panel"><header><div><h2>Indberetninger</h2><span>{filteredCases.length} fundet</span></div></header><div className="triage-list">{filteredCases.map((caseItem) => { const report = reports.find((entry) => entry.id === caseItem.reportId); const relatedUnit = units.find((entry) => entry.id === caseItem.unitId); return <button type="button" className={selectedReport?.id === report?.id ? "is-selected" : ""} key={caseItem.id} onClick={() => select(report)}><span className={`severity-mark ${report.severity}`}><Icon name={report.type === "service" ? "service" : "warning"} size={17} /></span><span><strong>{report.title}</strong><small>{relatedUnit?.number} · {REPORT_TYPES[report.type]}</small><em>{report.number} · {dateTime(report.createdAt)}</em></span><span className={`status-badge ${caseItem.status}`}><i />{CASE_STATUSES[caseItem.status]}</span></button>; })}{!filteredCases.length ? <div className="empty-inline"><h3>Ingen indberetninger matcher</h3><p>Tilpas filtrene eller opret en ny indberetning.</p></div> : null}</div></aside>
       <section className="triage-detail-panel">{selectedReport && unit ? <>
         <button className="mobile-back" type="button" onClick={() => setMobileDetail(false)}><Icon name="chevron" size={15} />Tilbage til listen</button>
@@ -46,7 +47,7 @@ export function ReportTriage({ reportId, onNavigate }) {
         <section className="case-timeline"><h3>Fælles tidslinje</h3>{events.map((event) => <article key={event.id}><span><Icon name={event.type === "note" ? "document" : "clock"} size={15} /></span><div><strong>{event.title}</strong><p>{event.text}</p><small>{dateTime(event.at)} · {event.actorName}</small></div></article>)}</section>
       </> : <div className="empty-inline"><h2>Vælg en indberetning</h2><p>Detaljer og historik vises her.</p></div>}</section>
       <CaseActionPanel caseItem={selectedCase} report={selectedReport} onUpdate={updateCase} />
-    </section>
+    </ThreePanelWorkspace>
     {lightbox ? <div className="lightbox" role="dialog" aria-label="Billedvisning"><button type="button" aria-label="Luk billede" onClick={() => setLightbox(null)}><Icon name="close" /></button><ReportImage image={lightbox} alt="Forstørret dokumentationsbillede" /></div> : null}
   </main>;
 }

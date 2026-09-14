@@ -53,8 +53,8 @@ aktuelle kodegrundlag.
 | FL-04 | Livekort | Kort-wheel og +/−, ingen dobbeltzoom, popup pr. enhed, cluster/samme position kan vælges, tydelig kilde/friskhed. | FLEET LiveMap/GeoMap | delvist implementeret | 8/8 LiveMap-tests og faktisk browserprøve af kortknap/klyngeliste | Markørvalg bruger den eksisterende detaljeside frem for en flydende popup. Ingen ekstern OBD aktiveres. |
 | FL-05 | Enhedsregister | Moderne FLEET-kartotek bliver primær skærm i Opsætning med autoritativ mapping og gamle dybe links. | Root-routes/nav, FLEET repository/adapters | implementeret lokalt | Route-, permission- og referenceprøver med PLANNING | Moderne kartotek åbner på `/opsaetning/enheder`; `/fleet-v2/enheder` bevares som kompatibelt dybt link. UNIT/WAREHOUSE-unit er fortsat et særskilt domæneobjekt. |
 | FL-06 | Enhedsformular | Typefaner fjernes; typefilter bevares; indvendige mål, fire udstyrsvalg og energikilde med ukendt/ikke relevant. | UnitCatalog, UnitFormDialog, UnitProfile, unitSelectors | implementeret lokalt | 18/18 målrettede komponenttests og integreret browserverifikation | Trækkrog, hængertræk, kran og lift er separate værdier. Eksisterende ukendte drivmiddelværdier bevares ved redigering. |
-| FL-07 | Indberetninger | Stabil trepanelstruktur, fuld bredde, justering/hukommelse/scroll og semantiske statustokens. | ReportTriage og CSS | åben | Før/efter valg/reload; mus/tastatur | Ingen |
-| FL-08 | Manuel sag | Læsbar dialog med enhed, beskrivelse, prioritet, validering, lukning og inputbevaring ved fejl. | ManualCaseDialog | åben | Opret + fejlforløb desktop/mobil | Ingen |
+| FL-07 | Indberetninger | Stabil trepanelstruktur, fuld bredde, justering/hukommelse/scroll og semantiske statustokens. | ReportTriage, ThreePanelWorkspace og CSS | implementeret lokalt på desktop; mobil regression består | Faktisk browsermåling, tastatur-resize/nulstil og ReportFlow | Bredder er rene bruger-/tenantafgrænsede visningsvalg, ikke forretningsdata. |
+| FL-08 | Manuel sag | Læsbar dialog med enhed, beskrivelse, prioritet, validering, lukning og inputbevaring ved fejl. | ManualCaseDialog og CSS | implementeret lokalt | Browserprøve uden lagring og ReportFlow/CaseFolder-tests | Eksplicit fælles gem-bekræftelse mangler fortsat. |
 | FL-09 | Arbejdskø | Nye indberetninger åbner flytbar detaljedialog; under vurdering åbner genbrugt sagsmappe; mobil stabil. | WorkQueue, case components | åben | Drag-grænser, fokus, mobil og permissions | Ingen |
 | FL-10 | Sagsmappe | Godkendt samlet design uden fanebjælke, kompakt enhedsrække, foldesektioner og tilstands-/permissionstyret næste handling. | CaseFolder og CSS | åben | Sagsflow, billeder/dokumenter/historik, afslutningsgate | Autoritative statusser og fakturaafklaring bevares |
 | FL-11 | Kompakt kø | Permanent Flyt sag fjernes; statusændring bevares i sagsmappe/diskret menu; kolonner ruller. | WorkQueue og CSS | åben | Kolonne-/statusregression | Workflowstadier omdefineres ikke |
@@ -171,3 +171,26 @@ aktuelle kodegrundlag.
 - Periodehistorik, sidste-år-sammenligning og beregnet historisk nedetid er
   ikke afsluttet. Den nuværende prototypehistorik må derfor ikke bruges som
   produktionsbevis for FL-02/FL-03.
+
+### Etape 5 — FLEET-indberetninger og manuel sag
+
+- Indberetningernes liste, dokumentation og vurdering bruger nu et faktisk
+  trepanelslayout med to synlige håndtag. Håndtagene understøtter træk,
+  venstre/højre piletast, Home og dobbeltklik til standard.
+- Bredder gemmes via platformens fælles visningsnøgle med miljø, autentificeret
+  bruger, tenant og skærm. `Nulstil visning` nulstiller dem på både liste- og
+  detalje-URL'er.
+- Hvert panel har uafhængig lodret scrolling og stabile minimumsbredder. Ved
+  smalle desktop/tabletbredder flyttes vurderingspanelet ned; på mobil bruges
+  det eksisterende liste/detalje-forløb, og trækhåndtag skjules.
+- Faktisk browsermåling ved den aktuelle brede viewport viste standardbredder
+  436/748/470 px. En tastaturjustering ændrede dem til 403/781/470 px, og
+  `Nulstil visning` gendannede 436/748/470 px.
+- Dialogen Ny manuel sag har nu en dækkende hvid overflade, tydelig header,
+  kontrast, lagorden, navngivet X, Annuller og ESC. Ugemte ændringer advares
+  før lukning, og en lagringsfejl lader dialog og input stå.
+- Tom sagstitel giver en synlig valideringsfejl før repository-kald. Browseren
+  viste `Angiv en sagstitel.`, hvorefter dialogen blev annulleret uden at
+  oprette data.
+- `ReportFlow.test.jsx`, `CaseFolderFlow.test.jsx` og
+  `CaseFolderWorkflow.test.js` bestod 15/15. Root lint bestod.
