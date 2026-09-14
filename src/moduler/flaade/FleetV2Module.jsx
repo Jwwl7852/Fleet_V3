@@ -23,6 +23,7 @@ export default function FleetV2Module() {
   const hasModule = harModul(moduler, "flaade");
   const hasPermission = harPerm(bruger?.perms, requiredPermission);
   const mayReadSuppliers = harPerm(bruger?.perms, PERM.leverandoererLaes);
+  const mayCreateSuppliers = harPerm(bruger?.perms, PERM.leverandoererSkriv);
   const suppliers = useListe("leverandoerer", {
     ordnPaa: "navn",
     vindue: "alle",
@@ -65,6 +66,15 @@ export default function FleetV2Module() {
       actor={actor}
       basePath={basePath}
       embedded
+      canCreateSupplier={mayCreateSuppliers}
+      onCreateSupplier={(returnPath) => {
+        const params = new URLSearchParams({
+          ny: "1",
+          kategori: "vaerksted",
+          retur: returnPath,
+        });
+        navigate(`/indkoeb/leverandoerer?${params.toString()}`);
+      }}
       onNavigate={navigate}
       pathname={`${location.pathname}${location.search}`}
       repository={repository}

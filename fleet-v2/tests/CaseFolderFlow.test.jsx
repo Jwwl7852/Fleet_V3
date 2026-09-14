@@ -10,7 +10,10 @@ function start(path, repository = createMemoryUnitRepository()) {
 }
 
 describe("udvidet skadesindberetning og sagsmappe", () => {
-  beforeEach(() => window.localStorage.clear());
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
 
   it("viser betingede skadesfelter og gemmer en kladde med stabil reference", async () => {
     const repository = start("/indberetninger/ny");
@@ -65,5 +68,30 @@ describe("udvidet skadesindberetning og sagsmappe", () => {
     fireEvent.click(screen.getByRole("button", { name: "Gem uden mail" }));
     await waitFor(() => expect(repository.inspect().relations.workshopOrders).toHaveLength(1));
     expect(repository.inspect().relations.workshopOrders[0]).toMatchObject({ deliveryState: "draft", sentAt: null, communicationMode: "no_mail" });
+  });
+
+  it("bevarer sagsudkastet under oprettelse af en fælles leverandør", async () => {
+    const repository = createMemoryUnitRepository();
+    const opened = [];
+    window.history.replaceState({}, "", "/sager/case-demo-001/bestilling");
+    const first = render(<FleetV2App repository={repository} canCreateSupplier onCreateSupplier={(returnPath) => opened.push(returnPath)} />);
+    await screen.findByRole("heading", { name: "Tildel værksted og klargør mail" });
+    fireEvent.change(screen.getByLabelText("Arbejdsbeskrivelse"), { target: { value: "Bevar denne konkrete sagskladde" } });
+    fireEvent.click(screen.getByRole("button", { name: "Opret leverandør" }));
+    expect(opened).toEqual(["/sager/case-demo-001/bestilling"]);
+    expect(window.sessionStorage.length).toBe(1);
+    first.unmount();
+
+    render(<FleetV2App repository={repository} canCreateSupplier onCreateSupplier={() => {}} />);
+    expect(await screen.findByDisplayValue("Bevar denne konkrete sagskladde")).toBeTruthy();
+  });
+
+  it("forvælger leverandøren fra den sikre returrute", async () => {
+    const repository = createMemoryUnitRepository();
+    const supplier = repository.inspect().relations.workshops.find((item) => item.kind === "external");
+    window.history.replaceState({}, "", `/sager/case-demo-001/bestilling?leverandoer=${encodeURIComponent(supplier.id)}`);
+    render(<FleetV2App repository={repository} />);
+    const select = await screen.findByLabelText("Værksted");
+    await waitFor(() => expect(select.value).toBe(supplier.id));
   });
 });

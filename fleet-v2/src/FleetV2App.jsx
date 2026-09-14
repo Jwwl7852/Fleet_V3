@@ -73,8 +73,10 @@ const absoluteFleetPath = (basePath, path) => {
 export function FleetV2App({
   actor,
   basePath = "",
+  canCreateSupplier = false,
   embedded = false,
   imageProcessor,
+  onCreateSupplier,
   onNavigate,
   pathname,
   repository,
@@ -87,6 +89,7 @@ export function FleetV2App({
   const activePathname = controlled ? pathname : localPathname;
   const route = useMemo(() => routeFromPath(activePathname, basePath), [activePathname, basePath]);
   const statusFilter = new URLSearchParams(activePathname.split("?")[1] || "").get("status") || "";
+  const selectedSupplierId = new URLSearchParams(activePathname.split("?")[1] || "").get("leverandoer") || "";
 
   const showUnavailable = (label) => {
     setNotice(`${label}: Ikke implementeret i denne etape`);
@@ -126,7 +129,7 @@ export function FleetV2App({
   else if (route.kind === "workshop-calendar") content = <WorkshopCalendar onNavigate={navigate} />;
   else if (route.kind === "workshop-task") content = <WorkshopTaskDetail taskId={route.taskId} onNavigate={navigate} imageProcessor={imageProcessor} />;
   else if (route.kind === "case-folder") content = <CaseFolder caseId={route.caseId} onNavigate={navigate} />;
-  else if (route.kind === "workshop-assignment") content = <WorkshopAssignment caseId={route.caseId} onNavigate={navigate} />;
+  else if (route.kind === "workshop-assignment") content = <WorkshopAssignment caseId={route.caseId} canCreateSupplier={canCreateSupplier} onCreateSupplier={onCreateSupplier ? () => onCreateSupplier(absoluteFleetPath(basePath, `/sager/${encodeURIComponent(route.caseId)}/bestilling`)) : undefined} onNavigate={navigate} selectedSupplierId={selectedSupplierId} />;
   else if (route.kind === "service-overview") content = <ServiceOverview onNavigate={navigate} />;
   else if (route.kind === "live-map") content = <LiveMap onNavigate={navigate} />;
   else if (route.kind === "documents-overview") content = <DocumentsOverview documentId={route.documentId} onNavigate={navigate} />;

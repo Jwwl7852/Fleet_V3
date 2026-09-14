@@ -58,7 +58,7 @@ aktuelle kodegrundlag.
 | FL-09 | Arbejdskø | Nye indberetninger åbner flytbar detaljedialog; under vurdering åbner genbrugt sagsmappe; mobil stabil. | WorkQueue, `DraggableDialog`, CaseFolder og CSS | implementeret lokalt | 1920×1080 drag flyttede dialogen 65×37 px og holdt X inden for workspace; fuld sagsmappe genbruges. 390×844 og 360×800 har fuldskærmsdialog uden dokumentoverflow. | Autorisation følger eksisterende lokale repository/route; serverpersistens mangler |
 | FL-10 | Sagsmappe | Godkendt samlet design uden fanebjælke, kompakt enhedsrække, foldesektioner og tilstands-/permissionstyret næste handling. | CaseFolder, CaseActionPanel og CSS | implementeret lokalt | Ingen tabs; kompakt enhedsrække; `Problem og næste handling`; foldbare indberetning, medier, enhedsdata, økonomi og historik; sticky højre infokolonne. Browserbevis ved 1920, 1440/125 %, 390 og 360. | Autoritative statusser og fakturaafklaring er bevaret; data er lokal prototype |
 | FL-11 | Kompakt kø | Permanent Flyt sag fjernes; statusændring bevares i sagsmappe/diskret menu; kolonner ruller. | WorkQueue og CSS | implementeret lokalt | Kolonne-/statusregression | Tabelvisning og sagsmappe bevarer lovlige statushandlinger; workflowstadier er uændrede |
-| FL-12 | Leverandører | FLEET v2 brugte sit lokale `relations.workshops` som en parallel leverandørstamme. Eksterne værksteder læses nu fra fælles `leverandoerer`; interne ressourcer og historiske referencer bevares uden at kopiere fælles stamdata til IndexedDB. | `FleetV2Module`, `supplierWorkshopAdapter`, fælles leverandører | delvist implementeret | 4/4 adaptertests; fuld FLEET-suite 174/174; root lint/build | Autoriseret “Opret leverandør” med bevaret sagskladde mangler stadig. Ekstern portal får ingen intern adgang. |
+| FL-12 | Leverandører | FLEET v2 brugte sit lokale `relations.workshops` som en parallel leverandørstamme. Eksterne værksteder læses nu fra fælles `leverandoerer`; interne ressourcer og historiske referencer bevares uden at kopiere fælles stamdata til IndexedDB. Autoriseret oprettelse går til samme register med værksted forvalgt og sikker retur til den bevarede sagskladde. | `FleetV2Module`, `supplierWorkshopAdapter`, `supplierReturn`, `WorkshopAssignment`, fælles leverandører | implementeret og verificeret | 7/7 adapter-/returtests; fuld FLEET-suite 179/179; integreret browser ved 1919×1080 CSS-pixel/100 % arbejdsområdezoom | Ekstern portal får ingen intern adgang. Produktlagring er fortsat det eksisterende tenantafgrænsede leverandørregister; mailafsendelse er ikke aktiveret. |
 | FL-13 | Service | Dateret seneste service/måler, kalender/km/timer, varsler, faste hændelser og forklarlig næste grænse. | Service domain/UI | implementeret som lokal prototype | 24/24 Service-domæne-/komponenttests | Den først nåede dato- eller målergrænse udløser behovet; tallet `500` er målerinterval i den viste enheds km eller driftstimer |
 | FL-14 | Serviceautomatik | Én indberetning pr. krav/cyklus, idempotens/samtidighed, manglende grundlag, gennemførsel og ændring/deaktivering. | Service automation, Functions/Rules | lokalt implementeret; serverdel blokeret | ServiceAutomation dækker gentagelse, samtidige fanekald, manglende grundlag, deaktivering og ny cyklus | Den aktuelle kontrol kører kun ved appstart/hvert minut i browseren; varig serverstyret scheduler og emulatorbevis mangler |
 | FL-15 | Kategorier | Kundestyret opret/redigér/sortér/deaktivér med historiske referencer og eksplicit rapportmapping. | Opsætning, category repository/adapter | åben | Permission, historik og mobil/desktop | Én autoritativ kategori pr. formål |
@@ -66,7 +66,7 @@ aktuelle kodegrundlag.
 | FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | FLEET economy domain/UI | åben | Beregnings-/drilldowntests | Estimat, kontrolleret og bogført holdes adskilt |
 | FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET economy export | delvist implementeret lokalt | Domænetest af dansk indhold og UTF-8-rundtur | Download har nu UTF-8 BOM; manuel åbning i dansk Excel og udvidede momskolonner udestår |
 | REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.597/4.597 grøn i isoleret emulator. Målrettet Fakturacenter-callable 21 assertions, UNIT/WAREHOUSE/modul 48/48 og tenant 24/24. | FL-14 og øvrige kommende serverfunktioner kræver egne emulatorbeviser før deres samlede krav kan lukkes. |
-| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint og build grøn; Rules-/platformsgate 4.597/4.597 grøn; FLEET 174/174 grøn efter Etape 11 | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
+| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint og build grøn; Rules-/platformsgate 4.597/4.597 grøn; FLEET 179/179 grøn efter Etape 12 | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
 | REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | i gang | Ny Etape-7-pakke dækker sagsmappe/dialog ved alle fire viewports, normal/kompakt menu, 100/125 % og Nulstil; Fakturacenter/menu/manuel sag ved 1440×900 | Samme matrix skal fortsat køres på resterende FLEET-, service-, kategori- og økonomiskærme |
 
 ## Baseline
@@ -502,3 +502,37 @@ før/efter-beviser for de prioriterede synlige fejl.
 | --- | --- | --- | --- | --- | --- | --- |
 | FL-12 | Delvist implementeret; fælles værkstedsvalg er koblet, oprettelsesretur mangler | Implementeret og verificeret for mapping, aktive valg og historik | Implementeret og verificeret: fælles RTDB-kilde læses, ingen IndexedDB-kopi | Implementeret for læsning via eksisterende `leverandoerer.laes`; skriveforløb mangler | 4/4 adaptertests og fuld FLEET-suite 174/174 | Delvist implementeret |
 | REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, FLEET 174/174 og seneste fulde Rules-gate 4.597/4.597 | Delvist implementeret |
+
+### Etape 12 — leverandøroprettelse fra sagsmappen
+
+- “Opret leverandør” i værkstedstildelingen åbner det fælles
+  leverandørregister på `/indkoeb/leverandoerer`. Kategorien “Værksted og
+  reparation” er forvalgt; der oprettes ikke et nyt FLEET-register.
+- Knappen er kun aktiv med `leverandoerer.skriv`. En bruger uden skriveadgang
+  får en konkret forklaring og kan ikke aktivere oprettelsesformularen via
+  query-parametre.
+- Returdestinationen accepterer kun den konkrete integrerede rute
+  `/fleet-v2/sager/<id>/bestilling`. Eksterne adresser og andre interne ruter
+  afvises. Den oprettede leverandør føres tilbage som et kodet forvalg.
+- Den endnu ikke gemte værkstedsbestilling bevares kun i `sessionStorage`,
+  afgrænset af tenant og sag, mens brugeren er i leverandørregisteret. Den
+  lokale kladde slettes efter en vellykket gemning af værkstedsbestillingen.
+  Der påstås ikke serverlagring af sagskladden.
+- Browserbevis blev taget fra den integrerede devserver på port 5297 med
+  arbejdsområdezoom 100 %. Displaykalibreringen gav 1919×1080 CSS-pixel.
+  Med kompakt menu målte `.fc-slot` 1.809 px og `.fc-workspace-zoom` 1.757 px.
+  Ruten viste den fælles leverandørliste, den nye knap og den bevarede tekst
+  “Bremsekontrol – kladdebevis etape 12” efter retur.
+- Billedbevis:
+  `docs/beviser/etape-12/fleet-vaerkstedsvalg-1920x1080.png` og
+  `docs/beviser/etape-12/leverandoerformular-1920x1080.png`.
+- Teknisk gate på etapegrundlaget: målrettede tests 13/13; hele FLEET-suiten
+  179/179 i 29 filer; FLEET-lint og FLEET-produktionsbuild bestod. Den kendte
+  chunk-størrelsesadvarsel består.
+
+#### Delstatus efter Etape 12
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FL-12 | Implementeret og verificeret i den integrerede app | Implementeret og verificeret for mapping, aktive valg, historik og retur | Implementeret og verificeret: fælles RTDB-kilde; kun midlertidig sagskladde i tenant-/sagsafgrænset sessionlager | Implementeret og verificeret med `leverandoerer.laes`/`leverandoerer.skriv` og afvist usikker retur | 7/7 adapter-/returtests, 6/6 sagsflowtests, 179/179 FLEET og to nye browserbilleder | Implementeret og verificeret |
+| REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | FLEET 179/179; root lint og produktionsbuild grøn | Delvist implementeret |

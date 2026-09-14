@@ -35,6 +35,8 @@
  * være en anden vej til det samme felt.
  */
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { safeSupplierReturnPath, withSelectedSupplier } from "../../../fleet-v2/src/data/supplierReturn.js";
 import { kr, num, pct, dato, datoTid, deviation } from "../../fleet/format.js";
 import {
   Kort, KpiKort, KpiRaekke, Tabel, Pille, Henter, Fejl, Datatilstand, Gitter, MiniLinje,
@@ -63,9 +65,18 @@ import {
 export default function Leverandoerer() {
   const { kpi: k, henter, tilstand, genindlaes } = useKpi();
   const { bruger, path } = useFleet();
+  const location = useLocation();
+  const navigate = useNavigate();
   const maaSkrive = harPerm(bruger?.perms, PERM.leverandoererSkriv);
-  const [nyt, saetNyt] = useState(false);
+  const query = new URLSearchParams(location.search);
+  const retursti = safeSupplierReturnPath(query.get("retur") || "");
+  const kategoriForvalg = query.get("kategori") === "vaerksted" ? "vaerksted" : "";
+  const opretAnmodet = query.get("ny") === "1";
+  const [nyt, saetNyt] = useState(() => opretAnmodet && maaSkrive);
   const [redigerer, saetRedigerer] = useState(null);
+  useEffect(() => {
+    if (opretAnmodet && maaSkrive) saetNyt(true);
+  }, [opretAnmodet, maaSkrive]);
 
   /* ⚠ LEVERANDØREN KOM FRA demo-indkoeb.js INDTIL NODEN FANDTES. Den fandtes
      ikke: `leverandoerer` stod slet ikke i firebase.rules.json, selv om BÅDE
@@ -207,9 +218,20 @@ export default function Leverandoerer() {
 
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
+      {opretAnmodet && !maaSkrive && (
+        <Kort titel="Leverandøren kan ikke oprettes med din adgang">
+          <p>Oprettelse kræver permissionen {PERM.leverandoererSkriv}. Dit sagsudkast i FLEET er ikke ændret.</p>
+        </Kort>
+      )}
+
       {nyt && (
-        <Leverandoerformular sti={path} paaLuk={() => saetNyt(false)}
-                              paaGemt={() => { saetNyt(false); genindlaesLev(); }} />
+        <Leverandoerformular sti={path} forvalgKategori={kategoriForvalg} paaLuk={() => saetNyt(false)}
+                              paaGemt={(id) => {
+                                saetNyt(false);
+                                genindlaesLev();
+                                const destination = withSelectedSupplier(retursti, id);
+                                if (destination) navigate(destination);
+                              }} />
       )}
       {redigerer && (
         <Leverandoerformular leverandoer={redigerer} sti={path}
@@ -656,9 +678,9 @@ const tomLeverandoer = () => ({
  * `aftale` og `prisliste` kan stå på posten i forvejen — denne formular
  * rører dem ikke, og en fuld overskrivning ville tømme dem i tavshed.
  */
-function Leverandoerformular({ leverandoer, sti, paaGemt, paaLuk }) {
+function Leverandoerformular({ leverandoer, sti, forvalgKategori = "", paaGemt, paaLuk }) {
   const nyt = !leverandoer;
-  const [f, saetF] = useState(() => (leverandoer ? { ...tomLeverandoer(), ...leverandoer } : tomLeverandoer()));
+  const [f, saetF] = useState(() => (leverandoer ? { ...tomLeverandoer(), ...leverandoer } : { ...tomLeverandoer(), kategori: forvalgKategori }));
   const [roert, saetRoert] = useState({});
   const [visAlle, saetVisAlle] = useState(false);
   const [gemmer, saetGemmer] = useState(false);
@@ -687,7 +709,7 @@ function Leverandoerformular({ leverandoer, sti, paaGemt, paaLuk }) {
     });
     saetGemmer(false);
     saetSvar(r);
-    if (r.ok) paaGemt();
+    if (r.ok) paaGemt(id);
   };
 
   const kategorivalg = [
