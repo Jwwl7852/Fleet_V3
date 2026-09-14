@@ -6,14 +6,14 @@ export default defineConfig({
   workers: 1,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:5287",
+    baseURL: process.env.FLEET_E2E_BASE_URL || "http://127.0.0.1:5287",
     browserName: "chromium",
     launchOptions: {
       executablePath: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
     },
   },
   outputDir: "./artifacts/playwright-results",
-  webServer: {
+  webServer: process.env.FLEET_E2E_BASE_URL ? undefined : {
     command: "npm run dev -- --port 5287 --strictPort",
     url: "http://127.0.0.1:5287",
     env: {

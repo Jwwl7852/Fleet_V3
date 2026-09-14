@@ -23,14 +23,14 @@ describe("Værksted og kalender", () => {
     expect(screen.getByText("Beskadiget strømkabel", { exact: true })).toBeTruthy();
   });
 
-  it("opretter værkstedsopgaven eksplicit fra en klar sag uden dublet", async () => {
+  it("opretter værkstedsopgaven eksplicit fra Værksted uden dublet", async () => {
     const dataset = createFixtureDataset();
     dataset.relations.workshopTasks = [];
     dataset.relations.bookings = [];
     dataset.relations.workshopEvents = [];
-    const repository = start("/arbejdsko/case-demo-003", dataset);
-    await screen.findByRole("heading", { name: "Arbejdskø" });
-    fireEvent.click(screen.getByRole("button", { name: "Opret værkstedsopgave" }));
+    const repository = start("/vaerksted", dataset);
+    await screen.findByRole("heading", { name: "Værksted" });
+    fireEvent.click(screen.getByRole("button", { name: "Ny værkstedsopgave" }));
     fireEvent.change(screen.getByLabelText("Opgavetitel"), { target: { value: "Udskift kabel sikkert" } });
     fireEvent.click(screen.getByRole("button", { name: "Opret opgave" }));
     expect(await screen.findByRole("heading", { name: "Udskift kabel sikkert" })).toBeTruthy();

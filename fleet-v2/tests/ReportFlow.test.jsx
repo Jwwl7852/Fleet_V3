@@ -79,4 +79,30 @@ describe("indberetning, triage og Arbejdskø", () => {
     start("/indberetninger/ukendt");
     expect(await screen.findByRole("heading", { name: "Indberetningen findes ikke" })).toBeTruthy();
   });
+
+  it("åbner en ny indberetning i flytbar dialog og en sag under vurdering som samlet sagsmappe", async () => {
+    start("/arbejdsko/case-demo-002");
+    const reportDialog = await screen.findByRole("dialog", { name: /SAG-00002/ });
+    expect(within(reportDialog).getByText(/Flyt dialogen ved at trække/)).toBeTruthy();
+    expect(within(reportDialog).getByRole("heading", { level: 2, name: /AdBlue-advarsel/ })).toBeTruthy();
+    fireEvent.click(within(reportDialog).getByRole("button", { name: /Luk SAG-00002/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Knirkende bremser/ }));
+    const caseDialog = await screen.findByRole("dialog", { name: /VYR-2025-00001/ });
+    expect(within(caseDialog).getByRole("heading", { name: "Problem og næste handling" })).toBeTruthy();
+    expect(within(caseDialog).queryByRole("navigation", { name: "Sagsmapper" })).toBeNull();
+  });
+
+  it("beskytter ugemte dialogændringer ved X og lukker efter bekræftelse", async () => {
+    const confirmSpy = vi.spyOn(globalThis, "confirm").mockReturnValue(false);
+    start("/arbejdsko/case-demo-002");
+    const dialog = await screen.findByRole("dialog", { name: /SAG-00002/ });
+    fireEvent.change(within(dialog).getByLabelText("Intern note"), { target: { value: "Ugemt vurdering" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Luk SAG-00002/ }));
+    expect(confirmSpy).toHaveBeenCalledOnce();
+    expect(screen.getByRole("dialog", { name: /SAG-00002/ })).toBeTruthy();
+    confirmSpy.mockReturnValue(true);
+    fireEvent.click(within(dialog).getByRole("button", { name: /Luk SAG-00002/ }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /SAG-00002/ })).toBeNull());
+    confirmSpy.mockRestore();
+  });
 });

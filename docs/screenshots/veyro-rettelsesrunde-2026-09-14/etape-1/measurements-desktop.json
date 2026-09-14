@@ -1,0 +1,124 @@
+{
+  "reportDialog": {
+    "before": {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "dialog": {
+        "left": 678,
+        "right": 1458,
+        "top": 185.796875,
+        "bottom": 894.1875,
+        "width": 780,
+        "height": 708.390625
+      },
+      "close": {
+        "left": 1403,
+        "right": 1441,
+        "top": 200.796875,
+        "bottom": 238.796875
+      },
+      "backdrop": {
+        "left": 216,
+        "right": 1920,
+        "top": 0,
+        "bottom": 1080,
+        "width": 1704,
+        "height": 1080
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1886,
+        "width": 1636
+      },
+      "documentScrollWidth": 1920,
+      "scrollY": 41,
+      "computed": {
+        "position": "static",
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "backdropPosition": "absolute"
+      }
+    },
+    "after": {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "dialog": {
+        "left": 743,
+        "right": 1523,
+        "top": 222.796875,
+        "bottom": 931.1875,
+        "width": 780,
+        "height": 708.390625
+      },
+      "close": {
+        "left": 1468,
+        "right": 1506,
+        "top": 237.796875,
+        "bottom": 275.796875
+      },
+      "backdrop": {
+        "left": 216,
+        "right": 1920,
+        "top": 0,
+        "bottom": 1080,
+        "width": 1704,
+        "height": 1080
+      },
+      "workspace": {
+        "left": 250,
+        "right": 1886,
+        "width": 1636
+      },
+      "documentScrollWidth": 1920,
+      "scrollY": 41,
+      "computed": {
+        "position": "static",
+        "transform": "matrix(1, 0, 0, 1, 65, 37)",
+        "backdropPosition": "absolute"
+      }
+    }
+  },
+  "caseDialog": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "dialog": {
+      "left": 348,
+      "right": 1788,
+      "top": 18,
+      "bottom": 1062,
+      "width": 1440,
+      "height": 1044
+    },
+    "close": {
+      "left": 1733,
+      "right": 1771,
+      "top": 33,
+      "bottom": 71
+    },
+    "backdrop": {
+      "left": 216,
+      "right": 1920,
+      "top": 0,
+      "bottom": 1080,
+      "width": 1704,
+      "height": 1080
+    },
+    "workspace": {
+      "left": 250,
+      "right": 1886,
+      "width": 1636
+    },
+    "documentScrollWidth": 1920,
+    "scrollY": 41,
+    "computed": {
+      "position": "static",
+      "transform": "matrix(1, 0, 0, 1, 0, 0)",
+      "backdropPosition": "absolute"
+    }
+  }
+}

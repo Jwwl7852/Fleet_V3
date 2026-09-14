@@ -1,0 +1,40 @@
+{
+  "viewport": {
+    "width": 360,
+    "height": 800
+  },
+  "dialog": {
+    "left": 0,
+    "right": 360,
+    "top": 0,
+    "bottom": 800,
+    "width": 360,
+    "height": 800
+  },
+  "close": {
+    "left": 306,
+    "right": 344,
+    "top": 14,
+    "bottom": 52
+  },
+  "backdrop": {
+    "left": 0,
+    "right": 360,
+    "top": 0,
+    "bottom": 800,
+    "width": 360,
+    "height": 800
+  },
+  "workspace": {
+    "left": 24,
+    "right": 336,
+    "width": 312
+  },
+  "documentScrollWidth": 360,
+  "scrollY": 0,
+  "computed": {
+    "position": "static",
+    "transform": "none",
+    "backdropPosition": "absolute"
+  }
+}

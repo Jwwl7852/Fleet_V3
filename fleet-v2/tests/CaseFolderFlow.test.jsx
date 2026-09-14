@@ -30,10 +30,14 @@ describe("udvidet skadesindberetning og sagsmappe", () => {
     expect(repository.inspect().relations.reportDrafts[0].reference).toBe(draft.reference);
   });
 
-  it("viser de syv sagsfaner og blokerer normal lukning uden kontrolleret fakturagrundlag", async () => {
+  it("viser den samlede sagsmappe uden fanebjælke og blokerer normal lukning uden kontrolleret fakturagrundlag", async () => {
     start("/sager/case-demo-001");
-    expect(await screen.findByRole("heading", { name: "VYR-2025-00001" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Bestilling og mails" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Knirkende bremser" })).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Sagsmapper" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Problem og næste handling" })).toBeTruthy();
+    expect(screen.getByText("Oprindelig indberetning")).toBeTruthy();
+    expect(screen.getByText("Billeder og dokumenter")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Sagens overblik" })).toBeTruthy();
     fireEvent.click(screen.getByText("Jeg bekræfter, at sagen kan lukkes"));
     fireEvent.click(screen.getByRole("button", { name: "Luk sag" }));
     expect((await screen.findByRole("status")).textContent).toMatch(/Alle forventede fakturaer/);
@@ -41,7 +45,7 @@ describe("udvidet skadesindberetning og sagsmappe", () => {
 
   it("lukker uden faktura med begrundelse og kan genåbne eksplicit", async () => {
     const repository = start("/sager/case-demo-001");
-    await screen.findByRole("heading", { name: "VYR-2025-00001" });
+    await screen.findByRole("heading", { level: 1, name: "Knirkende bremser" });
     fireEvent.click(screen.getByText("Luk uden faktura"));
     fireEvent.change(screen.getByLabelText("Begrundelse for lukning uden faktura"), { target: { value: "Intern udbedring uden ekstern faktura" } });
     fireEvent.click(screen.getByText("Jeg bekræfter, at sagen kan lukkes"));

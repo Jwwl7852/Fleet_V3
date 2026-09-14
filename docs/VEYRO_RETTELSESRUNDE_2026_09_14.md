@@ -35,17 +35,17 @@ aktuelle kodegrundlag.
 | UX-01 | Zoom | Første besøg 100 %, genindlæs af bruger-/kontekst-/skærmafgrænset valg og fungerende nulstilling. | `src/fleet/useVisningsvalg.js`, `src/fleet/AppShell.jsx` | implementeret | Design/navigationstest, build og browser ved 100 % samt nulstilling | Ingen |
 | UX-02 | Sidebar | Menu/topbjælke påvirkes ikke af arbejdsområdezoom; menutekst flytter sig ikke ved scrollbar. | `src/fleet/fleet.css` | implementeret | Synlig Windows-scrollbar skjult; menuen måltes fortsat scrollbar fra 0 til 89,55 px (`1059/970 px`) og teksten er énlinjet | Ingen |
 | UX-03 | Navigation | Hele moduloverskriften folder uden samtidig navigation; underpunkter navigerer. | `src/fleet/AppShell.jsx` | implementeret | Fakturacenter foldet på Dashboard uden URL-skift; underlinks eksponeret semantisk | Ingen |
-| UX-04 | Kompakt menu | Flyout bevares fra ikon til menu, ligger over indhold, håndterer kanter/lange lister, ESC/udenfor, mus/tastatur/touch. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | implementeret | FLEET-flyout vist over workspace; alle 11 tilladte underlinks; ESC lukkede og returnerede fokus; mobilklik eksponerede underlinks | Ingen |
+| UX-04 | Kompakt menu | Flyout bevares fra ikon til menu, ligger over indhold, håndterer kanter/lange lister, ESC/udenfor, mus/tastatur/touch. ESC-fokus genåbnede tidligere straks flyoutet via containerens `onFocus`. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | implementeret | Integreret Playwright: hover fra ikon til undermenu, ESC med fokusretur uden genåbning, Enter-genåbning og navigation; `1440x900-kompakt-hovermenu-fleet.png` | Ingen |
 | UX-05 | Foldeknap | Variant B, afrundet flig ca. 30×34 med mindst 44×44 klikmål, tokens og korrekt chevron/aria. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | implementeret | Beregnet klikmål 43,98×43,98 px; synlig pseudo-flig 30×34; titel, aria og korrekt chevron | Ingen |
 | UX-06 | Navigation | Meningsfuld tilbagefunktion med bevaret visningstilstand; direkte åbning har fallback. | Fælles route-/visningskomponenter | åben | Browser frem/tilbage, reload og direkte URL | Skærmspecifik tilpasning |
-| UX-07 | Dialog | ESC, X, Annuller, ugemte data, fokusretur, bekræft Gem/Slet og fejlbevaring. | Fælles og berørte moduldialoger | åben | Tastatur- og fejlforløb | Domæner må fortsat bruge arkivering, hvor hard delete er forbudt |
+| UX-07 | Dialog | ESC, X, Annuller, ugemte data, fokusretur, bekræft Gem/Slet og fejlbevaring. | Fælles og berørte moduldialoger | i gang | Ny FLEET-rutedialog har fokusfælde, ESC/X/baggrund, fokusretur og dirty-bekræftelse; Manuel sag bevarer input ved fejl. 10/10 berørte komponenttests og browserforløb består. | Øvrige moduldialoger skal fortsat auditeres; domæner må bruge arkivering, hvor hard delete er forbudt |
 | FC-01 | Navigation | Synligt forløb er Indbakke, betinget Ekstra kontrol og Arkiv; gamle dybe links mappes uden historiktab. | `src/fleet/fakturacenter-intake.js`, `src/moduler/oekonomi/Fakturacenter.jsx`, `src/fleet/nav.js` | implementeret | 100/100 målrettede tests; browser viste kun Indbakke og Arkiv, mens Ekstra kontrol er korrekt skjult før aktivering | Interne domænestatusser er bevaret |
 | FC-02 | Kontrol | Succes fjerner posten fra arbejdsliste, bliver i Indbakke og vælger næste; fejl bevarer posten. | Fakturacenter UI/domæne | implementeret | Domænetest og browserwiring; succes flytter til intern kontrolleret/Arkiv-status uden sektionsskift | Lokal prototype, ikke serverlagring |
 | FC-03 | Ekstra kontrol | Tilstande ingen/alle/over beløbsgrænse ekskl. moms; anden person; kundestyret allowlist; serveraudit. | Opsætning, fælles kontrakt, Functions/Rules | blokeret | Ren kontrakttest for netto og anden udpeget kontrollant; opsætningsrute viser afstemt kontrakt uden aktivering | Autoritativ brugeradapter, serverlagring, audit og Rules/Functions mangler; UI-værdier giver ikke adgang |
 | FC-04 | Massekontrol | Checkbox, synligt omfang, én bekræftelse, adgang/revision/gates pr. faktura, delsvar og idempotent genforsøg. | Fakturacenter UI/domæne | implementeret | 100/100 målrettede tests; browser viste 19 synlige valg og bekræftelsesdialog med per-faktura-gates | Lokal prototype, ikke serverlagring |
 | FC-05 | Filtre | Matchkategori bevares; standard nyeste først erstattes som kontrol af modul inkl. uafklaret/flere fordelinger. | Fakturacenter UI | implementeret | Filtertest dækker FLEET, flere moduler og uafklaret; browser viste modulfilter og fast nyeste rækkefølge | Ingen |
-| FC-06 | Upload | Filnavn, modtaget/behandler/fejlet, tydelig fremdrift, dubletværn og idempotent genforsøg; demo mærkes. | Fakturacenter intake/UI | åben | Upload- og fejlforløb | Permanent lagring må kun oplyses efter datakildekvittering |
-| FC-07 | Layout | Kompakt top og tre selvscrollende, justerbare, huskede paneler; demospecifik tekst fjernes fra normal struktur. | Fakturacenter workspace/CSS | i gang | Tre interne scrollområder og panelbredder består test; top og liste er komprimeret | Bruger-/tenantafgrænsning af ældre panelnøgle mangler endnu |
+| FC-06 | Upload | Filnavn, modtaget/behandler/fejlet, tydelig fremdrift, dubletværn og idempotent genforsøg; demo mærkes. | Fakturacenter intake/UI | i gang | Integreret browsertest viste filnavn, lokal `ikke gemt`-kvittering og samme SHA-256 på dublethold; `1440x900-fakturacenter-uploadfeedback.png` | Permanent modtagelse/pipeline og backendkvittering mangler; UI påstår ikke varig lagring |
+| FC-07 | Layout | Kompakt top og tre selvscrollende, justerbare, huskede paneler; demospecifik tekst fjernes fra normal struktur. Den ruteisolerede CSS ramte tidligere ikke den indskudte zoom-wrapper, så arbejdsbordet voksede til ca. 2.086 px i stedet for at give panelerne en viewportshøjde. | Fakturacenter workspace/CSS og AppShell zoom-wrapper | implementeret | Ved 1440×900: workspace 1.172×642 px; paneler 280/423/450 px; scrollHeight/clientHeight 1874/440, 824/566 og 1106/566. Tastaturbredde 22→24 % bestod reload. | Forretningsdata er fortsat lokal prototype; panelpræferencens scope gennemgås igen i samlet regression |
 | FC-08 | Opsætning | Mail og forbindelser flyttes ud af arbejdsnavigationen til fælles Opsætning uden at aktivere transport. | Nav, routes, opsætning | implementeret | Produktionsbuild indeholder lazy chunk; gammelt mail-link redirecter; adgang filtreres på `fakturaer.godkend` | Ekstern mail forbliver deaktiveret |
 | FL-01 | Overblik | KPI-kort og handlingsposter/Se alle åbner relevante filtre; optællinger og udsnit forklares. | `fleet-v2/src/components/Overview.jsx`, FleetV2App og UnitCatalog | implementeret lokalt | Komponenttest og faktisk browserroute/filter | Handlingslisten forklarer nu, at den viser 5 af det samlede antal. |
 | FL-02 | Drift | Dag/uge/måned/kvartal/år ændrer registreret datagrundlag og akser. | FLEET overblik/domæne | åben | Periodeprøver mod syntetisk registreret historik | Ingen opfundet fortid |
@@ -54,9 +54,9 @@ aktuelle kodegrundlag.
 | FL-05 | Enhedsregister | Moderne FLEET-kartotek bliver primær skærm i Opsætning med autoritativ mapping og gamle dybe links. | Root-routes/nav, FLEET repository/adapters | implementeret lokalt | Route-, permission- og referenceprøver med PLANNING | Moderne kartotek åbner på `/opsaetning/enheder`; `/fleet-v2/enheder` bevares som kompatibelt dybt link. UNIT/WAREHOUSE-unit er fortsat et særskilt domæneobjekt. |
 | FL-06 | Enhedsformular | Typefaner fjernes; typefilter bevares; indvendige mål, fire udstyrsvalg og energikilde med ukendt/ikke relevant. | UnitCatalog, UnitFormDialog, UnitProfile, unitSelectors | implementeret lokalt | 18/18 målrettede komponenttests og integreret browserverifikation | Trækkrog, hængertræk, kran og lift er separate værdier. Eksisterende ukendte drivmiddelværdier bevares ved redigering. |
 | FL-07 | Indberetninger | Stabil trepanelstruktur, fuld bredde, justering/hukommelse/scroll og semantiske statustokens. | ReportTriage, ThreePanelWorkspace og CSS | implementeret lokalt på desktop; mobil regression består | Faktisk browsermåling, tastatur-resize/nulstil og ReportFlow | Bredder er rene bruger-/tenantafgrænsede visningsvalg, ikke forretningsdata. |
-| FL-08 | Manuel sag | Læsbar dialog med enhed, beskrivelse, prioritet, validering, lukning og inputbevaring ved fejl. | ManualCaseDialog og CSS | implementeret lokalt | Browserprøve uden lagring og ReportFlow/CaseFolder-tests | Eksplicit fælles gem-bekræftelse mangler fortsat. |
-| FL-09 | Arbejdskø | Nye indberetninger åbner flytbar detaljedialog; under vurdering åbner genbrugt sagsmappe; mobil stabil. | WorkQueue, case components | åben | Drag-grænser, fokus, mobil og permissions | Ingen |
-| FL-10 | Sagsmappe | Godkendt samlet design uden fanebjælke, kompakt enhedsrække, foldesektioner og tilstands-/permissionstyret næste handling. | CaseFolder og CSS | åben | Sagsflow, billeder/dokumenter/historik, afslutningsgate | Autoritative statusser og fakturaafklaring bevares |
+| FL-08 | Manuel sag | Læsbar dialog med enhed, beskrivelse, prioritet, validering, lukning og inputbevaring ved fejl. | ManualCaseDialog og CSS | implementeret lokalt | Integreret browsertest viste validering og oprettede en syntetisk højprioritetssag; `1440x900-manuel-sag-validering.png`; komponenttest bevarer input ved lagringsfejl | Lokal prototype, ikke serverlagring |
+| FL-09 | Arbejdskø | Nye indberetninger åbner flytbar detaljedialog; under vurdering åbner genbrugt sagsmappe; mobil stabil. | WorkQueue, `DraggableDialog`, CaseFolder og CSS | implementeret lokalt | 1920×1080 drag flyttede dialogen 65×37 px og holdt X inden for workspace; fuld sagsmappe genbruges. 390×844 og 360×800 har fuldskærmsdialog uden dokumentoverflow. | Autorisation følger eksisterende lokale repository/route; serverpersistens mangler |
+| FL-10 | Sagsmappe | Godkendt samlet design uden fanebjælke, kompakt enhedsrække, foldesektioner og tilstands-/permissionstyret næste handling. | CaseFolder, CaseActionPanel og CSS | implementeret lokalt | Ingen tabs; kompakt enhedsrække; `Problem og næste handling`; foldbare indberetning, medier, enhedsdata, økonomi og historik; sticky højre infokolonne. Browserbevis ved 1920, 1440/125 %, 390 og 360. | Autoritative statusser og fakturaafklaring er bevaret; data er lokal prototype |
 | FL-11 | Kompakt kø | Permanent Flyt sag fjernes; statusændring bevares i sagsmappe/diskret menu; kolonner ruller. | WorkQueue og CSS | implementeret lokalt | Kolonne-/statusregression | Tabelvisning og sagsmappe bevarer lovlige statushandlinger; workflowstadier er uændrede |
 | FL-12 | Leverandører | Værksteder læses fra fælles leverandørregister; autoriseret oprettelse bevarer sagskladde. | FLEET vendor adapter, fælles leverandører | åben | Opret/vælg og afvist rolle | Ekstern portal må ikke få intern adgang |
 | FL-13 | Service | Dateret seneste service/måler, kalender/km/timer, varsler, faste hændelser og forklarlig næste grænse. | Service domain/UI | implementeret som lokal prototype | 24/24 Service-domæne-/komponenttests | Den først nåede dato- eller målergrænse udløser behovet; tallet `500` er målerinterval i den viste enheds km eller driftstimer |
@@ -67,7 +67,7 @@ aktuelle kodegrundlag.
 | FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET economy export | delvist implementeret lokalt | Domænetest af dansk indhold og UTF-8-rundtur | Download har nu UTF-8 BOM; manuel åbning i dansk Excel og udvidede momskolonner udestår |
 | REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | **blokeret** | Den fulde Rules-suite blev kørt i isolerede emulatorer med proceslokal JDK 21 | WAREHOUSE-reglen tillod direkte klientændring af `kasser/UNIT-101.pladsId`; fysisk placering kan dermed ændres uden den krævede append-only bevægelse. Produktarbejdet stoppede uden at svække regler eller tests. |
 | REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | ikke godkendt | Kontrakt-, browser- og sikkerhedsgate | Den afsluttende samlede sikkerhedsgate er ikke bestået, og tværmodulgaten kan derfor ikke markeres grøn. |
-| REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | åben | Nummererede før/efter-billeder og mål | Ingen |
+| REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | i gang | Ny Etape-7-pakke dækker sagsmappe/dialog ved alle fire viewports, normal/kompakt menu, 100/125 % og Nulstil; Fakturacenter/menu/manuel sag ved 1440×900 | Samme matrix skal fortsat køres på resterende FLEET-, service-, kategori- og økonomiskærme |
 
 ## Baseline
 
@@ -222,6 +222,75 @@ aktuelle kodegrundlag.
   `ServiceWorkflow.test.js`, `ServiceAutomation.test.js` og
   `ServiceFlow.test.jsx`: 24/24 bestået. Root lint, designkontrol og
   produktionsbuild bestod; buildens kendte store-chunk-advarsel består.
+
+### Etape 7 — færdig synlig sagsmappe, dialoger og Fakturacenter-layout
+
+- Auditgrundlag før ændringer: branch `codex/veyro-integration-v1`, HEAD
+  `ae9a2a6a844fd222a69d8cd3470fde37c459a256`. Den eksisterende utracked
+  `functions/.env.demo-veyro-warehouse-integration-test` er fortsat urørt.
+- Sagsmappens syv faner er fjernet. Den samme `CaseFolder` bruges nu i den
+  direkte route og i Arbejdskøens dialog. Enheden vises i en kompakt række;
+  problem, vurdering, leverandør/bestilling og næste handling står samlet;
+  indberetning, medier, enhedsdata, økonomi og historik er foldbare sektioner;
+  ansvarlig, prioritet, frist, aktivitet og afslutningsgate står i højre kolonne.
+- En ny portalbaseret rutedialog ligger over zoom-wrapperen uden at blive
+  klippet. Nye indberetninger kan flyttes fra overskriften på desktop og
+  begrænses til det reelle arbejdsområde; mobil bruger en stabil fuldskærmsdialog.
+  Interaktive felter starter ikke drag. ESC, X og baggrundslukning deler samme
+  dirty-beskyttelse, fokus holdes i dialogen og returneres til udgangspunktet.
+- AppShells kompakte menu havde en konkret ESC-fejl: fokusretur udløste samme
+  containers `onFocus` og genåbnede flyoutet. En fokussuppression for netop
+  returhændelsen lukker nu menuen, mens næste Enter åbner den normalt.
+- Fakturacenterets tre paneler havde korrekte overflow-regler, men de blev ikke
+  aktive: route-CSS'en forventede `.fic-shell` som direkte barn af `.fc-slot`,
+  mens den fælles zoom-wrapper nu ligger imellem. Selektoren og flex-højdekæden
+  omfatter nu wrapperen. Ved 1440×900 er arbejdsbordet 1.172×642 px; panelerne
+  er ca. 280/423/450 px og har henholdsvis `1874/440`, `824/566` og `1106/566`
+  i scrollHeight/clientHeight. Alle tre kunne scrolles uafhængigt.
+- Panelbredden blev ændret med tastatur fra 22 til 24 procent og genfundet efter
+  reload. Lokal filkontrol viste både filnavn/`ikke gemt` og samme SHA-256 som
+  mulig dublet. En blandet massekontrol gav 1 kontrolleret og 1 afvist med
+  resultat pr. faktura.
+- Før-reference: auditbilledet
+  `artifacts/veyro-rettelsesrunde-audit-2026-09-14/browser/09-case-folder-current.png`
+  på audit-HEAD viser fanebjælken. Nye efterbeviser ligger i
+  `docs/screenshots/veyro-rettelsesrunde-2026-09-14/etape-1/`:
+  `1920x1080-arbejdsko-aaben-sagsmappe.png`,
+  `1920x1080-arbejdsko-ny-indberetning-dialog.png`,
+  `1440x900-kompakt-menu-zoom-125-sagsmappe.png`,
+  `390x844-arbejdsko-aaben-sagsmappe.png` og
+  `360x800-arbejdsko-aaben-sagsmappe.png`.
+- Supplerende beviser: `1440x900-kompakt-hovermenu-fleet.png`,
+  `1440x900-manuel-sag-validering.png`,
+  `1440x900-fakturacenter-uploadfeedback.png` og
+  `1440x900-fakturacenter-massekontrol.png`. JSON-målinger ligger ved siden af.
+- Test på etapens slutindhold før commit: FLEET lint bestået; fuld FLEET
+  unit-/komponentsuite 165/165; browserregression for sagsmappe og service
+  6/6; integreret Playwright-gate 7/7 ved 1920×1080, 1440×900, 390×844 og
+  360×800. Root lint og produktionsbuild bestod. Builden har fortsat den
+  kendte advarsel om en stor chunk.
+- Værkstedsregressionens tidligere test forventede den fjernede permanente
+  arbejdskøknap `Opret værkstedsopgave`. Den eksplicitte oprettelse er fortsat
+  tilgængelig fra Værksted, mens sagsmappen som bestilt bruger tildeling og
+  bestilling under `Problem og næste handling`. Testen følger nu dette reelle
+  forløb og bekræfter fortsat, at samme sag ikke får en dubletopgave.
+
+#### Delstatus efter Etape 7
+
+Statusserne nedenfor skelner mellem synlig UI, logik, lagring, adgang og bevis.
+Et samlet krav markeres ikke færdigt, hvis en relevant serverdel mangler.
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| UX-04 | Implementeret og verificeret | Ikke relevant | Ikke relevant | Implementeret og verificeret via eksisterende navfiltrering | Implementeret og verificeret | Implementeret og verificeret |
+| UX-07 | Delvist implementeret | Delvist implementeret | Delvist implementeret | Delvist implementeret | Implementeret og verificeret for de nye FLEET-dialoger | Delvist implementeret |
+| FC-04 | Implementeret og verificeret | Implementeret og verificeret lokalt | Ikke implementeret servermæssigt | Delvist implementeret lokalt | Implementeret og verificeret med blandet resultat | Delvist implementeret |
+| FC-06 | Implementeret og verificeret for lokal filkontrol | Implementeret og verificeret for lokal SHA-256/dubletkontrol | Ikke implementeret servermæssigt | Ikke implementeret servermæssigt | Implementeret og verificeret lokalt | Delvist implementeret |
+| FC-07 | Implementeret og verificeret | Ikke relevant | Implementeret og verificeret som browserpræference | Ikke relevant | Implementeret og verificeret | Implementeret og verificeret |
+| FL-08 | Implementeret og verificeret | Implementeret og verificeret lokalt | Ikke implementeret servermæssigt | Delvist implementeret via eksisterende route/repository | Implementeret og verificeret | Delvist implementeret |
+| FL-09 | Implementeret og verificeret | Implementeret og verificeret lokalt | Ikke implementeret servermæssigt | Delvist implementeret via eksisterende route/repository | Implementeret og verificeret | Delvist implementeret |
+| FL-10 | Implementeret og verificeret | Implementeret og verificeret lokalt | Ikke implementeret servermæssigt | Delvist implementeret via eksisterende handlinger | Implementeret og verificeret | Delvist implementeret |
+| REG-03 | Delvist implementeret | Ikke relevant | Ikke relevant | Ikke relevant | Delvist implementeret | Delvist implementeret |
 
 ## Afsluttende kontrol og stopårsag
 

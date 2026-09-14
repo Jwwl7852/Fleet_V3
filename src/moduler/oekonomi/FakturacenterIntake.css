@@ -363,15 +363,22 @@ body:has(.fic-shell) {
 }
 .fc-app:has(.fic-shell),
 .fc-main:has(.fic-shell),
-.fc-slot:has(> .fic-shell) {
+.fc-slot:has(.fic-shell),
+.fc-workspace-zoom:has(> .fic-shell) {
   min-height: 0;
   overflow: hidden;
 }
-.fc-app:has(.fic-shell) { height: 100%; }
+.fc-app:has(.fic-shell) { height: auto; }
+.fc-app:has(.fic-shell) .fc-side { height: 100%; }
 .fc-app:has(.fic-shell) .fc-top { display: none; }
-.fc-slot:has(> .fic-shell) {
+.fc-slot:has(.fic-shell) {
   display: flex;
   padding-bottom: 10px;
+}
+.fc-workspace-zoom:has(> .fic-shell) {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
 }
 .fic-shell {
   flex: 1 1 auto;

@@ -178,6 +178,7 @@ export default function AppShell() {
   const [kompaktAaben, saetKompaktAaben] = useState(null);
   const [kompaktTop, saetKompaktTop] = useState({});
   const kompaktAnker = useRef(null);
+  const undertrykKompaktFokusaabning = useRef(false);
   const kompaktLukTimer = useRef(null);
   const [fakturacenterAntal, setFakturacenterAntal] = useState({});
   const erModulAaben = (key, aktiv) => Object.hasOwn(modulAaben || {}, key)
@@ -187,10 +188,17 @@ export default function AppShell() {
   const lukKompaktMenu = ({ fokus = false } = {}) => {
     if (kompaktLukTimer.current) window.clearTimeout(kompaktLukTimer.current);
     saetKompaktAaben(null);
-    if (fokus) kompaktAnker.current?.focus();
+    if (fokus) {
+      undertrykKompaktFokusaabning.current = true;
+      kompaktAnker.current?.focus();
+    }
   };
   const aabnKompaktMenu = (key, anker) => {
     if (!kompaktAktiv) return;
+    if (undertrykKompaktFokusaabning.current) {
+      undertrykKompaktFokusaabning.current = false;
+      return;
+    }
     if (kompaktLukTimer.current) window.clearTimeout(kompaktLukTimer.current);
     kompaktAnker.current = anker;
     const top = anker?.getBoundingClientRect?.().top || 0;

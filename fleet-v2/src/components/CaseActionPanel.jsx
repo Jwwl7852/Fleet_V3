@@ -3,13 +3,22 @@ import { ALLOWED_TRANSITIONS, CASE_PRIORITIES, CASE_STATUSES, DEMO_ACTORS, valid
 import { Icon } from "./Icon";
 import { CaseStatusConfirmDialog, needsBackToNewConfirmation } from "./CaseStatusConfirmDialog";
 
-export function CaseActionPanel({ caseItem, report, onUpdate, compact = false }) {
+export function CaseActionPanel({ caseItem, report, onUpdate, compact = false, onDirtyChange }) {
   const [values, setValues] = useState({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmBack, setConfirmBack] = useState(false);
   useEffect(() => setValues({ priority: caseItem?.priority || "normal", assigneeId: caseItem?.assigneeId || "", dueDate: caseItem?.dueDate || "", nextAction: caseItem?.nextAction || "", internalNote: "", status: "", reason: "", resolution: "", releaseBlock: false, releaseReason: "" }), [caseItem]);
   const targetOptions = useMemo(() => caseItem ? ALLOWED_TRANSITIONS[caseItem.status] || [] : [], [caseItem]);
+  const dirty = Boolean(caseItem && (
+    (values.priority || "normal") !== (caseItem.priority || "normal")
+    || (values.assigneeId || "") !== (caseItem.assigneeId || "")
+    || (values.dueDate || "") !== (caseItem.dueDate || "")
+    || (values.nextAction || "") !== (caseItem.nextAction || "")
+    || values.internalNote || values.status || values.reason || values.resolution
+    || values.releaseBlock || values.releaseReason
+  ));
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   if (!caseItem) return <section className="case-action-panel empty"><h2>Vælg en sag</h2><p>Vurdering og handling vises her.</p></section>;
   const set = (key, value) => setValues((current) => ({ ...current, [key]: value }));
   const performSave = async () => {

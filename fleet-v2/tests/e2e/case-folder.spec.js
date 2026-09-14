@@ -24,7 +24,9 @@ test("skadesformular, værkstedsmail og sagsmappe deler samme lokale sag", async
   await expect(page.getByText(/Kladde gemt lokalt/)).toBeVisible();
 
   await page.goto("/sager/case-demo-003");
-  await expect(page.getByRole("heading", { name: "VYR-2025-00003" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Beskadiget strømkabel" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Problem og næste handling" })).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveCount(0);
   await page.screenshot({ path: "artifacts/fleet-v2-case-folder-1672x941.png", fullPage: false });
   await page.getByRole("button", { name: /Tildel værksted/ }).click();
   await expect(page.getByRole("heading", { name: "Tildel værksted og klargør mail" })).toBeVisible();
@@ -48,7 +50,7 @@ test("skadesformular og sagsmappe er brugbare på mobil uden vandret overløb", 
   let dimensions = await page.evaluate(() => ({ inner: window.innerWidth, scroll: document.documentElement.scrollWidth }));
   expect(dimensions.scroll).toBe(dimensions.inner);
   await page.goto("/sager/case-demo-001");
-  await expect(page.getByRole("heading", { name: "VYR-2025-00001" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Knirkende bremser" })).toBeVisible();
   dimensions = await page.evaluate(() => ({ inner: window.innerWidth, scroll: document.documentElement.scrollWidth }));
   expect(dimensions.scroll).toBe(dimensions.inner);
   expect(errors).toEqual([]);

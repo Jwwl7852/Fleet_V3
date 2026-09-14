@@ -1,0 +1,41 @@
+{
+  "before": 22,
+  "resized": 24,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "workspace": {
+    "left": 242,
+    "right": 1414,
+    "width": 1172,
+    "height": 641.703125
+  },
+  "panels": [
+    {
+      "selector": ".fic-inbox-list",
+      "width": 279.796875,
+      "height": 439.71875,
+      "clientHeight": 440,
+      "scrollHeight": 1874,
+      "overflowY": "auto"
+    },
+    {
+      "selector": ".fic-document-panel",
+      "width": 422.96875,
+      "height": 566.078125,
+      "clientHeight": 566,
+      "scrollHeight": 824,
+      "overflowY": "auto"
+    },
+    {
+      "selector": ".fic-review-panel",
+      "width": 450.234375,
+      "height": 566.078125,
+      "clientHeight": 566,
+      "scrollHeight": 1106,
+      "overflowY": "auto"
+    }
+  ],
+  "documentScrollWidth": 1440
+}

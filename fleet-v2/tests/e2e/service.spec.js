@@ -47,9 +47,10 @@ test("servicekrav planlægges, bookes og udføres gennem samme sag og servicebog
   await expect(page.locator(".workshop-status")).toHaveText("Afsluttet");
 
   await page.getByRole("button", { name: "Åbn sagsmappe" }).click();
-  const statusStrip = page.locator(".case-status-strip");
-  await expect(statusStrip.getByText("Afventer fakturaafklaring", { exact: true })).toBeVisible();
-  await expect(statusStrip.getByText("Åben", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Problem og næste handling" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Afslutning af sag" })).toBeVisible();
+  await expect(page.getByText("Normal lukning er blokeret", { exact: true })).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveCount(0);
   await page.getByRole("button", { name: "Åbn enhedsprofil" }).click();
   await page.getByRole("tab", { name: "Servicebog" }).click();
   await expect(page.getByText("Browsertest · årsservice udført")).toBeVisible();
