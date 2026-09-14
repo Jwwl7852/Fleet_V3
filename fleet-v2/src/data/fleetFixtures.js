@@ -66,6 +66,35 @@ export const fixtureUnits = [
   unit("unit-nb-018", "NB-018", "equipment", "Husqvarna", "K 770", "Service", 884, "operation", { serialNumber: "HQ-K770-00884", year: 2021, meterType: "hours", nextServiceDate: null, nextServiceMeter: 1000, assignee: "Servicelager", location: "Rødovre" }),
 ];
 
+const statusObservationDates = [
+  "2024-01-31T23:59:59.000Z", "2024-02-29T23:59:59.000Z", "2024-03-31T23:59:59.000Z",
+  "2024-04-30T23:59:59.000Z", "2024-05-31T23:59:59.000Z", "2024-06-30T23:59:59.000Z",
+  "2024-07-31T23:59:59.000Z", "2024-08-31T23:59:59.000Z", "2024-09-30T23:59:59.000Z",
+  "2024-10-31T23:59:59.000Z", "2024-11-30T23:59:59.000Z", "2024-12-31T23:59:59.000Z",
+  "2025-01-31T23:59:59.000Z", "2025-02-28T23:59:59.000Z",
+  ...Array.from({ length: 11 }, (_, index) => `2025-03-${String(index + 1).padStart(2, "0")}T23:59:59.000Z`),
+  "2025-03-12T00:00:00.000Z", "2025-03-12T04:00:00.000Z", "2025-03-12T08:00:00.000Z",
+  "2025-03-12T12:00:00.000Z", "2025-03-12T16:00:00.000Z", "2025-03-12T20:00:00.000Z",
+  "2025-03-12T23:59:59.000Z",
+].sort();
+
+const fixtureUnitStatusHistory = statusObservationDates.flatMap((at, observationIndex) =>
+  fixtureUnits.map((item, unitIndex) => {
+    const isLatest = observationIndex === statusObservationDates.length - 1;
+    const status = isLatest || item.status === "inactive" ? item.status
+      : (observationIndex + unitIndex * 3) % 19 === 0 ? "workshop"
+        : (observationIndex * 2 + unitIndex) % 17 === 0 ? "action" : "operation";
+    return {
+      id: `status-${item.id}-${observationIndex}`,
+      tenantId: DEMO_TENANT_ID,
+      unitId: item.id,
+      at,
+      status,
+      source: "fleet-v2-demo-fixture",
+      demo: true,
+    };
+  }));
+
 const costs = [
   ["unit-sc-104", 18742], ["unit-nb-001", 12340], ["unit-nb-002", 9875], ["unit-nb-003", 28450],
   ["unit-nb-004", 7210], ["unit-nb-005", 5980], ["unit-nb-006", 1230], ["unit-nb-007", 4560],
@@ -75,6 +104,7 @@ const costs = [
 ];
 
 export const fixtureRelations = {
+  unitStatusHistory: fixtureUnitStatusHistory,
   reports: [
     { id: "report-demo-001", tenantId: DEMO_TENANT_ID, number: "IND-00001", unitId: "unit-sc-104", type: "fault", category: "Bremser", severity: "high", title: "Knirkende bremser", description: "Bremserne knirker kraftigt, og scooteren føles ustabil ved opbremsning.", images: [], meterObservation: { value: 12458, unit: "km", observedAt: "2025-03-10T08:17:00Z" }, usability: "blocked", reporterId: "demo-mette", reporterName: "Mette Larsen", createdAt: "2025-03-10T08:17:00Z" },
     { id: "report-demo-002", tenantId: DEMO_TENANT_ID, number: "IND-00002", unitId: "unit-nb-003", type: "fault", category: "Motor / drift", severity: "moderate", title: "AdBlue-advarsel", description: "AdBlue-lampen lyser konstant efter opstart.", images: [], meterObservation: { value: 412980, unit: "km", observedAt: "2025-03-11T07:40:00Z" }, usability: "uncertain", reporterId: "demo-mette", reporterName: "Mette Larsen", createdAt: "2025-03-11T07:40:00Z" },

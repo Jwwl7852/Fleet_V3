@@ -48,8 +48,8 @@ aktuelle kodegrundlag.
 | FC-07 | Layout | Kompakt top og tre selvscrollende, justerbare, huskede paneler; demospecifik tekst fjernes fra normal struktur. Den ruteisolerede CSS ramte tidligere ikke den indskudte zoom-wrapper, så arbejdsbordet voksede til ca. 2.086 px i stedet for at give panelerne en viewportshøjde. | Fakturacenter workspace/CSS og AppShell zoom-wrapper | implementeret | Ved 1440×900: workspace 1.172×642 px; paneler 280/423/450 px; scrollHeight/clientHeight 1874/440, 824/566 og 1106/566. Tastaturbredde 22→24 % bestod reload. | Forretningsdata er fortsat lokal prototype; panelpræferencens scope gennemgås igen i samlet regression |
 | FC-08 | Opsætning | Mail og forbindelser flyttes ud af arbejdsnavigationen til fælles Opsætning uden at aktivere transport. | Nav, routes, opsætning | implementeret | Produktionsbuild indeholder lazy chunk; gammelt mail-link redirecter. Den lokale kontraktformular giver ikke i sig selv en serverrettighed. | Ekstern mail forbliver deaktiveret; serverstyret opsætning etableres under FC-03 |
 | FL-01 | Overblik | KPI-kort og handlingsposter/Se alle åbner relevante filtre; optællinger og udsnit forklares. | `fleet-v2/src/components/Overview.jsx`, FleetV2App og UnitCatalog | implementeret lokalt | Komponenttest og faktisk browserroute/filter | Handlingslisten forklarer nu, at den viser 5 af det samlede antal. |
-| FL-02 | Drift | Dag/uge/måned/kvartal/år ændrer registreret datagrundlag og akser. | FLEET overblik/domæne | åben | Periodeprøver mod syntetisk registreret historik | Ingen opfundet fortid |
-| FL-03 | Omkostning/nedetid | Måneder virker; datadækning, nul/mangler, sidste år og sammensmeltede tidsintervaller håndteres. | FLEET overblik/økonomidomæne | åben | Beregningstests og UI | Sammenligning kun når data findes |
+| FL-02 | Drift | De tidligere søjler genbrugte aktuelle optællinger med en kunstig variation og opfandt dermed fortid. Dag/uge/måned/kvartal/år aflæser nu daterede statusobservationer og ændrer både prøvetidspunkter og akser. | `fleet-v2/src/data/overviewWorkflow.js`, `unitSelectors.js`, `Overview.jsx` | implementeret lokalt | 5/5 beregningstests; fuld FLEET-suite 170/170; integreret browser ved 1920×1080 viste 7 dagsprøver for Uge og 3 månedsprøver for Kvartal | Produktionshistorik kræver en autoritativ serverkilde; demoen er eksplicit syntetisk registreret historik |
+| FL-03 | Omkostning/nedetid | De tidligere grafer brugte hardkodede omkostninger og nedetidsprocenter. Månedsskiftet bruger nu registrerede faktiske omkostningsposter og daterede statusintervaller; manglende måneder er `Mangler data`, nul er nul, og samme måned sidste år vises kun med grundlag. | `fleet-v2/src/data/overviewWorkflow.js`, `unitSelectors.js`, `OverviewCharts.jsx` | implementeret lokalt | 5/5 beregningstests; browserens martsvalg viste DKK 79.803, manglende sidste-årsomkostning og 11,7 % registreret nedetid med sidste-årsdifference | Serverkilde og produktionsdatadækning mangler; ingen værdi opfindes ved manglende poster |
 | FL-04 | Livekort | Kort-wheel og +/−, ingen dobbeltzoom, popup pr. enhed, cluster/samme position kan vælges, tydelig kilde/friskhed. | FLEET LiveMap/GeoMap | delvist implementeret | 8/8 LiveMap-tests og faktisk browserprøve af kortknap/klyngeliste | Markørvalg bruger den eksisterende detaljeside frem for en flydende popup. Ingen ekstern OBD aktiveres. |
 | FL-05 | Enhedsregister | Moderne FLEET-kartotek bliver primær skærm i Opsætning med autoritativ mapping og gamle dybe links. | Root-routes/nav, FLEET repository/adapters | implementeret lokalt | Route-, permission- og referenceprøver med PLANNING | Moderne kartotek åbner på `/opsaetning/enheder`; `/fleet-v2/enheder` bevares som kompatibelt dybt link. UNIT/WAREHOUSE-unit er fortsat et særskilt domæneobjekt. |
 | FL-06 | Enhedsformular | Typefaner fjernes; typefilter bevares; indvendige mål, fire udstyrsvalg og energikilde med ukendt/ikke relevant. | UnitCatalog, UnitFormDialog, UnitProfile, unitSelectors | implementeret lokalt | 18/18 målrettede komponenttests og integreret browserverifikation | Trækkrog, hængertræk, kran og lift er separate værdier. Eksisterende ukendte drivmiddelværdier bevares ved redigering. |
@@ -66,7 +66,7 @@ aktuelle kodegrundlag.
 | FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | FLEET economy domain/UI | åben | Beregnings-/drilldowntests | Estimat, kontrolleret og bogført holdes adskilt |
 | FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET economy export | delvist implementeret lokalt | Domænetest af dansk indhold og UTF-8-rundtur | Download har nu UTF-8 BOM; manuel åbning i dansk Excel og udvidede momskolonner udestår |
 | REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.597/4.597 grøn i isoleret emulator. Målrettet Fakturacenter-callable 21 assertions, UNIT/WAREHOUSE/modul 48/48 og tenant 24/24. | FL-14 og øvrige kommende serverfunktioner kræver egne emulatorbeviser før deres samlede krav kan lukkes. |
-| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint og build grøn; Rules-/platformsgate 4.586/4.586 grøn | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
+| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint og build grøn; Rules-/platformsgate 4.597/4.597 grøn; FLEET 170/170 grøn efter Etape 10 | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
 | REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | i gang | Ny Etape-7-pakke dækker sagsmappe/dialog ved alle fire viewports, normal/kompakt menu, 100/125 % og Nulstil; Fakturacenter/menu/manuel sag ved 1440×900 | Samme matrix skal fortsat køres på resterende FLEET-, service-, kategori- og økonomiskærme |
 
 ## Baseline
@@ -344,7 +344,7 @@ Et samlet krav markeres ikke færdigt, hvis en relevant serverdel mangler.
 ### Resterende arbejde efter auditten
 
 Følgende krav er fortsat åbne eller kun delvist gennemført: UX-06/UX-07,
-FC-03/FC-04/FC-06/FC-07, FL-02/FL-03, FL-04's flydende popup, FL-08's fælles
+FC-03/FC-04/FC-06/FC-07, serverdelen af FL-02/FL-03, FL-04's flydende popup, FL-08's fælles
 gem-bekræftelse, FL-09/FL-10/FL-12, serverdelen af FL-14,
 FL-15/FL-16/FL-17, manuel dansk Excel-kontrol under FL-18 samt hele den
 nummererede visuelle viewportmatrix i REG-03. Etape 7 indeholder dog nye
@@ -431,3 +431,38 @@ før/efter-beviser for de prioriterede synlige fejl.
 | FC-03 | Implementeret og verificeret for opsætningsskærmen; arbejdslistekobling mangler | Implementeret og verificeret | Implementeret og verificeret | Implementeret og verificeret | 37/37 domæne/kopiparitet, 21 callable-assertions og fuld gate 4.597/4.597 | Delvist implementeret |
 | FC-04 | Implementeret og verificeret i den lokale prototype; serveradapteren er endnu ikke koblet til knappen | Implementeret og verificeret | Implementeret og verificeret | Implementeret og verificeret | 21 callable-assertions med blandede resultater, revision og genafspilning | Delvist implementeret |
 | REG-01 | Ikke relevant | Implementeret og verificeret for Fakturacenter-kontrollen | Implementeret og verificeret for Fakturacenter-kontrollen | Implementeret og verificeret for Fakturacenter-kontrollen | Fuld gate 4.597/4.597 | Delvist implementeret, fordi de resterende serveretaper endnu ikke er afsluttet |
+
+### Etape 10 — FLEET-perioder, månedsskift og sandfærdigt datagrundlag
+
+- Den faktiske årsag til FL-02 var, at overblikket beregnede historiske søjler
+  ved at genbruge dagens statusoptælling med en indeksbaseret variation. Det
+  lignede historik, men var ikke registreret historik. `overviewWorkflow.js`
+  vælger nu daterede observationer pr. time, dag, uge eller måned og markerer
+  manglende observationer som ukendte i stedet for at udfylde dem.
+- Den faktiske årsag til FL-03 var to hardkodede omkostningsbeløb og en fast
+  liste af nedetidsprocenter. Omkostninger summeres nu alene fra registrerede
+  poster med faktisk DKK-beløb. Nedetid afledes af daterede statusintervaller;
+  samtidig status for én enhed tælles ikke flere gange. Måneder uden poster er
+  `Mangler data`, mens en registreret sum på 0 fortsat er nul.
+- Demo-fixturen har en særskilt, dateret og eksplicit syntetisk
+  `unitStatusHistory`. Datasetversion 15 migrerer relationen ind uden at
+  overskrive brugerens eksisterende enheder, sager eller økonomiposter.
+- Browserbevis i den aktuelle integrerede devserver på port 5297, der serverer
+  integrationsworktreeets `src/main.jsx`, blev udført ved 1920×1080 og 100 %
+  arbejdsområdezoom. Uge viste 6.–12. marts som syv dagsmålinger. Skift til
+  Kvartal viste januar, februar og marts som tre andre datapunkter; datadækning
+  og syntetisk kilde var synlige. Marts viste DKK 79.803, manglende
+  sidste-årsomkostning og 11,7 % nedetid med +6,4 procentpoint mod samme måned
+  året før.
+- Teknisk gate: root lint bestod; root produktionsbuild bestod med den kendte
+  chunk-størrelsesadvarsel; hele FLEET unit-/komponentsuiten bestod 170/170 i
+  27 filer. Den første sandboxkørsel af Vitest/build ramte `spawn EPERM`;
+  samme kommandoer bestod i den godkendte proceskontekst uden kodeændring.
+
+#### Delstatus efter Etape 10
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FL-02 | Implementeret og verificeret | Implementeret og verificeret mod registrerede observationer | Delvist implementeret; lokal IndexedDB-fixture, ingen produktionshistorik | Ikke relevant for den lokale read-model; serverkilden mangler | 5/5 målrettede, 170/170 FLEET og browser ved 1920×1080 | Delvist implementeret |
+| FL-03 | Implementeret og verificeret | Implementeret og verificeret for faktiske poster, manglende data og statusintervaller | Delvist implementeret; lokal repository, ingen produktionskilde | Ikke relevant for den lokale read-model; serverkilden mangler | 5/5 målrettede, 170/170 FLEET og browser ved 1920×1080 | Delvist implementeret |
+| REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, FLEET 170/170 og seneste fulde Rules-gate 4.597/4.597 | Delvist implementeret |

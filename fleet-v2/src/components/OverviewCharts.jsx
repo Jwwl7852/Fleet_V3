@@ -3,13 +3,13 @@ import { Icon } from "./Icon";
 export function OperationChart({ days }) {
   const max = Math.max(10, ...days.map((day) => day.operation + day.workshop + day.action)) * 1.1;
   return (
-    <div className="operation-chart" aria-label="Flådens driftsstatus de seneste 14 dage">
+    <div className="operation-chart" aria-label="Flådens driftsstatus for valgt periode">
       <div className="y-labels"><span>150</span><span>100</span><span>50</span><span>0</span></div>
       <div className="plot-grid">
         {[0, 1, 2, 3].map((line) => <span className="grid-line" key={line} />)}
         <div className="bars">
           {days.map((day) => (
-            <div className="bar-column" key={day.label} title={`${day.label}: ${day.operation} i drift, ${day.workshop} på værksted, ${day.action} kræver handling`}>
+            <div className="bar-column" key={`${day.date}-${day.label}`} title={`${day.label}: ${day.operation} i drift, ${day.workshop} på værksted, ${day.action} kræver handling${day.unknown ? `, ${day.unknown} uden datagrundlag` : ""}`}>
               <div className="bar-stack" style={{ height: `${((day.operation + day.workshop + day.action) / max) * 100}%` }}>
                 <span className="bar-action" style={{ flex: day.action }} />
                 <span className="bar-workshop" style={{ flex: day.workshop }} />
@@ -55,10 +55,11 @@ export function DemoMap({ points, onUnavailable }) {
 }
 
 export function MiniBarChart({ values }) {
-  const max = Math.max(...values);
+  const known = values.filter(Number.isFinite);
+  const max = Math.max(1, ...known);
   return (
     <div className="mini-bars" aria-label="Månedlige flådeomkostninger">
-      {values.map((value, index) => <span key={value} className={index === values.length - 1 ? "current" : ""} style={{ height: `${(value / max) * 100}%` }} />)}
+      {values.map((value, index) => <span key={index} title={Number.isFinite(value) ? String(value) : "Mangler data"} className={`${index === values.length - 1 ? "current " : ""}${Number.isFinite(value) ? "" : "missing"}`.trim()} style={{ height: Number.isFinite(value) ? `${(value / max) * 100}%` : undefined }} />)}
     </div>
   );
 }
@@ -66,12 +67,21 @@ export function MiniBarChart({ values }) {
 export function MiniLineChart({ values }) {
   const width = 190;
   const height = 70;
-  const points = values.map((value, index) => `${(index / (values.length - 1)) * width},${height - (value / 6) * height}`).join(" ");
+  const known = values.filter(Number.isFinite);
+  const max = Math.max(1, ...known) * 1.1;
+  const x = (index) => values.length > 1 ? (index / (values.length - 1)) * width : width / 2;
+  const y = (value) => height - (value / max) * height;
+  const segments = values.reduce((result, value, index) => {
+    if (!Number.isFinite(value)) return [...result, []];
+    if (!result.length) return [[`${x(index)},${y(value)}`]];
+    result[result.length - 1].push(`${x(index)},${y(value)}`);
+    return result;
+  }, []).filter((segment) => segment.length);
   return (
     <svg className="mini-line" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Månedlig nedetid">
       <path d="M0 20h190M0 55h190" />
-      <polyline points={points} />
-      {values.map((value, index) => <circle key={`${value}-${index}`} cx={(index / (values.length - 1)) * width} cy={height - (value / 6) * height} r="3" />)}
+      {segments.map((points, index) => <polyline key={index} points={points.join(" ")} />)}
+      {values.map((value, index) => Number.isFinite(value) ? <circle key={`${value}-${index}`} cx={x(index)} cy={y(value)} r="3" /> : null)}
     </svg>
   );
 }

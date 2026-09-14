@@ -13,7 +13,7 @@ import { applyManualCostSave } from "./economyWorkflow";
 export const PROTOTYPE_DATABASE_NAME = "veyro-fleet-v2-prototype";
 const DATABASE_VERSION = 1;
 const STORE_NAME = "tenant-datasets";
-export const CURRENT_DATASET_VERSION = 14;
+export const CURRENT_DATASET_VERSION = 15;
 
 const clone = (value) => structuredClone(value);
 
@@ -72,6 +72,7 @@ export function migrateDataset(dataset) {
       serviceEvents: relations.serviceEvents || clone(fixtureRelations.serviceEvents),
       positions: migratedPositions,
       positionEvents: relations.positionEvents || [],
+      unitStatusHistory: relations.unitStatusHistory || clone(fixtureRelations.unitStatusHistory),
       costs: relations.costs || clone(fixtureRelations.costs),
       reportDrafts: relations.reportDrafts || [],
     },

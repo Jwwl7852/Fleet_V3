@@ -69,11 +69,18 @@ describe("FLEET v2 navigation", () => {
     expect(screen.getByRole("status").textContent).toContain("Dashboard: Ikke implementeret i denne etape");
   });
 
-  it("markerer synlige, ikke-aktive dashboardhandlinger som pladsholdere", async () => {
+  it("ændrer driftsgrundlag og omkostningsmåned fra overblikket", async () => {
     renderApp();
     await screen.findByRole("heading", { name: "God aften, Dennis" });
-    fireEvent.click(screen.getByRole("button", { name: "Sidste 14 dage" }));
-    expect(screen.getByRole("status").textContent).toContain("Periodevalg: Ikke implementeret i denne etape");
+    const period = screen.getByLabelText("Driftsperiode");
+    expect(period.value).toBe("week");
+    fireEvent.change(period, { target: { value: "quarter" } });
+    expect(period.value).toBe("quarter");
+    expect(document.querySelectorAll(".operation-chart .bar-column")).toHaveLength(3);
+    const month = screen.getByLabelText("Omkostningsmåned");
+    fireEvent.change(month, { target: { value: "2025-02" } });
+    expect(month.value).toBe("2025-02");
+    expect(screen.queryByText(/Periodevalg: Ikke implementeret/)).toBeNull();
   });
 
   it("viser ingen Planning- eller fakturaproces på Overblik", async () => {

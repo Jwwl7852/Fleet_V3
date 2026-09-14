@@ -1,9 +1,11 @@
+import { useMemo, useState } from "react";
 import { fleetDemo } from "../demoData";
 import { Icon } from "./Icon";
 import { MiniBarChart, MiniLineChart, OperationChart } from "./OverviewCharts";
 import { GeoMap } from "./GeoMap";
 import { useFleetData } from "../data/FleetDataContext";
 import { deriveOverview } from "../data/unitSelectors";
+import { OPERATION_PERIODS } from "../data/overviewWorkflow";
 
 const formatNumber = new Intl.NumberFormat("da-DK");
 
@@ -78,23 +80,34 @@ function ReportsCard({ data, onNavigate, total }) {
   );
 }
 
-function CostsCard({ data, onUnavailable }) {
-  const months = ["Okt", "Nov", "Dec", "Jan", "Feb", "Mar"];
+const monthLabel = (month, long = false) => new Date(`${month}-15T12:00:00Z`).toLocaleDateString("da-DK", {
+  timeZone: "UTC", month: long ? "long" : "short", year: long ? "numeric" : undefined,
+}).replace(".", "");
+
+function comparisonText(current, lastYear, unit = "") {
+  if (!Number.isFinite(current) || !Number.isFinite(lastYear)) return "Samme måned sidste år: mangler data";
+  const delta = current - lastYear;
+  const sign = delta > 0 ? "+" : "";
+  return `Samme måned sidste år: ${sign}${new Intl.NumberFormat("da-DK", { maximumFractionDigits: 1 }).format(delta)}${unit}`;
+}
+
+function CostsCard({ data, costMonths, selectedMonth, onMonthChange }) {
+  const months = data.chartMonths.map((month) => monthLabel(month));
   return (
     <section className="card cost-card">
-      <CardHeader title="Omkostninger og nedetid"><button className="period-button" type="button" onClick={() => onUnavailable("Periodevalg")}>Marts 2024 <Icon name="down" size={13} /></button></CardHeader>
+      <CardHeader title="Omkostninger og nedetid"><label className="period-picker"><span className="sr-only">Omkostningsmåned</span><select aria-label="Omkostningsmåned" value={selectedMonth} onChange={(event) => onMonthChange(event.target.value)}>{costMonths.map((month) => <option key={month} value={month}>{monthLabel(month, true)}</option>)}</select></label></CardHeader>
       <div className="cost-columns">
         <div className="cost-section">
-          <span>Samlede flådeomkostninger</span>
-          <div className="cost-number">DKK {formatNumber.format(data.totals.monthlyCost)} <small>↓ −12 %</small></div>
-          <p>I forhold til februar 2024</p>
+          <span>Registrerede faktiske flådeomkostninger</span>
+          <div className="cost-number">{Number.isFinite(data.totals.monthlyCost) ? `DKK ${formatNumber.format(data.totals.monthlyCost)}` : "Mangler data"}</div>
+          <p>{comparisonText(data.totals.monthlyCost, data.costLastYear, " DKK")}</p>
           <MiniBarChart values={data.costByMonth} />
           <div className="chart-months">{months.map((month) => <span key={`cost-${month}`}>{month}</span>)}</div>
         </div>
         <div className="cost-section downtime">
-          <span>Nedetid</span>
-          <div className="cost-number">{String(data.totals.downtimePct).replace(".", ",")} % <small>↑ +1,1 %</small></div>
-          <p>I forhold til februar 2024</p>
+          <span>Nedetid fra registrerede statusintervaller</span>
+          <div className="cost-number">{Number.isFinite(data.totals.downtimePct) ? `${String(data.totals.downtimePct).replace(".", ",")} %` : "Mangler data"}</div>
+          <p>{comparisonText(data.totals.downtimePct, data.downtimeLastYear, " procentpoint")}</p>
           <MiniLineChart values={data.downtimeByMonth} />
           <div className="chart-months">{months.map((month) => <span key={`down-${month}`}>{month}</span>)}</div>
         </div>
@@ -103,9 +116,13 @@ function CostsCard({ data, onUnavailable }) {
   );
 }
 
-export function Overview({ onUnavailable, onNavigate }) {
+export function Overview({ onNavigate }) {
   const { units, relations, loading } = useFleetData();
-  const derived = deriveOverview(units, relations);
+  const costMonths = useMemo(() => [...new Set((relations.costs || []).map((item) => item.month || item.date?.slice(0, 7)).filter(Boolean))].sort(), [relations.costs]);
+  const [operationPeriod, setOperationPeriod] = useState("week");
+  const [selectedMonth, setSelectedMonth] = useState(() => costMonths.at(-1) || "2025-03");
+  const effectiveMonth = costMonths.includes(selectedMonth) ? selectedMonth : costMonths.at(-1) || selectedMonth;
+  const derived = deriveOverview(units, relations, { operationPeriod, costMonth: effectiveMonth });
   const data = { ...fleetDemo, ...derived, totals: derived.totals };
   const pct = (value) => data.totals.units ? `${Math.round(value / data.totals.units * 100)} %` : "0 %";
   if (loading) return <main className="dashboard loading-state" id="main-content"><span className="loading-spinner" /><p>Indlæser lokale demodata …</p></main>;
@@ -127,9 +144,9 @@ export function Overview({ onUnavailable, onNavigate }) {
 
       <section className="middle-grid">
         <section className="card operation-card">
-          <CardHeader title="Flådens driftsstatus"><button className="period-select" type="button" onClick={() => onUnavailable("Periodevalg")}>Sidste 14 dage <Icon name="down" size={13} /></button></CardHeader>
+          <CardHeader title="Flådens driftsstatus"><label className="period-picker"><span className="sr-only">Driftsperiode</span><select aria-label="Driftsperiode" value={operationPeriod} onChange={(event) => setOperationPeriod(event.target.value)}>{Object.entries(OPERATION_PERIODS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></CardHeader>
           <OperationChart days={data.operationDays} />
-          <div className="legend"><span><i className="green" />I drift</span><span><i className="red" />På værksted</span><span><i className="blue" />Kræver handling</span></div>
+          <div className="legend"><span><i className="green" />I drift</span><span><i className="red" />På værksted</span><span><i className="blue" />Kræver handling</span><small>Datadækning {data.operationCoverage.pct} % · syntetisk registreret historik</small></div>
         </section>
         <section className="card map-card">
           <CardHeader title="Livekort"><span className="map-count"><i />{(relations.positions || []).length} positioner</span><button className="map-link" type="button" onClick={() => onNavigate("/livekort")}>Åbn livekort <Icon name="external" size={14} /></button></CardHeader>
@@ -141,7 +158,7 @@ export function Overview({ onUnavailable, onNavigate }) {
       <section className="bottom-grid">
         <ServiceCard data={data.serviceItems} total={data.totals.upcomingService} onNavigate={onNavigate} />
         <ReportsCard data={data.reportItems} total={data.totals.reports} onNavigate={onNavigate} />
-        <CostsCard data={data} onUnavailable={onUnavailable} />
+        <CostsCard data={data} costMonths={costMonths} selectedMonth={effectiveMonth} onMonthChange={setSelectedMonth} />
       </section>
     </main>
   );

@@ -2,6 +2,7 @@ import { UNIT_STATUSES, UNIT_TYPES } from "./fleetFixtures";
 import { isOpenCase } from "./caseWorkflow";
 import { SERVICE_CATEGORIES, SERVICE_REQUIREMENT_STATUSES, evaluateServiceRequirement } from "./serviceWorkflow";
 import { documentsForUnit } from "./documentWorkflow";
+import { deriveMonthlyCosts, deriveMonthlyDowntime, deriveOperationSeries } from "./overviewWorkflow";
 
 export const formatNumber = new Intl.NumberFormat("da-DK");
 export const formatCurrency = new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK", maximumFractionDigits: 0 });
@@ -74,11 +75,18 @@ export function validateUnit(values, units, currentId = null) {
   return errors;
 }
 
-export function deriveOverview(units, relations) {
+export function deriveOverview(units, relations, options = {}) {
   const counts = units.reduce((result, unit) => ({ ...result, [unit.status]: (result[unit.status] || 0) + 1 }), {});
   const costs = relations.costs || [];
-  const monthKeys = ["2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03"];
-  const knownMonthly = monthKeys.map((month, index) => index < 3 ? [145600, 151900, 164300][index] : costs.filter((item) => item.month === month).reduce((sum, item) => sum + item.amount, 0));
+  const statusHistory = relations.unitStatusHistory || [];
+  const latestStatusAt = statusHistory.map((item) => item.at).filter(Boolean).sort().at(-1);
+  const latestCostMonth = costs.map((item) => item.month || item.date?.slice(0, 7)).filter(Boolean).sort().at(-1);
+  const asOf = options.asOf || latestStatusAt || new Date().toISOString();
+  const selectedCostMonth = options.costMonth || latestCostMonth || asOf.slice(0, 7);
+  const operation = deriveOperationSeries(units, statusHistory, { period: options.operationPeriod || "week", asOf });
+  const monthlyCosts = deriveMonthlyCosts(costs, selectedCostMonth);
+  const monthlyDowntime = deriveMonthlyDowntime(units, statusHistory, selectedCostMonth);
+  const lastYearDowntime = deriveMonthlyDowntime(units, statusHistory, monthlyCosts.lastYearMonth).current;
   const serviceEvaluations = (relations.serviceRequirements || []).map((requirement) => ({ requirement, unit: units.find((item) => item.id === requirement.unitId), evaluation: evaluateServiceRequirement(requirement, units.find((item) => item.id === requirement.unitId), relations) }));
   const serviceRank = { overdue: 0, upcoming: 1, planned: 2, missing_basis: 3, okay: 4, inactive: 5 };
   const serviceItems = serviceEvaluations.filter((item) => item.unit).sort((a, b) => serviceRank[a.evaluation.status] - serviceRank[b.evaluation.status]).slice(0, 5).map(({ requirement, unit, evaluation }) => ({ unit: unit.number, type: SERVICE_CATEGORIES[requirement.category], date: evaluation.dueDate ? new Date(`${evaluation.dueDate}T12:00:00`).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "—", meter: Number.isFinite(evaluation.dueMeter) ? formatNumber.format(evaluation.dueMeter) : "—", status: SERVICE_REQUIREMENT_STATUSES[evaluation.status] }));
@@ -91,15 +99,11 @@ export function deriveOverview(units, relations) {
     return { unit: unit?.number || "Ukendt", title: report?.title || "Sag kræver handling", time: "Lokal demo", level: ["high", "critical"].includes(item.priority) ? "critical" : "warning", reportId: report?.id };
   });
   const total = units.length;
-  const operationDays = Array.from({ length: 14 }, (_, index) => {
-    const workshop = Math.max(0, (counts.workshop || 0) + (index % 5 === 0 ? 1 : 0));
-    const action = Math.max(0, total - (counts.operation || 0) - workshop);
-    return { label: ["27. feb", "28. feb", "1. mar", "2. mar", "3. mar", "4. mar", "5. mar", "6. mar", "7. mar", "8. mar", "9. mar", "10. mar", "11. mar", "I dag"][index], operation: total - workshop - action, workshop, action };
-  });
-  operationDays[13] = { ...operationDays[13], operation: counts.operation || 0, workshop: counts.workshop || 0, action: total - (counts.operation || 0) - (counts.workshop || 0) };
   return {
-    totals: { units: total, inOperation: counts.operation || 0, workshop: counts.workshop || 0, needsAction: actionCases.length, reports: openCases.length, upcomingService: serviceEvaluations.filter((item) => ["overdue", "upcoming", "planned", "missing_basis"].includes(item.evaluation.status)).length, monthlyCost: knownMonthly.at(-1), downtimePct: total ? Number((((counts.workshop || 0) / total) * 100).toFixed(1)) : 0 },
-    operationDays,
+    totals: { units: total, inOperation: counts.operation || 0, workshop: counts.workshop || 0, needsAction: actionCases.length, reports: openCases.length, upcomingService: serviceEvaluations.filter((item) => ["overdue", "upcoming", "planned", "missing_basis"].includes(item.evaluation.status)).length, monthlyCost: monthlyCosts.current, downtimePct: monthlyDowntime.current },
+    operationDays: operation.series,
+    operationCoverage: operation.coverage,
+    operationPeriod: operation.period,
     actionItems: actionUnits,
     serviceItems,
     reportItems: [
@@ -107,7 +111,13 @@ export function deriveOverview(units, relations) {
       { icon: "warning", color: "amber", label: "Tekniske fejl", count: openCases.filter((item) => reports.find((entry) => entry.id === item.reportId)?.type === "fault").length, latest: "Lokale data" },
       { icon: "document", color: "blue", label: "Servicebehov", count: openCases.filter((item) => reports.find((entry) => entry.id === item.reportId)?.type === "service").length, latest: "Lokale data" },
     ],
-    costByMonth: knownMonthly,
-    downtimeByMonth: [2.3, 2.8, 2.5, 3.1, 2.6, total ? Number((((counts.workshop || 0) / total) * 100).toFixed(1)) : 0],
+    costByMonth: monthlyCosts.values,
+    downtimeByMonth: monthlyDowntime.values,
+    chartMonths: monthlyCosts.months,
+    selectedCostMonth,
+    costPrevious: monthlyCosts.previous,
+    costLastYear: monthlyCosts.lastYear,
+    downtimePrevious: monthlyDowntime.previous,
+    downtimeLastYear: lastYearDowntime,
   };
 }
