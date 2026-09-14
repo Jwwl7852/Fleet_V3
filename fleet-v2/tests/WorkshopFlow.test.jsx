@@ -50,7 +50,14 @@ describe("Værksted og kalender", () => {
   });
 
   it("viser kalender og forståelige ikke-fundet-tilstande", async () => {
-    start("/vaerksted/kalender");
+    const dataset = createFixtureDataset();
+    const currentWeekBooking = new Date();
+    currentWeekBooking.setDate(currentWeekBooking.getDate() + 1);
+    currentWeekBooking.setHours(9, 0, 0, 0);
+    dataset.relations.bookings[0].startAt = currentWeekBooking.toISOString();
+    currentWeekBooking.setHours(12, 0, 0, 0);
+    dataset.relations.bookings[0].endAt = currentWeekBooking.toISOString();
+    start("/vaerksted/kalender", dataset);
     expect(await screen.findByRole("heading", { name: "Værkstedskalender" })).toBeTruthy();
     expect(screen.getAllByText(/VO-00001/).length).toBeGreaterThan(0);
     window.history.replaceState({}, "", "/vaerksted/ukendt-opgave");
