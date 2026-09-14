@@ -65,8 +65,8 @@ aktuelle kodegrundlag.
 | FL-16 | OBD-statistik | Kun faktiske målinger vises/filtreres/eksporteres; kilde/periode/enhed mærkes; manglende forbindelse er tydelig. | FLEET statistik | åben | Datafeltinventar og syntetisk UI-test | Ekstern OBD er ikke del af opgaven |
 | FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | FLEET economy domain/UI | åben | Beregnings-/drilldowntests | Estimat, kontrolleret og bogført holdes adskilt |
 | FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET economy export | delvist implementeret lokalt | Domænetest af dansk indhold og UTF-8-rundtur | Download har nu UTF-8 BOM; manuel åbning i dansk Excel og udvidede momskolonner udestår |
-| REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | åben | Isolerede emulatorer med proceslokal JDK 21 | Svæk ikke regler |
-| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | åben | Kontrakt-, browser- og sikkerhedsgate | Ingen |
+| REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | **blokeret** | Den fulde Rules-suite blev kørt i isolerede emulatorer med proceslokal JDK 21 | WAREHOUSE-reglen tillod direkte klientændring af `kasser/UNIT-101.pladsId`; fysisk placering kan dermed ændres uden den krævede append-only bevægelse. Produktarbejdet stoppede uden at svække regler eller tests. |
+| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | ikke godkendt | Kontrakt-, browser- og sikkerhedsgate | Den afsluttende samlede sikkerhedsgate er ikke bestået, og tværmodulgaten kan derfor ikke markeres grøn. |
 | REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | åben | Nummererede før/efter-billeder og mål | Ingen |
 
 ## Baseline
@@ -222,3 +222,63 @@ aktuelle kodegrundlag.
   `ServiceWorkflow.test.js`, `ServiceAutomation.test.js` og
   `ServiceFlow.test.jsx`: 24/24 bestået. Root lint, designkontrol og
   produktionsbuild bestod; buildens kendte store-chunk-advarsel består.
+
+## Afsluttende kontrol og stopårsag
+
+### FLEET-regression
+
+- Første fulde FLEET-kørsel gav 147/148. Den eneste fejl var
+  `WorkshopFlow.test.jsx`: den syntetiske booking var fastlåst til
+  8. september 2026 og lå derfor ikke længere i den aktuelle kalenderuge.
+- Den berørte test fejlede også isoleret. Fejlen var dermed ikke en af de
+  kendte belastningsafhængige timeouts.
+- Test-fixturen placerer nu den samme syntetiske booking i morgen, mens
+  produktkode og assertion er uændret. Isoleret genkørsel bestod 4/4, og den
+  efterfølgende fulde FLEET-suite bestod 148/148.
+- Root lint, designtokenkontrol 11/11 og produktionsbuild bestod på det
+  aktuelle produktgrundlag. Builden har fortsat den kendte advarsel om en stor
+  chunk.
+
+### Rules- og sikkerhedsgate
+
+- Emulatorerne blev startet mod det syntetiske projekt
+  `demo-fleetcontrol-rules-test`. Der var ingen produktionsfallback.
+- Den allerede installerede, portable Temurin JDK blev anvendt proceslokalt:
+  `C:\Users\DennisChristensen\Tools\Adoptium\jdk-21.0.12.1+1\jdk-21.0.12.1+1`
+  (`21.0.12.1+1`). Maskinens globale `JAVA_HOME` og `PATH` blev ikke ændret.
+- Første emulatorstart ramte den kendte Windows/Netty-fejl
+  `WEPollSelectorImpl` / `Unable to establish loopback connection`. Den
+  dokumenterede proceslokale løsning blev brugt: arvede `TEMP` og `TMP` blev
+  fjernet alene for emulatorprocessen. Firebase CLI 15.29.0 startede derefter
+  Database- og Storage-emulatorerne og kørte den fulde Rules-suite.
+- Sikkerhedsgaten **bestod ikke**. Den alvorlige fejl er i
+  `test/rules.warehouse.test.mjs`: testen
+  “åbner ikke direkte WAREHOUSE-skrivning til den kanoniske unit” forventede,
+  at en direkte klientopdatering af `kasser/UNIT-101.pladsId` blev afvist, men
+  opdateringen blev tilladt. Det omgår den bindende bevægelseshistorik og den
+  autoritative callable-operation. `firebase.rules.json` er uændret siden
+  rettelsesrundens start-HEAD; fejlen er derfor en eksisterende blokering i
+  integrationsgrundlaget, ikke skabt af denne UI-runde.
+- Følgende øvrige fejl blev også registreret i den fulde kørsel:
+  - Fakturacenterets statiske kontrakttest mangler den tidligere synlige tekst
+    om, at kontrol ikke er betalingsgodkendelse eller bogføring.
+  - Navigationsparitet mangler for det nye enhedslink, og Fakturacenterets
+    opsætningslink er menu-gatet med en permission, som Rules-inventaret ikke
+    genfinder som serverhåndhævet.
+  - Modulreglen fejler for mindst ét legacy-tenant-scenarie uden `moduler`-node.
+  - `unitbookingImportHashes` mangler eksplicit klassifikation i Rules-testens
+    inventar, selv om reglen selv er lukket med `.read: false` og `.write: false`.
+  - Navigationens dokumenterede statustal er nu én for lavt efter det nye
+    enhedslink under Opsætning.
+- Der er ikke slået tests eller adgangskontrol fra, og Rules er ikke ændret for
+  at få et grønt resultat. I overensstemmelse med stopkravet er yderligere
+  produktændringer og den resterende slutverifikation standset her.
+
+### Ikke afsluttet på grund af sikkerhedsstop
+
+Følgende krav er fortsat åbne eller kun delvist gennemført: UX-06/UX-07,
+FC-06/FC-07, FL-02/FL-03, FL-04's flydende popup, FL-08's fælles
+gem-bekræftelse, FL-09/FL-10/FL-12, serverdelen af FL-14,
+FL-15/FL-16/FL-17, manuel dansk Excel-kontrol under FL-18 samt hele den
+nummererede visuelle viewportmatrix i REG-03. Der er derfor ikke oprettet en
+fuld før/efter-screenshotpakke for denne rettelsesrunde.
