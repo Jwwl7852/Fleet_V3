@@ -6,6 +6,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { FleetProvider } from "./fleet/FleetContext.jsx";
 import AppShell from "./fleet/AppShell.jsx";
+import Inaktivitetsvagt from "./fleet/Inaktivitetsvagt.jsx";
 import VeyroLogo from "./fleet/VeyroLogo.jsx";
 import { REDIRECTS } from "./fleet/nav.js";
 import { erAktiv, laasetekst, opbevaresTil } from "./fleet/abonnement.js";
@@ -14,7 +15,7 @@ import { auth, db, demoMode, firebaseStartfejl, miljoe, hentBrugerContext } from
 
 import { permStrengFraRolle } from "./fleet/permissions.js";
 import { harModul } from "./fleet/moduler.js";
-import Login from "./moduler/Login.jsx";
+import Login from "./moduler/LoginE.jsx";
 import DevTesterVaelger from "./moduler/DevTesterVaelger.jsx";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -402,6 +403,14 @@ export default function App() {
   }
   if (!klar) return <div className="fc-boot">Henter…</div>;
 
+  /* Én vagt om alle autentificerede rammer. Demo har ingen Firebase-session
+     at afslutte og må derfor ikke foregive, at en visuel timeout er logout. */
+  const medInaktivitetsvagt = (indhold) => (
+    bruger && !demoMode
+      ? <Inaktivitetsvagt bruger={bruger}>{indhold}</Inaktivitetsvagt>
+      : indhold
+  );
+
   /**
    * ⚠ LEVERANDØRPORTALEN — SIDEORDNET MED ALT ANDET, AFGJORT FØR harAdgang.
    *
@@ -426,7 +435,7 @@ export default function App() {
    * useFleet() og har derfor ikke brug for den kontekst.
    */
   if (window.location.pathname.startsWith("/leverandoerportal")) {
-    return (
+    return medInaktivitetsvagt(
       <BrowserRouter>
         {!bruger ? (
           <Routes>
@@ -499,7 +508,7 @@ export default function App() {
      ud for at komme til den, og så ville nogen give ejerkontoen en tenant
      for at slippe. */
   if (erUdbyder) {
-    return (
+    return medInaktivitetsvagt(
       <BrowserRouter>
         <Suspense fallback={<div className="fc-boot">Henter ejerkonsollen …</div>}>
           <EjerRamme bruger={bruger} logUd={() => auth?.signOut()}>
@@ -544,19 +553,21 @@ export default function App() {
      ville spærre kontoen permanent — den bliver aldrig provisioneret, det
      er ikke meningen med den. */
   if (bruger?.devTester && !bruger?.tenant) {
-    return <DevTesterVaelger bruger={bruger} logUd={() => auth?.signOut()} />;
+    return medInaktivitetsvagt(<DevTesterVaelger bruger={bruger} logUd={() => auth?.signOut()} />);
   }
 
   /* Stamdataene er ikke læst endnu. Uden den her ville en lukket kunde se
      shellen i et glimt, før låseskærmen nåede frem. */
-  if (harAdgang && abonnement === undefined) return <div className="fc-boot">Henter…</div>;
+  if (harAdgang && abonnement === undefined) return medInaktivitetsvagt(<div className="fc-boot">Henter…</div>);
 
   /* ⚠ FORKLARINGEN, IKKE SPÆRRINGEN. Reglerne afviser allerede hver læsning;
      det her er kun det brugeren får at se i stedet for tredive fejlbeskeder.
      Se noten på Abonnementslaas. */
   if (harAdgang && !erAktiv(abonnement)) {
-    return <Abonnementslaas abonnement={abonnement} virksomhed={virksomhed}
-                            paaLogUd={() => auth?.signOut()} />;
+    return medInaktivitetsvagt(
+      <Abonnementslaas abonnement={abonnement} virksomhed={virksomhed}
+                        paaLogUd={() => auth?.signOut()} />,
+    );
   }
 
   /* Én tenant — den claim'et peger på. Navnet kommer fra basen; falder
@@ -571,7 +582,7 @@ export default function App() {
         }]
       : [];
 
-  return (
+  return medInaktivitetsvagt(
     /* rolleskifte er nu KUN demo. Klientside-overstyringen af perms er
        meningsløs alle andre steder: claims kommer fra tokenet, og klienten
        kan ikke ændre sit eget token. I dev skifter man bruger i stedet — se

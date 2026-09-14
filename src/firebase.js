@@ -179,5 +179,9 @@ export async function hentBrugerContext(user) {
        scripts/dev-tester.mjs — ikke det samme som `udbyder` ovenfor, og
        giver ikke selv nogen adgang. Se noten i functions/index.js. */
     devTester: token.claims.devTester === true,
+    /* Stabilt for den aktuelle login-session, også når ID-tokenet fornyes.
+       Bruges kun til at afgrænse inaktivitetsaktivitet mellem faner. Det er
+       ikke et permission- eller adgangsclaim. */
+    sessionAuthTime: token.authTime || null,
   };
 }

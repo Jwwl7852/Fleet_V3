@@ -550,6 +550,68 @@
 .fc-login .fc-felt input{width:100%; box-sizing:border-box}
 .fc-login .fc-btn{width:100%; margin-top:4px}
 .fc-login-miljoe{text-align:center; margin-top:14px; font-variant-numeric:tabular-nums}
+
+/* Godkendt loginforslag E. Den gamle .fc-login-geometri bliver stående til
+   provisionerings- og dev-testskærme; den nye side scopes herunder. */
+body:has(.fc-login-side){margin:0}
+.fc-login-side{display:grid;grid-template-columns:minmax(0,3fr) minmax(420px,2fr);min-height:100vh;
+  color:var(--bc-text);background:var(--veyro-app-background);
+  font:14px/1.45 "Inter",-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.fc-login-hero{position:relative;isolation:isolate;min-height:100vh;overflow:hidden;background:var(--veyro-deep-navy)}
+.fc-login-hero-billede{position:absolute;inset:0;z-index:-3;width:100%;height:100%;object-fit:cover;opacity:0;
+  transition:opacity .28s ease}
+.fc-login-hero.er-klar .fc-login-hero-billede{opacity:1}
+.fc-login-hero-toning{position:absolute;inset:0;z-index:-2;background:
+  linear-gradient(180deg,var(--veyro-navy-dark) 0%,transparent 44%,var(--veyro-navy-dark) 100%);opacity:.72}
+.fc-login-logo-felt{position:absolute;top:clamp(24px,4vw,56px);left:clamp(24px,4vw,64px);width:min(340px,45%);
+  padding:10px 14px;border-radius:10px;background:var(--veyro-navy-dark);box-shadow:0 12px 35px rgba(0,0,0,.16)}
+.veyro-logo--login-hero{width:100%;height:auto;margin:0}
+.fc-login-motiv{position:absolute;left:clamp(28px,5vw,72px);right:clamp(28px,5vw,72px);bottom:clamp(28px,5vw,64px);
+  color:var(--veyro-white);text-shadow:0 2px 18px rgba(0,0,0,.16)}
+.fc-login-motiv p{margin:0}.fc-login-motiv-navn{font-size:var(--fc-t-s);font-weight:750;letter-spacing:.11em;text-transform:uppercase}
+.fc-login-motiv p:not(.fc-login-motiv-navn){margin-top:8px;font-size:clamp(26px,2.4vw,42px);font-weight:720;letter-spacing:-.035em;line-height:1.08}
+.fc-login-motiv small{display:block;margin-top:12px;color:var(--veyro-white);opacity:.8;font-size:var(--fc-t-xs);letter-spacing:.02em}
+.fc-login-panel{display:grid;place-items:center;min-width:0;padding:clamp(32px,5vw,80px);border-left:2px solid var(--veyro-teal);
+  background:var(--veyro-white)}
+.fc-login-side .fc-login{width:min(100%,430px);max-width:none;padding:0}
+.fc-login-intro{margin-bottom:30px}.fc-login-overlinje{margin:0 0 10px;color:var(--veyro-action);font-size:var(--fc-t-s);
+  font-weight:760;letter-spacing:.1em;text-transform:uppercase}
+.fc-login-intro h1{margin:0;color:var(--bc-text);font-size:clamp(30px,3vw,42px);line-height:1.08;letter-spacing:-.035em}
+.fc-login-intro>p:last-child{margin:10px 0 0;color:var(--bc-muted);font-size:var(--fc-t-l)}
+.fc-login-form{display:grid;gap:18px}.fc-login-side .fc-felt{margin:0}.fc-login-side .fc-felt label{font-weight:680}
+.fc-login-side .fc-felt input{width:100%;min-height:48px;box-sizing:border-box;background:var(--veyro-white)}
+.fc-login-kodefelt{position:relative}.fc-login-kodefelt input{padding-right:68px}
+.fc-login-vis-kode{position:absolute;right:7px;top:50%;min-width:54px;min-height:36px;transform:translateY(-50%);border:0;border-radius:7px;
+  background:transparent;color:var(--veyro-action);font:inherit;font-weight:680;cursor:pointer}
+.fc-login-vis-kode:hover,.fc-login-vis-kode:focus-visible{background:var(--veyro-teal-light)}
+.fc-login-hjælpelinje{display:flex;justify-content:flex-end;margin-top:-8px}
+.fc-login-link{padding:4px;border:0;background:transparent;color:var(--veyro-action);font:inherit;font-weight:680;text-decoration:underline;
+  text-underline-offset:3px;cursor:pointer}.fc-login-link:disabled{cursor:wait;opacity:.65}
+.fc-login-side .fc-btn{width:100%;min-height:48px;margin:0}
+.fc-login-sessionbesked,.fc-login-ok{margin:0 0 20px;padding:11px 13px;border-left:3px solid var(--veyro-teal);border-radius:6px;
+  background:var(--veyro-teal-light);color:var(--bc-text)}
+.fc-login-form .fc-login-ok,.fc-login-form .fc-empty-bad{margin:0}
+.fc-login-kort{padding:20px;border:1px solid var(--veyro-border);border-radius:12px;background:var(--veyro-card-surface)}
+.fc-login-footer{margin-top:28px;padding-top:20px;border-top:1px solid var(--veyro-border);color:var(--bc-muted);font-size:var(--fc-t-s)}
+.fc-login-footer p{margin:0}.fc-login-footer a{color:var(--veyro-action);font-weight:680}
+.fc-login-side .fc-login-miljoe{margin-top:10px;text-align:left;font-size:var(--fc-t-xs)}
+.fc-session-varsel{min-width:min(420px,calc(100vw - 64px))}.fc-session-varsel>p{margin-top:0}
+.fc-session-nedtælling{margin:18px 0!important;color:var(--bc-text);font-size:var(--fc-t-page);font-weight:760;font-variant-numeric:tabular-nums}
+@media(max-width:900px){
+  .fc-login-side{grid-template-columns:1fr;grid-template-rows:minmax(170px,25vh) auto}
+  .fc-login-hero{min-height:170px}.fc-login-panel{place-items:start center;min-height:calc(75vh - 2px);padding:36px 24px 48px;
+    border-left:0;border-top:2px solid var(--veyro-teal)}
+  .fc-login-logo-felt{top:18px;left:20px;width:min(220px,52%);padding:6px 9px}
+  .fc-login-motiv{left:20px;right:20px;bottom:16px}.fc-login-motiv p:not(.fc-login-motiv-navn){margin-top:4px;font-size:var(--fc-t-panel-title)}
+  .fc-login-motiv small{margin-top:5px}.fc-login-intro{margin-bottom:24px}
+}
+@media(max-width:420px){
+  .fc-login-side{grid-template-rows:150px auto}.fc-login-hero{min-height:150px}.fc-login-panel{padding:28px 20px 40px}
+  .fc-login-logo-felt{width:178px}.fc-login-motiv{bottom:12px}.fc-login-motiv-navn,.fc-login-motiv small{display:none}
+  .fc-login-motiv p:not(.fc-login-motiv-navn){font-size:var(--fc-t-subtitle)}.fc-login-intro h1{font-size:var(--fc-t-kpi)}
+  .fc-login-intro>p:last-child{font-size:var(--fc-t-l)}.fc-session-varsel{min-width:0}
+}
+@media(prefers-reduced-motion:reduce){.fc-login-hero-billede{transition:none}}
 .fc-row{display:flex; align-items:center; justify-content:space-between; gap:12px}
 .fc-scroll{overflow-x:auto}
 .fc-kpi{display:flex; gap:12px; padding:13px 14px; align-items:flex-start}
