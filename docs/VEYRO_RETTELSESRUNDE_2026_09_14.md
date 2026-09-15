@@ -37,7 +37,7 @@ aktuelle kodegrundlag.
 | UX-03 | Navigation | Hele moduloverskriften folder uden samtidig navigation; underpunkter navigerer. | `src/fleet/AppShell.jsx` | implementeret | Fakturacenter foldet på Dashboard uden URL-skift; underlinks eksponeret semantisk | Ingen |
 | UX-04 | Kompakt menu | Flyout bevares fra ikon til menu, ligger over indhold, håndterer kanter/lange lister, ESC/udenfor, mus/tastatur/touch. ESC-fokus genåbnede tidligere straks flyoutet via containerens `onFocus`. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | implementeret | Integreret Playwright: hover fra ikon til undermenu, ESC med fokusretur uden genåbning, Enter-genåbning og navigation; `1440x900-kompakt-hovermenu-fleet.png` | Ingen |
 | UX-05 | Foldeknap | Variant B, afrundet flig ca. 30×34 med mindst 44×44 klikmål, tokens og korrekt chevron/aria. | `src/fleet/AppShell.jsx`, `src/fleet/fleet.css` | implementeret | Beregnet klikmål 43,98×43,98 px; synlig pseudo-flig 30×34; titel, aria og korrekt chevron | Ingen |
-| UX-06 | Navigation | Meningsfuld tilbagefunktion med bevaret visningstilstand; direkte åbning har fallback. | Fælles route-/visningskomponenter | åben | Browser frem/tilbage, reload og direkte URL | Skærmspecifik tilpasning |
+| UX-06 | Navigation | Meningsfuld tilbagefunktion med bevaret visningstilstand; direkte åbning har fallback. | Fælles route-/visningskomponenter og `fleet-v2/src/data/navigationHistory.js` | implementeret lokalt | 18 berørte filer; 4/4 historiktests; 31 FLEET-testfiler og 198/198 tests; faktisk browser 15/9 fra overblik, arbejdskø, indberetninger, enhedsprofil og sagsmappe samt direkte URL/reload | Integreret browserbevis afventer normal login-tjeneste |
 | UX-07 | Dialog | ESC, X, Annuller, ugemte data, fokusretur, bekræft Gem/Slet og fejlbevaring. | Fælles og berørte moduldialoger | i gang | Ny FLEET-rutedialog har fokusfælde, ESC/X/baggrund, fokusretur og dirty-bekræftelse; Manuel sag bevarer input ved fejl. 10/10 berørte komponenttests og browserforløb består. | Øvrige moduldialoger skal fortsat auditeres; domæner må bruge arkivering, hvor hard delete er forbudt |
 | FC-01 | Navigation | Synligt forløb er Indbakke, betinget Ekstra kontrol og Arkiv; gamle dybe links mappes uden historiktab. | `src/fleet/fakturacenter-intake.js`, `src/moduler/oekonomi/Fakturacenter.jsx`, `src/fleet/nav.js` | implementeret | 100/100 målrettede tests; browser viste kun Indbakke og Arkiv, mens Ekstra kontrol er korrekt skjult før aktivering | Interne domænestatusser er bevaret |
 | FC-02 | Kontrol | Succes fjerner posten fra arbejdsliste, bliver i Indbakke og vælger næste; fejl bevarer posten. | Fakturacenter UI/domæne | implementeret | Domænetest og browserwiring; succes flytter til intern kontrolleret/Arkiv-status uden sektionsskift | Lokal prototype, ikke serverlagring |
@@ -50,7 +50,7 @@ aktuelle kodegrundlag.
 | FL-01 | Overblik | KPI-kort og handlingsposter/Se alle åbner relevante filtre; optællinger og udsnit forklares. | `fleet-v2/src/components/Overview.jsx`, FleetV2App og UnitCatalog | implementeret lokalt | Komponenttest og faktisk browserroute/filter | Handlingslisten forklarer nu, at den viser 5 af det samlede antal. |
 | FL-02 | Drift | De tidligere søjler genbrugte aktuelle optællinger med en kunstig variation og opfandt dermed fortid. Dag/uge/måned/kvartal/år aflæser nu daterede statusobservationer og ændrer både prøvetidspunkter og akser. | `fleet-v2/src/data/overviewWorkflow.js`, `unitSelectors.js`, `Overview.jsx` | implementeret lokalt | 5/5 beregningstests; fuld FLEET-suite 170/170; integreret browser ved 1920×1080 viste 7 dagsprøver for Uge og 3 månedsprøver for Kvartal | Produktionshistorik kræver en autoritativ serverkilde; demoen er eksplicit syntetisk registreret historik |
 | FL-03 | Omkostning/nedetid | De tidligere grafer brugte hardkodede omkostninger og nedetidsprocenter. Månedsskiftet bruger nu registrerede faktiske omkostningsposter og daterede statusintervaller; manglende måneder er `Mangler data`, nul er nul, og samme måned sidste år vises kun med grundlag. | `fleet-v2/src/data/overviewWorkflow.js`, `unitSelectors.js`, `OverviewCharts.jsx` | implementeret lokalt | 5/5 beregningstests; browserens martsvalg viste DKK 79.803, manglende sidste-årsomkostning og 11,7 % registreret nedetid med sidste-årsdifference | Serverkilde og produktionsdatadækning mangler; ingen værdi opfindes ved manglende poster |
-| FL-04 | Livekort | Kort-wheel og +/−, ingen dobbeltzoom, popup pr. enhed, cluster/samme position kan vælges, tydelig kilde/friskhed. | FLEET LiveMap/GeoMap | delvist implementeret | 8/8 LiveMap-tests og faktisk browserprøve af kortknap/klyngeliste | Markørvalg bruger den eksisterende detaljeside frem for en flydende popup. Ingen ekstern OBD aktiveres. |
+| FL-04 | Livekort | Kort-wheel og +/−, ingen dobbeltzoom, popup pr. enhed, cluster/samme position kan vælges, tydelig kilde/friskhed. | FLEET LiveMap/GeoMap | delvist implementeret | 9/9 LiveMap-tests; faktisk browser 15/9 på desktop og 390×844 viste marker-/klyngepopup og profilnavigation | Flydende popup er implementeret; valideret autoritativ OBD/GPS-kilde mangler fortsat, og ingen ekstern tjeneste er aktiveret. |
 | FL-05 | Enhedsregister | Moderne FLEET-kartotek bliver primær skærm i Opsætning med autoritativ mapping og gamle dybe links. | Root-routes/nav, FLEET repository/adapters | implementeret lokalt | Route-, permission- og referenceprøver med PLANNING | Moderne kartotek åbner på `/opsaetning/enheder`; `/fleet-v2/enheder` bevares som kompatibelt dybt link. UNIT/WAREHOUSE-unit er fortsat et særskilt domæneobjekt. |
 | FL-06 | Enhedsformular | Typefaner fjernes; typefilter bevares; indvendige mål, fire udstyrsvalg og energikilde med ukendt/ikke relevant. | UnitCatalog, UnitFormDialog, UnitProfile, unitSelectors | implementeret lokalt | 18/18 målrettede komponenttests og integreret browserverifikation | Trækkrog, hængertræk, kran og lift er separate værdier. Eksisterende ukendte drivmiddelværdier bevares ved redigering. |
 | FL-07 | Indberetninger | Stabil trepanelstruktur, fuld bredde, justering/hukommelse/scroll og semantiske statustokens. | ReportTriage, ThreePanelWorkspace og CSS | implementeret lokalt på desktop; mobil regression består | Faktisk browsermåling, tastatur-resize/nulstil og ReportFlow | Bredder er rene bruger-/tenantafgrænsede visningsvalg, ikke forretningsdata. |
@@ -64,7 +64,7 @@ aktuelle kodegrundlag.
 | FL-15 | Kategorier | Indberetninger brugte fri tekst, mens økonomi brugte en separat hardkodet liste. Der er nu én tenantafgrænset kategori-stamdata med opret/redigér/sortér/deaktivér, anvendelsesmapping og historiske snapshots. | `src/moduler/opsaetning/FleetKategorier.jsx`, `fleetCategories`, `categoryAdapter`, Reports/Økonomi, Rules | delvist implementeret | 5/5 kategoridomænetests; fuld FLEET-suite 184/184; fuld Rules-/platformsgate 4.599/4.599; browser desktop/mobil og begge forbrugere | Kategoristamdata lagres serverstyret. Selve indberetningerne og økonomiposterne er fortsat lokal FLEET-prototype og skal flyttes til den autoritative servergrænse, før kravet lukkes samlet. |
 | FL-16 | OBD-statistik | Kun registrerede og understøttede målinger vises/filtreres/eksporteres; kilde/periode/enhed mærkes; manglende forbindelse er tydelig. | `fleet-v2/src/data/fleetStatistics.js`, `FleetStatistics.jsx`, route/nav og CSS | delvist implementeret lokalt | 4/4 statistikdomænetests; fuld FLEET-suite 191/191; lint/build. Integreret browserbevis afventer autentificeret emulator, som ved kontrol svarede `Der er ikke forbindelse til login-tjenesten`. | Der findes kun daterede km-observationer samt position/hastighed i prototypen. Ingen valideret OBD-kilde er tilsluttet, og UI'et opfinder derfor ikke øvrige målinger. |
 | FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | `fleet-v2/src/data/economyWorkflow.js`, `FleetEconomy.jsx` og CSS | delvist implementeret lokalt | 8/8 økonomidomænetests; fuld FLEET-suite 191/191; lint/build | Manuelle, kontrollerede, bogførte, foreløbige, estimerede og kontraktlige beløb er særskilt. Månedlige kontrakter materialiseres inden for start/slut, samme økonomiske hændelse deduplikeres, og kreditnotaens negative fortegn bevares. Autoritativ Fakturacenter-/bogføringsadapter mangler. |
-| FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET statistik-/økonomieksport | delvist implementeret lokalt | Domænetest af danske tegn, decimaler og UTF-8 BOM i begge eksporttyper | Statistikeksporten angiver måling, enhed, kilde og datatype. Økonomieksporten angiver beløb, valuta, status, kilde og reference; manuel åbning i dansk Excel og fuldt eksplicit momsbeløb udestår. |
+| FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET statistik-/økonomieksport | delvist implementeret lokalt | Domænetest af danske tegn, decimaler, UTF-8 BOM og kendt/ukendt moms; 15/9 importeret og visuelt kontrolleret som Excel-kompatibel projektmappe | Økonomieksporten har særskilt beløbsgrundlag, netto, moms og brutto uden antaget sats. Manuel åbning i Microsoft Excel udestår. Produktionskilden skal levere eksplicit momsbeløb for fuld udfyldning. |
 | REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.605/4.605 grøn i isoleret emulator. Service: 16/16 integrationassertions, samtidighed, gentagelse, fremmed tenant og afvist læser; direkte skrivning til seks servernoder afvist. Fakturacenter, UNIT/WAREHOUSE, tenant og kategorier er fortsat grønne. | Kommende økonomi-/statistikserverfunktioner kræver egne emulatorbeviser før den samlede sikkerhedsgate kan lukkes. |
 | REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint, design 11/11, produktionsbuild og fuld Rules-/platformsgate 4.605/4.605 grøn efter Etape 14 | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
 | REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | i gang | Ny Etape-7-pakke dækker sagsmappe/dialog ved alle fire viewports, normal/kompakt menu, 100/125 % og Nulstil; Fakturacenter/menu/manuel sag ved 1440×900 | Samme matrix skal fortsat køres på resterende FLEET-, service-, kategori- og økonomiskærme |
@@ -818,3 +818,43 @@ før/efter-beviser for de prioriterede synlige fejl.
 | FC-06 | Implementeret og verificeret kun i lokal demo | Delvist implementeret: lokal SHA-256/dubletkontrol findes | Ikke implementeret servermæssigt; UI påstår ikke modtagelse | Ikke implementeret for serverupload | Eksisterende lokale intake-tests | Delvist implementeret |
 | REG-01 | Ikke relevant | Implementeret og verificeret for Fakturacenter-kontrol | Implementeret og verificeret med revision og idempotens | Implementeret og verificeret | 21/21 emulatorassertions og fuld gate 4.621/4.621 | Delvist implementeret, fordi senere serveretaper mangler |
 | REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, Fakturacenter 176/176 og fuld gate 4.621/4.621 | Delvist implementeret |
+
+### Etape 20 — FLEET-tilbage-navigation
+
+- Alle relevante detaljeruter modtager en eksplicit, intern oprindelsesrute og
+  bruger en sikker FLEET-fallback ved direkte URL eller genindlæsning.
+- Liste-/arbejdsvisninger gemmer de relevante filtre, valgt række/fane og
+  scrollposition i en skærm- og tenantafgrænset historikpost.
+- Faktisk browserkontrol på den isolerede FLEET-build dækkede overblik,
+  arbejdskø, indberetninger, enhedsprofil og sagsmappe. Direkte åbning af
+  `/sager/case-demo-001`, genindlæsning og tilbagehandling endte på
+  `/arbejdsko`, ikke uden for programmet.
+- Dokumentation og fuld evidens ligger i
+  `docs/VEYRO_FLEET_NAVIGATION_QA_2026_09_15.md`.
+
+### Etape 21 — flydende enhedsdetaljer på Livekort
+
+- Klik på en enkelt markør åbner nu en kortforankret popup med enhedsnummer,
+  mærke/model, position, forbindelses-/bevægelsesstatus og dataktualitet.
+- Popup'en kan lukkes med X, ESC eller klik på kortbaggrunden og kan åbne den
+  fulde enhedsprofil. Valg fra en klynge åbner samme popup.
+- Faktisk browserkontrol på `http://127.0.0.1:5197/livekort` viste NB-010 på
+  desktop, SC-104 via klyngevalg og den korrigerede popup inden for kortet ved
+  390×844. Browserkonsollen havde ingen fejl eller advarsler.
+- Den visuelle rettelse ændrer ikke datakilden: kortet er fortsat tydeligt
+  mærket som demodata og aktiverer ingen ekstern OBD/GPS-tjeneste.
+
+Den tværgående, aktuelle 36-kravsvurdering er samlet i
+`docs/VEYRO_RETTELSESRUNDE_STATUS_2026_09_15.md`.
+
+### Etape 22 — eksplicit moms i økonomi-eksport
+
+- Økonomi-CSV'en har nu separate kolonner for oprindeligt beløb,
+  beløbsgrundlag, beløb ekskl. moms, momsbeløb og beløb inkl. moms.
+- Eksporten udleder kun den tredje værdi, når to eksplicitte beløb gør den
+  matematisk entydig. Den antager ikke en momssats; `Uafklaret` giver tomme
+  netto-/moms-/bruttokolonner.
+- En repræsentativ CSV med `ØKO-Æ01`, danske kategorier og alle tre
+  momsforløb blev importeret til en Excel-kompatibel projektmappe. Visuel
+  rendering viste 12 læsbare kolonner og korrekte danske tegn. Manuel åbning i
+  Microsoft Excel er fortsat ikke gennemført og markeres derfor som restarbejde.
