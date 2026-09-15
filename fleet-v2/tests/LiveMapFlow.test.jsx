@@ -30,6 +30,17 @@ describe("Livekort", () => {
     expect(await screen.findByRole("heading", { name: "SC-104" })).toBeTruthy();
   });
 
+  it("åbner en kortforankret popup med enhedsdetaljer og profillink", async () => {
+    render(<FleetV2App repository={createMemoryUnitRepository()} />);
+    await screen.findByRole("heading", { name: "Livekort" });
+    fireEvent.click(screen.getByRole("button", { name: /NB-010, Ustabil forbindelse/ }));
+    const popup = screen.getByLabelText("Detaljer for NB-010");
+    expect(within(popup).getByText("Greve")).toBeTruthy();
+    expect(within(popup).getByText(/Ustabil forbindelse/)).toBeTruthy();
+    fireEvent.click(within(popup).getByRole("button", { name: "Åbn enhedsprofil" }));
+    expect(window.location.pathname).toBe("/enheder/unit-nb-010");
+  });
+
   it("viser offline og forældet position adskilt fra bevægelse", async () => {
     render(<FleetV2App repository={createMemoryUnitRepository()} />);
     await screen.findByRole("heading", { name: "Livekort" });
@@ -89,5 +100,6 @@ describe("Livekort", () => {
     expect(within(list).getByRole("button", { name: /NB-001/ })).toBeTruthy();
     fireEvent.click(within(list).getByRole("button", { name: /NB-001/ }));
     expect(screen.getByRole("button", { name: /NB-001/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByLabelText("Detaljer for NB-001")).toBeTruthy();
   });
 });
