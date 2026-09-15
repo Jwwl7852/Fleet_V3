@@ -17,7 +17,8 @@ Fælles slutgrundlag, hvor det er anført som `slutgate`: produktcommits
 `c5bb8613aea6c5cc39221464b732ecda5622a082`,
 `c03f64c118688f0d9b9d05cdd65742568c604516`,
 `ff8c03aabf62b827aae3afbc62d1465a8b73642d` og
-`adc63b7dedc812011f2af25e813c59726629ec21`. Det endelige browserbevis er
+`adc63b7dedc812011f2af25e813c59726629ec21`. Den udvidede QA-harness ligger i
+`85fbdb5aea428d8354b286c3ad0bfb13605b671a`, og det endelige browserbevis er
 kørt på dette samlede grundlag. Root-lint, FLEET-lint,
 designgate 11/11, FLEET 206/206, functions-paritet 29/29, root- og FLEET-build,
 Rules-/platformsgate 4.629/4.629 og den integrerede browser-QA beskrevet i

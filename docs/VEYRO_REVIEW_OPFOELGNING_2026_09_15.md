@@ -15,7 +15,8 @@ aktuelle ordre.
   - `c03f64c118688f0d9b9d05cdd65742568c604516` — komprimeret mobilchrome;
   - `ff8c03aabf62b827aae3afbc62d1465a8b73642d` — mere synligt arbejdsindhold på smal mobil;
   - `adc63b7dedc812011f2af25e813c59726629ec21` — Warehouse med normal titelkapitalisering.
-- Endelig browserharness og browserkørsel: `adc63b7dedc812011f2af25e813c59726629ec21`.
+- Endelig browserharness: `85fbdb5aea428d8354b286c3ad0bfb13605b671a`;
+  browserkørslen blev udført på dette samlede grundlag.
 
 Ingen ekstern tjeneste, produktionstilstand, deployment eller migration af
 eksisterende brugerdata indgår.

@@ -11,8 +11,9 @@ Den afsluttende prøve blev kørt fra
 `c5bb8613aea6c5cc39221464b732ecda5622a082`,
 `c03f64c118688f0d9b9d05cdd65742568c604516`,
 `ff8c03aabf62b827aae3afbc62d1465a8b73642d` og
-`adc63b7dedc812011f2af25e813c59726629ec21`. Sidstnævnte commit fastholder
-også den endelige QA-harness og Warehouse-regressionen.
+`adc63b7dedc812011f2af25e813c59726629ec21`. Warehouse-regressionen ligger i
+sidstnævnte commit, og den udvidede slutpakke-harness ligger i
+`85fbdb5aea428d8354b286c3ad0bfb13605b671a`.
 
 Det var den byggede **samlede root-app med indlejret FLEET**, ikke FLEETs
 standalone-app:
@@ -155,6 +156,12 @@ Maskinlæsbar evidens og samtlige screenshots ligger i
 - `28-faelles-enhedsformular-1440x900.png`;
 - `29-sidebar-warehouse-1440x900.png`, hvor menuetiketten vises som
   `Warehouse` med samme titelkapitalisering som de øvrige moduler;
+- `30-kompakt-sidebar-1440x900.png`;
+- `31-arbejdsko-tabel-1440x900.png`;
+- `32-sagsmappe-historik-1440x900.png`;
+- `33-faelles-enhedsregister-1440x900.png`;
+- `34-service-intervalformular-1440x900.png`;
+- `35-fakturacenter-indstillinger-1440x900.png`;
 - `RESULTAT.json` med alle målte assertions og nul runtimeproblemer.
 
 Matrixen er et aktuelt slutgrundlagsbevis for de nævnte skærme og lukker
