@@ -1190,6 +1190,24 @@ describe("massekontrol", () => {
     assert.equal(beskrivMasseResultat({
       ok: false, blokeringer: ["DUPLICATE_UNRESOLVED"],
     }).status, "Afvist");
+    assert.deepEqual(beskrivMasseResultat({
+      ok: true, status: "ekstra-kontrol",
+    }), {
+      status: "Til ekstra kontrol",
+      forklaring: "Første kontrol er gennemført; fakturaen afventer en anden godkender.",
+    });
+    assert.deepEqual(beskrivMasseResultat({
+      ok: true, status: "arkiveret",
+    }), {
+      status: "Arkiveret efter kontrol",
+      forklaring: "Veyro-kontrollen er afsluttet; det er ikke en betalings- eller bogføringsstatus.",
+    });
+    assert.deepEqual(beskrivMasseResultat({
+      ok: false, kode: "mangler-grundlag", besked: "Destination og kontrolgrundlag skal være afklaret først.",
+    }), {
+      status: "Mangler kontrolgrundlag",
+      forklaring: "Destination og kontrolgrundlag skal være afklaret først.",
+    });
   });
 });
 

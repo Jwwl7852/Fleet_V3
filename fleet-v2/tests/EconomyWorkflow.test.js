@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFixtureDataset } from "../src/data/fleetFixtures";
-import { actualCostSummary, applyManualCostSave, buildEconomyEntries, deduplicateEconomyEntries, economyCsv, economyPeriodComparison, filterEconomyEntries, materializeRecurringEntries, mergeDowntimeIntervals, periodDistance } from "../src/data/economyWorkflow";
+import { actualCostSummary, applyManualCostSave, buildEconomyEntries, deduplicateEconomyEntries, economyCsv, economyPeriodComparison, filterEconomyEntries, materializeRecurringEntries, mergeDowntimeIntervals, periodDistance, unitDowntime } from "../src/data/economyWorkflow";
 
 describe("økonomi og flådestatistik", () => {
   it("holder faktiske, foreløbige, estimater og kontraktlige ydelser adskilt", () => {
@@ -28,6 +28,11 @@ describe("økonomi og flådestatistik", () => {
   it("dobbelttæller ikke overlappende nedetidsintervaller", () => {
     const merged=mergeDowntimeIntervals([{start:"2026-01-01T00:00:00Z",end:"2026-01-02T00:00:00Z"},{start:"2026-01-01T12:00:00Z",end:"2026-01-03T00:00:00Z"}]);
     expect(merged).toEqual([{start:"2026-01-01T00:00:00Z",end:"2026-01-03T00:00:00Z"}]);
+  });
+
+  it("tåler at autoritative enheder ankommer før den lokale økonomiprojektion", () => {
+    expect(unitDowntime("server-unit", null, "2026-01-01", "2026-12-31"))
+      .toEqual({ intervals: [], hours: 0 });
   });
 
   it("eksporterer danske overskrifter og decimaler som UTF-8 CSV-indhold", () => {

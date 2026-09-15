@@ -1926,20 +1926,33 @@ const MASSE_BLOKERING_TEKST = Object.freeze({
 /** Gør et teknisk massekontrolresultat forståeligt uden at skjule kontrolgaten. */
 export function beskrivMasseResultat(resultat = {}) {
   const blokeringer = liste(resultat.blokeringer);
-  if (resultat.ok) return {
-    status: "Kontrolleret",
-    forklaring: "Match og fuld nettofordeling er kontrolleret; fakturaen er låst.",
-  };
+  if (resultat.ok) {
+    if (resultat.status === "ekstra-kontrol") return {
+      status: "Til ekstra kontrol",
+      forklaring: "Første kontrol er gennemført; fakturaen afventer en anden godkender.",
+    };
+    if (resultat.status === "arkiveret") return {
+      status: "Arkiveret efter kontrol",
+      forklaring: "Veyro-kontrollen er afsluttet; det er ikke en betalings- eller bogføringsstatus.",
+    };
+    return {
+      status: "Kontrolleret",
+      forklaring: "Match og fuld nettofordeling er kontrolleret; fakturaen er låst.",
+    };
+  }
   const kræverBegrundelse = blokeringer.includes("WARNINGS_UNRESOLVED");
   const manglerPlacering = blokeringer.some((kode) =>
     kode === "MATCH_REQUIRED" || kode === "ALLOCATION_INCOMPLETE");
+  const serverKode = String(resultat.kode || "");
   return {
     status: kræverBegrundelse
       ? "Kræver begrundelse"
-      : manglerPlacering ? "Mangler match eller fuld fordeling" : "Afvist",
+      : manglerPlacering
+        ? "Mangler match eller fuld fordeling"
+        : serverKode === "mangler-grundlag" ? "Mangler kontrolgrundlag" : "Afvist",
     forklaring: blokeringer.length
       ? blokeringer.map((kode) => MASSE_BLOKERING_TEKST[kode] || `Afvist af kontrolgate (${kode}).`).join(" ")
-      : "Fakturaen kunne ikke kontrolleres i den lokale prototype.",
+      : String(resultat.besked || "Fakturaen kunne ikke kontrolleres.").trim(),
   };
 }
 

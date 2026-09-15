@@ -141,8 +141,9 @@ export function mergeDowntimeIntervals(intervals) {
 }
 
 export function unitDowntime(unitId, dataset, from, to) {
-  const tasks = (dataset.relations.workshopTasks || []).filter((item) => item.unitId === unitId && item.actualStartAt).map((item) => ({ start: item.actualStartAt, end: item.actualEndAt || `${to}T23:59:59.999Z` }));
-  const reportBlocks = (dataset.relations.reports || []).filter((item) => item.unitId === unitId && item.usability === "blocked").map((report) => { const linked = (dataset.relations.cases || []).find((item) => item.reportId === report.id); return { start: report.createdAt, end: linked?.blockReleasedAt || linked?.workCompletedAt || `${to}T23:59:59.999Z` }; });
+  const relations = dataset?.relations || {};
+  const tasks = (relations.workshopTasks || []).filter((item) => item.unitId === unitId && item.actualStartAt).map((item) => ({ start: item.actualStartAt, end: item.actualEndAt || `${to}T23:59:59.999Z` }));
+  const reportBlocks = (relations.reports || []).filter((item) => item.unitId === unitId && item.usability === "blocked").map((report) => { const linked = (relations.cases || []).find((item) => item.reportId === report.id); return { start: report.createdAt, end: linked?.blockReleasedAt || linked?.workCompletedAt || `${to}T23:59:59.999Z` }; });
   const clipped = [...tasks, ...reportBlocks].map((item) => ({ start: item.start < `${from}T00:00:00Z` ? `${from}T00:00:00Z` : item.start, end: item.end > `${to}T23:59:59.999Z` ? `${to}T23:59:59.999Z` : item.end }));
   const merged = mergeDowntimeIntervals(clipped);
   return { intervals: merged, hours: merged.reduce((sum, item) => sum + (new Date(item.end) - new Date(item.start)) / 3600000, 0) };
