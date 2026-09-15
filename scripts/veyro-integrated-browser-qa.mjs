@@ -209,6 +209,18 @@ try {
   checks.mobileDialog = await admin.evaluate("(()=>{const d=document.querySelector('.fleet-route-dialog').getBoundingClientRect();return{left:Math.round(d.left),top:Math.round(d.top),width:Math.round(d.width),height:Math.round(d.height),viewport:{width:innerWidth,height:innerHeight},overflow:getComputedStyle(document.querySelector('.fleet-route-dialog-body')).overflowY}})()");
   assert(checks.mobileDialog.width <= 390 && checks.mobileDialog.height <= 844, "Arbejdskødialogen overskred mobilviewporten.");
   screenshots.push(await admin.screenshot("23-arbejdsko-dialog-390x844.png"));
+  await admin.evaluate("document.querySelector('.fleet-route-dialog-head button').click()");
+  await admin.waitFor("!document.querySelector('.fleet-route-dialog')", "mobil dialog lukket");
+  await admin.spaNavigate("/fleet-v2/arbejdsko", "document.querySelector('[aria-label=\"Søg i sager\"]')");
+  await admin.evaluate(setInput('[aria-label="Søg i sager"]', "Knirkende"));
+  await admin.evaluate("[...document.querySelectorAll('button')].find((node)=>node.textContent.includes('Knirkende'))?.scrollIntoView({block:'center'})");
+  await admin.evaluate(clickText("button", "Knirkende"));
+  await admin.waitFor("document.querySelector('.fleet-route-dialog')", "sag åbnet fra mobil arbejdskø");
+  screenshots.push(await admin.screenshot("27-mobil-arbejdsko-sag-390x844.png"));
+  await admin.evaluate("document.querySelector('.fleet-route-dialog-head button').click()");
+  await admin.waitFor("!document.querySelector('.fleet-route-dialog')", "mobil sag lukket til arbejdskø");
+  checks.mobileQueueAction = await admin.evaluate("({path:location.pathname,filter:document.querySelector('[aria-label=\"Søg i sager\"]')?.value,caseVisible:document.body.innerText.includes('Knirkende bremser')})");
+  assert(checks.mobileQueueAction.path === "/fleet-v2/arbejdsko" && checks.mobileQueueAction.filter === "Knirkende" && checks.mobileQueueAction.caseVisible, "Mobilens find-åbn-luk-returforløb bevarede ikke arbejdskøens filter.");
   await admin.viewport(1440, 900, false);
   await admin.spaNavigate("/fleet-v2/livekort", "document.querySelector('.geo-marker')");
   await admin.evaluate("document.querySelector('.geo-marker').click()");
@@ -315,6 +327,7 @@ try {
   await admin.evaluate(setInput('.unit-dialog .unit-form-field:nth-of-type(4) input', 'Veyro'));
   await admin.evaluate(setInput('.unit-dialog .unit-form-field:nth-of-type(5) input', 'Syntetisk integrationsenhed'));
   await admin.evaluate(setInput('.unit-dialog .unit-form-field:nth-of-type(8) input', 'Testafdeling'));
+  screenshots.push(await admin.screenshot("28-faelles-enhedsformular-1440x900.png"));
   await admin.evaluate("window.confirm=()=>true;document.querySelector('.unit-dialog form button[type=submit]').click()");
   await admin.waitFor(`!document.querySelector('.unit-dialog') && document.body.innerText.includes(${JSON.stringify(unitNumber)})`, "enhed gemt i fælles register");
   const unitId = await admin.evaluate(`(()=>{const row=[...document.querySelectorAll('.unit-table tbody tr')].find((node)=>node.textContent.includes(${JSON.stringify(unitNumber)}));return row?.dataset?.unitId||row?.querySelector('[data-unit-id]')?.dataset?.unitId||null})()`);
