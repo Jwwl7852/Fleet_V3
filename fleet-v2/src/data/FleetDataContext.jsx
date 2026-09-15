@@ -36,9 +36,9 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
     return () => { active = false; };
   }, [repository]);
 
-  const saveUnit = useCallback(async (unit) => {
+  const saveUnit = useCallback(async (unit, options) => {
     if (serverControlledUnits) {
-      const saved = await serviceBackend.saveUnit(unit);
+      const saved = await serviceBackend.saveUnit(unit, options);
       setServerUnitSnapshot((current) => {
         const units = [...current];
         const index = units.findIndex((item) => item.id === saved.id);

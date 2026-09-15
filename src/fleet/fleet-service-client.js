@@ -12,6 +12,29 @@ const requestId = (prefix) => `${prefix}-${globalThis.crypto?.randomUUID?.()
 const integerOrNull = (value) => value === "" || value == null
   ? null : (Number.isSafeInteger(Number(value)) ? Number(value) : null);
 
+const SHARED_TO_FLEET_STATUS = Object.freeze({
+  aktiv: "operation",
+  vaerksted: "workshop",
+  udeAfDrift: "action",
+  solgt: "inactive",
+  skrottet: "inactive",
+});
+
+const meterSnapshot = (unit = {}) => ({
+  type: unit.meterType === "hours" ? "hours" : "km",
+  value: Number(unit.meter),
+});
+
+const sameMeter = (left, right) => left.type === right.type && left.value === right.value;
+
+export class FleetUnitConflictError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "FleetUnitConflictError";
+    this.code = "fleet/unit-conflict";
+  }
+}
+
 /**
  * Samler loading/fejl for hele den autoritative serviceprojektion. Alle seks
  * lister tæller, også når deres færdige resultat fortsat er en tom liste.
@@ -37,10 +60,13 @@ export function mapSharedUnitToFleet(unit = {}) {
   const profile = unit.fleetProfil || {};
   const type = unit.art === "scooter" ? "scooter"
     : ["truck", "maskine", "udstyr"].includes(unit.art) ? "machine" : "vehicle";
-  const status = unit.status === "vaerksted" ? "workshop"
-    : ["solgt", "skrottet", "inaktiv"].includes(unit.status) ? "inactive" : "operation";
-  const meterType = Number.isFinite(unit.driftstimer) && !Number.isFinite(unit.kmStand)
-    ? "hours" : "km";
+  const status = SHARED_TO_FLEET_STATUS[unit.status] || "operation";
+  const hasHours = Number.isFinite(unit.driftstimer);
+  const hasKilometres = Number.isFinite(unit.kmStand);
+  const meterType = hasHours && !hasKilometres ? "hours"
+    : hasKilometres ? "km"
+      : profile.meterType === "hours" ? "hours" : "km";
+  const sharedMeter = meterType === "hours" ? unit.driftstimer : unit.kmStand;
   return {
     id: unit.id,
     tenantId: unit.tenantId,
@@ -49,8 +75,10 @@ export function mapSharedUnitToFleet(unit = {}) {
     make: profile.make || unit.maerke || "",
     model: profile.model || unit.model || unit.navn || "Model ikke oplyst",
     department: profile.department || unit.hjemsted || "Ikke oplyst",
-    meterType: profile.meterType || meterType,
-    meter: profile.meter ?? (meterType === "hours" ? (unit.driftstimer ?? null) : (unit.kmStand ?? null)),
+    meterType,
+    // kmStand/driftstimer er den fælles, autoritative måler. Profilfeltet er
+    // kun en bagudkompatibel projektion for poster fra før fællesregisteret.
+    meter: sharedMeter ?? profile.meter ?? null,
     status,
     registration: unit.registrering || null,
     serialNumber: profile.serialNumber || unit.stelnummer || unit.serienummer || null,
@@ -80,12 +108,45 @@ const sharedArtFor = (unit, current) => {
 
 const sharedStatusFor = (unit, current) => {
   if (unit.status === "workshop") return "vaerksted";
-  if (["action", "offline"].includes(unit.status)) return "udeAfDrift";
+  if (unit.status === "action") return "udeAfDrift";
+  if (unit.status === "offline") {
+    throw new Error("Offline er en forbindelsestilstand og kan ikke gemmes som enhedens driftsstatus.");
+  }
   if (unit.status === "inactive") {
     return ["solgt", "skrottet"].includes(current?.status) ? current.status : "solgt";
   }
   return "aktiv";
 };
+
+function resolvedEditableState(unit, current, openedUnit) {
+  if (!openedUnit) return { meter: meterSnapshot(unit), status: unit.status };
+  if (!current) throw new FleetUnitConflictError("Enheden findes ikke længere. Formularen er bevaret; genindlæs før du prøver igen.");
+
+  const openedMeter = meterSnapshot(openedUnit);
+  const inputMeter = meterSnapshot(unit);
+  const currentFleet = mapSharedUnitToFleet(current);
+  const currentMeter = meterSnapshot(currentFleet);
+  const userChangedMeter = !sameMeter(inputMeter, openedMeter);
+  const serverChangedMeter = !sameMeter(currentMeter, openedMeter);
+  if (userChangedMeter && serverChangedMeter && !sameMeter(inputMeter, currentMeter)) {
+    throw new FleetUnitConflictError(
+      `Målerstanden er siden ændret til ${currentMeter.value} ${currentMeter.type === "hours" ? "timer" : "km"}. `
+      + "Din øvrige tekst er bevaret; genindlæs enheden og foretag målerændringen igen.",
+    );
+  }
+
+  const userChangedStatus = unit.status !== openedUnit.status;
+  const serverChangedStatus = currentFleet.status !== openedUnit.status;
+  if (userChangedStatus && serverChangedStatus && unit.status !== currentFleet.status) {
+    throw new FleetUnitConflictError(
+      "Driftsstatus er ændret af en anden bruger. Din øvrige tekst er bevaret; genindlæs enheden og vælg status igen.",
+    );
+  }
+  return {
+    meter: userChangedMeter ? inputMeter : currentMeter,
+    status: userChangedStatus ? unit.status : currentFleet.status,
+  };
+}
 
 /**
  * Skriveadapteren til det fælles enhedsregister. Den returnerer hele posten,
@@ -93,12 +154,14 @@ const sharedStatusFor = (unit, current) => {
  * redigering. Browserens Blob-billede er med vilje ikke en del af RTDB-posten;
  * en permanent billedkilde kræver Storage-adapteren.
  */
-export function mapFleetUnitToShared(unit = {}, current = {}) {
+export function mapFleetUnitToShared(unit = {}, current = {}, { openedUnit = null } = {}) {
   if (!unit.id) throw new Error("Enheden mangler et stabilt id.");
   const existing = { ...(current || {}) };
   delete existing.id;
   delete existing.tenantId;
-  const meterType = unit.meterType === "hours" ? "hours" : "km";
+  const editable = resolvedEditableState(unit, current, openedUnit);
+  const meterType = editable.meter.type;
+  const meter = editable.meter.value;
   const profile = {
     schemaVersion: 1,
     number: unit.number,
@@ -107,7 +170,7 @@ export function mapFleetUnitToShared(unit = {}, current = {}) {
     model: unit.model,
     department: unit.department,
     meterType,
-    meter: Number(unit.meter),
+    meter,
     serialNumber: unit.serialNumber || null,
     year: unit.year ?? null,
     vehicleDetails: unit.vehicleDetails || {},
@@ -120,7 +183,7 @@ export function mapFleetUnitToShared(unit = {}, current = {}) {
   const next = {
     ...existing,
     art: sharedArtFor(unit, current),
-    status: sharedStatusFor(unit, current),
+    status: sharedStatusFor({ ...unit, status: editable.status }, current),
     kaldenavn: unit.number,
     navn: [unit.make, unit.model].filter(Boolean).join(" ") || unit.number,
     hjemsted: unit.department,
@@ -129,10 +192,10 @@ export function mapFleetUnitToShared(unit = {}, current = {}) {
   if (unit.registration) next.registrering = unit.registration;
   else delete next.registrering;
   if (meterType === "hours") {
-    next.driftstimer = Number(unit.meter);
+    next.driftstimer = meter;
     delete next.kmStand;
   } else {
-    next.kmStand = Number(unit.meter);
+    next.kmStand = meter;
     delete next.driftstimer;
   }
   return next;

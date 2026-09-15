@@ -19,7 +19,7 @@ import {
   mapSharedUnitToFleet,
   mapFleetUnitToShared,
 } from "../../fleet/fleet-service-client.js";
-import { gem } from "../../fleet/skriv.js";
+import { gemTransaktion } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
 import {
   FLEET_V2_INTEGRATION_DATABASE,
@@ -119,21 +119,18 @@ export default function FleetV2Module() {
         saveHistory: false,
         saveSettings: false,
       },
-      async saveUnit(input) {
+      async saveUnit(input, { openedUnit = null } = {}) {
         if (!mayManageService) throw new Error("Du har ikke adgang til at gemme enheder.");
-        const current = rawUnits.find((item) => item.id === input.id) || null;
-        const shared = mapFleetUnitToShared(input, current);
-        const result = await gem({
+        const result = await gemTransaktion({
           sti: path(`koeretoejer/${input.id}`),
-          data: shared,
-          foer: current,
+          opdater: (aktuel) => mapFleetUnitToShared(input, aktuel, { openedUnit }),
           objekt: "koeretoejer",
           objektId: input.id,
-          handling: current ? AUDIT.aendre : AUDIT.opret,
+          handling: openedUnit ? AUDIT.aendre : AUDIT.opret,
         });
         if (!result.ok) throw new Error(result.besked || "Enheden kunne ikke gemmes i det fælles register.");
         reload();
-        return mapSharedUnitToFleet({ id: input.id, tenantId, ...shared });
+        return mapSharedUnitToFleet({ id: input.id, tenantId, ...result.data });
       },
       async saveRequirement(input) {
         const current = requirements.find((item) => item.id === input.id) || null;

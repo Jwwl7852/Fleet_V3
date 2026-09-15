@@ -57,9 +57,9 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
 
   const setFilter = (key) => (event) => setFilters((current) => ({ ...current, [key]: event.target.value }));
   const openUnit = (unit) => onNavigate(`/enheder/${unit.id}`);
-  const save = async (unit) => {
+  const save = async (unit, options) => {
     const previous = units.find((current) => current.id === unit.id);
-    await saveUnit(unit);
+    await saveUnit(unit, options);
     if (!previous) setFilters({ ...initialFilters, query: unit.number });
     else if (filters.query.trim().toLocaleLowerCase("da") === previous.number.toLocaleLowerCase("da")) {
       setFilters((current) => ({ ...current, query: unit.number }));

@@ -30,6 +30,9 @@ export const SKRIV = {
      Det er en programfejl hos os, ikke hos brugeren, og teksten skal sige
      det frem for at bede ham rette noget han ikke kan se. */
   ugyldig: "ugyldig",
+  /* Posten har flyttet sig siden formularen blev åbnet. Inputtet bevares,
+     og brugeren skal genindlæse før en bevidst overskrivning. */
+  konflikt: "konflikt",
   /* Ingen database. Demo-mode: skærmene virker, men intet gemmes. */
   demo: "demo",
 };
@@ -42,6 +45,8 @@ const BESKED = {
   [SKRIV.ugyldig]:
     "Serveren afviste formen på det der blev sendt. Det er en fejl hos os — " +
     "ændringen er ikke gemt, og den bliver det ikke ved at prøve igen.",
+  [SKRIV.konflikt]:
+    "Data er ændret af en anden bruger. Intet blev overskrevet; genindlæs og prøv igen.",
   [SKRIV.demo]:
     "Demo-tilstand: der er ingen database, så intet blev gemt.",
 };

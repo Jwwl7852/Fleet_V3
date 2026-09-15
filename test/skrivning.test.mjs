@@ -159,7 +159,7 @@ test("En afvist skrivning er ikke en netværksfejl", async (t) => {
   });
 
   await t.test("hver tilstand har sin egen tekst", () => {
-    for (const art of [SKRIV.naegtet, SKRIV.forbindelse, SKRIV.ugyldig, SKRIV.demo]) {
+    for (const art of [SKRIV.naegtet, SKRIV.forbindelse, SKRIV.ugyldig, SKRIV.konflikt, SKRIV.demo]) {
       assert.ok(skrivBesked(art), art);
     }
     /* Og de tre fejltekster må ikke være ens — det var hele pointen. */

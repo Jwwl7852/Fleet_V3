@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
   createFleetServiceClient,
@@ -12,6 +13,13 @@ import {
   mapSharedUnitToFleet,
   requirementInputToServer,
 } from "../src/fleet/fleet-service-client.js";
+
+it("det fælles enhedsregister kan forespørges i FLEETs dokumenterede sortering", () => {
+  const rules = JSON.parse(readFileSync(new URL("../firebase.rules.json", import.meta.url), "utf8")
+    .replace(/^\s*\/\/.*$/gm, ""));
+  const indexes = rules.rules.tenants.$tenantId.koeretoejer[".indexOn"];
+  assert.ok(indexes.includes("kaldenavn"));
+});
 
 describe("FLEET-serviceklientens autoritative grænse", () => {
   it("afslutter loading, når alle seks serverprojektioner er færdige og tomme", () => {
@@ -56,6 +64,64 @@ describe("FLEET-serviceklientens autoritative grænse", () => {
     assert.equal(mapped.vehicleDetails.color, "blå");
     assert.equal(mapped.interiorDimensions.lengthCm, 800);
     assert.equal(mapped.equipment.crane, true);
+  });
+
+  it("bevarer alle fem tilladte fælles statusser ved en uvedkommende redigering", () => {
+    for (const status of ["aktiv", "vaerksted", "udeAfDrift", "solgt", "skrottet"]) {
+      const current = {
+        id: `status-${status}`, art: "varevogn", status, kaldenavn: "Statusprøve",
+        navn: "Ford Transit", hjemsted: "Nord", kmStand: 1400,
+      };
+      const opened = mapSharedUnitToFleet(current);
+      const saved = mapFleetUnitToShared({ ...opened, notes: "Kun noten er ændret" }, current, { openedUnit: opened });
+      assert.equal(saved.status, status, status);
+    }
+  });
+
+  it("skelner driftsstatus fra den ikke-skrivbare forbindelsestilstand offline", () => {
+    const current = { id: "status-action", art: "varevogn", status: "udeAfDrift", kmStand: 10 };
+    const opened = mapSharedUnitToFleet(current);
+    assert.equal(opened.status, "action");
+    assert.equal(mapFleetUnitToShared({ ...opened, status: "action" }, current, { openedUnit: opened }).status, "udeAfDrift");
+    assert.throws(
+      () => mapFleetUnitToShared({ ...opened, status: "offline" }, current, { openedUnit: opened }),
+      /forbindelsestilstand/,
+    );
+  });
+
+  it("læser kilometer og timer fra fællesfeltet frem for en forældet profilprojektion", () => {
+    const kilometres = mapSharedUnitToFleet({
+      id: "km", art: "varevogn", status: "aktiv", kmStand: 1400,
+      fleetProfil: { meterType: "km", meter: 1200 },
+    });
+    const hours = mapSharedUnitToFleet({
+      id: "hours", art: "truck", status: "aktiv", driftstimer: 820,
+      fleetProfil: { meterType: "hours", meter: 700 },
+    });
+    assert.deepEqual([kilometres.meterType, kilometres.meter], ["km", 1400]);
+    assert.deepEqual([hours.meterType, hours.meter], ["hours", 820]);
+  });
+
+  it("bevarer en nyere servermåler ved en uvedkommende profilredigering", () => {
+    const openedShared = { id: "km", art: "varevogn", status: "aktiv", kmStand: 1400 };
+    const opened = mapSharedUnitToFleet(openedShared);
+    const current = { ...openedShared, kmStand: 1450, fleetProfil: { meterType: "km", meter: 1450 } };
+    const saved = mapFleetUnitToShared({ ...opened, notes: "Ny note" }, current, { openedUnit: opened });
+    assert.equal(saved.kmStand, 1450);
+    assert.equal(saved.fleetProfil.meter, 1450);
+    assert.equal(saved.fleetProfil.notes, "Ny note");
+  });
+
+  it("afviser en konkurrerende målerændring, men tillader en eksplicit korrektion på uændret grundlag", () => {
+    const openedShared = { id: "hours", art: "truck", status: "aktiv", driftstimer: 800 };
+    const opened = mapSharedUnitToFleet(openedShared);
+    assert.throws(
+      () => mapFleetUnitToShared({ ...opened, meter: 790 }, { ...openedShared, driftstimer: 820 }, { openedUnit: opened }),
+      /siden ændret til 820 timer/,
+    );
+    const corrected = mapFleetUnitToShared({ ...opened, meter: 790 }, openedShared, { openedUnit: opened });
+    assert.equal(corrected.driftstimer, 790);
+    assert.equal(corrected.fleetProfil.meter, 790);
   });
 
   it("round-tripper serverens servicefelter til FLEET-visningen", () => {

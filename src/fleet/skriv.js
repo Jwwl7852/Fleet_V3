@@ -22,7 +22,7 @@
  * hurtigt svar, ikke for at afgøre noget. Reglerne validerer igen, og hvis de
  * to er uenige, er reglerne rigtige.
  */
-import { db } from "../firebase.js";
+import { auth, brugerLokaleEmulatorer, db, projektId } from "../firebase.js";
 import { log as auditLog, AUDIT, nytKorrelationsId } from "./audit.js";
 import { SKRIV, skrivBesked, tolkFejl } from "./skriv-regler.js";
 
@@ -91,6 +91,121 @@ export async function gem({
   auditLog({ handling, objekt, objektId, foer, efter: data, korrelationsId, note });
 
   return { art: SKRIV.ok, ok: true, besked: null, fejl: null };
+}
+
+const erObjekt = (vaerdi) => vaerdi !== null
+  && typeof vaerdi === "object"
+  && !Array.isArray(vaerdi);
+
+function feltPatch(foer, efter, sti = "", resultat = {}) {
+  if (Object.is(foer, efter)) return resultat;
+  if (erObjekt(foer) && erObjekt(efter)) {
+    const noegler = new Set([...Object.keys(foer), ...Object.keys(efter)]);
+    for (const noegle of noegler) {
+      feltPatch(foer[noegle], efter[noegle], sti ? `${sti}/${noegle}` : noegle, resultat);
+    }
+    return resultat;
+  }
+  if (JSON.stringify(foer) !== JSON.stringify(efter)) {
+    resultat[sti] = efter === undefined ? null : efter;
+  }
+  return resultat;
+}
+
+const konfliktfoelsomtFelt = (sti) => [
+  "kmStand",
+  "driftstimer",
+  "status",
+  "fleetProfil/meter",
+  "fleetProfil/meterType",
+].includes(sti);
+
+/**
+ * Atomisk variant til redigeringer, hvor en nyere serverværdi ikke må
+ * overskrives af en formular, der blev åbnet på et ældre grundlag.
+ * `opdater(aktuel)` returnerer hele den nye post eller kaster en domænefejl.
+ */
+export async function gemTransaktion({
+  sti, opdater, objekt, objektId = null, handling = AUDIT.aendre,
+  note = null, korrelationsId = null, formentligGyldig = true,
+}) {
+  if (!db) {
+    return { art: SKRIV.demo, ok: false, besked: skrivBesked(SKRIV.demo), fejl: null };
+  }
+
+  let foer = null;
+  let konflikt = null;
+  try {
+    const reference = db.ref(sti);
+    const url = new URL(reference.toString());
+    url.pathname = `${url.pathname.replace(/\/$/, "")}.json`;
+    if (brugerLokaleEmulatorer && projektId) url.searchParams.set("ns", projektId);
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw Object.assign(new Error("Brugersessionen mangler."), { code: "permission-denied" });
+
+    let efter = null;
+    for (let forsoeg = 0; forsoeg < 8; forsoeg += 1) {
+      const laest = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}`, "X-Firebase-ETag": "true" },
+      });
+      if (!laest.ok) throw Object.assign(new Error(`Læsning før skrivning fejlede (${laest.status}).`), {
+        code: [401, 403].includes(laest.status) ? "permission-denied" : "unavailable",
+      });
+      foer = await laest.json();
+      try {
+        efter = opdater(foer);
+      } catch (fejl) {
+        konflikt = fejl;
+        return {
+          art: SKRIV.konflikt,
+          ok: false,
+          besked: konflikt.message || skrivBesked(SKRIV.konflikt),
+          fejl: konflikt,
+        };
+      }
+      const patch = feltPatch(foer, efter);
+      const felter = Object.keys(patch);
+      if (felter.length === 0) break;
+
+      /* En normal formularrettelse må aldrig sende uændrede måler- eller
+         statusfelter tilbage. Det er netop den stale-form-fejl denne vej
+         beskytter imod. update() skriver derfor kun den faktiske forskel.
+
+         Når brugeren SELV ændrer et konfliktfølsomt felt, kræver vi desuden
+         serverens ETag. En 412 læser på ny; domæneadapteren kan så forklare
+         konflikten uden at miste formularens øvrige input. */
+      if (foer !== null && !felter.some(konfliktfoelsomtFelt)) {
+        await reference.update(patch);
+        break;
+      }
+      const etag = laest.headers.get("etag");
+      if (!etag) throw Object.assign(new Error("Serveren returnerede ingen ETag."), { code: "unavailable" });
+      const skrevet = await fetch(url, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "if-match": etag,
+        },
+        body: JSON.stringify(efter),
+      });
+      if (skrevet.status === 412) continue;
+      if (!skrevet.ok) throw Object.assign(new Error(`Skrivning fejlede (${skrevet.status}).`), {
+        code: [401, 403].includes(skrevet.status) ? "permission-denied" : "unavailable",
+      });
+      efter = await skrevet.json();
+      break;
+    }
+    if (efter == null) throw Object.assign(new Error("Enheden blev ændret gentagne gange; prøv igen."), { code: "unavailable" });
+    auditLog({ handling, objekt, objektId, foer, efter, korrelationsId, note });
+    return { art: SKRIV.ok, ok: true, besked: null, fejl: null, data: efter };
+  } catch (fejl) {
+    const art = tolkFejl(fejl, { formentligGyldig });
+    if (art === SKRIV.naegtet) {
+      auditLog({ handling: AUDIT.adgangNaegtet, objekt, objektId, korrelationsId, note: "skrivning" });
+    }
+    return { art, ok: false, besked: skrivBesked(art), fejl };
+  }
 }
 
 /**
