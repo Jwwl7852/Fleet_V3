@@ -1148,3 +1148,27 @@ værkstedsbestilling og lukning. Derudover skal en åben serviceforekomst
 håndteres eksplicit ved ændring eller deaktivering af et krav, og eksisterende
 lokale poster kræver en kontrolleret overgang. Ingen produktionsmigration eller
 deployment er gennemført.
+
+## 25. Åben serviceforekomst ved kravændring — 2026-09-15
+
+Et serverstyret servicekrav kan have én aktiv forekomstreference. Mens den
+forekomst ikke er gennemført, låser serveren de cyklusdefinerende felter:
+enhed og målerenhed, dato-/målergrundlag, intervaller, varslingsgrænser samt
+den årlige kalenderregel. Beskrivende metadata kan ændres revisionslåst uden
+at omskrive den varslede cyklus.
+
+Deaktivering er en særskilt, eksplicit handling. Klienten skal sende
+`aabenForekomstHandling: "bevar"`, og dialogen forklarer, at eksisterende
+indberetning og sag forbliver åbne. Serveren afviser en tavs deaktivering,
+sletter intet og opretter en historikpost med forekomstreferencen. Kravet
+bliver inaktivt for kommende schedulerkørsler, mens den allerede udløste sag
+fortsat skal gennem sit almindelige forløb. En manglende forekomst bag en aktiv
+reference behandles som en datakonflikt.
+
+Mutationens eksisterende tenant-, modul- og permissiongate, revision og
+idempotens er bevaret. Den isolerede Database-emulator har verificeret afvist
+ubekræftet deaktivering, afvist cyklusændring, tilladt metadataændring,
+eksplicit bevaring og efterfølgende idempotent gennemførsel. Hele slutgrundlaget
+består 17 rene service-/klienttests, 8 serviceflowtests, FLEET 194/194,
+designgate 11/11 og den fulde Rules-/platformsgate 4.617/4.617. Ingen Rules,
+produktionsdata eller eksterne tjenester er ændret.

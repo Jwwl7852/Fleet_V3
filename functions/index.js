@@ -74,6 +74,7 @@ import {
   completeFleetServiceOccurrence,
   runFleetServiceAutomationForTenant,
   validateFleetServiceRequirement,
+  validateFleetServiceRequirementChange,
 } from "./fleet-service-automation.js";
 
 import {
@@ -14365,7 +14366,14 @@ export const fleetServiceKravGem = onCall({ region: REGION }, async (req) => {
   }
   const requirementId = requestedId || `servicekrav_${createHash("sha256").update(`${tenantId}:${mutationId}`).digest("hex").slice(0, 24)}`;
   if (!/^[A-Za-z0-9_-]{8,80}$/.test(requirementId)) throw new HttpsError("invalid-argument", "Servicekrav-id er ugyldigt.");
-  const requestHash = createHash("sha256").update(JSON.stringify(validated.value)).digest("hex");
+  const openOccurrenceAction = kortStreng(req.data?.aabenForekomstHandling, 20) || null;
+  if (openOccurrenceAction && openOccurrenceAction !== "bevar") {
+    throw new HttpsError("invalid-argument", "Håndteringen af den åbne serviceforekomst er ugyldig.");
+  }
+  const requestHash = createHash("sha256").update(JSON.stringify({
+    krav: validated.value,
+    aabenForekomstHandling: openOccurrenceAction,
+  })).digest("hex");
   let rejected = null;
   let saved = null;
   let repeated = false;
@@ -14393,6 +14401,23 @@ export const fleetServiceKravGem = onCall({ region: REGION }, async (req) => {
       rejected = { code: "aborted", message: "Servicekravet blev ændret samtidigt." };
       return;
     }
+    const openOccurrence = current?.aktivForekomstId
+      ? tenant.fleetServiceForekomster?.[current.aktivForekomstId] || null
+      : null;
+    const changeValidation = validateFleetServiceRequirementChange(
+      current,
+      validated.value,
+      openOccurrence,
+      openOccurrenceAction,
+    );
+    if (!changeValidation.ok) {
+      rejected = {
+        code: "failed-precondition",
+        message: changeValidation.message,
+        details: { aarsag: changeValidation.code, felter: changeValidation.changedCycleFields || [] },
+      };
+      return;
+    }
     const next = {
       ...validated.value,
       revision: revision + 1,
@@ -14410,13 +14435,21 @@ export const fleetServiceKravGem = onCall({ region: REGION }, async (req) => {
     const eventId = `svcevt_${createHash("sha256").update(`${requirementId}:${mutationId}`).digest("hex").slice(0, 24)}`;
     tenant.fleetServiceHistorik[eventId] = {
       id: eventId, servicekravId: requirementId,
-      handling: current ? "krav_aendret" : "krav_oprettet",
+      handling: changeValidation.preservedOpenOccurrence
+        ? "krav_deaktiveret_aaben_forekomst_bevaret"
+        : (current ? "krav_aendret" : "krav_oprettet"),
       aktor: uid, tidspunktMs: nowMs, revision: next.revision,
+      ...(changeValidation.preservedOpenOccurrence
+        ? { serviceforekomstId: current.aktivForekomstId } : {}),
     };
     saved = next;
     return tenant;
   });
-  if (!tx.committed || rejected) throw new HttpsError(rejected?.code || "aborted", rejected?.message || "Servicekravet kunne ikke gemmes.");
+  if (!tx.committed || rejected) throw new HttpsError(
+    rejected?.code || "aborted",
+    rejected?.message || "Servicekravet kunne ikke gemmes.",
+    rejected?.details,
+  );
   return { ok: true, id: requirementId, revision: saved.revision, gentaget: repeated };
 });
 

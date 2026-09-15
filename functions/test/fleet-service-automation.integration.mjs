@@ -78,6 +78,39 @@ assert.equal(Object.keys(cases).length, 1);
 assert.equal((await db.ref(`tenants/${tenantB}/fleetServiceForekomster`).get()).exists(), false);
 
 const occurrenceId = Object.keys(occurrences)[0];
+await assert.rejects(
+  run(functions.fleetServiceKravGem, {
+    id: saved.id, mutationId: "service-deactivate-unconfirmed", forventetRevision: 1,
+    krav: { ...input.krav, aktiv: false },
+  }),
+  (error) => error?.code === "failed-precondition"
+    && error?.details?.aarsag === "active_occurrence_confirmation_required",
+);
+await assert.rejects(
+  run(functions.fleetServiceKravGem, {
+    id: saved.id, mutationId: "service-cycle-change-blocked", forventetRevision: 1,
+    aabenForekomstHandling: "bevar",
+    krav: { ...input.krav, intervalMaaneder: 6 },
+  }),
+  (error) => error?.code === "failed-precondition"
+    && error?.details?.aarsag === "active_occurrence_cycle_change",
+);
+const renamed = await run(functions.fleetServiceKravGem, {
+  id: saved.id, mutationId: "service-metadata-change", forventetRevision: 1,
+  krav: { ...input.krav, titel: "Årligt eftersyn · opdateret tekst" },
+});
+assert.equal(renamed.revision, 2);
+const deactivated = await run(functions.fleetServiceKravGem, {
+  id: saved.id, mutationId: "service-deactivate-preserve", forventetRevision: 2,
+  aabenForekomstHandling: "bevar",
+  krav: { ...input.krav, titel: "Årligt eftersyn · opdateret tekst", aktiv: false },
+});
+assert.equal(deactivated.revision, 3);
+assert.equal((await db.ref(`tenants/${tenantA}/fleetServiceKrav/${saved.id}/aktiv`).get()).val(), false);
+assert.equal((await db.ref(`tenants/${tenantA}/fleetServiceKrav/${saved.id}/aktivForekomstId`).get()).val(), occurrenceId);
+assert.equal((await db.ref(`tenants/${tenantA}/fleetServiceForekomster/${occurrenceId}/status`).get()).val(), "varslet");
+assert.equal(Object.values((await db.ref(`tenants/${tenantA}/fleetSager`).get()).val())[0].status, "ny");
+
 const completed = await run(functions.fleetServiceGennemfoer, {
   forekomstId: occurrenceId,
   dato: "2026-09-18",
@@ -93,5 +126,5 @@ assert.equal(completedReplay.gentaget, true);
 assert.equal((await db.ref(`tenants/${tenantA}/fleetServiceForekomster/${occurrenceId}/status`).get()).val(), "gennemfoert");
 assert.equal(Object.values((await db.ref(`tenants/${tenantA}/fleetSager`).get()).val())[0].status, "fakturaafklaring");
 
-console.log("FLEET-serviceautomatik integration: 16 assertions bestået.");
+console.log("FLEET-serviceautomatik integration: åbne forekomster, revision og idempotens bestået.");
 await Promise.all(getApps().map((app) => deleteApp(app)));

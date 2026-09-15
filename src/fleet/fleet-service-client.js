@@ -246,6 +246,8 @@ export function createFleetServiceClient({ call } = {}) {
         mutationId: requestId("fleet-servicekrav"),
         forventetRevision: Number(current?.revision || 0),
         krav: requirementInputToServer(input, unit),
+        ...(current?.activeOccurrenceId && input.active === false && input.keepOpenOccurrence
+          ? { aabenForekomstHandling: "bevar" } : {}),
       }, "Servicekravet kunne ikke gemmes.");
     },
     async runAutomation() {

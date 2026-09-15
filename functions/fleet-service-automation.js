@@ -7,6 +7,11 @@ const integerOrNull = (value) => value === null || value === undefined || value 
   : (Number.isSafeInteger(Number(value)) ? Number(value) : null);
 const shortText = (value, max = 160) => String(value || "").trim().slice(0, max);
 const SERVICE_CATEGORIES = new Set(["maintenance", "inspection", "tyres", "insurance", "compliance", "other"]);
+const SERVICE_CYCLE_FIELDS = [
+  "enhedId", "maalerEnhed", "intervalMaaneder", "intervalMaeler",
+  "varselDage", "varselMaaler", "sidsteServiceDato", "sidsteServiceMaaler",
+  "naesteDato", "naesteMaaler", "aarligMaaned", "aarligDag",
+];
 
 function addMonths(date, months) {
   const source = new Date(`${date}T12:00:00.000Z`);
@@ -102,6 +107,43 @@ export function validateFleetServiceRequirement(input) {
         ? [...new Set(input.dokumentIder.map((id) => shortText(id, 80)).filter(Boolean))].slice(0, 50) : [],
       noter: shortText(input?.noter, 1000) || null,
     },
+  };
+}
+
+export function validateFleetServiceRequirementChange(current, next, occurrence, openOccurrenceAction) {
+  if (!current?.aktivForekomstId) return { ok: true, changedCycleFields: [] };
+  if (!occurrence) {
+    return {
+      ok: false,
+      code: "active_occurrence_missing",
+      message: "Servicekravet peger på en aktiv forekomst, som ikke kan findes. Genindlæs eller få datagrundlaget kontrolleret.",
+    };
+  }
+  if (occurrence.status === "gennemfoert") return { ok: true, changedCycleFields: [] };
+
+  const changedCycleFields = SERVICE_CYCLE_FIELDS.filter(
+    (field) => (current[field] ?? null) !== (next[field] ?? null),
+  );
+  if (changedCycleFields.length) {
+    return {
+      ok: false,
+      code: "active_occurrence_cycle_change",
+      changedCycleFields,
+      message: "Frister og beregningsgrundlag kan ikke ændres, mens servicevarslingen er åben. Gennemfør servicen først, eller ret kun beskrivende oplysninger.",
+    };
+  }
+  if (current.aktiv !== false && next.aktiv === false && openOccurrenceAction !== "bevar") {
+    return {
+      ok: false,
+      code: "active_occurrence_confirmation_required",
+      changedCycleFields,
+      message: "Bekræft, at den eksisterende indberetning og sag skal forblive åbne, før kravet deaktiveres.",
+    };
+  }
+  return {
+    ok: true,
+    changedCycleFields,
+    preservedOpenOccurrence: current.aktiv !== false && next.aktiv === false,
   };
 }
 

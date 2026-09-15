@@ -60,6 +60,22 @@ describe("FLEET-serviceklientens autoritative grænse", () => {
     await assert.rejects(client.runAutomation(), /Intet blev gemt lokalt/);
   });
 
+  it("sender eksplicit bevar-valg ved deaktivering med åben forekomst", async () => {
+    const calls = [];
+    const client = createFleetServiceClient({ call: async (name, payload) => {
+      calls.push({ name, payload });
+      return { ok: true };
+    } });
+    await client.saveRequirement({
+      id: "servicekrav-1", unitId: "unit-1", title: "Service", active: false,
+      keepOpenOccurrence: true, firstDueDate: "2027-01-01",
+    }, [{ id: "unit-1", meterType: "km" }], {
+      id: "servicekrav-1", revision: 3, activeOccurrenceId: "occ-1",
+    });
+    assert.equal(calls[0].payload.aabenForekomstHandling, "bevar");
+    assert.equal(calls[0].payload.forventetRevision, 3);
+  });
+
   it("mapper deterministiske serverforekomster til eksisterende ruter", () => {
     const occurrence = mapServerOccurrenceToFleet({
       id: "svcocc-1", servicekravId: "servicekrav-1", enhedId: "kt-104",

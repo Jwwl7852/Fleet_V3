@@ -37,6 +37,37 @@ describe("selvstændigt Service-modul", () => {
     expect(repository.runServiceAutomation).not.toHaveBeenCalled();
   });
 
+  it("kræver et eksplicit bevar-valg før et krav med åben forekomst deaktiveres", async () => {
+    window.history.replaceState({}, "", "/service");
+    const saveRequirement = vi.fn(async () => ({ ok: true }));
+    render(<FleetV2App repository={createMemoryUnitRepository()} serviceBackend={{
+      kind: "server",
+      units: [{ id: "shared-unit-1", number: "Fælles 1", model: "Serverenhed", meterType: "km", meter: 1000 }],
+      relations: {
+        serviceRequirements: [{
+          id: "servicekrav-1", unitId: "shared-unit-1", title: "Årligt service",
+          firstDueDate: "2026-09-01", active: true, activeOccurrenceId: "occ-1", revision: 2,
+        }],
+        serviceOccurrences: [{ id: "occ-1", requirementId: "servicekrav-1", status: "alerted" }],
+      },
+      loading: false,
+      error: null,
+      capabilities: { saveRequirement: true, runAutomation: false, planService: false, saveHistory: false, saveSettings: false },
+      saveRequirement,
+    }} />);
+    await screen.findByText("Årligt service");
+    fireEvent.click(screen.getByRole("button", { name: "Redigér Årligt service" }));
+    fireEvent.click(screen.getByLabelText("Aktivt krav"));
+    expect(screen.getByText("Bevar den eksisterende indberetning og sag åbne.", { exact: false })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Gem servicekrav" }));
+    expect(await screen.findByText("Bekræft, at den eksisterende indberetning og sag skal forblive åbne.")).toBeTruthy();
+    expect(saveRequirement).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Bevar den eksisterende indberetning og sag åbne.", { exact: false }));
+    fireEvent.click(screen.getByRole("button", { name: "Gem servicekrav" }));
+    await waitFor(() => expect(saveRequirement).toHaveBeenCalledTimes(1));
+    expect(saveRequirement.mock.calls[0][0].keepOpenOccurrence).toBe(true);
+  });
+
   it("viser serverens serviceindberetning i triage uden lokale skrivehandlinger", async () => {
     window.history.replaceState({}, "", "/indberetninger/svcrep-1");
     const repository = createMemoryUnitRepository();

@@ -6,6 +6,7 @@ import {
   completeFleetServiceOccurrence,
   evaluateFleetServiceRequirement,
   validateFleetServiceRequirement,
+  validateFleetServiceRequirementChange,
 } from "../functions/fleet-service-automation.js";
 
 const dueRequirement = {
@@ -116,6 +117,25 @@ describe("serverstyret FLEET-serviceautomatik", () => {
       dato: "2026-02-28", maaler: 120_100, actorId: "admin-1",
     }, { nowMs: 2 });
     assert.equal(completed.tenant.fleetServiceKrav["servicekrav-1"].naesteDato, "2027-02-28");
+  });
+
+  it("bevarer en åben forekomst kontrolleret ved deaktivering og låser cyklusgrundlaget", () => {
+    const current = { ...dueRequirement, aktivForekomstId: "occ-1", revision: 2 };
+    const occurrence = { id: "occ-1", status: "varslet" };
+    const unconfirmed = validateFleetServiceRequirementChange(current, { ...current, aktiv: false }, occurrence, null);
+    assert.equal(unconfirmed.code, "active_occurrence_confirmation_required");
+    const preserved = validateFleetServiceRequirementChange(current, { ...current, aktiv: false }, occurrence, "bevar");
+    assert.equal(preserved.ok, true);
+    assert.equal(preserved.preservedOpenOccurrence, true);
+    const changedCycle = validateFleetServiceRequirementChange(current, {
+      ...current, intervalMaaneder: 6,
+    }, occurrence, "bevar");
+    assert.equal(changedCycle.code, "active_occurrence_cycle_change");
+    assert.deepEqual(changedCycle.changedCycleFields, ["intervalMaaneder"]);
+    const metadataOnly = validateFleetServiceRequirementChange(current, {
+      ...current, titel: "Nyt navn",
+    }, occurrence, null);
+    assert.equal(metadataOnly.ok, true);
   });
 
   it("eksponerer scheduler, manuel kontrol, gem og gennemførsel som serverfunktioner", () => {

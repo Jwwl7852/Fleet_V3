@@ -741,3 +741,35 @@ før/efter-beviser for de prioriterede synlige fejl.
 | FL-14 | Implementeret, men ikke integreret browserverificeret: servervarsler åbner i indberetning, arbejdskø og sagsmappe og er tydeligt skrivebeskyttede | Delvist implementeret: stabil cyklus, manglende grundlag, tidslinjereferencer og ærlig uafklaret anvendelighed; kravændring/deaktivering mangler | Delvist implementeret: serverkilden er autoritativ og uden lokal fallback; sagsmutationer og overgang af lokale poster mangler | Implementeret og teknisk verificeret for læsning og afvist direkte/lokal skrivning; de kommende servermutationers handlingspermissions mangler | 15/15 adaptertests, 7/7 serviceflow, FLEET 193/193 og fuld gate 4.615/4.615; integreret browserlogin blokerer billedbevis | Delvist implementeret |
 | REG-01 | Ikke relevant | Implementeret og verificeret for den læsende serverprojektion | Implementeret og verificeret uden ny redigerbar kopi | Implementeret og verificeret for den læsende projektion | Fuld gate 4.615/4.615 | Delvist implementeret, fordi servermutationer og senere etaper mangler |
 | REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, design 11/11, FLEET 193/193 og fuld gate 4.615/4.615 | Delvist implementeret |
+
+### Etape 18 — kontrolleret kravændring med åben serviceforekomst
+
+- Et aktivt varsel låser nu enhed, dato-/målergrundlag, intervaller,
+  varslingsgrænser og årlig kalenderregel på serveren. En bruger kan fortsat
+  rette beskrivende metadata, men kan ikke flytte den aktuelle cyklus' grundlag
+  under en eksisterende indberetning og sag.
+- Deaktivering kræver et eksplicit valg om at bevare den eksisterende
+  indberetning og sag åbne. Uden dette valg afviser både dialogen og serveren
+  handlingen. Deaktivering sletter, lukker eller omklassificerer ikke den åbne
+  forekomst; det stopper kun nye varslinger fra kravet.
+- Det eksplicitte valg og udfaldet indgår i serverens revisionslåste,
+  idempotente mutation. Historikken registrerer deaktiveringen med reference
+  til den bevarede forekomst. En manglende forekomst bag en aktiv reference
+  afvises som datakonflikt i stedet for at blive overskrevet.
+- Teknisk bevis: 17/17 rene service-/klienttests, 8/8 målrettede
+  serviceflowtests, hele FLEET-suiten 194/194, målrettet isoleret
+  Database-emulatorintegration, root/FLEET-lint, produktionsbuild,
+  designgate 11/11 og fuld isoleret Rules-/platformsgate 4.617/4.617.
+  Rules og negative tests er uændrede.
+- Den synlige bekræftelse er komponentverificeret. Et nyt integreret
+  browserbillede udestår fortsat, fordi den normale lokale session står på
+  `/login`; eksisterende browserdata er ikke ryddet, og login er ikke
+  automatiseret.
+
+#### Delstatus efter Etape 18
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FL-14 | Implementeret og komponentverificeret for eksplicit bevaring ved deaktivering; integreret browserbillede udestår | Implementeret og verificeret for ændring/deaktivering med åben forekomst, cykluslås og bevaret åben sag | Delvist implementeret: servertransaktionen håndhæver dette forløb; øvrige sagsmutationer og overgang af lokale poster mangler | Implementeret og verificeret gennem eksisterende callable-gate med tenant, FLEET-modul og `koeretoejer.skriv` | 17/17 rene tests, 8/8 serviceflow, FLEET 194/194, målrettet emulatorintegration og fuld gate 4.617/4.617 | Delvist implementeret, fordi den samlede service-/sagsgrænse fortsat mangler mutationer og overgang |
+| REG-01 | Ikke relevant | Implementeret og verificeret for denne mutation | Implementeret og verificeret med revision, idempotens og serveraudit | Implementeret og verificeret | Målrettet emulatorintegration og fuld gate 4.617/4.617 | Delvist implementeret, fordi kommende serveretaper mangler |
+| REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root/FLEET-lint, build, design 11/11, FLEET 194/194 og fuld gate 4.617/4.617 | Delvist implementeret |
