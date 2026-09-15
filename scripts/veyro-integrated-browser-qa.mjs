@@ -101,6 +101,10 @@ try {
   checks.integratedShell = await admin.evaluate("({path:location.pathname,indexedDb:typeof indexedDB!=='undefined',appShells:document.querySelectorAll('.fc-app').length,fleetModules:document.querySelectorAll('.veyro-module--fleet').length,embedded:document.querySelectorAll('.fleet-v2-embedded').length,standaloneShells:document.querySelectorAll('.fleet-v2-shell').length})");
   assert(checks.integratedShell.indexedDb && checks.integratedShell.appShells === 1 && checks.integratedShell.fleetModules === 1 && checks.integratedShell.embedded === 1 && checks.integratedShell.standaloneShells === 0, "Den integrerede app havde ikke præcis én AppShell med embedded FLEET.");
   screenshots.push(await admin.screenshot("03-integreret-overblik-1440x900.png"));
+  checks.warehouseMenuLabel = await admin.evaluate("(()=>{const item=document.querySelector('.fc-nav-modul[data-modul-label=\"Warehouse\"]');return{label:item?.querySelector('button')?.textContent.trim()||null,uppercaseOnly:item?.querySelector('button')?.textContent.trim()==='WAREHOUSE'}})()");
+  assert(checks.warehouseMenuLabel.label === "Warehouse" && !checks.warehouseMenuLabel.uppercaseOnly, "Warehouse havde ikke samme titelkapitalisering som de øvrige moduler.");
+  await admin.evaluate("document.querySelector('.fc-nav-modul[data-modul-label=\"Warehouse\"]')?.scrollIntoView({block:'center'})");
+  screenshots.push(await admin.screenshot("29-sidebar-warehouse-1440x900.png"));
 
   const shellBefore = await admin.evaluate("({side:document.querySelector('.fc-side').getBoundingClientRect().width,top:document.querySelector('.fc-top').getBoundingClientRect().height,zoom:document.querySelector('.fc-zoomkontroller output').textContent.trim()})");
   await admin.evaluate("document.querySelector('.fc-zoomkontroller [aria-label=\"Zoom ind\"]').click()");

@@ -455,7 +455,7 @@ export const NAV = [
     ],
   },
   {
-    key: "warehouse", sti: "/warehouse", label: "WAREHOUSE", titel: "WAREHOUSE",
+    key: "warehouse", sti: "/warehouse", label: "Warehouse", titel: "WAREHOUSE",
     under: "Lagerstyring af kundegods, egne varer, units og beholdere", gruppe: "drift",
     born: [
       { key: "warehouseOverblik", sti: "/warehouse", label: "Overblik",

@@ -78,6 +78,10 @@ describe("Skive 2B — 1) Ingen navvisning-post: identisk med Skive 2A", () => {
 });
 
 describe("Skive 2B — 2) Lagermedarbejder, navvisning tillader kun Warehouse + Unitbooking", () => {
+  it("viser Warehouse med samme titelkapitalisering som de øvrige moduler", () => {
+    assert.equal(NAV.find((punkt) => punkt.key === "warehouse")?.label, "Warehouse");
+  });
+
   const perms = permStrengFraRolle("lagermedarbejder");
   /* ⚠ ALLE ELLERS TILGÆNGELIGE DRIFTSOMRÅDER SLÅS EKSPLICIT FRA. En
      admin ville i praksis kun skrive false for det der skal skjules — men
