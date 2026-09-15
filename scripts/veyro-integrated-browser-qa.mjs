@@ -117,6 +117,7 @@ try {
   await admin.evaluate("document.querySelector('.fc-menu-toggle').click()");
   checks.compactMenu = await admin.evaluate("({compact:document.querySelector('.fc-app').classList.contains('fc-menu-kompakt'),label:document.querySelector('.fc-side').getAttribute('aria-label'),toggleTop:Math.round(document.querySelector('.fc-menu-toggle').getBoundingClientRect().top),sideTop:Math.round(document.querySelector('.fc-side').getBoundingClientRect().top),sideHeight:Math.round(document.querySelector('.fc-side').getBoundingClientRect().height)})");
   assert(checks.compactMenu.compact && checks.compactMenu.label === "Kompakt navigation", "Kompakt menu blev ikke aktiveret.");
+  screenshots.push(await admin.screenshot("30-kompakt-sidebar-1440x900.png"));
   const fleetMenuPoint = await admin.evaluate("(()=>{const module=document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]');module.scrollIntoView({block:'center'});const button=module.querySelector('button');const box=button.getBoundingClientRect();return{x:box.left+box.width/2,y:box.top+box.height/2}})()");
   await admin.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: fleetMenuPoint.x, y: fleetMenuPoint.y }, admin.sessionId);
   await admin.waitFor("document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]').classList.contains('fc-kompakt-aaben')", "kompakt Fleet-flyout med mus");
@@ -240,6 +241,7 @@ try {
   await admin.spaNavigate("/fleet-v2/arbejdsko", "document.querySelector('[aria-label=\"Søg i sager\"]')");
   await admin.evaluate(setInput('[aria-label="Søg i sager"]', "Knirkende"));
   await admin.evaluate(clickText("button", "Tabel"));
+  screenshots.push(await admin.screenshot("31-arbejdsko-tabel-1440x900.png"));
   await admin.evaluate("window.scrollTo(0,Math.min(500,document.documentElement.scrollHeight-innerHeight))");
   const queueScroll = await admin.evaluate("scrollY");
   await admin.evaluate("document.querySelector('.queue-table-shell tbody button').click()");
@@ -255,6 +257,8 @@ try {
   checks.caseFolderDesign = await admin.evaluate("({tabs:document.querySelectorAll('[role=tab]').length,problem:document.body.innerText.includes('Problem og næste handling'),history:document.body.innerText.includes('Noter og historik'),columns:document.querySelectorAll('.case-folder-main-column').length===1&&document.querySelectorAll('.case-folder-side-column').length===1})");
   assert(checks.caseFolderDesign.tabs === 0 && checks.caseFolderDesign.problem && checks.caseFolderDesign.history && checks.caseFolderDesign.columns, "Sagsmappen matcher ikke den bestilte opbygning.");
   screenshots.push(await admin.screenshot("11-sagsmappe-fra-indberetning-1440x900.png"));
+  await admin.evaluate("(()=>{const section=[...document.querySelectorAll('details.case-fold-section')].find((node)=>node.querySelector('summary')?.textContent.includes('Noter og historik'));if(section){section.open=true;section.scrollIntoView({block:'start'});}return !!section})()");
+  screenshots.push(await admin.screenshot("32-sagsmappe-historik-1440x900.png"));
   await admin.evaluate("history.back()");
   await admin.waitFor("location.pathname==='/fleet-v2/indberetninger' && document.querySelector('[aria-label=\"Søg i indberetninger\"]')?.value==='Knirkende'", "indberetningskontekst efter retur");
   checks.reportReturnFilter = true;
@@ -334,6 +338,7 @@ try {
   screenshots.push(await admin.screenshot("28-faelles-enhedsformular-1440x900.png"));
   await admin.evaluate("window.confirm=()=>true;document.querySelector('.unit-dialog form button[type=submit]').click()");
   await admin.waitFor(`!document.querySelector('.unit-dialog') && document.body.innerText.includes(${JSON.stringify(unitNumber)})`, "enhed gemt i fælles register");
+  screenshots.push(await admin.screenshot("33-faelles-enhedsregister-1440x900.png"));
   const unitId = await admin.evaluate(`(()=>{const row=[...document.querySelectorAll('.unit-table tbody tr')].find((node)=>node.textContent.includes(${JSON.stringify(unitNumber)}));return row?.dataset?.unitId||row?.querySelector('[data-unit-id]')?.dataset?.unitId||null})()`);
   const unitResponse = await fetch(`http://${databaseHost}/tenants/procure-auth-a/koeretoejer.json?ns=${projectId}`, { headers: { authorization: "Bearer owner" } });
   const unitState = await unitResponse.json();
@@ -358,6 +363,14 @@ try {
   checks.supplierDraftReturn = await admin.evaluate(`(()=>({supplier:[...document.querySelector('.assignment-page select').selectedOptions].map((node)=>node.textContent).join(''),workDescription:document.querySelector('[aria-label="Arbejdsbeskrivelse"]')?.value,mailText:document.querySelector('[aria-label="Mailtekst"]')?.value,draftKey:[...Object.keys(sessionStorage)].find((key)=>key.startsWith('veyro:fleet:workshop-assignment-draft:'))||null}))()`);
   assert(checks.supplierDraftReturn.supplier.includes(supplierName) && checks.supplierDraftReturn.workDescription === draftText && checks.supplierDraftReturn.mailText === `${draftText} · mailtekst` && checks.supplierDraftReturn.draftKey, `Leverandøroprettelsen bevarede ikke sagskladden eller valgte ikke den nye leverandør: ${JSON.stringify(checks.supplierDraftReturn)}`);
   screenshots.push(await admin.screenshot("26-leverandoer-retur-med-bevaret-sagskladde-1440x900.png"));
+
+  await admin.spaNavigate("/fleet-v2/service", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Service og compliance'))");
+  await admin.evaluate(clickText('button', 'Opret servicekrav'));
+  await admin.waitFor("document.querySelector('[aria-label=\"Serviceinterval måneder\"]')", "service-/intervalformular");
+  screenshots.push(await admin.screenshot("34-service-intervalformular-1440x900.png"));
+  await admin.evaluate("document.querySelector('.service-dialog [aria-label=\"Luk\"]')?.click()");
+  await admin.spaNavigate("/opsaetning/fakturacenter", "document.body.innerText.includes('Ekstra fakturakontrol')");
+  screenshots.push(await admin.screenshot("35-fakturacenter-indstillinger-1440x900.png"));
 
   await admin.spaNavigate("/oekonomi/fakturacenter?sektion=indbakke", "document.body.innerText.includes('FC-ENKELT-OVER')");
   await admin.evaluate(setInput('.fic-filter input', "FC-ENKELT-OVER"));
