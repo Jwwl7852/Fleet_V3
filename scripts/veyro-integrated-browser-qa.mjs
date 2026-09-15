@@ -113,6 +113,37 @@ try {
   await admin.evaluate("document.querySelector('.fc-menu-toggle').click()");
   checks.compactMenu = await admin.evaluate("({compact:document.querySelector('.fc-app').classList.contains('fc-menu-kompakt'),label:document.querySelector('.fc-side').getAttribute('aria-label'),toggleTop:Math.round(document.querySelector('.fc-menu-toggle').getBoundingClientRect().top),sideTop:Math.round(document.querySelector('.fc-side').getBoundingClientRect().top),sideHeight:Math.round(document.querySelector('.fc-side').getBoundingClientRect().height)})");
   assert(checks.compactMenu.compact && checks.compactMenu.label === "Kompakt navigation", "Kompakt menu blev ikke aktiveret.");
+  const fleetMenuPoint = await admin.evaluate("(()=>{const module=document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]');module.scrollIntoView({block:'center'});const button=module.querySelector('button');const box=button.getBoundingClientRect();return{x:box.left+box.width/2,y:box.top+box.height/2}})()");
+  await admin.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: fleetMenuPoint.x, y: fleetMenuPoint.y }, admin.sessionId);
+  await admin.waitFor("document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]').classList.contains('fc-kompakt-aaben')", "kompakt Fleet-flyout med mus");
+  const flyoutPoint = await admin.evaluate("(()=>{const box=document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"] .fc-sub').getBoundingClientRect();return{x:box.left+Math.min(60,box.width/2),y:box.top+Math.min(80,box.height/2)}})()");
+  await admin.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: flyoutPoint.x, y: flyoutPoint.y }, admin.sessionId);
+  await sleep(300);
+  checks.compactFlyoutMouse = await admin.evaluate("({open:document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]').classList.contains('fc-kompakt-aaben'),livekort:[...document.querySelectorAll('.fc-nav-modul[data-modul-label=\"Fleet\"] .fc-sublink')].some((node)=>node.textContent.trim()==='Livekort')})");
+  assert(checks.compactFlyoutMouse.open && checks.compactFlyoutMouse.livekort, "Kompakt flyout kunne ikke følges med musen fra ikon til undermenu.");
+  await admin.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape" }, admin.sessionId);
+  checks.compactFlyoutEscape = await admin.evaluate("({closed:!document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]').classList.contains('fc-kompakt-aaben'),focusReturned:document.activeElement===document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"] button')})");
+  assert(checks.compactFlyoutEscape.closed && checks.compactFlyoutEscape.focusReturned, "ESC lukkede ikke det kompakte flyout med fokusretur til åbneren.");
+  await admin.evaluate("document.querySelector('.fc-menu-toggle').focus()");
+  await admin.evaluate("document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"] button').focus()");
+  await admin.waitFor("document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]').classList.contains('fc-kompakt-aaben')", "kompakt Fleet-flyout med tastaturfokus");
+  await admin.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab" }, admin.sessionId);
+  await admin.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab" }, admin.sessionId);
+  checks.compactFlyoutKeyboard = await admin.evaluate("({open:document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]').classList.contains('fc-kompakt-aaben'),submenuFocused:document.activeElement?.classList.contains('fc-sublink')||false,focusedText:document.activeElement?.textContent.trim()||''})");
+  assert(checks.compactFlyoutKeyboard.open && checks.compactFlyoutKeyboard.submenuFocused, "Kompakt flyout kunne ikke betjenes med tastatur.");
+  await admin.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape" }, admin.sessionId);
+  checks.compactFlyoutEscape = await admin.evaluate("({open:document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]').classList.contains('fc-kompakt-aaben'),focusReturned:document.activeElement===document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"] button')})");
+  assert(!checks.compactFlyoutEscape.open && checks.compactFlyoutEscape.focusReturned, "Escape lukkede ikke flyout med fokusretur.");
+  await admin.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 }, admin.sessionId);
+  await admin.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: fleetMenuPoint.x, y: fleetMenuPoint.y, radiusX: 2, radiusY: 2, force: 1 }] }, admin.sessionId);
+  await admin.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }, admin.sessionId);
+  await admin.waitFor("document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]').classList.contains('fc-kompakt-aaben')", "kompakt Fleet-flyout med touch");
+  await admin.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 900, y: 120, radiusX: 2, radiusY: 2, force: 1 }] }, admin.sessionId);
+  await admin.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }, admin.sessionId);
+  await sleep(100);
+  checks.compactFlyoutTouch = await admin.evaluate("!document.querySelector('.fc-nav-modul[data-modul-label=\"Fleet\"]').classList.contains('fc-kompakt-aaben')");
+  assert(checks.compactFlyoutTouch, "Touch uden for flyout lukkede det ikke.");
+  await admin.send("Emulation.setTouchEmulationEnabled", { enabled: false }, admin.sessionId);
   await admin.evaluate("document.querySelector('.fc-nulstil-visning').click()");
 
   const routes = [
@@ -158,6 +189,26 @@ try {
     }
   }
 
+  await admin.viewport(1920, 1080, false);
+  await admin.spaNavigate("/fleet-v2/arbejdsko/case-demo-002", "document.querySelector('.fleet-route-dialog.draggable')");
+  const dragStart = await admin.evaluate("(()=>{const dialog=document.querySelector('.fleet-route-dialog');const head=dialog.querySelector('.fleet-route-dialog-head');const d=dialog.getBoundingClientRect();const h=head.getBoundingClientRect();const b=document.querySelector('.fleet-dialog-backdrop').getBoundingClientRect();return{dialog:{left:d.left,top:d.top,right:d.right,bottom:d.bottom},bounds:{left:b.left,top:b.top,right:b.right,bottom:b.bottom},point:{x:h.left+h.width*.4,y:h.top+Math.min(28,h.height/2)}}})()");
+  await admin.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: dragStart.point.x, y: dragStart.point.y }, admin.sessionId);
+  await admin.send("Input.dispatchMouseEvent", { type: "mousePressed", x: dragStart.point.x, y: dragStart.point.y, button: "left", buttons: 1, clickCount: 1 }, admin.sessionId);
+  await sleep(80);
+  for (const delta of [25, 50, 75, 100]) {
+    await admin.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: dragStart.point.x - delta, y: dragStart.point.y, button: "left", buttons: 1 }, admin.sessionId);
+    await sleep(40);
+  }
+  await admin.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: dragStart.point.x - 100, y: dragStart.point.y, button: "left", buttons: 0, clickCount: 1 }, admin.sessionId);
+  await sleep(100);
+  checks.draggableDialog = await admin.evaluate(`(()=>{const d=document.querySelector('.fleet-route-dialog').getBoundingClientRect();const b=document.querySelector('.fleet-dialog-backdrop').getBoundingClientRect();return{movedX:Math.round(d.left-${dragStart.dialog.left}),movedY:Math.round(d.top-${dragStart.dialog.top}),inside:d.left>=b.left+11&&d.right<=b.right-11&&d.top>=b.top+11&&d.bottom<=b.bottom-11}})()`);
+  assert(checks.draggableDialog.movedX < -50 && checks.draggableDialog.inside, `Arbejdskødialogen kunne ikke flyttes sikkert inden for arbejdsfladen: ${JSON.stringify(checks.draggableDialog)}`);
+  screenshots.push(await admin.screenshot("22-flytbar-dialog-1920x1080.png"));
+  await admin.viewport(390, 844, true);
+  await admin.spaNavigate("/fleet-v2/arbejdsko/case-demo-002", "document.querySelector('.fleet-route-dialog.draggable')");
+  checks.mobileDialog = await admin.evaluate("(()=>{const d=document.querySelector('.fleet-route-dialog').getBoundingClientRect();return{left:Math.round(d.left),top:Math.round(d.top),width:Math.round(d.width),height:Math.round(d.height),viewport:{width:innerWidth,height:innerHeight},overflow:getComputedStyle(document.querySelector('.fleet-route-dialog-body')).overflowY}})()");
+  assert(checks.mobileDialog.width <= 390 && checks.mobileDialog.height <= 844, "Arbejdskødialogen overskred mobilviewporten.");
+  screenshots.push(await admin.screenshot("23-arbejdsko-dialog-390x844.png"));
   await admin.viewport(1440, 900, false);
   await admin.spaNavigate("/fleet-v2/livekort", "document.querySelector('.geo-marker')");
   await admin.evaluate("document.querySelector('.geo-marker').click()");
@@ -232,6 +283,66 @@ try {
   checks.invoiceCenter = await admin.evaluate("({inbox:document.body.innerText.includes('Indbakke'),archive:document.body.innerText.includes('Arkiv'),extra:document.body.innerText.includes('Ekstra kontrol'),paymentMislabel:/betal|bogfør/i.test([...document.querySelectorAll('button')].map((node)=>node.textContent).join(' '))})");
   screenshots.push(await admin.screenshot("12-fakturacenter-integreret-1440x900.png"));
 
+  await admin.evaluate(setInput('.fic-list-controls label:nth-child(1) select', 'matchet'));
+  await admin.waitFor("document.querySelectorAll('.fic-invoice').length===4", "matchfilter Matchet");
+  const matchedInvoices = await admin.evaluate("[...document.querySelectorAll('.fic-invoice')].map((node)=>node.textContent.match(/FC-[A-Z-]+/)?.[0]).filter(Boolean)");
+  await admin.evaluate(setInput('.fic-list-controls label:nth-child(2) select', 'flere-moduler'));
+  await admin.waitFor("document.querySelectorAll('.fic-invoice').length===1 && document.body.innerText.includes('FC-FILTER-FLERE')", "modulfilter Flere moduler");
+  const multipleModuleInvoices = await admin.evaluate("[...document.querySelectorAll('.fic-invoice')].map((node)=>node.textContent.match(/FC-[A-Z-]+/)?.[0]).filter(Boolean)");
+  await admin.evaluate(setInput('.fic-list-controls label:nth-child(1) select', 'mangler-match'));
+  await admin.evaluate(setInput('.fic-list-controls label:nth-child(2) select', 'alle-moduler'));
+  await admin.waitFor("document.querySelectorAll('.fic-invoice').length===1 && document.body.innerText.includes('FC-MASSE-MANGLER-GRUNDLAG')", "matchfilter Mangler match");
+  checks.invoiceFilters = { matchedInvoices, multipleModuleInvoices, missingMatchInvoices: await admin.evaluate("[...document.querySelectorAll('.fic-invoice')].map((node)=>node.textContent.match(/FC-[A-Z-]+/)?.[0]).filter(Boolean)") };
+  screenshots.push(await admin.screenshot("24-fakturacenter-match-modulfiltre-1440x900.png"));
+  await admin.evaluate(setInput('.fic-list-controls label:nth-child(1) select', 'alle'));
+  const panelBefore = await admin.evaluate("(()=>{const s=document.querySelector('.fic-panel-separator');return{now:Number(s.getAttribute('aria-valuenow')),storage:localStorage.getItem('veyro:fakturacenter:panel-layout:v1')}})()");
+  await admin.evaluate("document.querySelector('.fic-panel-separator').focus()");
+  await admin.send("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowRight", code: "ArrowRight" }, admin.sessionId);
+  await admin.send("Input.dispatchKeyEvent", { type: "keyUp", key: "ArrowRight", code: "ArrowRight" }, admin.sessionId);
+  const panelAfterDrag = await admin.evaluate("(()=>{const s=document.querySelector('.fic-panel-separator');return{now:Number(s.getAttribute('aria-valuenow')),storage:localStorage.getItem('veyro:fakturacenter:panel-layout:v1')}})()");
+  assert(panelAfterDrag.now !== panelBefore.now && panelAfterDrag.storage, "Fakturacenterets panelbredde blev ikke ændret og gemt fra separatorens tastaturbetjening.");
+  await admin.send("Page.reload", {}, admin.sessionId);
+  await admin.waitFor("document.querySelector('.fic-panel-separator')", "Fakturacenter efter reload");
+  const panelAfterReload = await admin.evaluate("(()=>{const s=document.querySelector('.fic-panel-separator');const regions=[...document.querySelectorAll('.fic-inbox-list,.fic-document-scroll,.fic-workspace-detail')];return{now:Number(s.getAttribute('aria-valuenow')),storage:localStorage.getItem('veyro:fakturacenter:panel-layout:v1'),scrollRegions:regions.map((node)=>({className:node.className,overflowY:getComputedStyle(node).overflowY,scrollHeight:node.scrollHeight,clientHeight:node.clientHeight}))}})()");
+  assert(panelAfterReload.now === panelAfterDrag.now && panelAfterReload.storage === panelAfterDrag.storage, "Fakturacenterets panelbredde blev ikke bevaret efter reload.");
+  checks.invoicePanelPersistence = { input: "separatorens ArrowRight", before: panelBefore, afterAdjustment: panelAfterDrag, afterReload: panelAfterReload };
+
+  await admin.spaNavigate("/fleet-v2/enheder", "document.querySelector('.unit-table')");
+  await admin.evaluate(clickText('button', 'Opret enhed'));
+  await admin.waitFor("document.querySelector('.unit-dialog')", "fælles enhedsformular");
+  const unitNumber = `QA-${Date.now().toString(36).toUpperCase()}`;
+  await admin.evaluate(setInput('.unit-dialog .unit-form-field:nth-of-type(1) input', unitNumber));
+  await admin.evaluate(setInput('.unit-dialog .unit-form-field:nth-of-type(4) input', 'Veyro'));
+  await admin.evaluate(setInput('.unit-dialog .unit-form-field:nth-of-type(5) input', 'Syntetisk integrationsenhed'));
+  await admin.evaluate(setInput('.unit-dialog .unit-form-field:nth-of-type(8) input', 'Testafdeling'));
+  await admin.evaluate("window.confirm=()=>true;document.querySelector('.unit-dialog form button[type=submit]').click()");
+  await admin.waitFor(`!document.querySelector('.unit-dialog') && document.body.innerText.includes(${JSON.stringify(unitNumber)})`, "enhed gemt i fælles register");
+  const unitId = await admin.evaluate(`(()=>{const row=[...document.querySelectorAll('.unit-table tbody tr')].find((node)=>node.textContent.includes(${JSON.stringify(unitNumber)}));return row?.dataset?.unitId||row?.querySelector('[data-unit-id]')?.dataset?.unitId||null})()`);
+  const unitResponse = await fetch(`http://${databaseHost}/tenants/procure-auth-a/koeretoejer.json?ns=${projectId}`, { headers: { authorization: "Bearer owner" } });
+  const unitState = await unitResponse.json();
+  const sharedUnitEntry = Object.entries(unitState).find(([, unit]) => unit.fleetProfil?.number === unitNumber);
+  assert(sharedUnitEntry, "Den oprettede FLEET-enhed fandtes ikke i det fælles emulatorregister.");
+  await admin.spaNavigate("/planning-v2/ressourcer", "document.querySelector('.pr-shared-resources')");
+  await admin.waitFor(`document.body.innerText.includes(${JSON.stringify(unitNumber)})`, "ny fælles enhed i PLANNING");
+  checks.sharedUnitRegister = { unitId: sharedUnitEntry[0], unitNumber, sourcePath: `tenants/procure-auth-a/koeretoejer/${sharedUnitEntry[0]}`, fleetProfile: sharedUnitEntry[1].fleetProfil, planningVisible: await admin.evaluate(`document.body.innerText.includes(${JSON.stringify(unitNumber)})`), localRowDataId: unitId };
+  screenshots.push(await admin.screenshot("25-faelles-enhed-i-planning-1440x900.png"));
+
+  await admin.spaNavigate("/fleet-v2/sager/case-demo-001/bestilling", "document.querySelector('[aria-label=\"Arbejdsbeskrivelse\"]')");
+  const draftText = `Bevaret syntetisk sagskladde ${Date.now()}`;
+  await admin.evaluate(setInput('[aria-label="Arbejdsbeskrivelse"]', draftText));
+  await admin.evaluate(setInput('[aria-label="Mailtekst"]', `${draftText} · mailtekst`));
+  await admin.evaluate(clickText('button', 'Opret leverandør'));
+  await admin.waitFor("location.pathname==='/indkoeb/leverandoerer' && document.querySelector('#lv-navn')", "fælles leverandøroprettelse fra sagskladde");
+  const supplierName = `Syntetisk QA-værksted ${Date.now()}`;
+  await admin.evaluate(setInput('#lv-navn', supplierName));
+  await admin.evaluate(setInput('#lv-email', 'qa-vaerksted@example.invalid'));
+  await admin.evaluate(clickText('button', 'Opret leverandør'));
+  await admin.waitFor(`location.pathname==='/fleet-v2/sager/case-demo-001/bestilling' && document.body.innerText.includes(${JSON.stringify(supplierName)})`, "retur til sagskladde med ny leverandør");
+  checks.supplierDraftReturn = await admin.evaluate(`(()=>({supplier:[...document.querySelector('.assignment-page select').selectedOptions].map((node)=>node.textContent).join(''),workDescription:document.querySelector('[aria-label="Arbejdsbeskrivelse"]')?.value,mailText:document.querySelector('[aria-label="Mailtekst"]')?.value,draftKey:[...Object.keys(sessionStorage)].find((key)=>key.startsWith('veyro:fleet:workshop-assignment-draft:'))||null}))()`);
+  assert(checks.supplierDraftReturn.supplier.includes(supplierName) && checks.supplierDraftReturn.workDescription === draftText && checks.supplierDraftReturn.mailText === `${draftText} · mailtekst` && checks.supplierDraftReturn.draftKey, `Leverandøroprettelsen bevarede ikke sagskladden eller valgte ikke den nye leverandør: ${JSON.stringify(checks.supplierDraftReturn)}`);
+  screenshots.push(await admin.screenshot("26-leverandoer-retur-med-bevaret-sagskladde-1440x900.png"));
+
+  await admin.spaNavigate("/oekonomi/fakturacenter?sektion=indbakke", "document.body.innerText.includes('FC-ENKELT-OVER')");
   await admin.evaluate(setInput('.fic-filter input', "FC-ENKELT-OVER"));
   await admin.waitFor("document.querySelectorAll('.fic-invoice').length===1", "enkelt faktura over nettogrænse");
   await admin.evaluate("document.querySelector('.fic-invoice-main').click()");
@@ -299,7 +410,7 @@ try {
   `Fakturacenterets servertilstand matcher ikke de dokumenterede kontroludfald: ${JSON.stringify(checks.invoiceServerState)}`);
 
   const runtimeProblems = admin.events.filter((event) => event.method === "Runtime.exceptionThrown").map((event) => event.params?.exceptionDetails?.text || "Runtime exception");
-  const result = { ok: true, baseUrl, app: "root-app med embedded FLEET", backend: { auth: "Firebase Auth emulator", sharedData: "Realtime Database emulator", fleetPrototype: "lokal IndexedDB med syntetiske fixtures", externalServices: false }, checks, viewports, layoutMatrix, screenshots, runtimeProblems };
+  const result = { ok: true, baseUrl, app: "root-app med embedded FLEET", backend: { auth: "Firebase Auth emulator", sharedData: "Realtime Database emulator", fleetUnitRegister: "tenants/<tenant>/koeretoejer i Realtime Database-emulator; FLEET læser/skriver og PLANNING læser samme post", fleetOperationalPrototype: "sager, indberetninger, værksted og øvrige endnu ikke adapterede forløb bruger tydeligt mærkede lokale IndexedDB-fixtures", externalGpsObd: "udskudt efter aftale; ikke aktiveret eller integreret" }, checks, viewports, layoutMatrix, screenshots, runtimeProblems };
   await writeFile(path.join(outputDir, "RESULTAT.json"), `${JSON.stringify(result, null, 2)}\n`, "utf8");
   console.log(JSON.stringify(result, null, 2));
 } finally {
