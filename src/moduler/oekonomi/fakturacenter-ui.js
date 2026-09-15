@@ -22,6 +22,7 @@ export const MODULFILTER = Object.freeze({
   fleet: "FLEET",
   facility: "FACILITY",
   procure: "PROCURE",
+  warehouse: "WAREHOUSE",
   uafklaret: "uafklaret",
   flere: "flere-moduler",
 });

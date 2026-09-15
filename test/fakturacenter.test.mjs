@@ -77,7 +77,7 @@ describe("Fakturacenteret er en skærm, ikke en node", () => {
     assert.match(SKAERM, /harPerm\(bruger\?\.perms, PERM\.fakturaerLaes\)/);
     assert.match(SKAERM, /if \(!harLæseadgang\)/);
     assert.match(SKAERM, /role="alert"/);
-    assert.match(SKAERM, /return <FakturacenterPrototype \/>/);
+    assert.match(SKAERM, /return <FakturacenterPrototype bruger=\{bruger\} \/>/);
   });
 
   /**
@@ -450,10 +450,14 @@ describe("Demo kan vise hver destination", () => {
 /* ══════════════════════════════════════════════════════════════════════════
    SKÆRMEN OG SERVEREN
    ══════════════════════════════════════════════════════════════════════════ */
-describe("Eksisterende serverkontrol og den lokale intake-prototype", () => {
-  test("⚠ PROTOTYPEN UDFØRER INGEN SERVERMUTATIONER", () => {
-    assert.doesNotMatch(SKAERM, /\bsaetDestination\b|\bskiftFaktura\b|useListe\(/);
-    assert.match(SKAERM, /eksterneKald:\s*false/);
+describe("Eksisterende serverkontrol og den isolerede lokale intake-prototype", () => {
+  test("⚠ AUTENTIFICERET KONTROL GÅR GENNEM CALLABLES; DEMOEN BLIVER LOKAL", () => {
+    assert.match(SKAERM, /useListe\("fakturaer"/);
+    assert.match(SKAERM, /udførFakturakontrol\(/);
+    assert.match(SKAERM, /udførFakturakontrolMasse\(/);
+    assert.doesNotMatch(SKAERM, /\bsaetDestination\b|\bskiftFaktura\b/);
+    assert.match(SKAERM, /demoEksterneKald:\s*false/);
+    assert.match(SKAERM, /erLokalDemo/);
     assert.match(funktion("fakturadestination"), /kanSaetteDestination\(/);
   });
 

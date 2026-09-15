@@ -165,6 +165,7 @@
 .fic-list-controls label { display: grid; gap: 3px; min-width: 0; }
 .fic-list-controls select { width: 100%; min-width: 0; padding: 5px 6px; color: var(--bc-text); background: var(--bc-card); border: 1px solid var(--bc-line); border-radius: 7px; font-size: var(--fc-t-tight); }
 .fic-invoice { display: grid; grid-template-columns: 40px minmax(0, 1fr); width: 100%; min-width: 0; padding: 0; color: inherit; background: transparent; border: 0; border-bottom: 1px solid var(--bc-line); }
+.fic-invoice-no-check { grid-template-columns: minmax(0, 1fr); }
 .fic-invoice:hover { background: var(--bc-card); }
 .fic-invoice-active { background: var(--bc-card); box-shadow: inset 3px 0 0 var(--bc-accent); }
 .fic-invoice-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; }
@@ -218,6 +219,8 @@
 .fic-paper-brand { color: var(--bc-accent); font-size: var(--fc-t-xs); font-weight: 850; letter-spacing: .1em; }
 .fic-paper-mark { position: absolute; top: 24px; right: 24px; color: var(--bc-muted); font-size: var(--fc-t-tight); font-weight: 750; }
 .fic-paper-title { margin: 42px 0 22px; font-size: var(--fc-t-3xl); }
+.fic-paper-server { display: grid; gap: 16px; }
+.fic-paper-server .fic-paper-title { margin-bottom: 6px; }
 .fic-paper-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 .fic-paper-grid span, .fic-paper-total span { display: block; color: var(--bc-muted); font-size: var(--fc-t-tight); }
 .fic-paper-grid b { font-size: var(--fc-t-s); }
@@ -276,6 +279,9 @@
 .fic-reason { display: grid; gap: 6px; margin-top: 8px; color: var(--bc-muted); font-size: var(--fc-t-tight); }
 .fic-reason textarea { min-height: 64px; resize: vertical; padding: 8px; color: var(--bc-text); background: var(--bc-card); border: 1px solid var(--bc-line); border-radius: 7px; }
 .fic-control-button { margin-top: 10px; }
+.fic-extra-control { display: grid; gap: 10px; margin-top: 10px; }
+.fic-extra-control > p { margin: 0; color: var(--bc-muted); }
+.fic-extra-control > button { justify-self: start; }
 .fic-lock { display: flex; align-items: flex-start; gap: 10px; padding: 11px; background: var(--fc-ok-bg); border: 1px solid var(--bc-line); border-radius: 8px; }
 .fic-lock-copy { display: grid; gap: 2px; }
 .fic-lock-copy span { color: var(--bc-muted); font-size: var(--fc-t-tight); }

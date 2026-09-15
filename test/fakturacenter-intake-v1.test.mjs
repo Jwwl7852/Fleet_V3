@@ -1211,7 +1211,7 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     ]).ok, false);
   });
 
-  test("UI er lokal, klikbar og tydeligt markeret som prototype", () => {
+  test("UI adskiller tydeligt lokal prototype og tilsluttet servervisning", () => {
     const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
     const dele = readFileSync("src/moduler/oekonomi/FakturacenterPrototypeDele.jsx", "utf8");
     const workspace = readFileSync("src/moduler/oekonomi/FakturacenterWorkspace.jsx", "utf8");
@@ -1225,7 +1225,10 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     for (const sektion of ["Indbakke", "Ekstra kontrol", "Arkiv"]) {
       assert.match(samletUi + kontrakt, new RegExp(sektion));
     }
-    assert.doesNotMatch(samletUi, /useListe|firebase\/|uploadFakturaDokument/);
+    assert.match(samletUi, /useListe\("fakturaer"/);
+    assert.match(samletUi, /Tilsluttet Fakturacenter/);
+    assert.match(samletUi, /udførFakturakontrolMasse/);
+    assert.doesNotMatch(samletUi, /firebase\/|uploadFakturaDokument/);
     assert.match(samletUi, /ikke betalingsgodkendelse eller bogføring/);
     assert.doesNotMatch(samletUi, /Markér som (betalt|bogført)|Godkend betaling/i);
     assert.match(samletUi, /aria-current=/);

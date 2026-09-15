@@ -10,6 +10,7 @@ import {
   validérFordeling,
 } from "../../fleet/fakturacenter-intake.js";
 import { MailbundlePanel, PanelSeparator } from "./FakturacenterPrototypeDele.jsx";
+import { FAKTURAKONTROL_STATUS } from "../../fleet/fakturacenter-kontrol.js";
 
 const STATUS_LABEL = {
   [INDBAKKE_SEKTION.indbakke]: "Ny i indbakken",
@@ -69,6 +70,9 @@ function fakturavindueLabel(status) {
 
 export default function FakturacenterWorkspace({
   scenarie,
+  serverKilde = false,
+  kanKontrollere = false,
+  serverHandling = false,
   begrundelse,
   aktivtPanel,
   panelLayout,
@@ -80,6 +84,8 @@ export default function FakturacenterWorkspace({
   onFordelLigeligt,
   onAccepterAdvarsler,
   onKontrollér,
+  onEkstraGodkend,
+  onEkstraAfvis,
   onGenåbn,
   onGenåbnDestination,
   onKlassificérMailfil,
@@ -94,14 +100,17 @@ export default function FakturacenterWorkspace({
     scenarie.faktura.fakturaart,
   );
   const erUlæselig = !data.fakturanummer;
-  const erLåst = scenarie.faktura.kontrolstatus === KONTROL_STATUS.kontrolleret;
+  const erLåst = scenarie.faktura.låst
+    || scenarie.faktura.kontrolstatus === KONTROL_STATUS.kontrolleret;
+  const erEkstraKontrol = scenarie.faktura.serverKontrolstatus
+    === FAKTURAKONTROL_STATUS.ekstraKontrol;
   const harAdvarsler = scenarie.faktura.uløsteAdvarsler?.length > 0;
 
   return (
     <div className="fic-detail" data-active-panel={aktivtPanel}>
       <div className="fic-detail-head">
         <div>
-          <span className="fic-kicker">Scenarie {scenarie.nummer}</span>
+          <span className="fic-kicker">{serverKilde ? "Faktura" : `Scenarie ${scenarie.nummer}`}</span>
           <h2>{scenarie.titel}</h2>
           <p>{scenarie.beskrivelse}</p>
         </div>
@@ -139,7 +148,24 @@ export default function FakturacenterWorkspace({
                 <small>{data.leverandoerCvr || "Ingen leverandør identificeret"}</small>
               </div>
             </div>
-            {erUlæselig ? (
+            {serverKilde ? (
+              <div className="fic-paper-server" aria-label="Serverregistreret fakturametadata">
+                <div className="fic-paper-title">FAKTURAOPLYSNINGER</div>
+                <div className="fic-paper-grid">
+                  <span>Fakturanummer</span><b>{data.fakturanummer || "Ikke oplyst"}</b>
+                  <span>Fakturadato</span><b>{data.fakturadato || "Ikke oplyst"}</b>
+                  <span>Forfaldsdato</span><b>{data.forfaldsdato || "Ikke oplyst"}</b>
+                  <span>Reference</span><b>{data.ordreOpgaveNumre?.join(", ") || "Ikke oplyst"}</b>
+                </div>
+                <div className="fic-paper-total">
+                  <span>Netto</span><b>{kroner(data.nettoOere)}</b>
+                  <span>Moms</span><b>{kroner(data.momsOere)}</b>
+                  <span>I alt</span><strong>{kroner(data.totalOere)}</strong>
+                </div>
+                <p className="fic-origin-note">Dette er metadata fra den autoritative fakturapost.
+                  Et originaldokument vises kun, når serveren har registreret en sikker dokumentreference.</p>
+              </div>
+            ) : erUlæselig ? (
               <div className="fic-noise" aria-label="Syntetisk ulæseligt dokument">
                 <i /><i /><i /><i /><i />
                 <b>Automatisk aflæsning mislykkedes</b>
@@ -182,7 +208,8 @@ export default function FakturacenterWorkspace({
         <section className="fic-review-panel" role="region" tabIndex="0"
                  aria-label="Behandling · internt scrollområde">
           <InfoSektion nummer="1" titel="Aflæste oplysninger"
-                       status={erUlæselig ? "Manuel behandling" : "Syntetisk aflæst"}>
+                       status={serverKilde ? "Fra tilsluttet datakilde"
+                         : erUlæselig ? "Manuel behandling" : "Syntetisk aflæst"}>
             <div className="fic-field-grid">
               <Felt label="Leverandør" værdi={data.leverandoernavn} />
               <Felt label="CVR" værdi={data.leverandoerCvr} />
@@ -200,10 +227,11 @@ export default function FakturacenterWorkspace({
                 ...(data.stelSerieNumre || []),
               ].join(", ") || "—"} />
             </div>
-            <Rettelsesformular data={data} låst={erLåst} onGem={onRetOplysninger} />
+            {!serverKilde && <Rettelsesformular data={data} låst={erLåst} onGem={onRetOplysninger} />}
             <p className="fic-origin-note">
-              Den oprindelige aflæsning bevares. Rettelser tilføjes med bruger,
-              tidspunkt og ændringshistorik.
+              {serverKilde
+                ? "Visningen ændrer ikke de serverregistrerede dokumentoplysninger."
+                : "Den oprindelige aflæsning bevares. Rettelser tilføjes med bruger, tidspunkt og ændringshistorik."}
             </p>
           </InfoSektion>
 
@@ -244,15 +272,15 @@ export default function FakturacenterWorkspace({
                         <span className="fic-selected-mark">
                           {MATCH_OPRINDELSE_LABEL[scenarie.match.oprindelse] || "Placeret"}
                         </span>
-                      ) : kandidat.fakturastatus === FAKTURAVINDUE.lukket ? (
+                      ) : !serverKilde && kandidat.fakturastatus === FAKTURAVINDUE.lukket ? (
                         <button type="button" className="fic-link-button"
                                 onClick={() => onGenåbnDestination(kandidat)}>
                           Genåbn med begrundelse
                         </button>
-                      ) : (
+                      ) : !serverKilde ? (
                         <button type="button" className="fic-link-button"
                                 onClick={() => onVælgKandidat(kandidat)}>Vælg manuelt</button>
-                      )}
+                      ) : null}
                     </article>
                   );
                 })}
@@ -284,13 +312,13 @@ export default function FakturacenterWorkspace({
               <span>Fordelt netto</span>
               <b>{kroner(fordeling.fordeltOere)} / {kroner(scenarie.faktura.nettoOere)}</b>
             </div>
-            {!erLåst && scenarie.match.placering && (
+            {!serverKilde && !erLåst && scenarie.match.placering && (
               <button type="button" className="fic-secondary fic-allocation-action"
                       onClick={onFordelSamlet}>
                 Fordel hele netto på valgt match
               </button>
             )}
-            {!erLåst && scenarie.match.kandidater.length > 1 && (
+            {!serverKilde && !erLåst && scenarie.match.kandidater.length > 1 && (
               <button type="button" className="fic-secondary fic-allocation-action"
                       onClick={onFordelLigeligt}>
                 Fordel ligeligt på matchkandidater
@@ -299,15 +327,23 @@ export default function FakturacenterWorkspace({
           </InfoSektion>
 
           <InfoSektion nummer="4" titel="Kontrol"
-                       status={erLåst ? "Kontrolleret og låst" : "Afventer handling"}>
-            <div className="fic-local-cost" aria-label="Lokalt nettobidrag til statistik">
-              <span>Nettobidrag i lokal teststatistik</span>
-              <b>{kroner(erLåst ? scenarie.faktura.nettoOere : 0)}</b>
-            </div>
+                       status={erLåst ? "Arkiveret i Veyros kontrolforløb"
+                         : erEkstraKontrol ? "Afventer ekstra kontrollant" : "Afventer handling"}>
+            {serverKilde ? (
+              <div className="fic-local-cost" aria-label="Serverregistreret kontrolgrundlag">
+                <span>Betalingsstatus: {scenarie.faktura.betalingsstatus || "ikke oplyst"}</span>
+                <b>Kontrolrevision {scenarie.faktura.kontrolRevision}</b>
+              </div>
+            ) : (
+              <div className="fic-local-cost" aria-label="Lokalt nettobidrag til statistik">
+                <span>Nettobidrag i lokal teststatistik</span>
+                <b>{kroner(erLåst ? scenarie.faktura.nettoOere : 0)}</b>
+              </div>
+            )}
             {scenarie.faktura.dubletstatus === DUBLET_STATUS.mistænkt && (
               <Advarsel tekst="Mistænkt dublet er sat på hold. Ingen filer slettes eller sammenlægges." />
             )}
-            {harAdvarsler && (
+            {!serverKilde && harAdvarsler && (
               <>
                 {scenarie.faktura.uløsteAdvarsler.map((advarsel) => (
                   <Advarsel key={advarsel} tekst={ADVARSEL_LABEL[advarsel] || advarsel} />
@@ -325,12 +361,12 @@ export default function FakturacenterWorkspace({
                 )}
               </>
             )}
-            {!erLåst && !harAdvarsler && (
+            {!serverKilde && !erLåst && !harAdvarsler && (
               <button type="button" className="fic-primary fic-control-button" onClick={onKontrollér}>
                 Markér som kontrolleret
               </button>
             )}
-            {erLåst && (
+            {!serverKilde && erLåst && (
               <>
                 <p className="fic-lock-copy">Oplysninger og fordeling er låst. Den fordelte nettodel tæller
                   nu i den syntetiske omkostningsstatistik.</p>
@@ -345,6 +381,38 @@ export default function FakturacenterWorkspace({
             {scenarie.masseEksempel && (
               <button type="button" className="fic-secondary fic-demo-example-button"
                       onClick={onKørBlandetMasseEksempel}>Kør blandet massekontrol-eksempel</button>
+            )}
+            {serverKilde && !kanKontrollere && !erLåst && (
+              <p className="fic-origin-note">Din bruger kan læse fakturaen, men mangler rettigheden
+                <code> fakturaer.godkend</code> til at udføre kontrollen.</p>
+            )}
+            {serverKilde && !erLåst && !erEkstraKontrol && (
+              <button type="button" className="fic-primary fic-control-button"
+                      onClick={onKontrollér} disabled={!kanKontrollere || serverHandling}>
+                {serverHandling ? "Behandler…" : "Markér som kontrolleret"}
+              </button>
+            )}
+            {serverKilde && erEkstraKontrol && (
+              <div className="fic-extra-control">
+                <p>Serveren kontrollerer, at du er udpeget, og at du ikke er den første kontrollant.</p>
+                <button type="button" className="fic-primary"
+                        onClick={onEkstraGodkend} disabled={!kanKontrollere || serverHandling}>
+                  {serverHandling ? "Behandler…" : "Godkend ekstra kontrol"}
+                </button>
+                <label className="fic-reason">
+                  <span>Begrundelse ved tilbagesendelse</span>
+                  <textarea value={begrundelse} onChange={(event) => setBegrundelse(event.target.value)}
+                            placeholder="Beskriv hvorfor fakturaen sendes tilbage…" />
+                </label>
+                <button type="button" className="fic-secondary" onClick={onEkstraAfvis}
+                        disabled={!kanKontrollere || serverHandling || !begrundelse.trim()}>
+                  Send tilbage til Indbakke
+                </button>
+              </div>
+            )}
+            {serverKilde && erLåst && (
+              <p className="fic-lock-copy">Arkiv betyder afsluttet Veyro-kontrol. Visningen påstår
+                ikke, at fakturaen er bogført eller betalt.</p>
             )}
           </InfoSektion>
 
@@ -371,7 +439,7 @@ export default function FakturacenterWorkspace({
             ) : null}
             {!scenarie.faktura.historik?.length
               && !scenarie.aflæsning.rettelseshistorik?.length
-              && <p>Ingen lokale demohændelser endnu.</p>}
+              && <p>{serverKilde ? "Ingen kontrolhistorik registreret." : "Ingen lokale demohændelser endnu."}</p>}
           </details>
         </section>
       </div>

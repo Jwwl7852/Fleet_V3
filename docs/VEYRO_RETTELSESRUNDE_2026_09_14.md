@@ -41,8 +41,8 @@ aktuelle kodegrundlag.
 | UX-07 | Dialog | ESC, X, Annuller, ugemte data, fokusretur, bekræft Gem/Slet og fejlbevaring. | Fælles og berørte moduldialoger | i gang | Ny FLEET-rutedialog har fokusfælde, ESC/X/baggrund, fokusretur og dirty-bekræftelse; Manuel sag bevarer input ved fejl. 10/10 berørte komponenttests og browserforløb består. | Øvrige moduldialoger skal fortsat auditeres; domæner må bruge arkivering, hvor hard delete er forbudt |
 | FC-01 | Navigation | Synligt forløb er Indbakke, betinget Ekstra kontrol og Arkiv; gamle dybe links mappes uden historiktab. | `src/fleet/fakturacenter-intake.js`, `src/moduler/oekonomi/Fakturacenter.jsx`, `src/fleet/nav.js` | implementeret | 100/100 målrettede tests; browser viste kun Indbakke og Arkiv, mens Ekstra kontrol er korrekt skjult før aktivering | Interne domænestatusser er bevaret |
 | FC-02 | Kontrol | Succes fjerner posten fra arbejdsliste, bliver i Indbakke og vælger næste; fejl bevarer posten. | Fakturacenter UI/domæne | implementeret | Domænetest og browserwiring; succes flytter til intern kontrolleret/Arkiv-status uden sektionsskift | Lokal prototype, ikke serverlagring |
-| FC-03 | Ekstra kontrol | Tilstande ingen/alle/over beløbsgrænse ekskl. moms; anden person; kundestyret allowlist; serveraudit. | Opsætning, fælles kontrakt, Functions/Rules | delvist implementeret | Opsætningen lagres nu tenantafgrænset gennem callable; beløbsgrænsen bruger beløbet ekskl. moms, egen godkendelse afvises, udpegede brugere valideres mod effektiv permission, og 21 callable-assertions samt fuld gate 4.597/4.597 består | Den nuværende syntetiske arbejdsflade er endnu ikke koblet til de serverlagrede fakturaer; den præcise kundearbejdsgang skal derfor browserverificeres efter adapterkoblingen |
-| FC-04 | Massekontrol | Checkbox, synligt omfang, én bekræftelse, adgang/revision/gates pr. faktura, delsvar og idempotent genforsøg. | Fakturacenter UI/domæne/Functions | delvist implementeret | Serveren kontrollerer permission, revision og hvert fakturagrundlag, bruger tenantafgrænset idempotens og returnerer resultat pr. faktura; 21 callable-assertions og fuld gate 4.597/4.597 består | Checkbox-/bekræftelsesforløbet kører fortsat på den lokale syntetiske prototype og skal kalde den nye masse-callable, før kravet kan lukkes |
+| FC-03 | Ekstra kontrol | Tilstande ingen/alle/over beløbsgrænse ekskl. moms; anden person; kundestyret allowlist; serveraudit. | Opsætning, fælles kontrakt, Functions/Rules | implementeret, men ikke verificeret | Opsætningen lagres tenantafgrænset; serverlisten viser ekstra kontrol betinget af opsætning/poster; godkendelse og tilbagesendelse går gennem callable med nettogrænse, anden person, allowlist, revision og audit; 12/12 adapter/domænetests og 21 callable-assertions består | Integreret browserbevis med to normale brugersessioner udestår, fordi den lokale app kræver manuel autentificering |
+| FC-04 | Massekontrol | Checkbox, synligt omfang, én bekræftelse, adgang/revision/gates pr. faktura, delsvar og idempotent genforsøg. | Fakturacenter UI/domæne/Functions | implementeret, men ikke verificeret | Checkbox og én bekræftelse sender kun synlige valgte serverposter med deres kontrolrevision; serveren kontrollerer permission og grundlag pr. faktura og returnerer delsvar; genforsøg er idempotent; 21 callable-assertions består | Integreret browserbevis med autentificeret serverdatasæt udestår |
 | FC-05 | Filtre | Matchkategori bevares; standard nyeste først erstattes som kontrol af modul inkl. uafklaret/flere fordelinger. | Fakturacenter UI | implementeret | Filtertest dækker FLEET, flere moduler og uafklaret; browser viste modulfilter og fast nyeste rækkefølge | Ingen |
 | FC-06 | Upload | Filnavn, modtaget/behandler/fejlet, tydelig fremdrift, dubletværn og idempotent genforsøg; demo mærkes. | Fakturacenter intake/UI | i gang | Integreret browsertest viste filnavn, lokal `ikke gemt`-kvittering og samme SHA-256 på dublethold; `1440x900-fakturacenter-uploadfeedback.png` | Permanent modtagelse/pipeline og backendkvittering mangler; UI påstår ikke varig lagring |
 | FC-07 | Layout | Kompakt top og tre selvscrollende, justerbare, huskede paneler; demospecifik tekst fjernes fra normal struktur. Den ruteisolerede CSS ramte tidligere ikke den indskudte zoom-wrapper, så arbejdsbordet voksede til ca. 2.086 px i stedet for at give panelerne en viewportshøjde. | Fakturacenter workspace/CSS og AppShell zoom-wrapper | implementeret | Ved 1440×900: workspace 1.172×642 px; paneler 280/423/450 px; scrollHeight/clientHeight 1874/440, 824/566 og 1106/566. Tastaturbredde 22→24 % bestod reload. | Forretningsdata er fortsat lokal prototype; panelpræferencens scope gennemgås igen i samlet regression |
@@ -773,3 +773,48 @@ før/efter-beviser for de prioriterede synlige fejl.
 | FL-14 | Implementeret og komponentverificeret for eksplicit bevaring ved deaktivering; integreret browserbillede udestår | Implementeret og verificeret for ændring/deaktivering med åben forekomst, cykluslås og bevaret åben sag | Delvist implementeret: servertransaktionen håndhæver dette forløb; øvrige sagsmutationer og overgang af lokale poster mangler | Implementeret og verificeret gennem eksisterende callable-gate med tenant, FLEET-modul og `koeretoejer.skriv` | 17/17 rene tests, 8/8 serviceflow, FLEET 194/194, målrettet emulatorintegration og fuld gate 4.617/4.617 | Delvist implementeret, fordi den samlede service-/sagsgrænse fortsat mangler mutationer og overgang |
 | REG-01 | Ikke relevant | Implementeret og verificeret for denne mutation | Implementeret og verificeret med revision, idempotens og serveraudit | Implementeret og verificeret | Målrettet emulatorintegration og fuld gate 4.617/4.617 | Delvist implementeret, fordi kommende serveretaper mangler |
 | REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root/FLEET-lint, build, design 11/11, FLEET 194/194 og fuld gate 4.617/4.617 | Delvist implementeret |
+
+### Etape 19 — Fakturacenterets autoritative arbejdsliste og kontrolhandlinger
+
+- Fakturacenterets autentificerede visning læser nu den fælles
+  `tenants/{tenantId}/fakturaer`-node gennem `useListe`. En afvist eller fejlet
+  læsning giver en synlig fejl og aldrig syntetiske erstatningsrækker. Den
+  lokale demo beholder sine 20 scenarier i en særskilt tilstand.
+- En ren adapter projicerer kun registrerede felter til trepanelvisningen.
+  Manglende filnavn, beløb, dato eller destination står som ukendt. En
+  destination omdannes ikke til en opdigtet finansiel fordeling, og
+  dokumentpanelet kalder serverens felter metadata i stedet for at tegne
+  syntetiske fakturalinjer.
+- Serverens `indbakke`, `ekstra-kontrol` og `arkiveret` bestemmer de tre
+  arbejdslister. Ekstra kontrol vises, når kundens serveropsætning er aktiv,
+  eller der allerede findes ventende poster. Arkiv beskrives fortsat som
+  afsluttet Veyro-kontrol, ikke betaling eller bogføring.
+- Enkeltkontrol sender faktura-ID og forventet kontrolrevision til
+  `fakturakontrolUdfoer`, bliver i Indbakke og vælger næste synlige post.
+  Ekstra godkendelse og begrundet tilbagesendelse bruger samme servergrænse.
+  UI'et skjuler eller deaktiverer handlingerne uden `fakturaer.godkend`.
+- Massekontrol er kun tilgængelig i Indbakke. Den præciserer det filtrerede
+  omfang, kræver én bekræftelse og sender hvert ID med sin revision til
+  `fakturakontrolMasse`. Resultatlisten viser både gennemførte og blokerede
+  poster, mens serveren håndhæver adgang, revisionskonflikt, kontrolgrundlag
+  og idempotens.
+- Uploadknappen er bevidst ikke vist i servertilstand endnu. Den lokale demo
+  kan fortsat demonstrere filnavn, SHA-256 og dubletstatus, men der påstås
+  ingen servermodtagelse før en faktisk modtage-/dubletkontrakt findes.
+- Teknisk bevis på etapegrundlaget: 12/12 rene adapter-/kontroldomænetests,
+  den samlede afgrænsede Fakturacenter-pakke 176/176, 21/21 isolerede callable-
+  assertions, root lint, produktionsbuild og fuld lokal Rules-/platformsgate
+  4.621/4.621. Buildets eneste melding er den
+  kendte chunk-størrelsesadvarsel. Integreret screenshot udestår: den lokale
+  app på port 5297 står på `/login`; browserdata er ikke ryddet, og login er
+  ikke automatiseret.
+
+#### Delstatus efter Etape 19
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FC-03 | Implementeret, men ikke integreret browserverificeret: betinget Ekstra kontrol, godkend og begrundet tilbagesendelse | Implementeret og verificeret: nettogrænse ekskl. moms, anden person, statusovergange og revision | Implementeret og emulatorverificeret: opsætning, kontrolhistorik og idempotente callables; ingen lokal fallback | Implementeret og verificeret for tenant, aktivt abonnement, udpeget kontrollant og `fakturaer.godkend` | 12/12 rene tests, 21/21 callable-assertions og fuld gate 4.621/4.621; browserbevis udestår | Implementeret, men ikke verificeret |
+| FC-04 | Implementeret, men ikke integreret browserverificeret: checkboxes, filtreret omfang, én bekræftelse og delsvar | Implementeret og verificeret for revision, grundlag, delvis succes og idempotent genforsøg | Implementeret og emulatorverificeret gennem masse-callable; UI sender server-ID og revision | Implementeret og verificeret pr. faktura gennem callable-gaten | Fakturacenter 176/176, 21/21 callable-assertions og fuld gate 4.621/4.621; browserbevis udestår | Implementeret, men ikke verificeret |
+| FC-06 | Implementeret og verificeret kun i lokal demo | Delvist implementeret: lokal SHA-256/dubletkontrol findes | Ikke implementeret servermæssigt; UI påstår ikke modtagelse | Ikke implementeret for serverupload | Eksisterende lokale intake-tests | Delvist implementeret |
+| REG-01 | Ikke relevant | Implementeret og verificeret for Fakturacenter-kontrol | Implementeret og verificeret med revision og idempotens | Implementeret og verificeret | 21/21 emulatorassertions og fuld gate 4.621/4.621 | Delvist implementeret, fordi senere serveretaper mangler |
+| REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, Fakturacenter 176/176 og fuld gate 4.621/4.621 | Delvist implementeret |

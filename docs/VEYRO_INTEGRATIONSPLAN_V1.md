@@ -1172,3 +1172,27 @@ eksplicit bevaring og efterfølgende idempotent gennemførsel. Hele slutgrundlag
 består 17 rene service-/klienttests, 8 serviceflowtests, FLEET 194/194,
 designgate 11/11 og den fulde Rules-/platformsgate 4.617/4.617. Ingen Rules,
 produktionsdata eller eksterne tjenester er ændret.
+
+## 26. Fakturacenterets serveradapter — 2026-09-15
+
+Fakturacenteret har nu to eksplicit adskilte dataveje. Uden database kører den
+lokale, syntetiske intake-prototype. Med en autentificeret tenant læses den
+fælles `fakturaer`-node gennem platformens listegrænse, og læsefejl falder ikke
+tilbage til demo. Adapteren bevarer faktura-ID, modtagelsestid, leverandør,
+fakturanummer, netto/moms, destination, betalingsstatus, kontrolstatus,
+kontrolrevision og kontrolhistorik. Felter, der ikke findes på serveren,
+vises som ukendte og rekonstrueres ikke fra antagelser.
+
+Den synlige kontrol bruger nu de serverejede statusser `indbakke`,
+`ekstra-kontrol` og `arkiveret`. Enkeltkontrol, ekstra godkendelse,
+tilbagesendelse og massehandling går gennem callables. De eksisterende gates
+for aktiv tenant, `fakturaer.godkend`, kundens udpegede ekstra kontrollanter,
+anden person, forventet revision og idempotent request-ID er dermed også den
+faktiske mutationsgrænse for skærmen. En massehandling sender kun det
+filtrerede, eksplicit valgte sæt og modtager resultat pr. faktura.
+
+Upload er ikke løftet over denne grænse. Servervisningen skjuler derfor den
+lokale uploadbetjening og forklarer, at den først kan vises efter en virkelig
+modtage-, lagrings- og dubletkontrakt. Dette er en bevidst fail-closed overgang,
+ikke en skjult lokal lagring. Ingen ekstern mail, OCR, Storage-upload,
+produktion eller migration er aktiveret.

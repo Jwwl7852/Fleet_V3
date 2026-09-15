@@ -172,22 +172,25 @@ describe("Fakturaer & bilag er den ene kanoniske overflade", () => {
 /* ══════════════════════════════════════════════════════════════════════════
    FILTRERET KONTEKST — punkt 4
    ══════════════════════════════════════════════════════════════════════════ */
-describe("Fakturacenter v1 bruger kun lokal prototypekontekst", () => {
-  it("⚠ PROTOTYPEN LÆSER KUN LOKAL SEKTION FRA QUERY — IKKE EKSTERNE DATA", () => {
+describe("Fakturacenter v1 adskiller lokal demo fra serverens fakturaer", () => {
+  it("⚠ SEKTIONEN LÆSES FRA QUERY, MENS SERVERPOSTER KOMMER FRA DEN FÆLLES NODE", () => {
     const skaerm = udenKommentarer(
       readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8"));
     assert.match(skaerm, /useSearchParams/);
     assert.match(skaerm, /searchParams\.get\("sektion"\)/);
     assert.doesNotMatch(skaerm, /\.get\(["']destination["']\)/);
     assert.match(skaerm, /FAKTURACENTER_PROTOTYPE/);
-    assert.match(skaerm, /eksterneKald:\s*false/);
+    assert.match(skaerm, /serverData:\s*"autoritative-fakturaer"/);
   });
 
-  it("⚠ PROTOTYPEN KAN IKKE OMGÅ EN GATE MED SIN EGEN LÆSNING", () => {
+  it("⚠ SERVERVISNINGEN BRUGER FÆLLES LÆSEHOOK OG CALLABLES — IKKE DIREKTE MUTATION", () => {
     const skaerm = udenKommentarer(
       readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8"));
-    assert.doesNotMatch(skaerm, /useListe\(|usePost\(|from ["']firebase|httpsCallable/i);
+    assert.match(skaerm, /useListe\("fakturaer"/);
+    assert.match(skaerm, /udførFakturakontrolMasse/);
+    assert.doesNotMatch(skaerm, /usePost\(|from ["']firebase|httpsCallable/i);
     assert.match(skaerm, /DEMO_FAKTURACENTER_SCENARIER/);
+    assert.match(skaerm, /Der vises ikke syntetiske erstatningsdata/);
   });
 
   it("⚠ Modulfakturaer.jsx LINKER MED ?destination=<art>, IKKE UFILTRERET", () => {
