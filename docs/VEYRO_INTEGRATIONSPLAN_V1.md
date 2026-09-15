@@ -1116,3 +1116,35 @@ Etapegrundlaget består 13 fokuserede serviceklient-/motortests, hele FLEET-
 suiten 192/192, lint, produktionsbuild, designgate 11/11 og den fulde isolerede
 Rules-/platformsgate 4.613/4.613. Ingen deployment eller produktionsmigration
 er gennemført.
+
+## 24. Serverprojektion til FLEETs sagsflader — 2026-09-15
+
+Serviceautomatikkens serveroprettede `fleetIndberetninger`, `fleetSager` og
+`fleetServiceHistorik` projekteres nu ind i FLEETs almindelige indberetnings-,
+arbejdskø- og sagsmappeflader. Projektionen bevarer de stabile server-ID'er og
+den autoritative `koeretoejer`-reference. Ved en ID-kollision vinder
+serverposten, og der oprettes ikke en parallel redigerbar browserpost.
+
+Overgangen er bevidst læsende. Serverposter mærkes `readOnly`, alle kendte
+lokale handlingsflader skjules eller afvises, og selve datakonteksten blokerer
+lokal statusændring, lukning, dokumentation og værkstedsordre som et ekstra
+værn. Det gør serverens status til sandhedskilde, indtil tilsvarende callables
+med revision, permissions og audit er implementeret. En serverlæsefejl vises
+og falder ikke tilbage til syntetiske data.
+
+Gennemførselshistorikken bærer indberetnings- og sags-ID og kan derfor vises i
+sagsmappens tidslinje. Hvor servermotoren ikke har registreret anvendelighed,
+viser klienten `Uafklaret`; den udleder ikke en driftsstatus af et servicekrav.
+
+Etapegrundlaget består 15 rene service-/adaptertests, 7 målrettede
+serviceflowtests, hele FLEET-suiten 193/193, root lint og produktionsbuild,
+designgate 11/11 samt den fulde isolerede Rules-/platformsgate 4.615/4.615.
+Integreret browserbillede udestår, fordi den lokale app på port 5297 kræver en
+normal autentificeret session og står på `/login`; browserdata er ikke ryddet,
+og login er ikke automatiseret.
+
+Næste servergrænse er mutationerne til vurdering, sagsstatus,
+værkstedsbestilling og lukning. Derudover skal en åben serviceforekomst
+håndteres eksplicit ved ændring eller deaktivering af et krav, og eksisterende
+lokale poster kræver en kontrolleret overgang. Ingen produktionsmigration eller
+deployment er gennemført.

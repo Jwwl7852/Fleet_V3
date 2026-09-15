@@ -37,6 +37,27 @@ describe("selvstændigt Service-modul", () => {
     expect(repository.runServiceAutomation).not.toHaveBeenCalled();
   });
 
+  it("viser serverens serviceindberetning i triage uden lokale skrivehandlinger", async () => {
+    window.history.replaceState({}, "", "/indberetninger/svcrep-1");
+    const repository = createMemoryUnitRepository();
+    render(<FleetV2App repository={repository} serviceBackend={{
+      kind: "server",
+      units: [{ id: "shared-unit-1", number: "Fælles 1", model: "Serverenhed", department: "Nord", meterType: "km", meter: 1000 }],
+      relations: {
+        serviceRequirements: [], serviceOccurrences: [], caseEvents: [],
+        reports: [{ id: "svcrep-1", number: "svcrep-1", caseId: "svccase-1", unitId: "shared-unit-1", type: "service", category: "service", title: "Årligt service", description: "Serveroprettet varsel", severity: "moderate", usability: "uncertain", reporterName: "Serviceautomatik", images: [], createdAt: "2026-09-15T08:00:00Z", origin: "service_automation", readOnly: true }],
+        cases: [{ id: "svccase-1", number: "svccase-1", reference: "svccase-1", reportId: "svcrep-1", unitId: "shared-unit-1", status: "new", priority: "normal", nextAction: "Vurder automatisk servicevarsel", createdAt: "2026-09-15T08:00:00Z", readOnly: true }],
+      },
+      loading: false,
+      error: null,
+      capabilities: { saveRequirement: false, runAutomation: false, planService: false, saveHistory: false, saveSettings: false },
+    }} />);
+    expect(await screen.findByRole("heading", { name: "Årligt service" })).toBeTruthy();
+    expect(screen.getByText("Serverstyret servicevarsel", { exact: false })).toBeTruthy();
+    expect(screen.getByText("Den lokale prototype må ikke ændre den.", { exact: false })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Gem vurdering" })).toBeNull();
+  });
+
   it("opretter et kombineret krav og planlægger det uden dubletsag", async () => {
     const repository = start();
     await screen.findByRole("heading", { name: "Service og compliance" });
@@ -73,7 +94,7 @@ describe("selvstændigt Service-modul", () => {
     await waitFor(() => expect(repository.inspect().relations.reports.some((item) => item.origin === "service_automation")).toBe(true));
     const report = repository.inspect().relations.reports.find((item) => item.origin === "service_automation");
     const caseItem = repository.inspect().relations.cases.find((item) => item.reportId === report.id);
-    fireEvent.click(screen.getAllByRole("button", { name: "Indberetning" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Åbn indberetning" })[0]);
     expect(await screen.findByText("Automatisk oprettet fra Service", { selector: ".integration-badge" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Arbejdskø/ }));
     expect(await screen.findByRole("heading", { name: "Arbejdskø" })).toBeTruthy();

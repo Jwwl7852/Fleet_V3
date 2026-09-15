@@ -9,8 +9,11 @@ import { harPerm, PERM } from "../../fleet/permissions.js";
 import { useFleetSharedData } from "./useFleetSharedData.js";
 import {
   createFleetServiceClient,
+  mapServerCaseToFleet,
   mapServerOccurrenceToFleet,
+  mapServerReportToFleet,
   mapServerRequirementToFleet,
+  mapServerServiceHistoryToFleet,
   mapSharedUnitToFleet,
 } from "../../fleet/fleet-service-client.js";
 import {
@@ -59,21 +62,38 @@ export default function FleetV2Module() {
   const serviceUnitsPayload = JSON.stringify(service.units.data);
   const serviceRequirementsPayload = JSON.stringify(service.requirements.data);
   const serviceOccurrencesPayload = JSON.stringify(service.occurrences.data);
+  const serviceReportsPayload = JSON.stringify(service.reports.data);
+  const serviceCasesPayload = JSON.stringify(service.cases.data);
+  const serviceHistoryPayload = JSON.stringify(service.history.data);
   const serviceBackend = useMemo(() => {
     const units = JSON.parse(serviceUnitsPayload).map(mapSharedUnitToFleet);
     const requirements = JSON.parse(serviceRequirementsPayload).map(mapServerRequirementToFleet);
     const occurrences = JSON.parse(serviceOccurrencesPayload).map(mapServerOccurrenceToFleet);
+    const reports = JSON.parse(serviceReportsPayload).map(mapServerReportToFleet);
+    const cases = JSON.parse(serviceCasesPayload).map(mapServerCaseToFleet);
+    const caseEvents = JSON.parse(serviceHistoryPayload).map(mapServerServiceHistoryToFleet);
     const client = createFleetServiceClient();
     const reload = () => {
       service.requirements.genindlaes();
       service.occurrences.genindlaes();
+      service.reports.genindlaes();
+      service.cases.genindlaes();
+      service.history.genindlaes();
     };
     return {
       kind: "server",
       units,
-      relations: { serviceRequirements: requirements, serviceOccurrences: occurrences },
-      loading: service.units.henter || service.requirements.henter || service.occurrences.henter,
-      error: service.units.fejl || service.requirements.fejl || service.occurrences.fejl || null,
+      relations: {
+        serviceRequirements: requirements,
+        serviceOccurrences: occurrences,
+        reports,
+        cases,
+        caseEvents,
+      },
+      loading: service.units.henter || service.requirements.henter || service.occurrences.henter
+        || service.reports.henter || service.cases.henter || service.history.henter,
+      error: service.units.fejl || service.requirements.fejl || service.occurrences.fejl
+        || service.reports.fejl || service.cases.fejl || service.history.fejl || null,
       capabilities: {
         saveRequirement: mayManageService,
         runAutomation: mayManageService,
@@ -96,7 +116,10 @@ export default function FleetV2Module() {
   }, [service.units.henter, service.units.fejl, service.requirements.henter,
     service.requirements.fejl, service.occurrences.henter, service.occurrences.fejl,
     serviceUnitsPayload, serviceRequirementsPayload, serviceOccurrencesPayload,
-    service.requirements.genindlaes, service.occurrences.genindlaes, mayManageService]);
+    serviceReportsPayload, serviceCasesPayload, serviceHistoryPayload,
+    service.requirements.genindlaes, service.occurrences.genindlaes,
+    service.reports.genindlaes, service.cases.genindlaes, service.history.genindlaes,
+    mayManageService]);
 
   if (!hasModule || !hasPermission) {
     return (

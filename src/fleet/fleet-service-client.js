@@ -93,6 +93,103 @@ export function mapServerOccurrenceToFleet(occurrence = {}) {
   };
 }
 
+const serverCaseStatus = (status) => ({
+  ny: "new",
+  vurdering: "assessing",
+  afventer: "waiting",
+  klar: "ready",
+  vaerksted: "workshop",
+  fakturaafklaring: "invoice_pending",
+  klar_til_lukning: "ready_to_close",
+  afsluttet: "completed",
+  afvist: "rejected",
+}[status] || "new");
+
+const serverPriority = (priority) => ({ lav: "low", normal: "normal", hoej: "high", kritisk: "critical" }[priority] || "normal");
+const isoFromMs = (value) => Number.isFinite(Number(value)) ? new Date(Number(value)).toISOString() : null;
+
+/**
+ * Læseprojektioner til de almindelige FLEET-visninger. Server-ID'et bevares som
+ * identitet; readOnly forhindrer, at IndexedDB-prototypen bliver en konkurrerende
+ * skrivekilde. Et automatisk servicevarsel tager ikke stilling til enhedens
+ * anvendelighed, derfor vises den ærligt som "skal vurderes".
+ */
+export function mapServerReportToFleet(report = {}) {
+  const priority = serverPriority(report.prioritet);
+  return {
+    id: report.id,
+    number: report.nummer || report.id,
+    reference: report.reference || report.sagId || report.id,
+    caseId: report.sagId || null,
+    unitId: report.enhedId,
+    type: "service",
+    category: report.kategoriId || "service",
+    title: report.titel || "Automatisk servicevarsel",
+    description: report.beskrivelse || "Automatisk oprettet fra et aktivt servicekrav.",
+    severity: report.alvorlighed || (priority === "high" || priority === "critical" ? "high" : "moderate"),
+    usability: report.anvendelighed || "uncertain",
+    reporterId: "serviceautomatik",
+    reporterName: "Serviceautomatik",
+    meterObservation: report.forfaldsMaeler == null ? null : {
+      value: report.forfaldsMaeler,
+      unit: report.maalerEnhed === "timer" ? "hours" : "km",
+    },
+    images: [],
+    media: [],
+    createdAt: isoFromMs(report.oprettetMs),
+    updatedAt: isoFromMs(report.opdateretMs || report.oprettetMs),
+    origin: "service_automation",
+    source: "server",
+    readOnly: true,
+  };
+}
+
+export function mapServerCaseToFleet(caseItem = {}) {
+  const status = serverCaseStatus(caseItem.status);
+  const createdAt = isoFromMs(caseItem.oprettetMs);
+  return {
+    id: caseItem.id,
+    number: caseItem.nummer || caseItem.id,
+    reference: caseItem.reference || caseItem.id,
+    reportId: caseItem.indberetningId || null,
+    unitId: caseItem.enhedId,
+    title: caseItem.titel || "Automatisk servicevarsel",
+    description: caseItem.beskrivelse || "",
+    status,
+    priority: serverPriority(caseItem.prioritet),
+    nextAction: caseItem.naesteHandling || "Vurder automatisk servicevarsel",
+    assigneeId: caseItem.ansvarligId || null,
+    dueDate: caseItem.forfaldsdato || null,
+    closureStatus: status === "completed" || status === "rejected" ? "closed" : "open",
+    invoiceResolution: status === "invoice_pending" ? "pending" : "disconnected",
+    expectedInvoiceCount: status === "invoice_pending" ? 1 : 0,
+    createdAt,
+    updatedAt: isoFromMs(caseItem.opdateretMs) || createdAt,
+    origin: "service_automation",
+    source: "server",
+    readOnly: true,
+  };
+}
+
+export function mapServerServiceHistoryToFleet(entry = {}) {
+  const completed = entry.handling === "service_gennemfoert";
+  return {
+    id: entry.id,
+    caseId: entry.sagId || null,
+    reportId: entry.indberetningId || null,
+    type: completed ? "service_completed" : "service_alert_created",
+    title: completed ? "Service gennemført" : "Servicevarsel oprettet",
+    text: completed
+      ? `Gennemført ${entry.dato || "uden oplyst dato"}${entry.maaler == null ? "" : ` · måler ${entry.maaler.toLocaleString("da-DK")}`}`
+      : "Serverautomatikken oprettede indberetning og sag én gang for servicecyklussen.",
+    actorId: entry.aktor || "serviceautomatik",
+    actorName: entry.aktor === "serviceautomatik" ? "Serviceautomatik" : (entry.aktor || "Server"),
+    at: isoFromMs(entry.tidspunktMs),
+    source: "server",
+    readOnly: true,
+  };
+}
+
 export function requirementInputToServer(input = {}, unit = {}) {
   return {
     titel: String(input.title || "").trim(),

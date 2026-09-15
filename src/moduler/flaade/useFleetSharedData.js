@@ -50,9 +50,34 @@ export function useFleetSharedData({ mayReadCategories, mayReadSuppliers, mayRea
     graense: 2000,
     hent: mayReadService,
   });
+  const reports = useListe("fleetIndberetninger", {
+    ordnPaa: "servicekravId",
+    vindue: "alle",
+    graense: 2000,
+    hent: mayReadService,
+  });
+  const cases = useListe("fleetSager", {
+    ordnPaa: "servicekravId",
+    vindue: "alle",
+    graense: 2000,
+    hent: mayReadService,
+  });
+  const history = useListe("fleetServiceHistorik", {
+    ordnPaa: "servicekravId",
+    vindue: "alle",
+    graense: 4000,
+    hent: mayReadService,
+  });
   return {
     categories,
     suppliers,
-    service: { units, requirements: serviceRequirements, occurrences: serviceOccurrences },
+    service: {
+      units,
+      requirements: serviceRequirements,
+      occurrences: serviceOccurrences,
+      reports,
+      cases,
+      history,
+    },
   };
 }

@@ -174,14 +174,18 @@ export function applyFleetServiceAutomation(tenantInput, options = {}) {
       kategoriId: "service", titel: requirement.titel,
       beskrivelse: requirement.beskrivelse || "Automatisk oprettet fra et aktivt servicekrav.",
       prioritet: evaluation.overdue ? "hoej" : "normal", status: "ny",
+      alvorlighed: evaluation.overdue ? "high" : "moderate",
+      anvendelighed: "uncertain",
       forfaldsdato: evaluation.dueDate, forfaldsMaeler: evaluation.dueMeter,
-      oprettetMs: nowMs,
+      maalerEnhed: requirement.maalerEnhed || "km",
+      oprettetMs: nowMs, opdateretMs: nowMs,
     };
     tenant.fleetSager[caseId] = {
       id: caseId, oprindelse: "serviceautomatik", indberetningId: reportId,
       servicekravId: requirementId, serviceforekomstId: occurrenceId,
       enhedId: requirement.enhedId, titel: requirement.titel,
       status: "ny", prioritet: evaluation.overdue ? "hoej" : "normal",
+      forfaldsdato: evaluation.dueDate,
       naesteHandling: "Vurder automatisk servicevarsel", oprettetMs: nowMs,
       opdateretMs: nowMs,
     };
@@ -236,7 +240,10 @@ export function completeFleetServiceOccurrence(tenantInput, occurrenceId, input,
     senesteResultat: "service_gennemfoert", opdateretMs: nowMs,
   };
   if (tenant.fleetIndberetninger?.[occurrence.indberetningId]) {
-    tenant.fleetIndberetninger[occurrence.indberetningId].status = "service_gennemfoert";
+    tenant.fleetIndberetninger[occurrence.indberetningId] = {
+      ...tenant.fleetIndberetninger[occurrence.indberetningId],
+      status: "service_gennemfoert", opdateretMs: nowMs,
+    };
   }
   if (tenant.fleetSager?.[occurrence.sagId]) {
     tenant.fleetSager[occurrence.sagId] = {
@@ -248,7 +255,8 @@ export function completeFleetServiceOccurrence(tenantInput, occurrenceId, input,
   tenant.fleetServiceHistorik ||= {};
   tenant.fleetServiceHistorik[historyId] = {
     id: historyId, servicekravId: occurrence.servicekravId,
-    serviceforekomstId: occurrenceId, handling: "service_gennemfoert",
+    serviceforekomstId: occurrenceId, indberetningId: occurrence.indberetningId,
+    sagId: occurrence.sagId, handling: "service_gennemfoert",
     aktor: shortText(input?.actorId, 128) || "ukendt", tidspunktMs: nowMs,
     dato: serviceDate, maaler: serviceMeter,
   };

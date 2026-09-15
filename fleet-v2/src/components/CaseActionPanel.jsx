@@ -20,6 +20,14 @@ export function CaseActionPanel({ caseItem, report, onUpdate, compact = false, o
   ));
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   if (!caseItem) return <section className="case-action-panel empty"><h2>Vælg en sag</h2><p>Vurdering og handling vises her.</p></section>;
+  if (caseItem.readOnly) return <section className={`case-action-panel${compact ? " compact" : ""}`}>
+    <header><div><span className="eyebrow">Serverstyret serviceforløb</span><h2>Vurdering og handling</h2></div><span className={`status-badge ${caseItem.priority}`}><i />{CASE_PRIORITIES[caseItem.priority]}</span></header>
+    <div className="case-action-fields">
+      <div className="form-alert warning" role="status">Sagen er oprettet af serviceautomatikken og vises fra serveren. Den lokale prototype må ikke ændre den.</div>
+      <dl className="detail-list"><div><dt>Status</dt><dd>{CASE_STATUSES[caseItem.status]}</dd></div><div><dt>Næste handling</dt><dd>{caseItem.nextAction || "Ikke oplyst"}</dd></div></dl>
+      <small className="prototype-note">En servervalideret behandlingsadapter mangler endnu. Ingen ændring gemmes i browseren.</small>
+    </div>
+  </section>;
   const set = (key, value) => setValues((current) => ({ ...current, [key]: value }));
   const performSave = async () => {
     const validation = values.status ? validateTransition(caseItem, values.status, values, report) : {};

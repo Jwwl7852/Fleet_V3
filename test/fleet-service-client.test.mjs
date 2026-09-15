@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   createFleetServiceClient,
+  mapServerCaseToFleet,
   mapServerOccurrenceToFleet,
+  mapServerReportToFleet,
   mapServerRequirementToFleet,
+  mapServerServiceHistoryToFleet,
   mapSharedUnitToFleet,
   requirementInputToServer,
 } from "../src/fleet/fleet-service-client.js";
@@ -65,5 +68,35 @@ describe("FLEET-serviceklientens autoritative grænse", () => {
     assert.equal(occurrence.status, "alerted");
     assert.equal(occurrence.reportId, "svcrep-1");
     assert.equal(occurrence.origin, "service_automation");
+  });
+
+  it("projekterer serverens indberetning og sag uden at ændre deres ID'er", () => {
+    const report = mapServerReportToFleet({
+      id: "svcrep-1", sagId: "svccase-1", enhedId: "kt-104", titel: "Årligt service",
+      prioritet: "hoej", oprettetMs: Date.parse("2026-09-15T08:00:00Z"),
+    });
+    const caseItem = mapServerCaseToFleet({
+      id: "svccase-1", indberetningId: "svcrep-1", enhedId: "kt-104",
+      status: "fakturaafklaring", prioritet: "hoej", oprettetMs: Date.parse("2026-09-15T08:00:00Z"),
+    });
+    assert.equal(report.id, "svcrep-1");
+    assert.equal(report.caseId, "svccase-1");
+    assert.equal(report.usability, "uncertain");
+    assert.equal(report.readOnly, true);
+    assert.equal(caseItem.id, "svccase-1");
+    assert.equal(caseItem.reportId, "svcrep-1");
+    assert.equal(caseItem.status, "invoice_pending");
+    assert.equal(caseItem.readOnly, true);
+  });
+
+  it("mapper serverhistorik til sagens tidslinje", () => {
+    const event = mapServerServiceHistoryToFleet({
+      id: "svcevt-1", sagId: "svccase-1", indberetningId: "svcrep-1",
+      handling: "service_gennemfoert", aktor: "user-7", dato: "2026-09-15",
+      maaler: 12000, tidspunktMs: Date.parse("2026-09-15T09:30:00Z"),
+    });
+    assert.equal(event.caseId, "svccase-1");
+    assert.match(event.text, /12\.000/);
+    assert.equal(event.source, "server");
   });
 });

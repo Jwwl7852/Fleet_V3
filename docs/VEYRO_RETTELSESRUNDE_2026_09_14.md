@@ -702,3 +702,42 @@ før/efter-beviser for de prioriterede synlige fejl.
 | FL-14 | Delvist implementeret: serverstatus og manuel serverkontrol er koblet; serveroprettede sager er endnu ikke åbne fra FLEET-listen | Delvist implementeret: idempotent cyklus, manglende grundlag, gennemførsel og næste årscyklus; ændring/deaktivering med åben forekomst mangler | Delvist implementeret: UI bruger callables/noder og ingen browsertimer; overgang af eksisterende lokale poster og sagsadapter mangler | Implementeret og verificeret for tenant, aktivt abonnement, FLEET-modul, `koeretoejer.skriv`, læseadgang og afvist direkte skrivning | 13/13 fokuserede tests, servertilstandskomponenttest og fuld gate 4.613/4.613 | Delvist implementeret |
 | REG-01 | Ikke relevant | Implementeret og verificeret for denne serverkobling | Implementeret og verificeret uden lokal fallback | Implementeret og verificeret | Fuld gate 4.613/4.613 | Delvist implementeret, fordi kommende serveretaper fortsat mangler |
 | REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, design 11/11, FLEET 192/192 og fuld gate 4.613/4.613 | Delvist implementeret |
+
+### Etape 17 — serverprojektion i FLEETs indberetninger og sager
+
+- De indberetninger og sager, som serviceautomatikken opretter på serveren,
+  indlæses nu i de almindelige FLEET-flader med deres stabile server-ID'er.
+  De kan åbnes på `/fleet-v2/indberetninger/<indberetnings-id>`,
+  `/fleet-v2/arbejdsko/<sags-id>` og `/fleet-v2/sager/<sags-id>`.
+- Projektionen flettes med den eksisterende lokale prototype ved ID, men
+  serverposten vinder ved en kollision. Der oprettes ingen ekstra redigerbar
+  kopi. Det fælles `koeretoejer`-ID bevares som enhedsreference.
+- Serverposter er udtrykkeligt skrivebeskyttede i denne overgang. Sagsmappe,
+  arbejdskø, vurdering og direkte værkstedslink skjuler eller afviser lokale
+  ændringer. Datakonteksten håndhæver det samme værn, så en gammel eller
+  skjult betjeningsvej heller ikke kan skrive en serverstyret sag til
+  IndexedDB.
+- Gennemført service kobles til indberetning og sag i tidslinjen. Serverens
+  ukendte anvendelighed vises som `Uafklaret`; klienten opfinder ikke, at en
+  enhed er i drift eller ude af drift. En læsefejl vises i de berørte flader
+  og udløser ikke skjult fallback til demodata.
+- Teknisk bevis på etapegrundlaget: 15/15 rene service-/adaptertests, 7/7
+  målrettede serviceflowtests, hele FLEET-suiten 193/193 i 31 filer, root lint,
+  produktionsbuild, designgate 11/11 og fuld isoleret Rules-/platformsgate
+  4.615/4.615. Ingen Rules eller negative tests er fjernet eller svækket.
+- Integreret browserkontrol nåede den lokale app på port 5297, men den
+  autentificerede rute standsede på `/login`. Login blev ikke automatiseret,
+  browserdata blev ikke ryddet, og der afleveres derfor ikke et gammelt eller
+  uautentificeret billede som bevis for denne etape.
+- Fortsat restarbejde: servermutationer til vurdering, sagsstatus,
+  værkstedsbestilling og lukning; eksplicit håndtering af åben forekomst ved
+  ændring/deaktivering af et servicekrav; samt en kontrolleret overgang for
+  allerede eksisterende lokale poster.
+
+#### Delstatus efter Etape 17
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FL-14 | Implementeret, men ikke integreret browserverificeret: servervarsler åbner i indberetning, arbejdskø og sagsmappe og er tydeligt skrivebeskyttede | Delvist implementeret: stabil cyklus, manglende grundlag, tidslinjereferencer og ærlig uafklaret anvendelighed; kravændring/deaktivering mangler | Delvist implementeret: serverkilden er autoritativ og uden lokal fallback; sagsmutationer og overgang af lokale poster mangler | Implementeret og teknisk verificeret for læsning og afvist direkte/lokal skrivning; de kommende servermutationers handlingspermissions mangler | 15/15 adaptertests, 7/7 serviceflow, FLEET 193/193 og fuld gate 4.615/4.615; integreret browserlogin blokerer billedbevis | Delvist implementeret |
+| REG-01 | Ikke relevant | Implementeret og verificeret for den læsende serverprojektion | Implementeret og verificeret uden ny redigerbar kopi | Implementeret og verificeret for den læsende projektion | Fuld gate 4.615/4.615 | Delvist implementeret, fordi servermutationer og senere etaper mangler |
+| REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, design 11/11, FLEET 193/193 og fuld gate 4.615/4.615 | Delvist implementeret |

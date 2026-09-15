@@ -61,6 +61,7 @@ export function WorkshopAssignment({ caseId, canCreateSupplier = false, onCreate
   }, [selectedSupplierId, workshops]);
   if (loading) return <main className="workspace-page loading-state" id="main-content"><span className="loading-spinner" /></main>;
   if (!caseItem || !unit) return <main className="workspace-page not-found-state" id="main-content"><Icon name="warning" size={38} /><h1>Sagen findes ikke</h1><button className="primary-button" onClick={() => onNavigate("/arbejdsko")} type="button">Til Arbejdskø</button></main>;
+  if (caseItem.readOnly) return <main className="workspace-page not-found-state" id="main-content"><Icon name="warning" size={38} /><span className="eyebrow">Serverstyret servicesag</span><h1>Værkstedsbehandling er ikke tilsluttet</h1><p>Sagen vises fra serveren og må ikke få et lokalt værkstedsudkast. Brug den fælles sagsadapter, når den er tilgængelig.</p><button className="primary-button" onClick={() => onNavigate(`/sager/${caseId}`)} type="button">Tilbage til sagsmappe</button></main>;
   const set = (key, value) => setValues((current) => ({ ...current, [key]: value }));
   const regenerate = (mode = values.mode, workshopId = values.workshopId) => {
     const generated = buildWorkshopMail({ caseItem, unit, orderReference: existing?.reference || caseItem.orderReference, mode, workDescription: values.workDescription, vendorContact: caseItem.vendorContact });
