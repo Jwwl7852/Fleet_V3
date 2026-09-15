@@ -4,8 +4,9 @@
 
 Den afsluttende prøve blev kørt fra
 `C:\Users\DennisChristensen\Documents\GitHub\Fleet_V3-integration` på branch
-`codex/veyro-integration-v1` og produktcommit
-`97858a5fc9375af5eb6256beb6a9ecb2b868655d`.
+`codex/veyro-integration-v1` og produktcommits
+`97858a5fc9375af5eb6256beb6a9ecb2b868655d` og
+`167d93706891543beb8a4d627b80e0632be2d3d7`.
 
 Det var den byggede **samlede root-app med indlejret FLEET**, ikke FLEETs
 standalone-app:
@@ -73,14 +74,25 @@ modulbevis og tæller ikke som integreret browserbevis.
   var fejlagtigt mærket betaling eller bogføring. Den tomme serverliste
   dokumenterer kun den integrerede side og adgangsgrænsen, ikke FC-03/04s
   tobruger- eller masseflow.
+- Service viste først permanent `Indlæser servicekrav …`, selv efter alle seks
+  serverprojektioner var færdige og tomme. Browserfundet blev rettet ved at
+  medtage indberetnings-, sags- og historikprojektionernes loading-/fejltilstand
+  i memoiseringsgrænsen. Den efterfølgende integrerede prøve viste den tomme,
+  færdigindlæste servervisning uden lokal fallback.
 
 ## Viewports og artefakter
 
-Den automatiserede matrix dækkede seks routes ved 1920×1080, 1440×900,
+Den automatiserede matrix dækkede ti routes ved 1920×1080, 1440×900,
 390×844 og 360×800: FLEET-overblik, arbejdskø, indberetninger, Livekort,
-sagsmappe og Fakturacenter. Alle 24 kombinationer havde `maxScrollX = 0`.
+sagsmappe, Fakturacenter, Service, kategoristamdata, FLEET-økonomi og
+FLEET-statistik. Alle 40 route-/viewportkombinationer havde `maxScrollX = 0`.
 Mobilnavigationens aktive undermenu blev gjort til en vandret intern scroller;
 FLEET-indhold begyndte ved 285 px og Fakturacenter ved 230 px i 390×844.
+
+På hver route og viewport blev layoutet desuden målt i normal og kompakt
+sidebar ved 100 % og 125 % arbejdsområdezoom: 160/160 kombinationer viste den
+forventede menu- og zoomtilstand uden vandret dokumentscroll. Dirty-dialogen
+blev fotograferet separat ved alle fire viewports og forblev fuldt betjenelig.
 
 Maskinlæsbar evidens og samtlige screenshots ligger i
 `artifacts/veyro-rettelsesrunde-2026-09-15/browser/`. Centrale billeder:
@@ -89,13 +101,13 @@ Maskinlæsbar evidens og samtlige screenshots ligger i
 - `10-livekort-popup-integreret-1440x900.png`;
 - `11-sagsmappe-fra-indberetning-1440x900.png`;
 - `12-fakturacenter-integreret-1440x900.png`;
-- de 24 route-/viewportbilleder `04-*` til `09-*`;
+- de 40 route-/viewportbilleder `04-*` til `09-*` og `13-*` til `16-*`;
+- dirty-dialogbillederne `17-dirty-dialog-*` ved alle fire viewports;
 - `RESULTAT.json` med alle målte assertions og nul runtimeproblemer.
 
-Matrixen er et aktuelt slutgrundlagsbevis for de nævnte skærme. Service,
-kategoristamdata, FLEET-økonomi/statistik og de resterende dialog-/fejlforløb
-er ikke med i alle fire viewports; derfor står UX-07 og REG-03 fortsat som
-delvise i kravmatricen.
+Matrixen er et aktuelt slutgrundlagsbevis for de nævnte skærme og lukker
+REG-03. UX-07 står fortsat delvist, fordi den resterende root-/ikke-FLEET-
+dialogaudit og reelle save-/delete-fejlforløb ikke er fuldt browserprøvet.
 
 ## Tekniske kontroller på slutgrundlaget
 
@@ -107,10 +119,11 @@ delvise i kravmatricen.
 - FLEET-produktionsbuild: bestået, 195 moduler transformeret.
 - Functions-syntaks: bestået.
 - Delte functions-filer: 29/29 tests bestået.
-- Fuld Rules-/platformsgate: 4.625/4.625 tests bestået, 0 fejlet og 0
+- Fuld Rules-/platformsgate: 4.626/4.626 tests bestået, 0 fejlet og 0
   sprunget over.
-- Browser-QA: bestået, 24/24 route-/viewportkombinationer uden vandret
-  dokumentscroll og nul registrerede runtimeproblemer.
+- Browser-QA: bestået, 40/40 route-/viewportkombinationer og 160/160
+  layoutkombinationer uden vandret dokumentscroll og nul registrerede
+  runtimeproblemer.
 - `git diff --check`: bestået; Git viste kun repositoryets LF/CRLF-advarsler.
 
 ## Procesbegrænsninger
@@ -124,5 +137,5 @@ begrænsning er ophævet.
 
 Java-emulatorens tidligere opstartsfejl var en separat procesfejl. Den
 afsluttende Rules-gate blev kørt med repositoryets proceslokale JDK
-`C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot` og bestod 4.625/4.625.
+`C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot` og bestod 4.626/4.626.
 Ingen sikkerhedstest blev sprunget over eller svækket.

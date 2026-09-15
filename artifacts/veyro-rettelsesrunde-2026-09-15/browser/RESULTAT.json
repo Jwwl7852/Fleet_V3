@@ -96,6 +96,8 @@
       "clientHeight": 1080,
       "scrollHeight": 1217,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -134,6 +136,8 @@
       "clientHeight": 1080,
       "scrollHeight": 1114,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -172,6 +176,8 @@
       "clientHeight": 1080,
       "scrollHeight": 1114,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -210,6 +216,8 @@
       "clientHeight": 1080,
       "scrollHeight": 1551,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -248,6 +256,8 @@
       "clientHeight": 1080,
       "scrollHeight": 1790,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -286,6 +296,8 @@
       "clientHeight": 1080,
       "scrollHeight": 1080,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -315,6 +327,166 @@
       "horizontalOverflow": false
     },
     {
+      "route": "/fleet-v2/service",
+      "width": 1920,
+      "height": 1080,
+      "filename": "13-service-1920x1080.png",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 1920,
+      "height": 1080,
+      "filename": "14-kategorier-1920x1080.png",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 752,
+          "height": 308,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 1920,
+      "height": 1080,
+      "filename": "15-fleet-oekonomi-1920x1080.png",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1749,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1715,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 1920,
+      "height": 1080,
+      "filename": "16-statistik-1920x1080.png",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
       "route": "/fleet-v2",
       "width": 1440,
       "height": 900,
@@ -324,6 +496,8 @@
       "clientHeight": 900,
       "scrollHeight": 1390,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -362,6 +536,8 @@
       "clientHeight": 900,
       "scrollHeight": 1444,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -400,6 +576,8 @@
       "clientHeight": 900,
       "scrollHeight": 1027,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -438,6 +616,8 @@
       "clientHeight": 900,
       "scrollHeight": 1551,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -476,6 +656,8 @@
       "clientHeight": 900,
       "scrollHeight": 1790,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -514,6 +696,8 @@
       "clientHeight": 900,
       "scrollHeight": 900,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -543,6 +727,166 @@
       "horizontalOverflow": false
     },
     {
+      "route": "/fleet-v2/service",
+      "width": 1440,
+      "height": 900,
+      "filename": "13-service-1440x900.png",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 934,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 1440,
+      "height": 900,
+      "filename": "14-kategorier-1440x900.png",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 934,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 752,
+          "height": 308,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 1440,
+      "height": 900,
+      "filename": "15-fleet-oekonomi-1440x900.png",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1749,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1715,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 1440,
+      "height": 900,
+      "filename": "16-statistik-1440x900.png",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1025,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 991,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
       "route": "/fleet-v2",
       "width": 390,
       "height": 844,
@@ -552,6 +896,8 @@
       "clientHeight": 844,
       "scrollHeight": 2804,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -590,6 +936,8 @@
       "clientHeight": 844,
       "scrollHeight": 2432,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -628,6 +976,8 @@
       "clientHeight": 844,
       "scrollHeight": 1521,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -666,6 +1016,8 @@
       "clientHeight": 844,
       "scrollHeight": 1615,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -704,6 +1056,8 @@
       "clientHeight": 844,
       "scrollHeight": 3105,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -742,6 +1096,8 @@
       "clientHeight": 844,
       "scrollHeight": 844,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -771,6 +1127,166 @@
       "horizontalOverflow": false
     },
     {
+      "route": "/fleet-v2/service",
+      "width": 390,
+      "height": 844,
+      "filename": "13-service-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1197,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 390,
+      "height": 844,
+      "filename": "14-kategorier-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1135,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 850,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 390,
+      "height": 844,
+      "filename": "15-fleet-oekonomi-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 3002,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2717,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 390,
+      "height": 844,
+      "filename": "16-statistik-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1982,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1697,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
       "route": "/fleet-v2",
       "width": 360,
       "height": 800,
@@ -780,6 +1296,8 @@
       "clientHeight": 800,
       "scrollHeight": 2804,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -818,6 +1336,8 @@
       "clientHeight": 800,
       "scrollHeight": 2432,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -856,6 +1376,8 @@
       "clientHeight": 800,
       "scrollHeight": 1521,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -894,6 +1416,8 @@
       "clientHeight": 800,
       "scrollHeight": 1615,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -932,6 +1456,8 @@
       "clientHeight": 800,
       "scrollHeight": 3120,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -970,6 +1496,8 @@
       "clientHeight": 800,
       "scrollHeight": 800,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 50,
@@ -997,6 +1525,6568 @@
         }
       },
       "horizontalOverflow": false
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 360,
+      "height": 800,
+      "filename": "13-service-360x800.png",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1231,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 945,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 360,
+      "height": 800,
+      "filename": "14-kategorier-360x800.png",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1154,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 869,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 360,
+      "height": 800,
+      "filename": "15-fleet-oekonomi-360x800.png",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 3055,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2770,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 360,
+      "height": 800,
+      "filename": "16-statistik-360x800.png",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 2010,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1725,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    }
+  ],
+  "layoutMatrix": [
+    {
+      "route": "/fleet-v2",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1217,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1183,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1473,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1439,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1217,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1183,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1473,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1439,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1137,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1103,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1120,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1086,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1551,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1517,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1889,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1855,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1551,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1517,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1889,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1855,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1790,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1756,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 2182,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 2148,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1790,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1756,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 2182,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 2148,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1920,
+      "scrollWidth": 1920,
+      "clientHeight": 1080,
+      "scrollHeight": 1080,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1046,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 655,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 281,
+          "height": 62,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1046,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1920,
+      "scrollWidth": 1920,
+      "clientHeight": 1080,
+      "scrollHeight": 1080,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1046,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 655,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 281,
+          "height": 62,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1046,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1920,
+      "scrollWidth": 1920,
+      "clientHeight": 1080,
+      "scrollHeight": 1080,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1046,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 878,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1046,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1920,
+      "scrollWidth": 1920,
+      "clientHeight": 1080,
+      "scrollHeight": 1080,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1046,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 878,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1046,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 752,
+          "height": 308,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 752,
+          "height": 308,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1749,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1715,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 2134,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 2100,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1749,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1715,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 2134,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 2100,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 1920,
+      "height": 1080,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1231,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1197,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 1920,
+      "height": 1080,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1231,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1197,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1390,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1356,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1689,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1655,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1390,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1356,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1689,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1655,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1444,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1410,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1750,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1716,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1429,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1395,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1750,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1716,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1027,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 993,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1235,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1201,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1027,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 993,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1235,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1201,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1551,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1517,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1889,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1855,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1551,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1517,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1889,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1855,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1790,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1756,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 2182,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 2148,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1790,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1756,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 2182,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 2148,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "clientHeight": 900,
+      "scrollHeight": 900,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 475,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 281,
+          "height": 62,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "clientHeight": 900,
+      "scrollHeight": 900,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 475,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 281,
+          "height": 62,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "clientHeight": 900,
+      "scrollHeight": 900,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 698,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "clientHeight": 900,
+      "scrollHeight": 900,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 698,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 934,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 934,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 934,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 934,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 934,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 752,
+          "height": 308,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1035,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 752,
+          "height": 308,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1001,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 934,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1035,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1001,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1749,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1715,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 2176,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 2142,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1749,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1715,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 2134,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 2100,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1025,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 991,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 1440,
+      "height": 900,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1231,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 396,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 1197,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1025,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 991,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 1440,
+      "height": 900,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1231,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 126,
+          "height": 732,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "activeSub": {
+          "top": 0,
+          "height": 0,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "main": {
+          "top": 34,
+          "height": 1197,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 410,
+      "clientHeight": 844,
+      "scrollHeight": 2804,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2519,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 510,
+      "clientHeight": 844,
+      "scrollHeight": 3397,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3112,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 410,
+      "clientHeight": 844,
+      "scrollHeight": 2804,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2519,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 510,
+      "clientHeight": 844,
+      "scrollHeight": 3397,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3112,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 2432,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2147,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 2920,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2635,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 2432,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2147,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 2920,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2635,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1521,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1236,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1790,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1505,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1521,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1236,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1790,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1505,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1615,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1330,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1943,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1658,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1615,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1330,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1943,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1658,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 3105,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2820,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 3794,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3509,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 3105,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2820,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 3794,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3509,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 844,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 180,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 149,
+          "height": 75,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 190,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 230,
+          "height": 614,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 844,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 180,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 149,
+          "height": 75,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 190,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 230,
+          "height": 614,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 844,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 180,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 149,
+          "height": 75,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 190,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 230,
+          "height": 614,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 844,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 180,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 149,
+          "height": 75,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 190,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 230,
+          "height": 614,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1197,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1544,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1259,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1197,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 912,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1544,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1259,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1135,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 850,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1325,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1040,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1135,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 850,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1325,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1040,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 3002,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2717,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 3759,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3474,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 3002,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2717,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 3759,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3474,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1982,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1697,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 390,
+      "height": 844,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 2444,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2159,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1982,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1697,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 390,
+      "height": 844,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 2444,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2159,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 410,
+      "clientHeight": 800,
+      "scrollHeight": 2804,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2519,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 510,
+      "clientHeight": 800,
+      "scrollHeight": 3417,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3132,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 410,
+      "clientHeight": 800,
+      "scrollHeight": 2804,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2519,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 510,
+      "clientHeight": 800,
+      "scrollHeight": 3417,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3132,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 2432,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2147,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 2939,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2654,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 2432,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2147,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/arbejdsko",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 2939,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2654,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1521,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1236,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1851,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1566,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1521,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1236,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/indberetninger",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1851,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1566,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1615,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1330,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1943,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1658,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1615,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1330,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/livekort",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1943,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1658,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 3120,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2835,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 3896,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3611,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 3120,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2835,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/sager/case-demo-001",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 3896,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3611,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 800,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 180,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 149,
+          "height": 75,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 190,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 230,
+          "height": 570,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 800,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 180,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 149,
+          "height": 75,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 190,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 230,
+          "height": 570,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 800,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 180,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 149,
+          "height": 75,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 190,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 230,
+          "height": 570,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/oekonomi/fakturacenter",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 800,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 180,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 149,
+          "height": 75,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 190,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 230,
+          "height": 570,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1231,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 945,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1582,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1297,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1231,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 945,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/service",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1582,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1297,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1154,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 869,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1351,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1065,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1154,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 869,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/opsaetning/fleet-kategorier",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1351,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1065,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 3055,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2770,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 3796,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3511,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 3055,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2770,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/oekonomi",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 3796,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 3511,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 2010,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1725,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 360,
+      "height": 800,
+      "menu": "normal",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 2469,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2184,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "100 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 2010,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 1725,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    },
+    {
+      "route": "/fleet-v2/statistik",
+      "width": 360,
+      "height": 800,
+      "menu": "compact",
+      "expectedZoom": "125 %",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 2469,
+      "maxScrollX": 0,
+      "compact": true,
+      "zoom": "125 %",
+      "shellGeometry": {
+        "side": {
+          "top": 50,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 193,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 235,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 285,
+          "height": 2184,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
     }
   ],
   "screenshots": [
@@ -1007,6 +8097,8 @@
       "clientHeight": 844,
       "scrollHeight": 851,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": null,
       "shellGeometry": {
         "side": null,
         "nav": null,
@@ -1022,6 +8114,8 @@
       "clientHeight": 900,
       "scrollHeight": 934,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -1052,6 +8146,8 @@
       "clientHeight": 900,
       "scrollHeight": 1390,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -1087,6 +8183,8 @@
       "clientHeight": 900,
       "scrollHeight": 1551,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,
@@ -1122,6 +8220,8 @@
       "clientHeight": 900,
       "scrollHeight": 1790,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 0,
@@ -1151,12 +8251,162 @@
       "horizontalOverflow": false
     },
     {
+      "filename": "17-dirty-dialog-1920x1080.png",
+      "clientWidth": 1905,
+      "scrollWidth": 1905,
+      "clientHeight": 1080,
+      "scrollHeight": 1114,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 0,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 143,
+          "height": 689,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 362,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 0,
+          "height": 1080,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "17-dirty-dialog-1440x900.png",
+      "clientWidth": 1425,
+      "scrollWidth": 1425,
+      "clientHeight": 900,
+      "scrollHeight": 1112,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 0,
+          "height": 900,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 143,
+          "height": 509,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 362,
+          "height": 339,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 0,
+          "height": 1078,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "17-dirty-dialog-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 1292,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 16,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 159,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 201,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 251,
+          "height": 1007,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "17-dirty-dialog-360x800.png",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "clientHeight": 800,
+      "scrollHeight": 1292,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 16,
+          "height": 235,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 159,
+          "height": 80,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 201,
+          "height": 34,
+          "overflowX": "auto",
+          "overflowY": "hidden"
+        },
+        "main": {
+          "top": 251,
+          "height": 1007,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
       "filename": "12-fakturacenter-integreret-1440x900.png",
       "clientWidth": 1440,
       "scrollWidth": 1440,
       "clientHeight": 900,
       "scrollHeight": 900,
       "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
       "shellGeometry": {
         "side": {
           "top": 34,

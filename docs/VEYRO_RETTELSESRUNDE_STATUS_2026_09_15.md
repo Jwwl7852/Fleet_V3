@@ -7,21 +7,22 @@ prototypedata er blevet autoritativ serverfunktionalitet. Obligatorisk
 manglende backend-, datakilde- eller integrationsbevis fastholder kravet som
 `Delvist`.
 
-Aktuel vurdering: **20 implementerede, 16 delvise, 0 ikke implementerede og 0
+Aktuel vurdering: **21 implementerede, 15 delvise, 0 ikke implementerede og 0
 blokerede**.
 
-Fælles slutgrundlag, hvor det er anført som `slutgate`: produktcommit
-`97858a5fc9375af5eb6256beb6a9ecb2b868655d`, root-lint, FLEET-lint,
+Fælles slutgrundlag, hvor det er anført som `slutgate`: produktcommits
+`97858a5fc9375af5eb6256beb6a9ecb2b868655d` og
+`167d93706891543beb8a4d627b80e0632be2d3d7`, root-lint, FLEET-lint,
 designgate 11/11, FLEET 205/205, functions-paritet 29/29, root- og FLEET-build,
-Rules-/platformsgate 4.625/4.625 og den integrerede browser-QA beskrevet i
+Rules-/platformsgate 4.626/4.626 og den integrerede browser-QA beskrevet i
 `docs/VEYRO_FLEET_NAVIGATION_QA_2026_09_15.md`.
 
 | Oprindeligt krav og reference | Status | Implementering | Faktisk UI-/browserbevis | Datakilde og backend | Adgang/tenant | Testgrundlag og commit | Præcist restarbejde/afhængighed |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| UX-01 Zoom, hukommelse og nulstilling — 14-9-PDF/audit UX-01 | Implementeret | Arbejdsområdezoom, kontekstafgrænset huskning og Nulstil visning findes. | Integreret 100→105→110 %; sidebar/topbjælke uændret. | Lokal bruger-, tenant- og skærmpræference; ingen forretningsdata. | Normal adminsession i `procure-auth-a`. | Slutgate; `97858a5`. | De endnu ikke dækkede skærme ligger under REG-03. |
-| UX-02 Stabil sidebar/skjult scrollbar — PDF/audit UX-02 | Implementeret | Shell og indhold zoomer separat; skjult scrollbar giver ikke teksthop. | Integreret desktop og mobil; 24/24 uden vandret dokumentscroll. | CSS/shell, ingen serverdata. | Tilladt, afvist og anonym session prøvet. | Slutgate; `97858a5`. | Resterende skærme under REG-03. |
+| UX-01 Zoom, hukommelse og nulstilling — 14-9-PDF/audit UX-01 | Implementeret | Arbejdsområdezoom, kontekstafgrænset huskning og Nulstil visning findes. | Integreret 100→105→110 %; sidebar/topbjælke uændret; 100/125 % indgår i alle 160 layoutkombinationer. | Lokal bruger-, tenant- og skærmpræference; ingen forretningsdata. | Normal adminsession i `procure-auth-a`. | Slutgate; `97858a5`. | Ingen særskilt mangel. |
+| UX-02 Stabil sidebar/skjult scrollbar — PDF/audit UX-02 | Implementeret | Shell og indhold zoomer separat; skjult scrollbar giver ikke teksthop. | Integreret desktop og mobil; 40/40 route-/viewport- og 160/160 layoutkombinationer uden vandret dokumentscroll. | CSS/shell, ingen serverdata. | Tilladt, afvist og anonym session prøvet. | Slutgate; `97858a5`. | Ingen særskilt mangel. |
 | UX-03 Hele moduloverskriften folder — PDF/audit UX-03 | Implementeret | Moduloverskrift og undernavigation har eksisterende tastatursemantik. | Aktiv FLEET- og økonomiundermenu prøvet i integreret shell. | Ingen backend. | Tenant-/modulmenu styret af normale claims. | Slutgate; historisk implementation bevaret. | Ingen særskilt mangel. |
-| UX-04 Kompakt flyout, hover/tastatur/touch — PDF/audit UX-04 | Implementeret | Normal/kompakt menu, hover/fokus/touch/ESC og tilgængelige labels findes. | Kompakt tilstand og label verificeret; flig målt centreret. | Bruger-/tenantafgrænset visningspræference. | Adminsession; ingen adgangsbypass. | Slutgate; tidligere menukomponenttests. | Den fulde kombinationsmatrix følger REG-03. |
+| UX-04 Kompakt flyout, hover/tastatur/touch — PDF/audit UX-04 | Implementeret | Normal/kompakt menu, hover/fokus/touch/ESC og tilgængelige labels findes. | Kompakt tilstand og label verificeret; flig målt centreret; normal/kompakt indgår i alle 160 layoutkombinationer. | Bruger-/tenantafgrænset visningspræference. | Adminsession; ingen adgangsbypass. | Slutgate; tidligere menukomponenttests. | Ingen særskilt mangel. |
 | UX-05 Afrundet flig variant B — PDF/audit UX-05 | Implementeret | Godkendt flig, klikmål og aria-label er bevaret. | Integreret geometri verificeret ved 1440×900. | Ingen backend. | Ikke adgangsbærende. | Slutgate. | Ingen særskilt mangel. |
 | UX-06 Tilbage-navigation med bevaret tilstand — PDF/audit UX-06 | Implementeret | Intern historik gemmer route, relevante filtre, valg og scroll; direkte URL får sikker fallback. | Arbejdskøfilter/tabel/valg/212 px, indberetningsfilter, enhedsfilter efter reload og Livekortvalg bevaret; direkte sagsroute → `/fleet-v2/arbejdsko`. | Serialiserbar browserhistorik og kontekstafgrænsede lokale visninger. | Normal adminsession; anonym direkte URL → login. | Navigationcommit `37c618d6079a9485c9f3e4ddd6bb2d52b2e1d8bd`; slutrettelse `97858a5`; 205/205. | Ingen særskilt mangel. |
 | UX-07 Fælles dialogregler — PDF/audit UX-07 | Delvist | 11 FLEET-dialogejere bruger fælles fokusfælde, ESC/X/Annuller, busy-værn, fokusretur og ens dirty-bekræftelse; eksplicit Gem bekræftes. | Dirty manuel sag: ESC bevarer dialog/input efter afvisning; bekræftet X lukker; fokus returneres. | UI-kontrakt; domænemutationens backend varierer pr. dialog. | Prøvet som tilladt tenantbruger. | Nye dialogtests 3/3, FLEET 205/205; `97858a5`. | Auditér resterende relevante root-/ikke-FLEET-dialoger og browserprøv reelle save-/delete-fejl. |
@@ -45,24 +46,24 @@ Rules-/platformsgate 4.625/4.625 og den integrerede browser-QA beskrevet i
 | FL-10 Godkendt sagsmappedesign — PDF-referencebillede/audit FL-10 | Implementeret | De syv gamle faner er fjernet; problem/næste handling, sagsarbejde, historik og infokolonne bevares. | Integreret: 0 faner, krævede sektioner og to kolonner; desktop og mobil screenshots. | Lokal sagsprototype; status-/fakturaafklaring vises uden opdigtet serverdata. | Moduladgang og direkte-URL-login bevist. | Slutgate; `97858a5`. | Autoritative mutationer følger FL-14/17. |
 | FL-11 Kompakt arbejdskø — PDF/audit FL-11 | Implementeret | Ingen permanent Flyt sag på kort; lovlige statusveje bevares. | Integreret arbejdskø og returstate bevist. | Lokal prototype. | Tilladt session. | Slutgate. | Autoritativ sagsmutation følger FL-14. |
 | FL-12 Fælles leverandører/værksteder — PDF/audit FL-12 | Implementeret | Fælles register læses uden lokal stamdatakopi; opret-og-vælg returnerer sikkert. | Ikke særskilt browsergenprøvet i denne matrix. | Eksisterende tenantafgrænset serverregister. | Eksisterende permissions og tenantgrænse. | Tidligere adapter-/Rules-tests bevaret + slutgate. | Ingen ekstern portalaktivering; integreret slutprøve ved næste leverandørændring. |
-| FL-13 Servicefelter og beregning — PDF/audit FL-13 | Delvist | Dato/km/timer, varsler, faste hændelser og forklarlig næste grænse findes. | Ikke med i den afsluttende route-/viewportmatrix. | Krav gemmes på server; historisk service og planlægning mangler adapter. | Servergrænsen har tenant-/permissiontests. | Serviceflow + slutgate; `97858a5` sikrer at en langsom serviceprojektion ikke blokerer øvrig FLEET. | Service-/planlægningsadapter, udførelsesmutation, syntetisk migrationsforløb og browserbevis. |
-| FL-14 Automatisk én indberetning pr. cyklus — PDF/audit FL-14 | Delvist | Cyklus, idempotens, samtidighed, gennemførsel og kontrolleret ændring/deaktivering findes servermæssigt. | Ingen ny integreret servicebrowserprøve. | Scheduler/callables/transaktioner er serverstyrede; læseprojektion skrivebeskyttet. | Tenant, FLEET-modul og `koeretoejer.skriv` emulatorprøvet. | 17 rene adaptertests, serviceflow og slutgate. | Autoriserede sagsmutationer samt syntetisk, ikke-produktiv migration af lokale poster. |
-| FL-15 Kundestyrede kategorier — PDF/audit FL-15 | Delvist | Tenantstamdata, mapping, sortering, deaktivering og snapshots findes. | Ikke i browsermatrixen. | Stamdata serverstyret; forbrugende FLEET-poster fortsat lokale. | Tenant-/permissiongrænse testet for stamdata. | Kategori-/Rules-kontrakter + slutgate. | Serverhåndhævelse for indberetnings- og økonomiposter, migrationsfixture og integreret bevis. |
-| FL-16 OBD-statistik — PDF/audit FL-16 | Delvist | UI viser/filtrerer/eksporterer kun tilgængelige målinger og forklarer manglende forbindelse. | Ikke i browsermatrixen; Livekort viser korrekt syntetisk kilde. | Ingen valideret OBD-kilde. | Root-moduladgang findes; ingen ekstern credential. | Statistiktests + slutgate. | Valideret OBD-kontrakt/kilde, syntetisk adaptertest og integreret browserbevis; ekstern tjeneste kræver tilladelse. |
-| FL-17 Samlet økonomi — PDF/audit FL-17 | Delvist | Status/kilder adskilles; kontraktperioder materialiseres, dubletter fjernes og kreditfortegn bevares. | Ikke i browsermatrixen. | Lokal IndexedDB; ingen Fakturacenter-/bogføringsadapter. | Ingen servermutation at autorisere endnu. | Økonomitests + slutgate. | Autoritativ adapter, serveraudit/mutation og fuld livscyklus; rigtig bogføring kræver ekstern aftale. |
+| FL-13 Servicefelter og beregning — PDF/audit FL-13 | Delvist | Dato/km/timer, varsler, faste hændelser og forklarlig næste grænse findes. | Integreret ved alle fire viewports; den tomme serverprojektion afslutter nu loading korrekt. | Krav gemmes på server; historisk service og planlægning mangler adapter. | Servergrænsen har tenant-/permissiontests. | Serviceflow + slutgate; `167d9370` dækker alle seks serverprojektioners loading/fejl. | Service-/planlægningsadapter, udførelsesmutation og syntetisk migrationsforløb. |
+| FL-14 Automatisk én indberetning pr. cyklus — PDF/audit FL-14 | Delvist | Cyklus, idempotens, samtidighed, gennemførsel og kontrolleret ændring/deaktivering findes servermæssigt. | Integreret Service-readmodel ved fire viewports; ingen automatisk handling fremprovokeret i browseren. | Scheduler/callables/transaktioner er serverstyrede; læseprojektion skrivebeskyttet. | Tenant, FLEET-modul og `koeretoejer.skriv` emulatorprøvet. | 17 rene adaptertests, serviceflow og slutgate. | Autoriserede sagsmutationer samt syntetisk, ikke-produktiv migration af lokale poster. |
+| FL-15 Kundestyrede kategorier — PDF/audit FL-15 | Delvist | Tenantstamdata, mapping, sortering, deaktivering og snapshots findes. | Integreret kategoriskærm ved alle fire viewports. | Stamdata serverstyret; forbrugende FLEET-poster fortsat lokale. | Tenant-/permissiongrænse testet for stamdata. | Kategori-/Rules-kontrakter + slutgate. | Serverhåndhævelse for indberetnings- og økonomiposter samt migrationsfixture. |
+| FL-16 OBD-statistik — PDF/audit FL-16 | Delvist | UI viser/filtrerer/eksporterer kun tilgængelige målinger og forklarer manglende forbindelse. | Integreret statistik ved fire viewports viser eksplicit, at OBD ikke er tilsluttet; Livekort viser syntetisk kilde. | Ingen valideret OBD-kilde. | Root-moduladgang findes; ingen ekstern credential. | Statistiktests + slutgate. | Valideret OBD-kontrakt/kilde og ekstern verifikation; ekstern tjeneste kræver tilladelse. |
+| FL-17 Samlet økonomi — PDF/audit FL-17 | Delvist | Status/kilder adskilles; kontraktperioder materialiseres, dubletter fjernes og kreditfortegn bevares. | Integreret økonomi ved alle fire viewports viser tydeligt lokalt prototyperegister. | Lokal IndexedDB; ingen Fakturacenter-/bogføringsadapter. | Ingen servermutation at autorisere endnu. | Økonomitests + slutgate. | Autoritativ adapter, serveraudit/mutation og fuld livscyklus; rigtig bogføring kræver ekstern aftale. |
 | FL-18 Dansk eksport — PDF/audit FL-18 | Delvist | UTF-8 BOM, dansk decimal, sporbarhed og eksplicit netto/moms/brutto uden antaget sats. | Excel-kompatibel projektmappe visuelt kontrolleret; ikke Microsoft Excel. | Lokal filgenerering; produktionskilden leverer ikke altid eksplicit moms. | Ingen servermutation. | Eksportcommit `3e07c85ee047243fa35fe12d43d827292269614a`; slutgate. | Manuel åbning i Microsoft Excel og autoritativt momsbeløb fra produktionskilden. |
-| REG-01 Rules-/sikkerhedsgate — PDF/audit REG-01 | Delvist | Relevante Rules/Functions-kontrakter dækker tenant, rolle, revision, samtidighed og idempotens. | Ikke et UI-krav. | Isolerede RTDB/Storage-emulatorer; ingen ekstern service. | Negative og positive adgangstests kørt; 0 sprunget over. | Slutgate 4.625/4.625 på `97858a5`. | Nye serverfunktioner for de resterende krav skal have egne grønne emulatorbeviser. |
-| REG-02 Samlet tværmodulregression — PDF/audit REG-02 | Delvist | Aktuelle fælles kontrakter og root-moduler består slutgaten. | Integreret FLEET/Fakturacenter, adgang og 24 viewportkombinationer bevist. | Nuværende serverkontrakter grønne; fremtidige adaptere mangler. | Anonym, uden FLEET-adgang og tilladt tenantbruger prøvet. | Slutgate 4.625/4.625; browser-QA; `97858a5`. | Endelig regression efter FC-06 og FL-13–18s resterende backend/integrationer. |
-| REG-03 Komplet viewport-/zoommatrix — PDF/audit REG-03 | Delvist | Responsiv shell, mobil undermenu og scoped overflowrettelser er implementeret. | 24/24 for seks routes ved 1920×1080, 1440×900, 390×844 og 360×800; arbejdszoom og kompakt menu målt. | Ingen backend ud over testdata. | Tilladt session; adgangsskærme også fotograferet. | Browser-QA + slutgate; `97858a5`. | Gentag alle fire viewports/zoom/menuvalg for service, kategorier, FLEET-økonomi/statistik og resterende dialoger. |
+| REG-01 Rules-/sikkerhedsgate — PDF/audit REG-01 | Delvist | Relevante Rules/Functions-kontrakter dækker tenant, rolle, revision, samtidighed og idempotens. | Ikke et UI-krav. | Isolerede RTDB/Storage-emulatorer; ingen ekstern service. | Negative og positive adgangstests kørt; 0 sprunget over. | Slutgate 4.626/4.626 på `167d9370`. | Nye serverfunktioner for de resterende krav skal have egne grønne emulatorbeviser. |
+| REG-02 Samlet tværmodulregression — PDF/audit REG-02 | Delvist | Aktuelle fælles kontrakter og root-moduler består slutgaten. | Integreret FLEET/Fakturacenter, adgang, 40 viewport- og 160 layoutkombinationer bevist. | Nuværende serverkontrakter grønne; fremtidige adaptere mangler. | Anonym, uden FLEET-adgang og tilladt tenantbruger prøvet. | Slutgate 4.626/4.626; browser-QA; `167d9370`. | Endelig regression efter FC-06 og FL-13–18s resterende backend/integrationer. |
+| REG-03 Komplet viewport-/zoommatrix — PDF/audit REG-03 | Implementeret | Responsiv shell, mobil undermenu og scoped overflowrettelser er implementeret. | 40/40 for ti routes ved 1920×1080, 1440×900, 390×844 og 360×800; 160/160 i normal/kompakt menu × 100/125 % zoom; dirty-dialog ved alle fire viewports. | Emulatorsourcede auth/tenant/fælles data og tydeligt mærkede lokale FLEET-fixtures. | Tilladt session; adgangsskærme også fotograferet. | Browser-QA + slutgate; `97858a5`, `167d9370`. | Ingen særskilt mangel. |
 
 ## Forklaring af ændringen fra den oprindelige audit
 
 Den oprindelige audit talte 14 implementerede, 16 delvise, 5 ikke
-implementerede og 1 blokeret. Den aktuelle 20/16-opgørelse følger disse
+implementerede og 1 blokeret. Den aktuelle 21/15-opgørelse følger disse
 ID-bevægelser, ikke en omformulering af kravene:
 
 - fra delvist til implementeret: UX-01, UX-04, UX-06, FL-05, FL-09, FL-10 og
-  FL-12;
+  FL-12 samt REG-03;
 - fra implementeret til delvist: FL-13, fordi den obligatoriske
   service-/planlægningsadapter fortsat mangler;
 - fra ikke implementeret til delvist: FL-02, FL-03, FL-15, FL-16 og REG-02;
@@ -70,8 +71,9 @@ ID-bevægelser, ikke en omformulering af kravene:
   mens endnu ikke implementerede serverfunktioner naturligt mangler deres
   fremtidige sikkerhedsbevis.
 
-Resultatet er matematisk 20 implementerede og 16 delvise. Den nye integrerede
-browserprøve lukker UX-06s tidligere bevismangel, men ændrer ikke status på
+Resultatet er matematisk 21 implementerede og 15 delvise. Den nye integrerede
+browserprøve lukker UX-06s tidligere bevismangel og REG-03s fulde
+viewport-/zoomrest, men ændrer ikke status på
 krav, hvor en autoritativ datakilde, serveradapter, Microsoft Excel eller en
 ekstern integration fortsat er obligatorisk.
 
@@ -87,6 +89,6 @@ må ikke rekonstrueres ved gæt.
 
 `esbuild spawn EPERM` i den normale proces-sandbox og Java-emulatorens tidligere
 opstartsfejl er dokumenteret særskilt i navigationens QA. Den afsluttende
-sikkerhedsgate bestod 4.625/4.625 med proceslokal JDK; ingen test blev svækket
+sikkerhedsgate bestod 4.626/4.626 med proceslokal JDK; ingen test blev svækket
 eller sprunget over. Ingen eksisterende brugerdata blev migreret, ingen ekstern
 tjeneste blev aktiveret, og ingen produktionstilstand blev ændret.

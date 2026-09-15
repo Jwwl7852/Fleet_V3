@@ -54,9 +54,10 @@ async function openBrowser(name) {
   const navigate = async (route, expression) => { await send("Page.navigate", { url: `${baseUrl}${route}` }, sessionId); await waitFor(expression, route); await sleep(180); };
   const spaNavigate = async (route, expression) => { await evaluate(`history.pushState({},'',${JSON.stringify(route)});dispatchEvent(new PopStateEvent('popstate'))`); await waitFor(expression, route); await sleep(120); };
   const viewport = async (width, height, mobile = width <= 480) => send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile }, sessionId);
-  const screenshot = async (filename) => { const metrics = await evaluate(`(()=>{const root=document.documentElement;const initialScrollX=scrollX;scrollTo(999999,scrollY);const maxScrollX=scrollX;scrollTo(initialScrollX,scrollY);const rect=(selector)=>{const node=document.querySelector(selector);if(!node)return null;const box=node.getBoundingClientRect();return {top:Math.round(box.top),height:Math.round(box.height),overflowX:getComputedStyle(node).overflowX,overflowY:getComputedStyle(node).overflowY};};return {clientWidth:root.clientWidth,scrollWidth:root.scrollWidth,clientHeight:root.clientHeight,scrollHeight:root.scrollHeight,maxScrollX,shellGeometry:{side:rect('.fc-side'),nav:rect('.fc-nav'),activeSub:rect('.fc-nav-modul.fc-modul-aaben>.fc-sub'),main:rect('.fc-main')}};})()`); const shot = await send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false }, sessionId); await writeFile(path.join(outputDir, filename), Buffer.from(shot.data, "base64")); return { filename, ...metrics, horizontalOverflow: metrics.maxScrollX > 0 }; };
+  const measure = async () => evaluate(`(()=>{const root=document.documentElement;const initialScrollX=scrollX;scrollTo(999999,scrollY);const maxScrollX=scrollX;scrollTo(initialScrollX,scrollY);const rect=(selector)=>{const node=document.querySelector(selector);if(!node)return null;const box=node.getBoundingClientRect();return {top:Math.round(box.top),height:Math.round(box.height),overflowX:getComputedStyle(node).overflowX,overflowY:getComputedStyle(node).overflowY};};return {clientWidth:root.clientWidth,scrollWidth:root.scrollWidth,clientHeight:root.clientHeight,scrollHeight:root.scrollHeight,maxScrollX,compact:document.querySelector('.fc-app')?.classList.contains('fc-menu-kompakt')||false,zoom:document.querySelector('.fc-zoomkontroller output')?.textContent.trim()||null,shellGeometry:{side:rect('.fc-side'),nav:rect('.fc-nav'),activeSub:rect('.fc-nav-modul.fc-modul-aaben>.fc-sub'),main:rect('.fc-main')}};})()`);
+  const screenshot = async (filename) => { const metrics = await measure(); const shot = await send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false }, sessionId); await writeFile(path.join(outputDir, filename), Buffer.from(shot.data, "base64")); return { filename, ...metrics, horizontalOverflow: metrics.maxScrollX > 0 }; };
   const close = async () => { try { await send("Browser.close"); } catch { child.kill(); } const resolved = path.resolve(profileDir); if (resolved.startsWith(`${path.resolve(tmpdir())}${path.sep}`) && path.basename(resolved).startsWith("veyro-integrated-")) await rm(resolved, { recursive: true, force: true, maxRetries: 3 }); };
-  return { close, evaluate, events, navigate, screenshot, send, sessionId, spaNavigate, viewport, waitFor };
+  return { close, evaluate, events, measure, navigate, screenshot, send, sessionId, spaNavigate, viewport, waitFor };
 }
 
 const setInput = (selector, value) => `(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:el.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,${JSON.stringify(String(value))});el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));return true})()`;
@@ -73,7 +74,7 @@ async function login(browser, user, route) {
 const anonymous = await openBrowser("anonymous");
 const denied = await openBrowser("denied");
 const admin = await openBrowser("admin");
-const checks = {}; const screenshots = []; const viewports = [];
+const checks = {}; const screenshots = []; const viewports = []; const layoutMatrix = [];
 try {
   await anonymous.viewport(390, 844);
   await anonymous.navigate("/fleet-v2/livekort", "document.querySelector('#fc-email')");
@@ -109,21 +110,45 @@ try {
   await admin.evaluate("document.querySelector('.fc-nulstil-visning').click()");
 
   const routes = [
-    ["/fleet-v2", "God aften", "04-overblik"],
-    ["/fleet-v2/arbejdsko", "Arbejdskø", "05-arbejdsko"],
-    ["/fleet-v2/indberetninger", "Indberetninger og triage", "06-indberetninger"],
-    ["/fleet-v2/livekort", "Livekort", "07-livekort"],
-    ["/fleet-v2/sager/case-demo-001", "Knirkende bremser", "08-sagsmappe"],
-    ["/oekonomi/fakturacenter", "Fakturacenter", "09-fakturacenter"],
+    ["/fleet-v2", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('God aften'))", "04-overblik"],
+    ["/fleet-v2/arbejdsko", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Arbejdskø'))", "05-arbejdsko"],
+    ["/fleet-v2/indberetninger", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Indberetninger og triage'))", "06-indberetninger"],
+    ["/fleet-v2/livekort", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Livekort'))", "07-livekort"],
+    ["/fleet-v2/sager/case-demo-001", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Knirkende bremser'))", "08-sagsmappe"],
+    ["/oekonomi/fakturacenter", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Fakturacenter'))", "09-fakturacenter"],
+    ["/fleet-v2/service", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Service og compliance'))", "13-service"],
+    ["/opsaetning/fleet-kategorier", "document.body.innerText.includes('FLEET-kategorier')", "14-kategorier"],
+    ["/fleet-v2/oekonomi", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.trim()==='Økonomi')", "15-fleet-oekonomi"],
+    ["/fleet-v2/statistik", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Køretøjs- og driftsstatistik'))", "16-statistik"],
+  ];
+  const shellModes = [
+    { menu: "normal", zoomSteps: 0, zoom: "100 %" },
+    { menu: "normal", zoomSteps: 5, zoom: "125 %" },
+    { menu: "compact", zoomSteps: 0, zoom: "100 %" },
+    { menu: "compact", zoomSteps: 5, zoom: "125 %" },
   ];
   for (const [width, height] of [[1920,1080],[1440,900],[390,844],[360,800]]) {
     await admin.viewport(width, height, width <= 480);
-    for (const [route, heading, prefix] of routes) {
-      await admin.spaNavigate(route, `[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes(${JSON.stringify(heading)}))`);
+    for (const [route, ready, prefix] of routes) {
+      await admin.spaNavigate(route, ready);
+      await admin.evaluate("document.querySelector('.fc-nulstil-visning')?.click()");
       const shot = await admin.screenshot(`${prefix}-${width}x${height}.png`);
       viewports.push({ route, width, height, ...shot });
       assert(!shot.horizontalOverflow, `Dokumentsiden kan rulles vandret uden for viewporten: ${route} ${width}x${height}.`);
       if (width <= 480) assert(shot.shellGeometry.main?.top < height * .7, `Hovedindholdet starter for langt nede på mobil: ${route} ${width}x${height}.`);
+      for (const mode of shellModes) {
+        await admin.evaluate("document.querySelector('.fc-nulstil-visning')?.click()");
+        await sleep(60);
+        await admin.evaluate(`(()=>{if(${JSON.stringify(mode.menu)}==='compact')document.querySelector('.fc-menu-toggle')?.click();for(let i=0;i<${mode.zoomSteps};i+=1)document.querySelector('.fc-zoomkontroller [aria-label="Zoom ind"]')?.click()})()`);
+        await sleep(60);
+        const measured = await admin.measure();
+        const row = { route, width, height, menu: mode.menu, expectedZoom: mode.zoom, ...measured };
+        layoutMatrix.push(row);
+        assert(measured.maxScrollX === 0, `Vandret dokumentrul ved ${route}, ${width}x${height}, ${mode.menu}, ${mode.zoom}.`);
+        assert(measured.compact === (mode.menu === "compact") && measured.zoom === mode.zoom, `Shelltilstand kunne ikke sættes ved ${route}, ${width}x${height}: ${JSON.stringify({ measured: { compact: measured.compact, zoom: measured.zoom }, expected: mode })}.`);
+        if (width <= 480) assert(measured.shellGeometry.main?.top < height * .7, `Hovedindholdet starter for langt nede ved ${route}, ${width}x${height}, ${mode.menu}, ${mode.zoom}.`);
+      }
+      await admin.evaluate("document.querySelector('.fc-nulstil-visning')?.click()");
     }
   }
 
@@ -180,6 +205,13 @@ try {
   assert(dialogOpener, "Manuel sag-dialogen kunne ikke åbnes.");
   await admin.waitFor("document.querySelector('.unit-form-dialog')", "manuel sag-dialog");
   await admin.evaluate(setInput('[aria-label="Manuel sagstitel"]', "Ugemt browserkontrol"));
+  for (const [width, height] of [[1920,1080],[1440,900],[390,844],[360,800]]) {
+    await admin.viewport(width, height, width <= 480);
+    const shot = await admin.screenshot(`17-dirty-dialog-${width}x${height}.png`);
+    screenshots.push(shot);
+    assert(!shot.horizontalOverflow, `Dirty-dialogen skabte vandret dokumentscroll ved ${width}x${height}.`);
+  }
+  await admin.viewport(1440, 900, false);
   await admin.evaluate("window.__qaConfirm=[];window.confirm=(message)=>{window.__qaConfirm.push(message);return false}");
   await admin.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape" }, admin.sessionId);
   checks.dialogGuard = await admin.evaluate("({open:!!document.querySelector('.unit-form-dialog'),messages:window.__qaConfirm.slice()})");
@@ -194,7 +226,7 @@ try {
   screenshots.push(await admin.screenshot("12-fakturacenter-integreret-1440x900.png"));
 
   const runtimeProblems = admin.events.filter((event) => event.method === "Runtime.exceptionThrown").map((event) => event.params?.exceptionDetails?.text || "Runtime exception");
-  const result = { ok: true, baseUrl, app: "root-app med embedded FLEET", backend: { auth: "Firebase Auth emulator", sharedData: "Realtime Database emulator", fleetPrototype: "lokal IndexedDB med syntetiske fixtures", externalServices: false }, checks, viewports, screenshots, runtimeProblems };
+  const result = { ok: true, baseUrl, app: "root-app med embedded FLEET", backend: { auth: "Firebase Auth emulator", sharedData: "Realtime Database emulator", fleetPrototype: "lokal IndexedDB med syntetiske fixtures", externalServices: false }, checks, viewports, layoutMatrix, screenshots, runtimeProblems };
   await writeFile(path.join(outputDir, "RESULTAT.json"), `${JSON.stringify(result, null, 2)}\n`, "utf8");
   console.log(JSON.stringify(result, null, 2));
 } finally {

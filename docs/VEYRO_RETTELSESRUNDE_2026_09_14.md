@@ -885,3 +885,26 @@ Den tværgående, aktuelle 36-kravsvurdering er samlet i
 - Den efterprøvbare 36-rækkers matrix og screenshotmanifestet ligger i
   henholdsvis `docs/VEYRO_RETTELSESRUNDE_STATUS_2026_09_15.md` og
   `artifacts/veyro-rettelsesrunde-2026-09-15/browser/RESULTAT.json`.
+
+### Etape 24 — komplet viewportmatrix og tom Service-projektion
+
+- Den integrerede browsermatrix er udvidet fra seks til ti routes med Service,
+  kategoristamdata, FLEET-økonomi og FLEET-statistik. Alle ti routes er prøvet
+  ved 1920×1080, 1440×900, 390×844 og 360×800.
+- Hver route/viewport er desuden målt med normal og kompakt sidebar ved 100 %
+  og 125 % arbejdsområdezoom. De 160/160 kombinationer havde korrekt menu- og
+  zoomtilstand og ingen vandret dokumentscroll. Dirty-dialogen blev
+  fotograferet ved alle fire viewports.
+- Browserkørslen fandt, at Service kunne blive stående på
+  `Indlæser servicekrav …`, når rapport-, sags- eller historikprojektionen gik
+  fra en indlæsende tom liste til en færdig tom liste. Alle seks
+  projektioners loading-/fejltilstand indgår nu eksplicit i den integrerede
+  memoiseringsgrænse; serverens tomme resultat vises uden demo-fallback.
+- Produktcommit for Service-rettelsen:
+  `167d93706891543beb8a4d627b80e0632be2d3d7`. Aktuelt teknisk slutbevis:
+  root-/Rules-gate 4.626/4.626, FLEET 205/205, design 11/11,
+  functions-paritet 29/29, root- og FLEET-lint, begge produktionsbuilds og nul
+  runtimeproblemer i browseren.
+- REG-03 er derfor flyttet fra delvist til implementeret. Den samlede
+  opgørelse er 21 implementerede og 15 delvise krav; obligatoriske manglende
+  backend-, datakilde- og integrationsbeviser er fortsat delvise.
