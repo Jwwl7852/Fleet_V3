@@ -5,6 +5,7 @@ import { COST_STATES, actualCostSummary, buildEconomyEntries, economyCsv, econom
 import { DEFAULT_FLEET_CATEGORIES, categoriesForPurpose } from "../data/fleetCategories";
 import { modelLabel, typeLabel } from "../data/unitSelectors";
 import { Icon } from "./Icon";
+import { confirmBusinessSave, useModalDialog } from "./useModalDialog";
 
 const money = (minor, currency = "DKK") => minor == null ? "Kan ikke beregnes" : new Intl.NumberFormat("da-DK", { style: "currency", currency, maximumFractionDigits: 0 }).format(minor / 100);
 const number = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 1 });
@@ -19,18 +20,22 @@ function sumState(entries, state) {
 }
 
 function ManualCostDialog({ categories, units, onClose, onSave }) {
-  const [values, setValues] = useState({ ...initialCost, unitId: units[0]?.id || "", categoryKey: categories[0]?.id || "" });
+  const initialValues = { ...initialCost, unitId: units[0]?.id || "", categoryKey: categories[0]?.id || "" };
+  const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
+  const { dialogRef, requestClose, onBackdropMouseDown } = useModalDialog({ onClose, dirty: JSON.stringify(values) !== JSON.stringify(initialValues), busy });
   const set = (key) => (event) => setValues((current) => ({ ...current, [key]: event.target.value }));
   const save = async (event) => {
-    event.preventDefault(); setBusy(true); setErrors({});
+    event.preventDefault();
+    if (!confirmBusinessSave("Gem den manuelle omkostningspost?")) return;
+    setBusy(true); setErrors({});
     try { await onSave(values); onClose(); }
     catch (error) { setErrors(error.validation || { form: error.message }); }
     finally { setBusy(false); }
   };
-  return <div className="modal-layer"><form className="modal-card manual-cost-dialog" aria-label="Registrer manuel omkostning" onSubmit={save}>
-    <header><div><small>FLEET · lokal registrering</small><h2>Registrer omkostning</h2><p>Posten markeres som manuelt registreret – ikke fakturakontrolleret.</p></div><button className="icon-button" onClick={onClose} type="button" aria-label="Luk"><Icon name="close" /></button></header>
+  return <div className="modal-layer" role="presentation" onMouseDown={onBackdropMouseDown}><section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Registrer manuel omkostning"><form className="modal-card manual-cost-dialog" aria-label="Registrer manuel omkostning" onSubmit={save}>
+    <header><div><small>FLEET · lokal registrering</small><h2>Registrer omkostning</h2><p>Posten markeres som manuelt registreret – ikke fakturakontrolleret.</p></div><button className="icon-button" onClick={requestClose} type="button" aria-label="Luk"><Icon name="close" /></button></header>
     <div className="modal-body form-grid">
       {errors.form ? <p className="form-error span-2">{errors.form}</p> : null}
       <label>Enhed<select aria-label="Omkostningens enhed" value={values.unitId} onChange={set("unitId")}>{units.map((unit) => <option value={unit.id} key={unit.id}>{unit.number} · {modelLabel(unit)}</option>)}</select>{errors.unitId ? <small className="field-error">{errors.unitId}</small> : null}</label>
@@ -41,8 +46,8 @@ function ManualCostDialog({ categories, units, onClose, onSave }) {
       <label>Momsgrundlag<select value={values.vatBasis} onChange={set("vatBasis")}><option value="unknown">Uafklaret</option><option value="excl_vat">Ekskl. moms</option><option value="incl_vat">Inkl. moms</option></select></label>
       <label className="span-2">Kilde og bemærkning<textarea aria-label="Omkostningsbemærkning" rows="3" value={values.note} onChange={set("note")} placeholder="Fx manuel energiopgørelse" /></label>
     </div>
-    <footer><span>Gemmes kun i lokal IndexedDB; kategorien kommer fra fælles Opsætning.</span><button className="secondary-button" type="button" onClick={onClose}>Annuller</button><button className="primary-button" disabled={busy} type="submit">{busy ? "Gemmer …" : "Gem post"}</button></footer>
-  </form></div>;
+    <footer><span>Gemmes kun i lokal IndexedDB; kategorien kommer fra fælles Opsætning.</span><button className="secondary-button" type="button" onClick={requestClose}>Annuller</button><button className="primary-button" disabled={busy} type="submit">{busy ? "Gemmer …" : "Gem post"}</button></footer>
+  </form></section></div>;
 }
 
 function tracePath(item) { return item.caseId ? `/sager/${item.caseId}` : item.taskId ? `/vaerksted/${item.taskId}` : item.leaseId ? `/leasing/${item.leaseId}` : `/enheder/${item.unitId}`; }

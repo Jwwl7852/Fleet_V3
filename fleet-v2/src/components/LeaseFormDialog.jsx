@@ -4,6 +4,7 @@ import { LEASE_SERVICE_STATES, LEASE_TYPES } from "../data/leasingWorkflow";
 import { DOCUMENT_LIMITS, documentFileKind, validateDocumentFile } from "../data/documentWorkflow";
 import { prepareUnitImage } from "../data/unitImage";
 import { UnitThumbnail } from "./UnitThumbnail";
+import { confirmBusinessSave, useModalDialog } from "./useModalDialog";
 
 const money = (minor) => minor == null ? "" : String(minor / 100).replace(".", ",");
 const numberValue = (value) => value == null ? "" : String(value);
@@ -37,6 +38,7 @@ export function LeaseFormDialog({ lease, units, onClose, onSave, imageProcessor 
   const set = (key) => (event) => setValues((current) => ({ ...current, [key]: event.target.value }));
   const unit = useMemo(() => units.find((item) => item.id === values.unitId), [units, values.unitId]);
   const dirty = contractFile || unitImageChange !== undefined || JSON.stringify(values) !== JSON.stringify(initial);
+  const { dialogRef, requestClose, onBackdropMouseDown } = useModalDialog({ onClose, dirty: Boolean(dirty), busy: busy || unitImageBusy, discardMessage: "Kassér ikke-gemte ændringer? Den valgte kontrakt bliver ikke gemt." });
   useEffect(() => {
     if (!contractFile || typeof URL.createObjectURL !== "function") { setPreviewUrl(""); return undefined; }
     const url = URL.createObjectURL(contractFile); setPreviewUrl(url);
@@ -48,18 +50,16 @@ export function LeaseFormDialog({ lease, units, onClose, onSave, imageProcessor 
     catch (error) { setContractError(error.message); }
   };
   const chooseUnitImage = async (file) => { if (!file) return; setUnitImageBusy(true); setUnitImageError(""); try { setUnitImageChange(await imageProcessor(file)); } catch (error) { setUnitImageError(error.message || "Billedet kunne ikke behandles."); } finally { setUnitImageBusy(false); } };
-  const requestClose = () => {
-    if (dirty && !window.confirm("Kassér ikke-gemte ændringer? Den valgte kontrakt bliver ikke gemt.")) return;
-    onClose();
-  };
   const save = async (event) => {
-    event.preventDefault(); setBusy(true); setErrors({});
+    event.preventDefault();
+    if (!confirmBusinessSave(lease ? "Gem ændringerne til leasingaftalen?" : "Opret leasingaftalen?")) return;
+    setBusy(true); setErrors({});
     try { await onSave(values, contractFile, unitImageChange); onClose(); }
     catch (error) { setErrors(error.validation || { form: error.message }); }
     finally { setBusy(false); }
   };
   const serviceOptions = Object.entries(LEASE_SERVICE_STATES);
-  return <div className="modal-layer"><form className="modal-card lease-form-dialog" onSubmit={save} aria-label={lease ? "Rediger leasingaftale" : "Opret leasingaftale"}>
+  return <div className="modal-layer" role="presentation" onMouseDown={onBackdropMouseDown}><section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={lease ? "Rediger leasingaftale" : "Opret leasingaftale"}><form className="modal-card lease-form-dialog" onSubmit={save} aria-label={lease ? "Rediger leasingaftale" : "Opret leasingaftale"}>
     <header><div><small>FLEET · Leasing</small><h2>{lease ? `Rediger ${lease.agreementNumber}` : "Opret leasingaftale"}</h2><p>Ukendte oplysninger kan stå tomme. Alle beløb gemmes struktureret med valuta og momsstatus.</p></div><button type="button" className="icon-button" onClick={requestClose} aria-label="Luk"><Icon name="close" /></button></header>
     <nav className="lease-form-tabs" aria-label="Formularafsnit">{[["identity","Aftale"],["payment","Betaling & km"],["services","Ydelser"],["return","Aflevering"]].map(([key,label]) => <button key={key} type="button" className={section===key?"is-active":""} onClick={()=>setSection(key)}>{label}</button>)}</nav>
     <div className="modal-body">
@@ -106,5 +106,5 @@ export function LeaseFormDialog({ lease, units, onClose, onSave, imageProcessor 
       {section === "return" ? <div className="form-grid"><Field label="Afleveringssted"><input value={values.returnLocation} onChange={set("returnLocation")} /></Field><Field label="Kontakt ved aflevering"><input value={values.returnContact} onChange={set("returnContact")} /></Field><Field label="Standkrav" wide><textarea value={values.returnCondition} onChange={set("returnCondition")} /></Field><Field label="Nøgler, kabler, hjul og udstyr" wide><textarea value={values.returnEquipment} onChange={set("returnEquipment")} /></Field><Field label="Inspektionskrav" wide><textarea value={values.returnInspection} onChange={set("returnInspection")} /></Field><Field label="Gebyr ved tidlig aflevering"><input inputMode="decimal" value={values.earlyReturnFee} onChange={set("earlyReturnFee")} /></Field><Field label="Ændret kilometerkvote"><input inputMode="decimal" value={values.revisedAllowanceKm} onChange={set("revisedAllowanceKm")} /></Field><Field label="Øvrige afleveringsgebyrer"><input inputMode="decimal" value={values.otherReturnFees} onChange={set("otherReturnFees")} /></Field><Field label="Varsler før udløb" error={errors.warningDays}><input aria-label="Varslingsdage" value={values.warningDays.join(", ")} onChange={(event)=>setValues((current)=>({...current,warningDays:event.target.value.split(/[,; ]+/).filter(Boolean)}))} /><small>Fx 120, 90 og 30 dage.</small></Field></div> : null}
     </div>
     <footer><span>Gemmer kun lokalt i prototypens IndexedDB.</span><button type="button" className="secondary-button" onClick={requestClose}>Annuller</button><button type="submit" className="primary-button" disabled={busy || unitImageBusy}>{busy ? "Gemmer …" : unitImageBusy ? "Behandler billede …" : "Gem aftale"}</button></footer>
-  </form></div>;
+  </form></section></div>;
 }

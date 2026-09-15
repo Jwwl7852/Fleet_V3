@@ -30,6 +30,20 @@ describe("Livekort", () => {
     expect(await screen.findByRole("heading", { name: "SC-104" })).toBeTruthy();
   });
 
+  it("bevarer filtre og valgt enhed, når den integrerede route genmonteres", async () => {
+    const props = { repository: createMemoryUnitRepository(), onNavigate: () => {} };
+    const { rerender } = render(<FleetV2App {...props} pathname="/livekort" />);
+    await screen.findByRole("heading", { name: "Livekort" });
+    fireEvent.change(screen.getByPlaceholderText(/Søg nummer/), { target: { value: "SC-104" } });
+    fireEvent.click(screen.getAllByRole("button", { name: /SC-104/ }).find((button) => button.classList.contains("position-unit-row")));
+    rerender(<FleetV2App {...props} pathname="/enheder/unit-sc-104" />);
+    expect(await screen.findByRole("heading", { name: "SC-104" })).toBeTruthy();
+    rerender(<FleetV2App {...props} pathname="/livekort" />);
+    expect(await screen.findByRole("heading", { name: "Livekort" })).toBeTruthy();
+    expect(screen.getByPlaceholderText(/Søg nummer/).value).toBe("SC-104");
+    expect(screen.getAllByRole("button", { name: /SC-104/ }).find((button) => button.classList.contains("position-unit-row")).getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("åbner en kortforankret popup med enhedsdetaljer og profillink", async () => {
     render(<FleetV2App repository={createMemoryUnitRepository()} />);
     await screen.findByRole("heading", { name: "Livekort" });

@@ -37,6 +37,21 @@ describe("selvstændigt Service-modul", () => {
     expect(repository.runServiceAutomation).not.toHaveBeenCalled();
   });
 
+  it("lader ikke en afventende serviceprojektion blokere uafhængige FLEET-flader", async () => {
+    window.history.replaceState({}, "", "/");
+    render(<FleetV2App repository={createMemoryUnitRepository()} serviceBackend={{
+      kind: "server",
+      units: [],
+      relations: { serviceRequirements: [], serviceOccurrences: [] },
+      loading: true,
+      error: null,
+      capabilities: { saveRequirement: false, runAutomation: false, planService: false, saveHistory: false, saveSettings: false },
+    }} />);
+    expect(await screen.findByRole("heading", { name: "God aften, Dennis" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Service" }));
+    expect(await screen.findByText("Indlæser servicekrav …")).toBeTruthy();
+  });
+
   it("kræver et eksplicit bevar-valg før et krav med åben forekomst deaktiveres", async () => {
     window.history.replaceState({}, "", "/service");
     const saveRequirement = vi.fn(async () => ({ ok: true }));

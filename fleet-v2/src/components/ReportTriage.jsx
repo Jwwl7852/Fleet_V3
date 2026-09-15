@@ -7,8 +7,14 @@ import { Icon } from "./Icon";
 import { ReportImage } from "./ReportImage";
 import { UnitThumbnail } from "./UnitThumbnail";
 import { ThreePanelWorkspace } from "./ThreePanelWorkspace";
+import { useModalDialog } from "./useModalDialog";
 
 const dateTime = (value) => new Date(value).toLocaleString("da-DK", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+function ReportLightbox({ image, onClose }) {
+  const { dialogRef, requestClose, onBackdropMouseDown } = useModalDialog({ onClose });
+  return <div ref={dialogRef} tabIndex={-1} className="lightbox" role="dialog" aria-modal="true" aria-label="Billedvisning" onMouseDown={onBackdropMouseDown}><button type="button" aria-label="Luk billede" onClick={requestClose}><Icon name="close" /></button><ReportImage image={image} alt="Forstørret dokumentationsbillede" /></div>;
+}
 
 export function ReportTriage({ reportId, initialViewState, onViewStateChange, onNavigate, onBack = onNavigate }) {
   const { units, relations, loading, updateCase, actor, tenantId, serverProjectionError } = useFleetData();
@@ -50,6 +56,6 @@ export function ReportTriage({ reportId, initialViewState, onViewStateChange, on
       </> : <div className="empty-inline"><h2>Vælg en indberetning</h2><p>Detaljer og historik vises her.</p></div>}</section>
       <CaseActionPanel caseItem={selectedCase} report={selectedReport} onUpdate={updateCase} />
     </ThreePanelWorkspace>
-    {lightbox ? <div className="lightbox" role="dialog" aria-label="Billedvisning"><button type="button" aria-label="Luk billede" onClick={() => setLightbox(null)}><Icon name="close" /></button><ReportImage image={lightbox} alt="Forstørret dokumentationsbillede" /></div> : null}
+    {lightbox ? <ReportLightbox image={lightbox} onClose={() => setLightbox(null)} /> : null}
   </main>;
 }

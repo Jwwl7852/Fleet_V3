@@ -51,13 +51,13 @@ function PositionDetails({ unit, position, now, onNavigate }) {
   </aside>;
 }
 
-export function LiveMap({ onNavigate }) {
+export function LiveMap({ initialViewState, onNavigate, onViewStateChange }) {
   const { units, relations, loading, runPositionDemo } = useFleetData();
   const positions = relations.positions || [];
   const queryUnit = new URLSearchParams(window.location.search).get("unit");
-  const [filters, setFilters] = useState({ query: "", department: "", type: "", movement: "", connection: "" });
-  const [selectedUnitId, setSelectedUnitId] = useState(queryUnit || "");
-  const [mobileView, setMobileView] = useState("map");
+  const [filters, setFilters] = useState(() => initialViewState?.filters || { query: "", department: "", type: "", movement: "", connection: "" });
+  const [selectedUnitId, setSelectedUnitId] = useState(queryUnit || initialViewState?.selectedUnitId || "");
+  const [mobileView, setMobileView] = useState(initialViewState?.mobileView || "map");
   const [demoOpen, setDemoOpen] = useState(false);
   const [demo, setDemo] = useState({ unitId: queryUnit || "", scenario: "move", now: demoNow() });
   const [demoStatus, setDemoStatus] = useState("");
@@ -76,6 +76,9 @@ export function LiveMap({ onNavigate }) {
   useEffect(() => {
     if (!demo.unitId && units.length) setDemo((current) => ({ ...current, unitId: units.find((unit) => positionForUnit(relations, unit.id))?.id || "" }));
   }, [demo.unitId, relations, units]);
+  useEffect(() => {
+    onViewStateChange?.({ filters, selectedUnitId, mobileView });
+  }, [filters, mobileView, onViewStateChange, selectedUnitId]);
 
   const selectedUnit = units.find((unit) => unit.id === selectedUnitId);
   const selectedPosition = positionForUnit(relations, selectedUnitId);

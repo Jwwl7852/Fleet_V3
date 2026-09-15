@@ -138,7 +138,7 @@ describe("Leasing i FLEET v2", () => {
 
   it("bevarer filen ved valideringsfejl og efterlader intet dokument ved annullering", async () => {
     const repository = createMemoryUnitRepository();
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(true).mockReturnValueOnce(false).mockReturnValueOnce(true);
     render(<FleetV2App repository={repository} />);
     await screen.findByRole("heading", { name: "Leasing" });
     fireEvent.click(screen.getByRole("button", { name: "Opret leasingaftale" }));
@@ -152,10 +152,10 @@ describe("Leasing i FLEET v2", () => {
     expect(within(dialog).getByRole("alert").textContent).toMatch(/Filtypen understøttes ikke/);
     expect(within(dialog).getByText("ikke-gemt.pdf")).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Annuller" }));
-    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("form", { name: "Opret leasingaftale" })).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Annuller" }));
-    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(confirm).toHaveBeenCalledTimes(3);
     expect(repository.inspect().relations.documents.some((item) => item.versions.some((version) => version.fileName === "ikke-gemt.pdf"))).toBe(false);
   });
 });

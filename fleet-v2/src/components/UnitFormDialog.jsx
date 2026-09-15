@@ -4,6 +4,7 @@ import { prepareUnitImage } from "../data/unitImage";
 import { parsePositiveDanishNumber, validateUnit } from "../data/unitSelectors";
 import { disconnectedVehicleLookup, mapVehicleLookupResult, normalizeDanishRegistration } from "../data/vehicleLookup";
 import { Icon } from "./Icon";
+import { confirmBusinessSave, useModalDialog } from "./useModalDialog";
 
 const emptyValues = {
   number: "", type: "vehicle", make: "", model: "", variant: "", registration: "", serialNumber: "",
@@ -101,6 +102,8 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
   const registrationRef = useRef(values.registration);
   const valuesRef = useRef(values);
   const errors = useMemo(() => validateUnit(values, units, unit?.id), [unit?.id, units, values]);
+  const dirty = JSON.stringify(values) !== JSON.stringify(valuesFromUnit(unit)) || image !== (unit?.image || null);
+  const { dialogRef, requestClose, onBackdropMouseDown } = useModalDialog({ onClose, dirty, busy: saving });
   useEffect(() => { valuesRef.current = values; }, [values]);
   const set = (key) => (event) => {
     const value = event.target.value;
@@ -167,6 +170,7 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
   const submit = async (event) => {
     event.preventDefault(); setSubmitted(true); setSaveError("");
     if (Object.keys(errors).length) return;
+    if (!confirmBusinessSave(unit ? "Gem ændringerne på enheden?" : "Opret enheden?")) return;
     setSaving(true);
     const id = unit?.id || `unit-local-${globalThis.crypto?.randomUUID?.() || Date.now().toString(36)}`;
     const dimensions = values.dimensionsEnabled ? { unit: "cm", lengthCm: parsePositiveDanishNumber(values.lengthCm), widthCm: parsePositiveDanishNumber(values.widthCm), heightCm: parsePositiveDanishNumber(values.heightCm) } : null;
@@ -187,9 +191,9 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
     finally { setSaving(false); }
   };
 
-  return <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <section className="unit-dialog" role="dialog" aria-modal="true" aria-labelledby="unit-dialog-title">
-      <header><div><span className="eyebrow">Lokal prototypelagring</span><h2 id="unit-dialog-title">{unit ? `Redigér ${unit.number}` : "Opret enhed"}</h2><p>Gemmes kun i denne browsers IndexedDB.</p></div><button type="button" className="icon-button" onClick={onClose} aria-label="Luk formular"><Icon name="close" /></button></header>
+  return <div className="dialog-backdrop" role="presentation" onMouseDown={onBackdropMouseDown}>
+    <section ref={dialogRef} tabIndex={-1} className="unit-dialog" role="dialog" aria-modal="true" aria-labelledby="unit-dialog-title">
+      <header><div><span className="eyebrow">Lokal prototypelagring</span><h2 id="unit-dialog-title">{unit ? `Redigér ${unit.number}` : "Opret enhed"}</h2><p>Gemmes kun i denne browsers IndexedDB.</p></div><button type="button" className="icon-button" onClick={requestClose} aria-label="Luk formular"><Icon name="close" /></button></header>
       <form onSubmit={submit} noValidate>
         <div className="unit-form-grid">
           <Field label="Enhedsnummer *" error={submitted ? errors.number : null} hint={unit ? "Visningsfelt – det stabile interne ID ændres ikke." : "Fx NB-019."}><input autoFocus value={values.number} onChange={set("number")} /></Field>
@@ -212,7 +216,7 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
           <Field label="Noter" wide><textarea rows="3" value={values.notes} onChange={set("notes")} /></Field>
         </div>
         {saveError ? <p className="form-save-error" role="alert"><Icon name="warning" size={16} />{saveError}</p> : null}
-        <footer><button className="secondary-button" type="button" onClick={onClose}>Annuller</button><button className="primary-button" type="submit" disabled={saving}>{saving ? "Gemmer lokalt …" : unit ? "Gem ændringer" : "Opret enhed"}</button></footer>
+        <footer><button className="secondary-button" type="button" onClick={requestClose}>Annuller</button><button className="primary-button" type="submit" disabled={saving}>{saving ? "Gemmer lokalt …" : unit ? "Gem ændringer" : "Opret enhed"}</button></footer>
       </form>
     </section>
   </div>;

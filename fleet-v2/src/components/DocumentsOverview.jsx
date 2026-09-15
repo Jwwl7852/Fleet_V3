@@ -4,6 +4,7 @@ import { DEMO_ACTORS } from "../data/caseWorkflow";
 import { DOCUMENT_CATEGORIES, DOCUMENT_RELATION_TYPES, documentFileKind, documentValidity, resolveDocumentVersion } from "../data/documentWorkflow";
 import { modelLabel } from "../data/unitSelectors";
 import { Icon } from "./Icon";
+import { confirmBusinessSave, useModalDialog } from "./useModalDialog";
 
 const dateLabel = (value) => value ? new Date(value.length === 10 ? `${value}T12:00:00` : value).toLocaleString("da-DK", value.length === 10 ? { dateStyle: "medium" } : { dateStyle: "medium", timeStyle: "short" }) : "—";
 const sizeLabel = (value) => Number.isFinite(value) ? value >= 1024 * 1024 ? `${(value / 1024 / 1024).toLocaleString("da-DK", { maximumFractionDigits: 1 })} MB` : `${Math.max(1, Math.round(value / 1024)).toLocaleString("da-DK")} KB` : "Fil ikke tilgængelig";
@@ -53,11 +54,16 @@ function RelationFields({ units, relations, values, setValues }) {
 const emptyForm = { title: "", category: "other", note: "", validFrom: "", expiresAt: "", reminderDays: "30", relations: [], files: [] };
 
 function DocumentDialog({ mode, document, units, relations, onClose, onUpload, onUpdate, onReplace }) {
-  const [values, setValues] = useState(document ? { title: document.title, category: document.category, note: document.note || "", validFrom: document.validFrom || "", expiresAt: document.expiresAt || "", reminderDays: document.reminderDays ?? "30", relations: document.relations.map(({ type, targetId }) => ({ type, targetId })), files: [] } : emptyForm);
+  const initialValues = document ? { title: document.title, category: document.category, note: document.note || "", validFrom: document.validFrom || "", expiresAt: document.expiresAt || "", reminderDays: document.reminderDays ?? "30", relations: document.relations.map(({ type, targetId }) => ({ type, targetId })), files: [] } : emptyForm;
+  const [values, setValues] = useState(initialValues);
   const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
+  const dirty = values.files.length > 0 || JSON.stringify({ ...values, files: [] }) !== JSON.stringify(initialValues);
+  const { dialogRef, requestClose, onBackdropMouseDown } = useModalDialog({ onClose, dirty, busy });
   const set = (key, value) => setValues((current) => ({ ...current, [key]: value }));
   const submit = async (event) => {
-    event.preventDefault(); setBusy(true); setError("");
+    event.preventDefault();
+    if (!confirmBusinessSave(mode === "upload" ? "Upload de valgte dokumenter?" : mode === "replace" ? "Opret den nye dokumentversion?" : "Gem dokumentændringerne?")) return;
+    setBusy(true); setError("");
     try {
       if (mode === "upload") await onUpload(values);
       else if (mode === "replace") { if (!values.files[0]) throw new Error("Vælg den nye filversion."); await onReplace(values.files[0]); }
@@ -66,12 +72,12 @@ function DocumentDialog({ mode, document, units, relations, onClose, onUpload, o
     } catch (cause) { setError(cause.message || "Dokumentet kunne ikke gemmes lokalt."); }
     finally { setBusy(false); }
   };
-  return <div className="dialog-backdrop" role="presentation"><form className="unit-dialog document-dialog" role="dialog" aria-modal="true" aria-labelledby="document-dialog-title" onSubmit={submit}><header><div><span className="eyebrow">FLEET v2 · lokal prototypelagring</span><h2 id="document-dialog-title">{mode === "upload" ? "Upload dokumenter" : mode === "replace" ? "Ny dokumentversion" : "Redigér metadata og relationer"}</h2></div><button type="button" aria-label="Luk" onClick={onClose}><Icon name="close" /></button></header><div className="document-dialog-body">
+  return <div className="dialog-backdrop" role="presentation" onMouseDown={onBackdropMouseDown}><form ref={dialogRef} tabIndex={-1} className="unit-dialog document-dialog" role="dialog" aria-modal="true" aria-labelledby="document-dialog-title" onSubmit={submit}><header><div><span className="eyebrow">FLEET v2 · lokal prototypelagring</span><h2 id="document-dialog-title">{mode === "upload" ? "Upload dokumenter" : mode === "replace" ? "Ny dokumentversion" : "Redigér metadata og relationer"}</h2></div><button type="button" aria-label="Luk" onClick={requestClose}><Icon name="close" /></button></header><div className="document-dialog-body">
     {mode !== "edit" ? <label className="document-file-drop"><Icon name="upload" size={25} /><strong>{mode === "replace" ? "Vælg erstatningsfil" : "Vælg en eller flere filer"}</strong><small>PDF, JPG, PNG og WebP maks. 20 MB · MP4, WebM og MOV maks. 100 MB</small><input aria-label="Dokumentfiler" type="file" multiple={mode === "upload"} accept="application/pdf,image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" onChange={(event) => set("files", [...event.target.files])} /></label> : null}
     {mode !== "replace" ? <><div className="form-two-cols"><label>Titel{mode === "upload" ? " (valgfri ved én fil)" : ""}<input aria-label="Dokumenttitel" value={values.title} onChange={(event) => set("title", event.target.value)} /></label><label>Kategori<select aria-label="Dokumentkategori" value={values.category} onChange={(event) => set("category", event.target.value)}>{Object.entries(DOCUMENT_CATEGORIES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>Gyldig fra<input aria-label="Gyldig fra" type="date" value={values.validFrom} onChange={(event) => set("validFrom", event.target.value)} /></label><label>Udløbsdato<input aria-label="Udløbsdato" type="date" value={values.expiresAt} onChange={(event) => set("expiresAt", event.target.value)} /></label><label>Varsling før udløb (dage)<input aria-label="Varslingsfrist" type="number" min="0" value={values.reminderDays} onChange={(event) => set("reminderDays", event.target.value)} /></label><label className="span-all">Bemærkning<textarea aria-label="Dokumentbemærkning" rows="3" value={values.note} onChange={(event) => set("note", event.target.value)} /></label></div><section><h3>Tilknytninger</h3><p className="muted">Samme dokument kan knyttes flere steder uden at filen kopieres.</p><RelationFields units={units} relations={relations} values={values.relations} setValues={(next) => set("relations", next)} /></section></> : null}
     {values.files.length ? <div className="document-selected-files">{values.files.map((file) => <span key={`${file.name}-${file.size}`}><Icon name="document" size={15} />{file.name}<small>{sizeLabel(file.size)}</small></span>)}</div> : null}
     {error ? <div className="form-alert danger" role="alert">{error}</div> : null}
-  </div><footer><button className="secondary-button" type="button" onClick={onClose}>Annullér</button><button className="primary-button" type="submit" disabled={busy}>{busy ? "Gemmer lokalt …" : mode === "upload" ? "Upload" : mode === "replace" ? "Opret version" : "Gem ændringer"}</button></footer></form></div>;
+  </div><footer><button className="secondary-button" type="button" onClick={requestClose}>Annullér</button><button className="primary-button" type="submit" disabled={busy}>{busy ? "Gemmer lokalt …" : mode === "upload" ? "Upload" : mode === "replace" ? "Opret version" : "Gem ændringer"}</button></footer></form></div>;
 }
 
 function DocumentDetail({ document, dataset, units, relations, onBack, onNavigate: _onNavigate, actions }) {

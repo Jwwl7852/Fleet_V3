@@ -628,7 +628,7 @@ body:has(.fic-shell) {
 }
 
 @media (max-width: 900px) {
-  .fc-app:has(.fic-shell) .fc-side { padding: 6px 8px; }
+  .fc-app:has(.fic-shell) .fc-side { height: auto; flex: 0 0 auto; padding: 6px 8px; }
   .fc-app:has(.fic-shell) .fc-ver { display: none; }
   .fc-app:has(.fic-shell) .fc-tenant { padding: 2px 8px 5px; }
   .fic-shell { gap: 6px; }

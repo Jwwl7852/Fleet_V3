@@ -195,7 +195,10 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
     units: effectiveUnits,
     relations: effectiveRelations,
     tenantId: dataset?.tenantId || repository.tenantId,
-    loading: (!dataset && !error) || (serverControlledService && serviceBackend?.loading),
+    // Serverens serviceprojektion har sin egen serviceLoading-tilstand nedenfor.
+    // Den må ikke blokere uafhængige lokale FLEET-flader som Overblik,
+    // Arbejdskø og Livekort, mens en autoritativ serviceforespørgsel afventer.
+    loading: !dataset && !error,
     error,
     serverProjectionError: serverControlledService ? serviceBackend?.error : null,
     saveUnit,

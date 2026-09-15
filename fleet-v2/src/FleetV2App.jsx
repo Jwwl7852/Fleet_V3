@@ -96,10 +96,12 @@ export function FleetV2App({
   const route = useMemo(() => routeFromPath(activePathname, basePath), [activePathname, basePath]);
   const statusFilter = new URLSearchParams(activePathname.split("?")[1] || "").get("status") || "";
   const selectedSupplierId = new URLSearchParams(activePathname.split("?")[1] || "").get("leverandoer") || "";
-  const katalogvisning = useRef(null);
-  const koevisning = useRef(null);
-  const triagevisning = useRef(null);
-  const profilvisninger = useRef(new Map());
+  const bevaredeVisninger = navigationState?.veyroFleetVisninger || {};
+  const katalogvisning = useRef(bevaredeVisninger.katalog || null);
+  const koevisning = useRef(bevaredeVisninger.koe || null);
+  const livekortvisning = useRef(bevaredeVisninger.livekort || null);
+  const triagevisning = useRef(bevaredeVisninger.triage || null);
+  const profilvisninger = useRef(new Map(bevaredeVisninger.profiler || []));
   const afventetScroll = useRef(null);
 
   const showUnavailable = (label) => {
@@ -132,13 +134,23 @@ export function FleetV2App({
 
   const navigate = (path, options = {}) => {
     const target = absoluteFleetPath(basePath, path);
+    const state = {
+      ...(options.state || {}),
+      veyroFleetVisninger: {
+        katalog: katalogvisning.current,
+        koe: koevisning.current,
+        livekort: livekortvisning.current,
+        triage: triagevisning.current,
+        profiler: [...profilvisninger.current.entries()],
+      },
+    };
     if (controlled) {
-      onNavigate(target, options);
+      onNavigate(target, { ...options, state });
       return;
     }
     if (`${window.location.pathname}${window.location.search}` !== target) {
       const historyState = {
-        ...(options.state || {}),
+        ...state,
         ...opretReturtilstand(activePathname, window.scrollY),
       };
       if (options.replace) window.history.replaceState(historyState, "", target);
@@ -163,6 +175,7 @@ export function FleetV2App({
   };
   const huskKatalogvisning = useCallback((visning) => { katalogvisning.current = visning; }, []);
   const huskKoevisning = useCallback((visning) => { koevisning.current = visning; }, []);
+  const huskLivekortvisning = useCallback((visning) => { livekortvisning.current = visning; }, []);
   const huskTriagevisning = useCallback((visning) => { triagevisning.current = visning; }, []);
   const huskProfilvisning = useCallback((unitId, visning) => { profilvisninger.current.set(unitId, visning); }, []);
 
@@ -178,7 +191,7 @@ export function FleetV2App({
   else if (route.kind === "case-folder") content = <CaseFolder caseId={route.caseId} onBack={back} onNavigate={navigate} />;
   else if (route.kind === "workshop-assignment") content = <WorkshopAssignment caseId={route.caseId} canCreateSupplier={canCreateSupplier} onCreateSupplier={onCreateSupplier ? () => onCreateSupplier(absoluteFleetPath(basePath, `/sager/${encodeURIComponent(route.caseId)}/bestilling`)) : undefined} onBack={back} onNavigate={navigate} selectedSupplierId={selectedSupplierId} />;
   else if (route.kind === "service-overview") content = <ServiceOverview onNavigate={navigate} />;
-  else if (route.kind === "live-map") content = <LiveMap onNavigate={navigate} />;
+  else if (route.kind === "live-map") content = <LiveMap initialViewState={livekortvisning.current} onViewStateChange={huskLivekortvisning} onNavigate={navigate} />;
   else if (route.kind === "documents-overview") content = <DocumentsOverview documentId={route.documentId} onBack={back} onNavigate={navigate} />;
   else if (route.kind === "leasing-overview") content = <LeasingOverview onNavigate={navigate} imageProcessor={imageProcessor} />;
   else if (route.kind === "lease-detail") content = <LeasingDetail leaseId={route.leaseId} view={route.view} onBack={back} onNavigate={navigate} imageProcessor={imageProcessor} />;

@@ -91,7 +91,7 @@ button { color: inherit; }
   overflow: hidden;
 }
 
-.fleet-v2-embedded { min-width: 0; min-height: 0; }
+.fleet-v2-embedded { min-width: 0; min-height: 0; max-width: 100%; overflow-x: clip; }
 .fleet-v2-embedded > .workspace-page {
   grid-column: auto;
   grid-row: auto;
