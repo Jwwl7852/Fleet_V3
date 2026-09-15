@@ -8,6 +8,7 @@ import {
   mapServerReportToFleet,
   mapServerRequirementToFleet,
   mapServerServiceHistoryToFleet,
+  mapFleetUnitToShared,
   mapSharedUnitToFleet,
   requirementInputToServer,
 } from "../src/fleet/fleet-service-client.js";
@@ -34,6 +35,27 @@ describe("FLEET-serviceklientens autoritative grænse", () => {
     assert.equal(mapped.number, "Bil 104");
     assert.equal(mapped.meter, 298450);
     assert.equal(mapped.source, "shared-unit-register");
+  });
+
+  it("round-tripper FLEET-profilen gennem den fælles koeretoejer-post", () => {
+    const shared = mapFleetUnitToShared({
+      id: "kt-104", number: "Bil 104", type: "vehicle", make: "Mercedes",
+      model: "Actros", department: "Kolding", meterType: "km", meter: 298451,
+      status: "operation", registration: "DE 45 678", serialNumber: "SYNTH-VIN-104",
+      year: 2024, vehicleDetails: { fuel: "diesel", color: "blå" },
+      dimensions: { unit: "cm", lengthCm: 1035, widthCm: 255, heightCm: 390 },
+      interiorDimensions: { unit: "cm", lengthCm: 800, widthCm: 245, heightCm: 260 },
+      equipment: { towHook: true, trailerCoupling: false, crane: true, lift: false },
+      notes: "Syntetisk testpost", updatedAt: "2026-09-15T12:00:00.000Z",
+    }, { id: "kt-104", art: "lastbil", status: "aktiv", servicepunkter: { a: { type: "service" } } });
+    assert.equal(shared.art, "lastbil");
+    assert.equal(shared.kmStand, 298451);
+    assert.deepEqual(shared.servicepunkter, { a: { type: "service" } });
+    const mapped = mapSharedUnitToFleet({ id: "kt-104", ...shared });
+    assert.equal(mapped.number, "Bil 104");
+    assert.equal(mapped.vehicleDetails.color, "blå");
+    assert.equal(mapped.interiorDimensions.lengthCm, 800);
+    assert.equal(mapped.equipment.crane, true);
   });
 
   it("round-tripper serverens servicefelter til FLEET-visningen", () => {

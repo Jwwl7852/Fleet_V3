@@ -89,7 +89,8 @@ function LookupReview({ result, selected, onToggle, onApply, onDismiss }) {
   </section>;
 }
 
-export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicleLookup = disconnectedVehicleLookup, imageProcessor = prepareUnitImage }) {
+export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb-prototype", onClose, onSave, vehicleLookup = disconnectedVehicleLookup, imageProcessor = prepareUnitImage }) {
+  const sharedStorage = storageKind === "shared-unit-register";
   const [values, setValues] = useState(() => valuesFromUnit(unit));
   const [image, setImage] = useState(unit?.image || null);
   const [submitted, setSubmitted] = useState(false);
@@ -172,7 +173,7 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
     if (Object.keys(errors).length) return;
     if (!confirmBusinessSave(unit ? "Gem ændringerne på enheden?" : "Opret enheden?")) return;
     setSaving(true);
-    const id = unit?.id || `unit-local-${globalThis.crypto?.randomUUID?.() || Date.now().toString(36)}`;
+    const id = unit?.id || `unit-${sharedStorage ? "shared" : "local"}-${globalThis.crypto?.randomUUID?.() || Date.now().toString(36)}`;
     const dimensions = values.dimensionsEnabled ? { unit: "cm", lengthCm: parsePositiveDanishNumber(values.lengthCm), widthCm: parsePositiveDanishNumber(values.widthCm), heightCm: parsePositiveDanishNumber(values.heightCm) } : null;
     const interiorDimensions = values.interiorDimensionsEnabled ? { unit: "cm", lengthCm: parsePositiveDanishNumber(values.interiorLengthCm), widthCm: parsePositiveDanishNumber(values.interiorWidthCm), heightCm: parsePositiveDanishNumber(values.interiorHeightCm) } : null;
     try {
@@ -187,13 +188,13 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
         updatedAt: new Date().toISOString(),
       });
       onClose();
-    } catch (cause) { setSaveError(cause.message || "Enheden kunne ikke gemmes lokalt. Prøv igen."); }
+    } catch (cause) { setSaveError(cause.message || `Enheden kunne ikke gemmes ${sharedStorage ? "i det fælles register" : "lokalt"}. Prøv igen.`); }
     finally { setSaving(false); }
   };
 
   return <div className="dialog-backdrop" role="presentation" onMouseDown={onBackdropMouseDown}>
     <section ref={dialogRef} tabIndex={-1} className="unit-dialog" role="dialog" aria-modal="true" aria-labelledby="unit-dialog-title">
-      <header><div><span className="eyebrow">Lokal prototypelagring</span><h2 id="unit-dialog-title">{unit ? `Redigér ${unit.number}` : "Opret enhed"}</h2><p>Gemmes kun i denne browsers IndexedDB.</p></div><button type="button" className="icon-button" onClick={requestClose} aria-label="Luk formular"><Icon name="close" /></button></header>
+      <header><div><span className="eyebrow">{sharedStorage ? "Fælles enhedsregister" : "Lokal prototypelagring"}</span><h2 id="unit-dialog-title">{unit ? `Redigér ${unit.number}` : "Opret enhed"}</h2><p>{sharedStorage ? "Gemmes i tenantens autoritative emulatorregister og læses af FLEET og PLANNING." : "Gemmes kun i denne browsers IndexedDB."}</p></div><button type="button" className="icon-button" onClick={requestClose} aria-label="Luk formular"><Icon name="close" /></button></header>
       <form onSubmit={submit} noValidate>
         <div className="unit-form-grid">
           <Field label="Enhedsnummer *" error={submitted ? errors.number : null} hint={unit ? "Visningsfelt – det stabile interne ID ændres ikke." : "Fx NB-019."}><input autoFocus value={values.number} onChange={set("number")} /></Field>
@@ -212,11 +213,11 @@ export function UnitFormDialog({ unit, units, tenantId, onClose, onSave, vehicle
           <section className="dimensions-section"><label className="dimensions-toggle"><input type="checkbox" checked={values.dimensionsEnabled} onChange={toggleDimensions} /><span><strong>Tilføj udvendige mål</strong><small>Udvendige mål – ikke lastrum eller indvendige mål.</small></span></label>{values.dimensionsEnabled ? <div className="dimensions-grid"><Field label="Længde i cm" error={submitted ? errors.lengthCm : null}><input inputMode="decimal" value={values.lengthCm} onChange={set("lengthCm")} placeholder="Fx 599,5" /></Field><Field label="Bredde i cm" error={submitted ? errors.widthCm : null}><input inputMode="decimal" value={values.widthCm} onChange={set("widthCm")} /></Field><Field label="Højde i cm" error={submitted ? errors.heightCm : null}><input inputMode="decimal" value={values.heightCm} onChange={set("heightCm")} /></Field></div> : null}</section>
           <section className="dimensions-section"><label className="dimensions-toggle"><input type="checkbox" checked={values.interiorDimensionsEnabled} onChange={toggleInteriorDimensions} /><span><strong>Tilføj indvendige mål</strong><small>Lastrum eller anvendelige indvendige mål i cm.</small></span></label>{values.interiorDimensionsEnabled ? <div className="dimensions-grid"><Field label="Indvendig længde i cm" error={submitted ? errors.interiorLengthCm : null}><input inputMode="decimal" value={values.interiorLengthCm} onChange={set("interiorLengthCm")} /></Field><Field label="Indvendig bredde i cm" error={submitted ? errors.interiorWidthCm : null}><input inputMode="decimal" value={values.interiorWidthCm} onChange={set("interiorWidthCm")} /></Field><Field label="Indvendig højde i cm" error={submitted ? errors.interiorHeightCm : null}><input inputMode="decimal" value={values.interiorHeightCm} onChange={set("interiorHeightCm")} /></Field></div> : null}</section>
           <fieldset className="dimensions-section"><legend>Udstyr</legend><div className="equipment-grid">{[["towHook","Trækkrog"],["trailerCoupling","Hængertræk"],["crane","Kran"],["lift","Lift"]].map(([key,label]) => <label key={key}><input type="checkbox" checked={values[key]} onChange={(event) => setValues((current) => ({ ...current, [key]: event.target.checked }))} /><span>{label}</span></label>)}</div></fieldset>
-          <ImageEditor image={image} onChange={setImage} imageProcessor={imageProcessor} />
+          {sharedStorage ? <section className="unit-image-editor"><div className="form-section-heading"><div><h3>Enhedsbillede</h3><p>Permanent billedlagring afventer den særskilte Storage-adapter. Intet browserbillede gemmes skjult i enhedsregisteret.</p></div></div></section> : <ImageEditor image={image} onChange={setImage} imageProcessor={imageProcessor} />}
           <Field label="Noter" wide><textarea rows="3" value={values.notes} onChange={set("notes")} /></Field>
         </div>
         {saveError ? <p className="form-save-error" role="alert"><Icon name="warning" size={16} />{saveError}</p> : null}
-        <footer><button className="secondary-button" type="button" onClick={requestClose}>Annuller</button><button className="primary-button" type="submit" disabled={saving}>{saving ? "Gemmer lokalt …" : unit ? "Gem ændringer" : "Opret enhed"}</button></footer>
+        <footer><button className="secondary-button" type="button" onClick={requestClose}>Annuller</button><button className="primary-button" type="submit" disabled={saving}>{saving ? (sharedStorage ? "Gemmer i fælles register …" : "Gemmer lokalt …") : unit ? "Gem ændringer" : "Opret enhed"}</button></footer>
       </form>
     </section>
   </div>;

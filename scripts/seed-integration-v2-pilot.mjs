@@ -27,20 +27,31 @@ const modules = Object.fromEntries([
   "booking", "bemanding", "flaade", "facility", "indkoeb", "unitbooking",
   "warehouse", "kunder", "oekonomi",
 ].map((id) => [id, true]));
-const units = Object.fromEntries(Array.from({ length: 6 }, (_, index) => {
-  const number = index + 1;
-  const id = `pilot-enhed-${String(number).padStart(2, "0")}`;
-  return [id, {
-    id,
-    navn: `Syntetisk pilotenhed ${number}`,
-    registrering: `TEST${String(number).padStart(2, "0")}`,
-    status: number === 6 ? "service" : "aktiv",
-    type: number % 2 ? "varebil" : "lastbil",
-    oprettetMs: now - number * 86_400_000,
-    opdateretMs: now,
-    fixture: "integration-v2",
-  }];
-}));
+const unitFixtures = [
+  ["unit-sc-104", "SC-104", "scooter", "Silence", "S04", "Varelevering", 12458, "vaerksted", "KB 39217"],
+  ["unit-nb-001", "NB-001", "varevogn", "Ford", "Transit", "Byggeri", 124532, "aktiv", "DM 12 345"],
+  ["unit-nb-002", "NB-002", "varevogn", "Mercedes", "Sprinter", "Service", 98210, "aktiv", "DX 98 765"],
+  ["unit-nb-003", "NB-003", "lastbil", "Volvo", "FH 500", "Transport", 412980, "udeAfDrift", "CM 45 678"],
+  ["unit-nb-008", "NB-008", "truck", "Still", "RX 20", "Lager", 8421, "udeAfDrift", null, "hours"],
+  ["unit-nb-014", "NB-014", "truck", "Hilti", "TE 3000-AVR", "Byggeri", 618, "udeAfDrift", null, "hours"],
+  ["unit-nb-018", "NB-018", "truck", "Husqvarna", "K 770", "Service", 884, "aktiv", null, "hours"],
+];
+const genericType = (art) => art === "scooter" ? "scooter" : art === "truck" ? "machine" : "vehicle";
+const units = Object.fromEntries(unitFixtures.map(([id, number, art, make, model, department, meter, status, registration, meterType = "km"], index) => [id, {
+  art, status, kaldenavn: number, navn: `${make} ${model}`, hjemsted: department,
+  ...(registration ? { registrering: registration } : {}),
+  ...(meterType === "hours" ? { driftstimer: meter } : { kmStand: meter }),
+  securityLevel: "normal",
+  fleetProfil: {
+    schemaVersion: 1, number, type: genericType(art), make, model, department,
+    meterType, meter, equipment: { towHook: false, trailerCoupling: false, crane: false, lift: false },
+    notes: "Tydeligt syntetisk integrationsfixture",
+    updatedAt: new Date(now).toISOString(),
+  },
+  oprettetMs: now - (index + 1) * 86_400_000,
+  opdateretMs: now,
+  fixture: "integration-v2-synthetic",
+}]));
 
 const invoice = (fakturanummer, beloebOere, extra = {}) => ({
   fakturanummer,
@@ -73,6 +84,12 @@ const invoices = {
     destinationId: null,
     destinationNavn: null,
   }),
+  "fc-filter-flere": invoice("FC-FILTER-FLERE", 80_000, {
+    fordelinger: {
+      fleet: { fordelingId: "fc-filter-flere-fleet", modul: "fleet", destinationId: "case-demo-001", nettoOere: 40_000 },
+      facility: { fordelingId: "fc-filter-flere-facility", modul: "facility", destinationId: "facility-case-synthetic", nettoOere: 40_000 },
+    },
+  }),
 };
 
 const patch = {
@@ -100,6 +117,7 @@ console.log(JSON.stringify({
   tenant: TENANT_A,
   syntheticUsersFromProcureSeed: 5,
   syntheticUnits: Object.keys(units).length,
+  sharedUnitSource: "tenants/<tenant>/koeretoejer",
   syntheticInvoices: Object.keys(invoices).length,
   invoiceControl: "net threshold 100000 øre + second approver",
   modules: Object.keys(modules),

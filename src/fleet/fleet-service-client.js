@@ -34,6 +34,7 @@ export function fleetServiceProjectionState(service = {}) {
 }
 
 export function mapSharedUnitToFleet(unit = {}) {
+  const profile = unit.fleetProfil || {};
   const type = unit.art === "scooter" ? "scooter"
     : ["truck", "maskine", "udstyr"].includes(unit.art) ? "machine" : "vehicle";
   const status = unit.status === "vaerksted" ? "workshop"
@@ -43,23 +44,98 @@ export function mapSharedUnitToFleet(unit = {}) {
   return {
     id: unit.id,
     tenantId: unit.tenantId,
-    number: unit.kaldenavn || unit.registrering || unit.id,
-    type,
-    make: unit.maerke || "",
-    model: unit.model || unit.navn || "Model ikke oplyst",
-    department: unit.hjemsted || "Ikke oplyst",
-    meterType,
-    meter: meterType === "hours" ? (unit.driftstimer ?? null) : (unit.kmStand ?? null),
+    number: profile.number || unit.kaldenavn || unit.registrering || unit.id,
+    type: profile.type || type,
+    make: profile.make || unit.maerke || "",
+    model: profile.model || unit.model || unit.navn || "Model ikke oplyst",
+    department: profile.department || unit.hjemsted || "Ikke oplyst",
+    meterType: profile.meterType || meterType,
+    meter: profile.meter ?? (meterType === "hours" ? (unit.driftstimer ?? null) : (unit.kmStand ?? null)),
     status,
     registration: unit.registrering || null,
-    serialNumber: unit.stelnummer || unit.serienummer || null,
-    year: unit.aargang || null,
+    serialNumber: profile.serialNumber || unit.stelnummer || unit.serienummer || null,
+    year: profile.year ?? unit.aargang ?? null,
     nextServiceDate: Number.isFinite(unit.naesteServiceMs)
       ? new Date(unit.naesteServiceMs).toISOString().slice(0, 10) : null,
     nextServiceMeter: unit.naesteServiceKm ?? null,
-    energy: unit.drivmiddel || unit.energikilde || null,
+    vehicleDetails: profile.vehicleDetails || {},
+    dimensions: profile.dimensions || null,
+    interiorDimensions: profile.interiorDimensions || null,
+    equipment: profile.equipment || {},
+    notes: profile.notes || "",
+    updatedAt: profile.updatedAt || null,
+    energy: profile.vehicleDetails?.fuel || unit.drivmiddel || unit.energikilde || null,
+    sharedArt: unit.art || null,
     source: "shared-unit-register",
   };
+}
+
+const sharedArtFor = (unit, current) => {
+  if (current?.art) return current.art;
+  if (unit.type === "scooter") return "scooter";
+  if (unit.type === "machine") return "truck";
+  if (unit.type === "equipment") return "trailer";
+  return "varevogn";
+};
+
+const sharedStatusFor = (unit, current) => {
+  if (unit.status === "workshop") return "vaerksted";
+  if (["action", "offline"].includes(unit.status)) return "udeAfDrift";
+  if (unit.status === "inactive") {
+    return ["solgt", "skrottet"].includes(current?.status) ? current.status : "solgt";
+  }
+  return "aktiv";
+};
+
+/**
+ * Skriveadapteren til det fælles enhedsregister. Den returnerer hele posten,
+ * så eksisterende servicepunkter og andre autoritative felter bevares ved en
+ * redigering. Browserens Blob-billede er med vilje ikke en del af RTDB-posten;
+ * en permanent billedkilde kræver Storage-adapteren.
+ */
+export function mapFleetUnitToShared(unit = {}, current = {}) {
+  if (!unit.id) throw new Error("Enheden mangler et stabilt id.");
+  const existing = { ...(current || {}) };
+  delete existing.id;
+  delete existing.tenantId;
+  const meterType = unit.meterType === "hours" ? "hours" : "km";
+  const profile = {
+    schemaVersion: 1,
+    number: unit.number,
+    type: unit.type,
+    make: unit.make,
+    model: unit.model,
+    department: unit.department,
+    meterType,
+    meter: Number(unit.meter),
+    serialNumber: unit.serialNumber || null,
+    year: unit.year ?? null,
+    vehicleDetails: unit.vehicleDetails || {},
+    dimensions: unit.dimensions || null,
+    interiorDimensions: unit.interiorDimensions || null,
+    equipment: unit.equipment || {},
+    notes: unit.notes || "",
+    updatedAt: unit.updatedAt || new Date().toISOString(),
+  };
+  const next = {
+    ...existing,
+    art: sharedArtFor(unit, current),
+    status: sharedStatusFor(unit, current),
+    kaldenavn: unit.number,
+    navn: [unit.make, unit.model].filter(Boolean).join(" ") || unit.number,
+    hjemsted: unit.department,
+    fleetProfil: profile,
+  };
+  if (unit.registration) next.registrering = unit.registration;
+  else delete next.registrering;
+  if (meterType === "hours") {
+    next.driftstimer = Number(unit.meter);
+    delete next.kmStand;
+  } else {
+    next.kmStand = Number(unit.meter);
+    delete next.driftstimer;
+  }
+  return next;
 }
 
 export function mapServerRequirementToFleet(requirement = {}) {

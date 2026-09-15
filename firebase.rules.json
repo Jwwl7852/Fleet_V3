@@ -2241,6 +2241,7 @@
             // "om 1.249,7 km" i tabellen, og floats summerer ikke praecist
             // over en flaade.
             "kmStand": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "driftstimer": { ".validate": "newData.isNumber() && newData.val() >= 0" },
             "naesteServiceKm": { ".validate": "newData.isNumber() && newData.val() >= 0" },
 
             // Fristerne er epoch-millisekunder. En dato som streng ville
@@ -2266,6 +2267,55 @@
             // sporet efter hvorfor den gik ud af drift.
             "afgangMs": { ".validate": "newData.isNumber()" },
             "afgangAarsag": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+
+            // FLEET v2-profil paa den faelles koeretoejer-post.
+            "fleetProfil": {
+              ".validate": "newData.hasChildren(['schemaVersion', 'number', 'type', 'make', 'model', 'department', 'meterType', 'meter', 'equipment'])",
+              "schemaVersion": { ".validate": "newData.isNumber() && newData.val() === 1" },
+              "number": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
+              "type": { ".validate": "newData.isString() && newData.val().matches(/^(vehicle|scooter|machine|equipment)$/)" },
+              "make": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+              "model": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+              "department": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+              "meterType": { ".validate": "newData.isString() && newData.val().matches(/^(km|hours)$/)" },
+              "meter": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0" },
+              "serialNumber": { ".validate": "newData.isString() && newData.val().length <= 80" },
+              "year": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1900 && newData.val() <= 2100" },
+              "vehicleDetails": {
+                "variant": { ".validate": "newData.isString() && newData.val().length <= 120" },
+                "firstRegistrationDate": { ".validate": "newData.isString() && newData.val().matches(/^\\d{4}-\\d{2}-\\d{2}$/)" },
+                "fuel": { ".validate": "newData.isString() && newData.val().length <= 40" },
+                "color": { ".validate": "newData.isString() && newData.val().length <= 60" },
+                "curbWeightKg": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "grossWeightKg": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "$andet": { ".validate": false }
+              },
+              "dimensions": {
+                "unit": { ".validate": "newData.val() === 'cm'" },
+                "lengthCm": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "widthCm": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "heightCm": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "$andet": { ".validate": false }
+              },
+              "interiorDimensions": {
+                "unit": { ".validate": "newData.val() === 'cm'" },
+                "lengthCm": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "widthCm": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "heightCm": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                "$andet": { ".validate": false }
+              },
+              "equipment": {
+                ".validate": "newData.hasChildren(['towHook', 'trailerCoupling', 'crane', 'lift'])",
+                "towHook": { ".validate": "newData.isBoolean()" },
+                "trailerCoupling": { ".validate": "newData.isBoolean()" },
+                "crane": { ".validate": "newData.isBoolean()" },
+                "lift": { ".validate": "newData.isBoolean()" },
+                "$andet": { ".validate": false }
+              },
+              "notes": { ".validate": "newData.isString() && newData.val().length <= 4000" },
+              "updatedAt": { ".validate": "newData.isString() && newData.val().length <= 40" },
+              "$andet": { ".validate": false }
+            },
 
             // ⚠ FLEET §9.10 SERVICEBOG (produktejer-review 2026-09-01) — INGEN
             // NY NODE. Konfigurerbare servicepunkter (syn, service, dæk,

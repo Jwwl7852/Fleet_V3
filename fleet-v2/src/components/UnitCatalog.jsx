@@ -34,7 +34,8 @@ function exportCsv(units, costs) {
 }
 
 export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateChange, onNavigate, onNotice, vehicleLookup, imageProcessor }) {
-  const { units, relations, loading, error, saveUnit, tenantId } = useFleetData();
+  const { units, relations, loading, error, saveUnit, tenantId, repositoryKind } = useFleetData();
+  const sharedStorage = repositoryKind === "shared-unit-register";
   const [filters, setFilters] = useState(() => ({
     ...initialFilters,
     ...(initialViewState?.filters || {}),
@@ -63,7 +64,9 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
     else if (filters.query.trim().toLocaleLowerCase("da") === previous.number.toLocaleLowerCase("da")) {
       setFilters((current) => ({ ...current, query: unit.number }));
     }
-    onNotice(`${unit.number} er gemt lokalt i prototypen`);
+    onNotice(sharedStorage
+      ? `${unit.number} er gemt i det fælles enhedsregister`
+      : `${unit.number} er gemt lokalt i prototypen`);
   };
 
   if (loading) return <main className="workspace-page loading-state" id="main-content"><span className="loading-spinner" /><p>Indlæser lokale demodata …</p></main>;
@@ -72,7 +75,7 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
   return (
     <main className="workspace-page catalog-page" id="main-content">
       <header className="page-heading-row">
-        <div><h1>Enhedskartotek</h1><p>Administrér hele jeres flåde – køretøjer, maskiner, udstyr og mere.</p><span className="demo-inline">Fiktive demodata · lokal prototype</span></div>
+        <div><h1>Enhedskartotek</h1><p>Administrér hele jeres flåde – køretøjer, maskiner, udstyr og mere.</p><span className="demo-inline">Fiktive testdata · {sharedStorage ? "fælles emulatorregister" : "lokal prototype"}</span></div>
         <div className="page-actions">
           <button className="secondary-button" type="button" onClick={() => onNotice("Visningen gemmes først i en senere etape")}><Icon name="document" size={17} />Gem visning</button>
           <button className="secondary-button" type="button" onClick={() => exportCsv(filtered, relations.costs || [])}><Icon name="download" size={17} />Eksportér CSV</button>
@@ -120,8 +123,8 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
 
       <footer className="catalog-pagination"><span>Vis <strong>{PAGE_SIZE} pr. side</strong></span><span>{filtered.length ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filtered.length)} af ${filtered.length}` : "0 enheder"}</span><div><button type="button" disabled={page === 1} onClick={() => setPage((value) => value - 1)} aria-label="Forrige side">‹</button>{Array.from({ length: pageCount }, (_, index) => <button className={page === index + 1 ? "is-active" : ""} type="button" key={index + 1} onClick={() => setPage(index + 1)}>{index + 1}</button>)}<button type="button" disabled={page === pageCount} onClick={() => setPage((value) => value + 1)} aria-label="Næste side">›</button></div></footer>
 
-      {creating ? <UnitFormDialog units={units} tenantId={tenantId} onClose={() => setCreating(false)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
-      {editing ? <UnitFormDialog unit={editing} units={units} tenantId={tenantId} onClose={() => setEditing(null)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
+      {creating ? <UnitFormDialog units={units} tenantId={tenantId} storageKind={repositoryKind} onClose={() => setCreating(false)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
+      {editing ? <UnitFormDialog unit={editing} units={units} tenantId={tenantId} storageKind={repositoryKind} onClose={() => setEditing(null)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
     </main>
   );
 }

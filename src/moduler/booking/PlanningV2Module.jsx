@@ -6,6 +6,8 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harModul } from "../../fleet/moduler.js";
 import { harPerm } from "../../fleet/permissions.js";
 import { workforcePlanningCheck } from "../../fleet/workforce-v2-integration.js";
+import { useListe } from "../../fleet/useListe.js";
+import { fraFleetKoeretoejer } from "../../fleet/planning-adapters/fleet.js";
 import {
   PLANNING_V2_INTEGRATION_ENVIRONMENT,
   planningV2ChannelName,
@@ -24,6 +26,14 @@ export default function PlanningV2Module() {
   const hasPermission = harPerm(bruger?.perms, requiredPermission);
   const userId = bruger?.uid || bruger?.id || bruger?.email || "ukendt-bruger";
   const activeView = planningV2ViewForPath(location.pathname);
+  const sharedUnits = useListe("koeretoejer", {
+    vindue: "alle",
+    hent: hasModule && hasPermission,
+  });
+  const fleetResources = useMemo(
+    () => fraFleetKoeretoejer(sharedUnits.data),
+    [sharedUnits.data],
+  );
   const syncChannelName = useMemo(() => planningV2ChannelName({
     environment: PLANNING_V2_INTEGRATION_ENVIRONMENT,
     tenantId,
@@ -53,6 +63,9 @@ export default function PlanningV2Module() {
         embedded
         onNavigate={(view) => navigate(planningV2PathForView(view))}
         workforceAvailabilityCheck={workforcePlanningCheck}
+        fleetResources={fleetResources}
+        fleetResourcesLoading={sharedUnits.henter}
+        fleetResourcesError={sharedUnits.fejl}
         syncChannelName={syncChannelName}
       />
     </section>

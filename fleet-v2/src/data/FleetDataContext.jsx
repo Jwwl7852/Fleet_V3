@@ -14,6 +14,12 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
   const [dataset, setDataset] = useState(null);
   const [error, setError] = useState(null);
   const serverControlledService = serviceBackend?.kind === "server";
+  const serverControlledUnits = serverControlledService && typeof serviceBackend?.saveUnit === "function";
+  const [serverUnitSnapshot, setServerUnitSnapshot] = useState(() => serviceBackend?.units || []);
+
+  useEffect(() => {
+    if (serverControlledUnits) setServerUnitSnapshot(serviceBackend.units || []);
+  }, [serverControlledUnits, serviceBackend?.units]);
 
   useEffect(() => {
     let active = true;
@@ -31,6 +37,17 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
   }, [repository]);
 
   const saveUnit = useCallback(async (unit) => {
+    if (serverControlledUnits) {
+      const saved = await serviceBackend.saveUnit(unit);
+      setServerUnitSnapshot((current) => {
+        const units = [...current];
+        const index = units.findIndex((item) => item.id === saved.id);
+        if (index >= 0) units[index] = saved;
+        else units.push(saved);
+        return units;
+      });
+      return saved;
+    }
     const saved = await repository.saveUnit(unit);
     setDataset((current) => {
       const units = [...current.units];
@@ -40,7 +57,7 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
       return { ...current, units };
     });
     return saved;
-  }, [repository]);
+  }, [repository, serverControlledUnits, serviceBackend]);
 
   useEffect(() => {
     if (!dataset || serverControlledService || !repository.runServiceAutomation) return undefined;
@@ -173,10 +190,10 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
     return result;
   }, [repository, resolveActor]);
 
-  const effectiveUnits = useMemo(() => mergeById(
-    dataset?.units || [],
-    serverControlledService ? serviceBackend?.units || [] : [],
-  ), [dataset?.units, serverControlledService, serviceBackend?.units]);
+  const effectiveUnits = useMemo(() => serverControlledUnits
+    ? serverUnitSnapshot
+    : mergeById(dataset?.units || [], serverControlledService ? serviceBackend?.units || [] : []),
+  [dataset?.units, serverControlledService, serverControlledUnits, serverUnitSnapshot, serviceBackend?.units]);
   const effectiveRelations = useMemo(() => {
     const local = dataset?.relations || {};
     const server = serverControlledService ? serviceBackend?.relations || {} : {};
@@ -233,7 +250,7 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
     updateWorkshopTask,
     saveBooking,
     cancelBooking,
-    repositoryKind: repository.kind,
+    repositoryKind: serverControlledUnits ? "shared-unit-register" : repository.kind,
     serviceUnits: serverControlledService ? serviceBackend.units : effectiveUnits,
     serviceRelations: effectiveRelations,
     serviceLoading: serverControlledService ? serviceBackend.loading : !dataset && !error,
@@ -243,7 +260,7 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
       saveRequirement: true, runAutomation: true, planService: true,
       saveHistory: true, saveSettings: true,
     },
-  }), [authenticatedActor, dataset, error, repository.kind, repository.tenantId, saveUnit, submitReport, saveReportDraft, createManualCase, saveWorkshopOrder, closeCase, reopenCase, saveEvidence, applyInvoiceFixture, saveServiceRequirement, planService, saveHistoricalService, runServiceAutomation, saveServiceSettings, savePositionMeasurement, runPositionDemo, uploadDocuments, updateDocument, replaceDocumentFile, removeDocumentRelation, archiveDocument, saveLease, runLeaseAutomation, updateLeaseDelivery, saveLeaseMeterObservation, saveContractReview, saveManualCost, updateCase, createWorkshopTask, updateWorkshopTask, saveBooking, cancelBooking, serverControlledService, serviceBackend, effectiveUnits, effectiveRelations]);
+  }), [authenticatedActor, dataset, error, repository.kind, repository.tenantId, saveUnit, submitReport, saveReportDraft, createManualCase, saveWorkshopOrder, closeCase, reopenCase, saveEvidence, applyInvoiceFixture, saveServiceRequirement, planService, saveHistoricalService, runServiceAutomation, saveServiceSettings, savePositionMeasurement, runPositionDemo, uploadDocuments, updateDocument, replaceDocumentFile, removeDocumentRelation, archiveDocument, saveLease, runLeaseAutomation, updateLeaseDelivery, saveLeaseMeterObservation, saveContractReview, saveManualCost, updateCase, createWorkshopTask, updateWorkshopTask, saveBooking, cancelBooking, serverControlledService, serverControlledUnits, serviceBackend, effectiveUnits, effectiveRelations]);
 
   return <FleetDataContext.Provider value={value}>{children}</FleetDataContext.Provider>;
 }

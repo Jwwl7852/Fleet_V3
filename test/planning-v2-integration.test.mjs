@@ -42,6 +42,14 @@ describe("PLANNING v2-platformintegration", () => {
     assert.match(demo, /!embedded && <header className="pu-topbar pr-topbar">/);
   });
 
+  it("læser FLEET-enheder fra koeretoejer og sender samme projektion til PLANNING", () => {
+    assert.match(moduleSource, /useListe\("koeretoejer"/);
+    assert.match(moduleSource, /fraFleetKoeretoejer\(sharedUnits\.data\)/);
+    assert.match(moduleSource, /fleetResources=\{fleetResources\}/);
+    assert.match(demo, /source: "fleet-shared-register"/);
+    assert.match(demo, /FLEET-enheder i PLANNING/);
+  });
+
   it("isolerer vinduessynkronisering pr. miljø, tenant og bruger", () => {
     const a = planningV2ChannelName({ environment: "integration", tenantId: "tenant-a", userId: "user-a" });
     const b = planningV2ChannelName({ environment: "integration", tenantId: "tenant-b", userId: "user-a" });

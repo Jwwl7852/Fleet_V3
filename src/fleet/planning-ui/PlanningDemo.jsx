@@ -231,6 +231,38 @@ function IkkeTilsluttetVisning({ title, text }) {
   return <div className="pu-view pr-placeholder"><section className="pu-card"><span>Planning Basic</span><h1>{title}</h1><p>{text}</p><strong>Lokal prototype · ingen ekstern integration</strong></section></div>;
 }
 
+function FleetRessourcer({ resources, loading, error }) {
+  return <div className="pu-view pr-shared-resources" data-view="ressourcer">
+    <header className="pu-view-title"><div><span className="pu-eyebrow">Fælles stamdata</span><h1>FLEET-enheder i PLANNING</h1><p>Læsbar projektion af tenantens autoritative enhedsregister. Stamdata redigeres i FLEET.</p></div></header>
+    {loading ? <section className="pu-card"><p>Indlæser fælles enhedsregister …</p></section> : null}
+    {error ? <section className="pu-card" role="alert"><h2>Enhedsregisteret kunne ikke læses</h2><p>{error.message}</p></section> : null}
+    {!loading && !error ? <section className="pu-card pr-resource-list" aria-label="Fælles FLEET-enheder">
+      <div className="pu-card-head"><div><span className="pu-eyebrow">Serverprojektion</span><h2>{resources.length} enheder</h2></div><Statusmaerke niveau="normal">Fælles kilde</Statusmaerke></div>
+      {resources.length ? <div className="pr-resource-rows">{resources.map((resource) => <article key={resource.reference.id} tabIndex="0"><div><strong>{resource.visningsnavn}</strong><small>{resource.reference.id} · {resource.koeretoej.type}</small></div><span>{resource.stationering || "Hjemsted ikke oplyst"}</span><Statusmaerke niveau={resource.status === "aktiv" ? "normal" : "advarsel"}>{resource.status || "Ukendt"}</Statusmaerke></article>)}</div> : <p className="pu-help">Ingen enheder findes i tenantens fælles register.</p>}
+    </section> : null}
+  </div>;
+}
+
+const planningVehicleResources = (resources = []) => resources.map((resource) => ({
+  id: resource.reference.id,
+  type: "koeretoej",
+  label: resource.visningsnavn,
+  source: "fleet-shared-register",
+  capabilities: {
+    skills: [],
+    vehicleType: String(resource.koeretoej.type || "").toUpperCase(),
+    capacity: resource.koeretoej.kapacitet?.kg ?? null,
+  },
+}));
+
+const withFleetResources = (state, resources = []) => ({
+  ...state,
+  resources: [
+    ...state.resources.filter((resource) => resource.type !== "koeretoej"),
+    ...planningVehicleResources(resources),
+  ],
+});
+
 export default function PlanningDemo({
   activeView = null,
   createLocalUrl = null,
@@ -238,6 +270,9 @@ export default function PlanningDemo({
   onNavigate = null,
   syncChannelName = "veyro-planning-week-demo",
   workforceAvailabilityCheck = null,
+  fleetResources = [],
+  fleetResourcesLoading = false,
+  fleetResourcesError = null,
 }) {
   const fixtures = useMemo(() => opretReferenceFixtures(), []);
   const urlState = useMemo(() => {
@@ -260,7 +295,7 @@ export default function PlanningDemo({
   const [forslagAaben, setForslagAaben] = useState(false);
   const [indstillingerAabne, setIndstillingerAabne] = useState(false);
   const [planlaegningspulje, setPlanlaegningspulje] = useState([]);
-  const [ugeplan, setUgeplan] = useState(() => opretDemoPlanlaegning());
+  const [ugeplan, setUgeplan] = useState(() => withFleetResources(opretDemoPlanlaegning(), fleetResources));
   const ugeplanRef = useRef(ugeplan);
   const channelRef = useRef(null);
   const [liveFlerdagsruteId, setLiveFlerdagsruteId] = useState(null);
@@ -300,7 +335,7 @@ export default function PlanningDemo({
     setSkabelonKoeretider(frisk.skabelonKoeretider); setIndstillinger(frisk.afvigelsesindstillinger);
     setFiltre({ status: "alle", ruteId: "", medarbejderId: "", koeretoejId: "" });
     setRaekkevisning(RAEKKEVISNING.RUTE); setValgtRuteId(null); setValgtStopId(null); setDetaljeAaben(false); setForslagAaben(false);
-    opdaterUgeplan({ ...opretDemoPlanlaegning(), revision: ugeplanRef.current.revision + 1 }); setLiveFlerdagsruteId(null);
+    opdaterUgeplan({ ...withFleetResources(opretDemoPlanlaegning(), fleetResources), revision: ugeplanRef.current.revision + 1 }); setLiveFlerdagsruteId(null);
   };
   const ulæsteNotifikationer = (ugeplan.notifications || []).filter((item) => !item.read);
   const aabnNotifikation = (notification) => {
@@ -313,6 +348,14 @@ export default function PlanningDemo({
     if (activeView) setVisning(activeView);
   }, [activeView]);
   useEffect(() => {
+    if (fleetResourcesLoading || fleetResourcesError) return;
+    setUgeplan((current) => {
+      const next = withFleetResources(current, fleetResources);
+      ugeplanRef.current = next;
+      return next;
+    });
+  }, [fleetResources, fleetResourcesError, fleetResourcesLoading]);
+  useEffect(() => {
     const luk = (event) => { if (event.key === "Escape") { setFullscreen(false); setDetaljeAaben(false); setForslagAaben(false); setIndstillingerAabne(false); } };
     window.addEventListener("keydown", luk);
     return () => window.removeEventListener("keydown", luk);
@@ -323,11 +366,15 @@ export default function PlanningDemo({
     channelRef.current = channel;
     channel.onmessage = (event) => {
       if (event.data?.type === "PLANNING_WEEK_REQUEST") channel.postMessage({ type: "PLANNING_WEEK_STATE", payload: ugeplanRef.current });
-      if (event.data?.type === "PLANNING_WEEK_STATE" && event.data.payload?.revision > ugeplanRef.current.revision) { ugeplanRef.current = event.data.payload; setUgeplan(event.data.payload); }
+      if (event.data?.type === "PLANNING_WEEK_STATE" && event.data.payload?.revision > ugeplanRef.current.revision) {
+        const next = withFleetResources(event.data.payload, fleetResources);
+        ugeplanRef.current = next;
+        setUgeplan(next);
+      }
     };
     channel.postMessage({ type: "PLANNING_WEEK_REQUEST" });
     return () => { channelRef.current = null; channel.close(); };
-  }, [syncChannelName]);
+  }, [fleetResources, syncChannelName]);
   if (urlState.customerOnly) return <PlanningCustomerConfirmation state={ugeplan} setState={opdaterUgeplan} taskId={urlState.taskId} requestedProposalId={urlState.proposalId} requestedVersion={urlState.version} />;
   if (urlState.calendarOnly) return <main className="ps-standalone-calendar" id="planning-indhold"><PlanningScheduling state={ugeplan} setState={opdaterUgeplan} calendarOnly onReset={nulstilDemo} onOpenLive={(routeId) => { setLiveFlerdagsruteId(routeId); }} availabilityCheck={workforceAvailabilityCheck} /></main>;
   return (
@@ -357,7 +404,7 @@ export default function PlanningDemo({
           {visning === VISNING.OPTIMERING && <PlanningOptimization planlaegningspulje={planlaegningspulje} />}
           {visning === VISNING.FASTE_RUTER && <FasteRuter skabeloner={skabeloner} setSkabeloner={setSkabeloner} koeretider={skabelonKoeretider} setKoeretider={setSkabelonKoeretider} ressourcer={fixtures.ressourceSnapshot} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} />}
           {visning === VISNING.MOBIL && <Mobilvisning ruter={ruter} setRuter={setRuter} medarbejdere={fixtures.medarbejdere} onAabnKalender={aabnRute} />}
-          {visning === "ressourcer" && <IkkeTilsluttetVisning title="Ressourcer" text="Ressourcevisningen forberedes til Fleet- og Workforce-adaptere; denne lokale demo ændrer ingen stamdata." />}
+          {visning === "ressourcer" && <FleetRessourcer resources={fleetResources} loading={fleetResourcesLoading} error={fleetResourcesError} />}
           {visning === "rapporter" && <IkkeTilsluttetVisning title="Rapporter" text="Rapporter er ikke en del af denne visuelle etape. Ingen data eksporteres eller gemmes." />}
         </main>
       </div>

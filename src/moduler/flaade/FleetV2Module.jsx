@@ -17,7 +17,10 @@ import {
   mapServerRequirementToFleet,
   mapServerServiceHistoryToFleet,
   mapSharedUnitToFleet,
+  mapFleetUnitToShared,
 } from "../../fleet/fleet-service-client.js";
+import { gem } from "../../fleet/skriv.js";
+import { AUDIT } from "../../fleet/audit.js";
 import {
   FLEET_V2_INTEGRATION_DATABASE,
   FLEET_V2_ROUTE_PREFIX,
@@ -26,7 +29,7 @@ import {
 } from "../../fleet/fleet-v2-integration.js";
 
 export default function FleetV2Module() {
-  const { tenantId, bruger, moduler } = useFleet();
+  const { tenantId, bruger, moduler, path } = useFleet();
   const location = useLocation();
   const navigate = useNavigate();
   const afventetScroll = useRef(null);
@@ -80,7 +83,8 @@ export default function FleetV2Module() {
   const serviceHistoryPayload = JSON.stringify(service.history.data);
   const serviceState = fleetServiceProjectionState(service);
   const serviceBackend = useMemo(() => {
-    const units = JSON.parse(serviceUnitsPayload).map(mapSharedUnitToFleet);
+    const rawUnits = JSON.parse(serviceUnitsPayload);
+    const units = rawUnits.map(mapSharedUnitToFleet);
     const requirements = JSON.parse(serviceRequirementsPayload).map(mapServerRequirementToFleet);
     const occurrences = JSON.parse(serviceOccurrencesPayload).map(mapServerOccurrenceToFleet);
     const reports = JSON.parse(serviceReportsPayload).map(mapServerReportToFleet);
@@ -88,6 +92,7 @@ export default function FleetV2Module() {
     const caseEvents = JSON.parse(serviceHistoryPayload).map(mapServerServiceHistoryToFleet);
     const client = createFleetServiceClient();
     const reload = () => {
+      service.units.genindlaes();
       service.requirements.genindlaes();
       service.occurrences.genindlaes();
       service.reports.genindlaes();
@@ -107,11 +112,28 @@ export default function FleetV2Module() {
       loading: serviceState.loading,
       error: serviceState.error,
       capabilities: {
+        saveUnit: mayManageService,
         saveRequirement: mayManageService,
         runAutomation: mayManageService,
         planService: false,
         saveHistory: false,
         saveSettings: false,
+      },
+      async saveUnit(input) {
+        if (!mayManageService) throw new Error("Du har ikke adgang til at gemme enheder.");
+        const current = rawUnits.find((item) => item.id === input.id) || null;
+        const shared = mapFleetUnitToShared(input, current);
+        const result = await gem({
+          sti: path(`koeretoejer/${input.id}`),
+          data: shared,
+          foer: current,
+          objekt: "koeretoejer",
+          objektId: input.id,
+          handling: current ? AUDIT.aendre : AUDIT.opret,
+        });
+        if (!result.ok) throw new Error(result.besked || "Enheden kunne ikke gemmes i det fælles register.");
+        reload();
+        return mapSharedUnitToFleet({ id: input.id, tenantId, ...shared });
       },
       async saveRequirement(input) {
         const current = requirements.find((item) => item.id === input.id) || null;
@@ -131,9 +153,9 @@ export default function FleetV2Module() {
     service.cases.fejl, service.history.henter, service.history.fejl,
     serviceUnitsPayload, serviceRequirementsPayload, serviceOccurrencesPayload,
     serviceReportsPayload, serviceCasesPayload, serviceHistoryPayload,
-    service.requirements.genindlaes, service.occurrences.genindlaes,
+    service.units.genindlaes, service.requirements.genindlaes, service.occurrences.genindlaes,
     service.reports.genindlaes, service.cases.genindlaes, service.history.genindlaes,
-    mayManageService]);
+    mayManageService, path, tenantId]);
 
   if (!hasModule || !hasPermission) {
     return (

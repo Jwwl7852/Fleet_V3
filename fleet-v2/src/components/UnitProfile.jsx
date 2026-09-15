@@ -111,7 +111,8 @@ function GpsTab({ related, unit, onNavigate }) {
 }
 
 export function UnitProfile({ unitId, initialViewState, onViewStateChange, onNavigate, onBack = onNavigate, onNotice, vehicleLookup, imageProcessor }) {
-  const { units, relations, loading, saveUnit, tenantId } = useFleetData();
+  const { units, relations, loading, saveUnit, tenantId, repositoryKind } = useFleetData();
+  const sharedStorage = repositoryKind === "shared-unit-register";
   const [tab, setTab] = useState(() => initialViewState?.tab || "overview");
   const [editing, setEditing] = useState(false);
   const [showQr, setShowQr] = useState(false);
@@ -126,7 +127,9 @@ export function UnitProfile({ unitId, initialViewState, onViewStateChange, onNav
 
   const meta = statusMeta(unit);
   const position = related.positions?.[0];
-  const save = async (next) => { await saveUnit(next); onNotice(`${next.number} er gemt lokalt i prototypen`); };
+  const save = async (next) => { await saveUnit(next); onNotice(sharedStorage
+    ? `${next.number} er gemt i det fælles enhedsregister`
+    : `${next.number} er gemt lokalt i prototypen`); };
   return (
     <main className="workspace-page profile-page" id="main-content">
       <div className="profile-breadcrumb"><button type="button" onClick={() => onBack("/enheder")}>Enheder</button><Icon name="chevron" size={13} /><span>{unit.number}</span><em>Fiktive demodata</em></div>
@@ -152,7 +155,7 @@ export function UnitProfile({ unitId, initialViewState, onViewStateChange, onNav
         {tab === "economy" ? <EconomyTab related={related} unit={unit} /> : null}
         {tab === "gps" ? <GpsTab related={related} unit={unit} onNavigate={onNavigate} /> : null}
       </section>
-      {editing ? <UnitFormDialog unit={unit} units={units} tenantId={tenantId} onClose={() => setEditing(false)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
+      {editing ? <UnitFormDialog unit={unit} units={units} tenantId={tenantId} storageKind={repositoryKind} onClose={() => setEditing(false)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
       {showQr ? <UnitQrDialog unit={unit} onClose={() => setShowQr(false)} /> : null}
     </main>
   );

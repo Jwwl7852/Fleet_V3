@@ -214,6 +214,28 @@ describe("fælles FLEET-kategorier", () => {
     await assertFails(set(ref(udenSkriv, sti("fleetKategorier", "nej")), KATEGORI));
   });
 
+  it("gemmer den detaljerede FLEET-profil i den samme autoritative post", async () => {
+    const db = medPerms("uid-fleetprofil", [PERM.koeretoejerSkriv, PERM.koeretoejerLaes]);
+    const profil = {
+      schemaVersion: 1, number: "TEST-104", type: "vehicle", make: "Testmærke",
+      model: "Testmodel", department: "Testdepot", meterType: "km", meter: 1200,
+      serialNumber: "SYNTH-VIN-104", year: 2024,
+      vehicleDetails: { fuel: "diesel", color: "blå", curbWeightKg: 2100, grossWeightKg: 3500 },
+      dimensions: { unit: "cm", lengthCm: 600, widthCm: 220, heightCm: 280 },
+      interiorDimensions: { unit: "cm", lengthCm: 390, widthCm: 180, heightCm: 190 },
+      equipment: { towHook: true, trailerCoupling: false, crane: false, lift: true },
+      notes: "Syntetisk regeltest", updatedAt: "2026-09-15T12:00:00.000Z",
+    };
+    await assertSucceeds(set(ref(db, sti("koeretoejer", "k-fleetprofil")), {
+      ...ENHED, kaldenavn: "TEST-104", hjemsted: "Testdepot", kmStand: 1200,
+      fleetProfil: profil,
+    }));
+    const gemt = (await get(ref(db, sti("koeretoejer", "k-fleetprofil")))).val();
+    assert.equal(gemt.fleetProfil.equipment.lift, true);
+    assert.equal(gemt.kmStand, 1200);
+    await assertFails(update(ref(db, sti("koeretoejer", "k-fleetprofil/fleetProfil")), { meterType: "liter" }));
+  });
+
   it("afviser hardsletning, ændret oprettelsesaudit og kategori uden anvendelse", async () => {
     const db = medPerms("uid-kat", [PERM.koeretoejerSkriv, PERM.koeretoejerLaes]);
     await assertFails(remove(ref(db, sti("fleetKategorier", "daek"))));
