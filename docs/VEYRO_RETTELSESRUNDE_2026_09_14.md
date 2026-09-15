@@ -858,3 +858,30 @@ Den tværgående, aktuelle 36-kravsvurdering er samlet i
   momsforløb blev importeret til en Excel-kompatibel projektmappe. Visuel
   rendering viste 12 læsbare kolonner og korrekte danske tegn. Manuel åbning i
   Microsoft Excel er fortsat ikke gennemført og markeres derfor som restarbejde.
+
+### Etape 23 — autentificeret integrations-QA og fælles dialoglukning
+
+- Den byggede root-app blev prøvet på `http://127.0.0.1:5197/` med strictPort
+  mod den isolerede Firebase Emulator Suite. Normal Auth, abonnement,
+  tenant-claims og modulpermissions var aktive; anonym direkte URL blev sendt
+  til login, og en autentificeret bruger uden FLEET-adgang fik afslag.
+- Den tilladte session havde præcis én AppShell og ét indlejret FLEET-modul.
+  Arbejdskø-, indberetnings-, enheds- og Livekortstate blev bevaret gennem
+  detaljeruter; direkte/reloadet sagsmappe brugte intern fallback.
+- Livekortpopup, godkendt sagsmappedesign og Fakturacenter blev prøvet i den
+  integrerede app. Serverdata og lokale prototypefixtures er markeret særskilt
+  i evidensen; ingen ekstern tjeneste eller skjult demo-fallback blev brugt.
+- Elleve FLEET-dialogejere bruger nu samme fokusfælde, ESC/X/Annuller,
+  dirty-værn, busy-værn og fokusretur. Den integrerede prøve dokumenterer det
+  fælles lukkeværn på manuel sag; øvrige dialogers reelle backendfejlforløb
+  forbliver restarbejde under UX-07.
+- Seks berørte routes blev prøvet ved 1920×1080, 1440×900, 390×844 og
+  360×800. Mobilnavigation og Fakturacenter-shell blev rettet, og alle 24
+  kombinationer havde nul vandret dokumentscroll.
+- Produktcommit:
+  `97858a5fc9375af5eb6256beb6a9ecb2b868655d`. Teknisk slutbevis: root- og
+  FLEET-lint, design 11/11, FLEET 205/205, functions-paritet 29/29, begge
+  produktionsbuilds og fuld Rules-/platformsgate 4.625/4.625.
+- Den efterprøvbare 36-rækkers matrix og screenshotmanifestet ligger i
+  henholdsvis `docs/VEYRO_RETTELSESRUNDE_STATUS_2026_09_15.md` og
+  `artifacts/veyro-rettelsesrunde-2026-09-15/browser/RESULTAT.json`.
