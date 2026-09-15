@@ -8,7 +8,14 @@ export const ECONOMY_CATEGORIES = Object.freeze(Object.fromEntries(
   DEFAULT_FLEET_CATEGORIES.filter((item) => item.usages.cost).map((item) => [item.id, item.name]),
 ));
 
-export const COST_STATES = { actual: "Registreret faktisk", provisional: "Foreløbigt eksternt beløb", estimate: "Estimat / tilbud", contractual: "Kontraktlig forventning" };
+export const COST_STATES = {
+  actual: "Manuelt / lokalt registreret",
+  controlled: "Kontrolleret faktura",
+  booked: "Bogført beløb",
+  provisional: "Foreløbigt eksternt beløb",
+  estimate: "Estimat / tilbud",
+  contractual: "Kontraktlig forventning",
+};
 
 export function categoryKey(value = "") {
   const text = value.toLocaleLowerCase("da-DK");
@@ -21,10 +28,46 @@ export function categoryKey(value = "") {
 }
 
 export function normalizeCost(item, categories = DEFAULT_FLEET_CATEGORIES) {
-  const state = item.state || (item.actual === false ? "provisional" : item.source === "external_provisional" ? "provisional" : "actual");
+  const state = item.state || item.accountingState || (item.actual === false ? "provisional" : item.source === "external_provisional" ? "provisional" : "actual");
   const categoryId = item.categoryId || item.categoryKey || categoryKey(item.category);
   const category = categoryById(categories, categoryId);
-  return { ...item, date: item.date || dateFromMonth(item.month), month: item.month || item.date?.slice(0, 7), categoryId, categoryKey: categoryId, category: item.categorySnapshot || item.category || category?.name || "Udgået kategori", amountMinor: amountMinor(item), currency: item.currency || "DKK", vatBasis: item.vatBasis || "unknown", state, source: item.source || "legacy_local_demo" };
+  return { ...item, date: item.date || dateFromMonth(item.month), month: item.month || item.date?.slice(0, 7), categoryId, categoryKey: categoryId, category: item.categorySnapshot || item.category || category?.name || "Udgået kategori", amountMinor: amountMinor(item), currency: item.currency || "DKK", vatBasis: item.vatBasis || "unknown", state, source: item.source || "legacy_local_demo", economicEventId: item.economicEventId || item.invoiceId || item.sourceKey || item.id };
+}
+
+const stateRank = Object.freeze({ contractual: 0, estimate: 1, provisional: 2, actual: 3, controlled: 4, booked: 5 });
+
+export function deduplicateEconomyEntries(entries) {
+  const byEvent = new Map();
+  entries.forEach((item) => {
+    const key = item.economicEventId || item.id;
+    const current = byEvent.get(key);
+    if (!current || (stateRank[item.state] ?? -1) > (stateRank[current.state] ?? -1)) byEvent.set(key, item);
+  });
+  return [...byEvent.values()];
+}
+
+const monthStart = (value) => `${value.slice(0, 7)}-01`;
+const nextMonth = (value) => {
+  const date = new Date(`${monthStart(value)}T00:00:00Z`);
+  date.setUTCMonth(date.getUTCMonth() + 1);
+  return date.toISOString().slice(0, 10);
+};
+
+export function materializeRecurringEntries(entries, from, to) {
+  return entries.flatMap((item) => {
+    if (item.recurrence !== "monthly") return [item];
+    const first = monthStart(item.periodStart || item.date || from);
+    const last = monthStart(item.periodEnd || to);
+    const rangeStart = monthStart(from);
+    const rangeEnd = monthStart(to);
+    const rows = [];
+    for (let cursor = first; cursor <= last && cursor <= rangeEnd; cursor = nextMonth(cursor)) {
+      if (cursor < rangeStart) continue;
+      const month = cursor.slice(0, 7);
+      rows.push({ ...item, id: `${item.id}:${month}`, date: cursor, month, economicEventId: `${item.economicEventId}:${month}`, recurrenceOccurrence: month });
+    }
+    return rows;
+  });
 }
 
 export function buildEconomyEntries(dataset) {
@@ -37,13 +80,13 @@ export function buildEconomyEntries(dataset) {
     if (Number.isFinite(task.expectedCost)) rows.push({ id: `estimate-${task.id}`, unitId: task.unitId, caseId: task.caseId, taskId: task.id, date: task.createdAt?.slice(0, 10), categoryId: "workshop", categoryKey: "workshop", category: categoryById(categories, "workshop")?.name || "Værksted og reparation", amountMinor: Math.round(task.expectedCost * 100), currency: "DKK", vatBasis: "excl_vat", state: "estimate", source: "workshop_estimate" });
     return rows;
   });
-  const leaseRows = (dataset.relations.leases || []).filter((lease) => Number.isFinite(lease.payment?.recurringMinor)).map((lease) => ({ id: `contract-${lease.id}`, unitId: lease.unitId, leaseId: lease.id, date: lease.startDate, categoryId: "leasing", categoryKey: "leasing", category: categoryById(categories, "leasing")?.name || "Leasing", amountMinor: lease.payment.recurringMinor, currency: lease.payment.currency || "DKK", vatBasis: lease.payment.vat || "unknown", state: "contractual", source: "lease_contract", note: `${lease.payment.interval || "monthly"} kontraktlig ydelse; depositum er ikke medregnet.` }));
-  return [...costs, ...taskRows, ...leaseRows];
+  const leaseRows = (dataset.relations.leases || []).filter((lease) => Number.isFinite(lease.payment?.recurringMinor)).map((lease) => ({ id: `contract-${lease.id}`, economicEventId: `lease:${lease.id}`, unitId: lease.unitId, leaseId: lease.id, date: lease.startDate, periodStart: lease.startDate, periodEnd: lease.endDate, recurrence: lease.payment.interval === "monthly" ? "monthly" : null, categoryId: "leasing", categoryKey: "leasing", category: categoryById(categories, "leasing")?.name || "Leasing", amountMinor: lease.payment.recurringMinor, currency: lease.payment.currency || "DKK", vatBasis: lease.payment.vat || "unknown", state: "contractual", source: "lease_contract", note: `${lease.payment.interval || "monthly"} kontraktlig ydelse fra ${lease.startDate || "ukendt start"} til ${lease.endDate || "ukendt slut"}; depositum er ikke medregnet.` }));
+  return deduplicateEconomyEntries([...costs, ...taskRows, ...leaseRows]);
 }
 
 export function filterEconomyEntries(entries, units, filters = {}) {
   const from = filters.from || "0000-01-01"; const to = filters.to || "9999-12-31";
-  return entries.filter((item) => {
+  return deduplicateEconomyEntries(materializeRecurringEntries(entries, from, to)).filter((item) => {
     const unit = units.find((entry) => entry.id === item.unitId);
     return (!item.date || item.date >= from && item.date <= to)
       && (!filters.department || unit?.department === filters.department)
@@ -57,6 +100,29 @@ export function actualCostSummary(entries) {
   const actual = entries.filter((item) => item.state === "actual");
   const currencies = [...new Set(actual.map((item) => item.currency))];
   return { calculable: currencies.length <= 1, currency: currencies[0] || "DKK", amountMinor: currencies.length <= 1 ? actual.reduce((sum, item) => sum + item.amountMinor, 0) : null, count: actual.length };
+}
+
+export function previousPeriod(filters) {
+  const start = new Date(`${filters.from}T00:00:00Z`);
+  const end = new Date(`${filters.to}T00:00:00Z`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
+  const days = Math.round((end - start) / 86400000) + 1;
+  const previousEnd = new Date(start.getTime() - 86400000);
+  const previousStart = new Date(previousEnd.getTime() - (days - 1) * 86400000);
+  return { from: previousStart.toISOString().slice(0, 10), to: previousEnd.toISOString().slice(0, 10) };
+}
+
+export function economyPeriodComparison(entries, units, filters, state = "actual") {
+  const prior = previousPeriod(filters);
+  if (!prior) return { calculable: false, reason: "Vælg en gyldig periode." };
+  const currentRows = filterEconomyEntries(entries, units, filters).filter((item) => item.state === state);
+  const priorRows = filterEconomyEntries(entries, units, { ...filters, ...prior }).filter((item) => item.state === state);
+  if (!currentRows.length || !priorRows.length) return { calculable: false, prior, reason: "Der findes ikke registrerede poster i begge sammenligningsperioder." };
+  const currencies = [...new Set([...currentRows, ...priorRows].map((item) => item.currency))];
+  if (currencies.length !== 1) return { calculable: false, prior, reason: "Perioderne indeholder flere valutaer uden omregningsgrundlag." };
+  const currentMinor = currentRows.reduce((sum, item) => sum + item.amountMinor, 0);
+  const priorMinor = priorRows.reduce((sum, item) => sum + item.amountMinor, 0);
+  return { calculable: true, prior, currency: currencies[0], currentMinor, priorMinor, changePct: priorMinor === 0 ? null : (currentMinor - priorMinor) / Math.abs(priorMinor) * 100 };
 }
 
 export function periodDistance(unitId, observations, from, to) {

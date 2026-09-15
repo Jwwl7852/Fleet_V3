@@ -53,7 +53,7 @@ describe("statuskorrektion, mobilflow, økonomi og fælles billeder",()=>{
 
   it("registrerer en manuel omkostning uden at fremstille den som fakturakontrolleret",async()=>{
     const repository=start("/oekonomi");
-    expect(await screen.findByRole("heading",{name:"Økonomi og flådestatistik"})).toBeTruthy();
+    expect(await screen.findByRole("heading",{name:"Økonomi"})).toBeTruthy();
     expect(screen.getByText("Kontraktlige ydelser")).toBeTruthy();
     fireEvent.click(screen.getByRole("button",{name:/Manuel omkostning/}));const dialog=screen.getByRole("form",{name:"Registrer manuel omkostning"});
     fireEvent.change(within(dialog).getByLabelText("Omkostningens enhed"),{target:{value:"unit-nb-002"}});fireEvent.change(within(dialog).getByLabelText("Omkostningsbeløb"),{target:{value:"825,50"}});fireEvent.change(within(dialog).getByLabelText("Omkostningsbemærkning"),{target:{value:"Manuel energiopgørelse"}});fireEvent.click(within(dialog).getByRole("button",{name:"Gem post"}));

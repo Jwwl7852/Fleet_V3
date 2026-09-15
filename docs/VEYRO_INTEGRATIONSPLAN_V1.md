@@ -1061,3 +1061,31 @@ Overgangen er fortsat todelt: den eksisterende service-UI og dens lokale
 repository skal kobles til callables/noderne, og allerede åbne forekomster skal
 håndteres eksplicit ved ændring eller deaktivering af et krav. Indtil den
 adapter og overgang er gennemført, er FL-14 samlet set delvist implementeret.
+
+## 22. FLEET-statistik og økonomisk kildedisciplin — 2026-09-15
+
+Den moderne FLEET-del har fået en særskilt `/fleet-v2/statistik`-rute. Den
+læser kun registrerede felter fra FLEET-datasættets måler- og positionsrelationer
+og mærker tidspunkt, enhed, kilde og datatype. Syntetiske/manuale målinger
+bliver ikke fortolket som en OBD-forbindelse. Da der ikke er en valideret
+OBD-adapter, viser ruten den konkrete tilstand `OBD er ikke tilsluttet` og
+opfinder ikke brændstofforbrug, kørselsmønstre eller andre målinger.
+
+Økonomidomænet adskiller manuelle/lokale, fakturakontrollerede, bogførte,
+foreløbige, estimerede og kontraktlige beløb. Månedlige kontrakter udfoldes
+inden for kontraktens start/slut og det aktive filter. Poster med samme
+økonomiske hændelses-ID deduplikeres ved at bevare den mest autoritative status,
+mens en kreditnota forbliver en særskilt negativ hændelse. Periodesammenligning
+kræver poster i begge lige lange perioder og én valuta uden et manglende
+omregningsgrundlag.
+
+Begge CSV-eksporter bruger UTF-8 BOM og danske kolonner. Statistikken anfører
+måling, enhed, kilde og datatype; økonomien bevarer beløb, valuta, status,
+kilde og reference. En manuel dansk Excel-kontrol udestår fortsat.
+
+Den vigtige åbne grænse er serverkoblingen: FLEET-økonomien er fortsat lokal
+IndexedDB-prototype og må ikke kaldes fuld ejeromkostning eller bogført data.
+En senere adapter skal koble autoritative Fakturacenter-/bogføringsposter på
+uden at blande statusser eller dobbeltregistrere en bestilling og dens faktura.
+Der er ikke aktiveret OBD, migreret produktionsdata eller anvendt eksterne
+tjenester.

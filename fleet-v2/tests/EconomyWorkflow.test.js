@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFixtureDataset } from "../src/data/fleetFixtures";
-import { actualCostSummary, applyManualCostSave, buildEconomyEntries, economyCsv, mergeDowntimeIntervals, periodDistance } from "../src/data/economyWorkflow";
+import { actualCostSummary, applyManualCostSave, buildEconomyEntries, deduplicateEconomyEntries, economyCsv, economyPeriodComparison, filterEconomyEntries, materializeRecurringEntries, mergeDowntimeIntervals, periodDistance } from "../src/data/economyWorkflow";
 
 describe("økonomi og flådestatistik", () => {
   it("holder faktiske, foreløbige, estimater og kontraktlige ydelser adskilt", () => {
@@ -37,5 +37,32 @@ describe("økonomi og flådestatistik", () => {
     expect(csv).toContain("Beløb");
     expect(csv).toMatch(/\"\d+,\d{2}\"/);
     expect([...new TextEncoder().encode(csv).slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+  });
+
+  it("materialiserer en månedlig kontrakt inden for kontraktens og filtrets periode", () => {
+    const rows = materializeRecurringEntries([{ id: "lease", economicEventId: "lease", date: "2026-01-01", periodStart: "2026-01-01", periodEnd: "2026-03-31", recurrence: "monthly", amountMinor: 100, state: "contractual" }], "2026-02-01", "2026-12-31");
+    expect(rows.map((item) => item.month)).toEqual(["2026-02", "2026-03"]);
+  });
+
+  it("foretrækker bogført post for samme økonomiske hændelse og bevarer kreditnotaen særskilt", () => {
+    const rows = deduplicateEconomyEntries([
+      { id: "order", economicEventId: "event-1", state: "provisional", amountMinor: 10000 },
+      { id: "invoice", economicEventId: "event-1", state: "controlled", amountMinor: 10000 },
+      { id: "booked", economicEventId: "event-1", state: "booked", amountMinor: 10000 },
+      { id: "credit", economicEventId: "credit-1", creditOf: "event-1", state: "booked", amountMinor: -2500 },
+    ]);
+    expect(rows).toEqual([expect.objectContaining({ id: "booked" }), expect.objectContaining({ id: "credit", amountMinor: -2500 })]);
+  });
+
+  it("sammenligner kun ens status og kræver poster i begge perioder", () => {
+    const units = [{ id: "u" }];
+    const entries = [
+      { id: "a", economicEventId: "a", unitId: "u", date: "2026-02-10", amountMinor: 10000, currency: "DKK", state: "actual" },
+      { id: "b", economicEventId: "b", unitId: "u", date: "2026-01-10", amountMinor: 8000, currency: "DKK", state: "actual" },
+      { id: "c", economicEventId: "c", unitId: "u", date: "2026-02-12", amountMinor: 50000, currency: "DKK", state: "estimate" },
+    ];
+    const result = economyPeriodComparison(entries, units, { from: "2026-02-01", to: "2026-02-28" });
+    expect(result).toMatchObject({ calculable: true, currentMinor: 10000, priorMinor: 8000, changePct: 25 });
+    expect(filterEconomyEntries(entries, units, { from: "2026-02-01", to: "2026-02-28" })).toHaveLength(2);
   });
 });

@@ -7,7 +7,7 @@ en ny datakilde eller en tilladelse til produktionsændringer.
 
 ## Grundlag og afgrænsning
 
-- Start-HEAD: `7313eac39a0e8b55dbbb0f59b60f31c9753a67d3`
+- Start-HEAD: `7313eac39a0e8b55dbbb0f59b60f31c9753a67d`
 - Branch: `codex/veyro-integration-v1`
 - Lokal, utracked `functions/.env.demo-veyro-warehouse-integration-test`
   bevares og medtages ikke i commits.
@@ -62,9 +62,9 @@ aktuelle kodegrundlag.
 | FL-13 | Service | Dateret seneste service/måler, kalender/km/timer, varsler, faste hændelser og forklarlig næste grænse. | Service domain/UI | implementeret som lokal prototype | 24/24 Service-domæne-/komponenttests | Den først nåede dato- eller målergrænse udløser behovet; tallet `500` er målerinterval i den viste enheds km eller driftstimer |
 | FL-14 | Serviceautomatik | Én indberetning pr. krav/cyklus, idempotens/samtidighed, manglende grundlag, gennemførsel og ændring/deaktivering. | `functions/fleet-service-automation.js`, callables/scheduler, Rules og lokal service-UI | delvist implementeret | Servermotoren opretter atomisk deterministisk forekomst, indberetning og sag; 16/16 callable-/samtidighedsassertions, 49/49 målrettede Rules-tests og fuld gate 4.605/4.605 består | UI'et bruger endnu det lokale repository. Adapter/migration og kontrolleret håndtering af allerede åbne forekomster ved kravændring/deaktivering mangler |
 | FL-15 | Kategorier | Indberetninger brugte fri tekst, mens økonomi brugte en separat hardkodet liste. Der er nu én tenantafgrænset kategori-stamdata med opret/redigér/sortér/deaktivér, anvendelsesmapping og historiske snapshots. | `src/moduler/opsaetning/FleetKategorier.jsx`, `fleetCategories`, `categoryAdapter`, Reports/Økonomi, Rules | delvist implementeret | 5/5 kategoridomænetests; fuld FLEET-suite 184/184; fuld Rules-/platformsgate 4.599/4.599; browser desktop/mobil og begge forbrugere | Kategoristamdata lagres serverstyret. Selve indberetningerne og økonomiposterne er fortsat lokal FLEET-prototype og skal flyttes til den autoritative servergrænse, før kravet lukkes samlet. |
-| FL-16 | OBD-statistik | Kun faktiske målinger vises/filtreres/eksporteres; kilde/periode/enhed mærkes; manglende forbindelse er tydelig. | FLEET statistik | åben | Datafeltinventar og syntetisk UI-test | Ekstern OBD er ikke del af opgaven |
-| FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | FLEET economy domain/UI | åben | Beregnings-/drilldowntests | Estimat, kontrolleret og bogført holdes adskilt |
-| FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET economy export | delvist implementeret lokalt | Domænetest af dansk indhold og UTF-8-rundtur | Download har nu UTF-8 BOM; manuel åbning i dansk Excel og udvidede momskolonner udestår |
+| FL-16 | OBD-statistik | Kun registrerede og understøttede målinger vises/filtreres/eksporteres; kilde/periode/enhed mærkes; manglende forbindelse er tydelig. | `fleet-v2/src/data/fleetStatistics.js`, `FleetStatistics.jsx`, route/nav og CSS | delvist implementeret lokalt | 4/4 statistikdomænetests; fuld FLEET-suite 191/191; lint/build. Integreret browserbevis afventer autentificeret emulator, som ved kontrol svarede `Der er ikke forbindelse til login-tjenesten`. | Der findes kun daterede km-observationer samt position/hastighed i prototypen. Ingen valideret OBD-kilde er tilsluttet, og UI'et opfinder derfor ikke øvrige målinger. |
+| FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | `fleet-v2/src/data/economyWorkflow.js`, `FleetEconomy.jsx` og CSS | delvist implementeret lokalt | 8/8 økonomidomænetests; fuld FLEET-suite 191/191; lint/build | Manuelle, kontrollerede, bogførte, foreløbige, estimerede og kontraktlige beløb er særskilt. Månedlige kontrakter materialiseres inden for start/slut, samme økonomiske hændelse deduplikeres, og kreditnotaens negative fortegn bevares. Autoritativ Fakturacenter-/bogføringsadapter mangler. |
+| FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET statistik-/økonomieksport | delvist implementeret lokalt | Domænetest af danske tegn, decimaler og UTF-8 BOM i begge eksporttyper | Statistikeksporten angiver måling, enhed, kilde og datatype. Økonomieksporten angiver beløb, valuta, status, kilde og reference; manuel åbning i dansk Excel og fuldt eksplicit momsbeløb udestår. |
 | REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.605/4.605 grøn i isoleret emulator. Service: 16/16 integrationassertions, samtidighed, gentagelse, fremmed tenant og afvist læser; direkte skrivning til seks servernoder afvist. Fakturacenter, UNIT/WAREHOUSE, tenant og kategorier er fortsat grønne. | Kommende økonomi-/statistikserverfunktioner kræver egne emulatorbeviser før den samlede sikkerhedsgate kan lukkes. |
 | REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint, design 11/11, produktionsbuild og fuld Rules-/platformsgate 4.605/4.605 grøn efter Etape 14 | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
 | REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | i gang | Ny Etape-7-pakke dækker sagsmappe/dialog ved alle fire viewports, normal/kompakt menu, 100/125 % og Nulstil; Fakturacenter/menu/manuel sag ved 1440×900 | Samme matrix skal fortsat køres på resterende FLEET-, service-, kategori- og økonomiskærme |
@@ -621,3 +621,40 @@ før/efter-beviser for de prioriterede synlige fejl.
 | FL-14 | Delvist implementeret: den eksisterende lokale service-UI forklarer beregningen, men kalder endnu ikke serveren | Delvist implementeret: dato/km/timer, manglende grundlag, cyklus, idempotens, gennemførsel og fakturaafklaring er implementeret; åbne forekomster ved kravændring/deaktivering mangler | Delvist implementeret: callables, RTDB-transaktion og scheduler er emulatorverificeret; UI-adapter og kontrolleret overgang af lokale poster mangler | Implementeret og verificeret for tenant, aktivt abonnement, FLEET-modul, `koeretoejer.skriv`, læseadgang og afvist direkte skrivning | 5/5 enhedstests, 16/16 integrationassertions, 49/49 målrettet Rules og 4.605/4.605 fuld gate | Delvist implementeret |
 | REG-01 | Ikke relevant | Implementeret og verificeret for serviceetapen | Implementeret og verificeret for serviceetapen | Implementeret og verificeret for serviceetapen | 16/16 serviceintegration og 4.605/4.605 fuld gate | Delvist implementeret, fordi kommende serveretaper endnu mangler |
 | REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint, design 11/11, produktionsbuild og fuld gate 4.605/4.605 | Delvist implementeret |
+
+### Etape 15 — FLEET-statistik og økonomisk afgrænsning
+
+- En ny integreret rute `/fleet-v2/statistik` viser kun de felter, som den
+  aktuelle FLEET-datakilde faktisk indeholder: daterede kilometer- og
+  driftstimeobservationer samt validerede position-/hastighedsfelter. Den
+  lokale fixture har aktuelt ingen driftstimeobservationer, og visningen
+  opfinder derfor ikke en graf eller nulværdi for dem.
+- Alle målinger bærer periode, enhed, kilde og datatype. Syntetiske rækker er
+  mærket, og siden siger udtrykkeligt, at OBD ikke er tilsluttet. En manuel
+  eller syntetisk kilde fortolkes aldrig som en tilsluttet telematikkilde.
+- Økonomisiden opdeler nu manuelle/lokale, kontrollerede, bogførte,
+  foreløbige, estimerede og kontraktlige beløb. Månedlige leasingydelser
+  materialiseres kun mellem kontraktstart og -slut og inden for valgt periode.
+- Et fælles økonomisk hændelses-ID forhindrer, at en bestilling og dens senere
+  faktura tælles to gange; den mest autoritative status vinder. Kreditnotaer
+  bevares som egne negative hændelser. Sammenligning bruger en lige lang
+  foregående periode og vises kun, når begge perioder har poster i samme
+  valuta.
+- UI'et kalder tallene et registreret udsnit, ikke bilens fulde faktiske
+  omkostning. Fakturacenter-/bogføringsadapteren er endnu ikke koblet til den
+  lokale FLEET-prototype.
+- Testbevis: 4/4 statistiktests, 8/8 økonomitests, fuld FLEET-suite 191/191,
+  FLEET lint/build, root lint/build, designgate 11/11 og fuld isoleret
+  Rules-/platformsgate 4.605/4.605. Integreret browserkontrol blev forsøgt mod den lokale
+  integrationsserver på port 5297 uden at rydde browserdata; login blev
+  konkret blokeret af den frakoblede login-tjeneste. Derfor er der endnu ikke
+  afleveret et misvisende integreret screenshot for denne etape.
+
+#### Delstatus efter Etape 15
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FL-16 | Implementeret, men ikke integreret browserverificeret: særskilt statistikside, filtre, datadækning og eksport | Implementeret og verificeret for de faktisk tilgængelige km-, time-, position- og hastighedsfelter; ingen målinger opfindes | Delvist implementeret: læser lokale/syntetiske FLEET-relationer; ingen OBD-adapter er tilsluttet | Delvist implementeret: ruten kræver eksisterende `koeretoejer.laes`; særskilt serverkilde findes ikke | 4/4 domænetests og FLEET 191/191; browser blokeret af login-tjenesten | Delvist implementeret |
+| FL-17 | Implementeret og komponentverificeret for filtrering, særskilte statuskort, sporbarhed og datadækning | Delvist implementeret: periode, kategori, kontraktperioder, kr./km-gate, valuta, kreditnota og hændelsesdeduplikering er implementeret; periodisering og fuld livscyklusdækning kræver autoritativ kildemodel | Delvist implementeret: lokal IndexedDB-prototype; ingen fælles faktura-/bogføringsadapter | Delvist implementeret: eksisterende FLEET-rutepermission, men ingen servermutation for økonomiposter | 8/8 domænetests og FLEET 191/191 | Delvist implementeret |
+| FL-18 | Implementeret og enhedstestet for downloadindhold | Implementeret for dansk separator/decimal, kilde/status/reference og BOM | Lokal filgenerering; ingen serverlagring nødvendig for selve eksporten | Arver læseadgang fra de to ruter | UTF-8-byteprøver i begge eksporttests; manuel dansk Excel-kontrol mangler | Delvist implementeret |
+| REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, design 11/11, FLEET 191/191 og fuld gate 4.605/4.605 på Etape-15-grundlaget | Delvist implementeret |

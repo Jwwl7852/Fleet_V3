@@ -9,7 +9,8 @@ export const fleetNavigation = [
   { id: "documents", label: "Dokumenter", icon: "document", implemented: true, path: "/dokumenter" },
   { id: "leasing", label: "Leasing", icon: "leasing", implemented: true, path: "/leasing" },
   { id: "mobile", label: "Mobil indberetning", icon: "mobile", implemented: true, path: "/mobil" },
-  { id: "economy", label: "Økonomi og flådestatistik", icon: "economy", implemented: true, path: "/oekonomi" },
+  { id: "statistics", label: "Statistik", icon: "economy", implemented: true, path: "/statistik" },
+  { id: "economy", label: "Økonomi", icon: "economy", implemented: true, path: "/oekonomi" },
 ];
 
 export const platformNavigation = [

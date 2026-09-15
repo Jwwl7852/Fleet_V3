@@ -691,6 +691,7 @@ export default function App() {
             <Route path="fleet-v2/livekort" element={<FleetV2Module />} />
             <Route path="fleet-v2/mobil" element={<FleetV2Module />} />
             <Route path="fleet-v2/oekonomi" element={<FleetV2Module />} />
+            <Route path="fleet-v2/statistik" element={<FleetV2Module />} />
             <Route path="fleet-v2/sager/:id" element={<FleetV2Module />} />
             <Route path="fleet-v2/*" element={<FleetV2Module />} />
 

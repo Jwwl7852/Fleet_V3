@@ -23,6 +23,7 @@ import { LeaseDeliveryCase } from "./components/LeaseDeliveryCase";
 import { LeaseContractReview } from "./components/LeaseContractReview";
 import { MobileReporting } from "./components/MobileReporting";
 import { FleetEconomy } from "./components/FleetEconomy";
+import { FleetStatistics } from "./components/FleetStatistics";
 import { FleetDataProvider } from "./data/FleetDataContext";
 
 export const routeFromPath = (pathname, basePath = "") => {
@@ -59,6 +60,7 @@ export const routeFromPath = (pathname, basePath = "") => {
   if (clean.startsWith("/mobil/mine/")) return { page: "mobile", kind: "mobile", view: "detail", reportId: decodeURIComponent(clean.slice("/mobil/mine/".length)) };
   if (clean === "/mobil") return { page: "mobile", kind: "mobile", view: "home" };
   if (clean === "/oekonomi") return { page: "economy", kind: "economy" };
+  if (clean === "/statistik") return { page: "statistics", kind: "statistics" };
   if (clean.match(/^\/sager\/[^/]+\/bestilling$/)) return { page: "queue", kind: "workshop-assignment", caseId: decodeURIComponent(clean.split("/")[2]) };
   if (clean.startsWith("/sager/")) return { page: "queue", kind: "case-folder", caseId: decodeURIComponent(clean.slice("/sager/".length)) };
   return { page: "overview", kind: "overview" };
@@ -139,6 +141,7 @@ export function FleetV2App({
   else if (route.kind === "lease-contract-review") content = <LeaseContractReview leaseId={route.leaseId} onNavigate={navigate} />;
   else if (route.kind === "mobile") content = <MobileReporting view={route.view} reportId={route.reportId} onNavigate={navigate} imageProcessor={imageProcessor} />;
   else if (route.kind === "economy") content = <FleetEconomy onNavigate={navigate} />;
+  else if (route.kind === "statistics") content = <FleetStatistics onNavigate={navigate} />;
   else content = <Overview onUnavailable={showUnavailable} onNavigate={navigate} />;
 
   return (
