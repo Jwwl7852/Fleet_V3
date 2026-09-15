@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFleetData } from "../data/FleetDataContext";
 import { CASE_PRIORITIES, CASE_STATUSES, REPORT_TYPES, SEVERITIES, USABILITY, filterAndSortCases } from "../data/caseWorkflow";
 import { formatMeter, modelLabel } from "../data/unitSelectors";
@@ -10,9 +10,9 @@ import { ThreePanelWorkspace } from "./ThreePanelWorkspace";
 
 const dateTime = (value) => new Date(value).toLocaleString("da-DK", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
-export function ReportTriage({ reportId, onNavigate }) {
+export function ReportTriage({ reportId, initialViewState, onViewStateChange, onNavigate, onBack = onNavigate }) {
   const { units, relations, loading, updateCase, actor, tenantId, serverProjectionError } = useFleetData();
-  const [filters, setFilters] = useState({ query: "", status: "", severity: "", type: "", department: "", unitId: "" });
+  const [filters, setFilters] = useState(() => initialViewState?.filters || { query: "", status: "", severity: "", type: "", department: "", unitId: "" });
   const [mobileDetail, setMobileDetail] = useState(Boolean(reportId));
   const [lightbox, setLightbox] = useState(null);
   const reports = relations.reports || [];
@@ -23,8 +23,9 @@ export function ReportTriage({ reportId, onNavigate }) {
   const unit = units.find((item) => item.id === selectedReport?.unitId);
   const events = (relations.caseEvents || []).filter((item) => item.caseId === selectedCase?.id).sort((a,b) => b.at.localeCompare(a.at));
   const select = (report) => { onNavigate(`/indberetninger/${report.id}`); setMobileDetail(true); };
+  useEffect(() => { onViewStateChange?.({ filters }); }, [filters, onViewStateChange]);
   if (loading) return <main className="workspace-page loading-state" id="main-content"><span className="loading-spinner" /><p>Indlæser indberetninger …</p></main>;
-  if (reportId && !reports.some((item) => item.id === reportId)) return <main className="workspace-page not-found-state" id="main-content"><Icon name="warning" size={38} /><span className="eyebrow">FLEET v2</span><h1>Indberetningen findes ikke</h1><p>ID’et <code>{reportId}</code> findes ikke i de tilgængelige data.</p><button className="primary-button" type="button" onClick={() => onNavigate("/indberetninger")}>Tilbage til Indberetninger</button></main>;
+  if (reportId && !reports.some((item) => item.id === reportId)) return <main className="workspace-page not-found-state" id="main-content"><Icon name="warning" size={38} /><span className="eyebrow">FLEET v2</span><h1>Indberetningen findes ikke</h1><p>ID’et <code>{reportId}</code> findes ikke i de tilgængelige data.</p><button className="primary-button" type="button" onClick={() => onBack("/indberetninger")}>Tilbage til Indberetninger</button></main>;
 
   return <main className={`workspace-page triage-page${mobileDetail ? " mobile-detail" : ""}`} id="main-content">
     <header className="page-heading-row"><div><span className="eyebrow">FLEET v2 · indberetninger</span><h1>Indberetninger og triage</h1><p>Gennemgå, vurder og forbind den oprindelige indberetning med samme sag i Arbejdskø.</p></div><button className="primary-button" type="button" onClick={() => onNavigate("/indberetninger/ny")}><Icon name="plus" size={17} />Ny indberetning</button></header>
@@ -40,7 +41,7 @@ export function ReportTriage({ reportId, onNavigate }) {
     <ThreePanelWorkspace className="triage-layout" actorId={actor.id} tenantId={tenantId} screen="/fleet-v2/indberetninger">
       <aside className="triage-list-panel"><header><div><h2>Indberetninger</h2><span>{filteredCases.length} fundet</span></div></header><div className="triage-list">{filteredCases.map((caseItem) => { const report = reports.find((entry) => entry.id === caseItem.reportId); const relatedUnit = units.find((entry) => entry.id === caseItem.unitId); return <button type="button" className={selectedReport?.id === report?.id ? "is-selected" : ""} key={caseItem.id} onClick={() => select(report)}><span className={`severity-mark ${report.severity}`}><Icon name={report.type === "service" ? "service" : "warning"} size={17} /></span><span><strong>{report.title}</strong><small>{relatedUnit?.number} · {REPORT_TYPES[report.type]}</small><em>{report.number} · {dateTime(report.createdAt)}</em></span><span className={`status-badge ${caseItem.status}`}><i />{CASE_STATUSES[caseItem.status]}</span></button>; })}{!filteredCases.length ? <div className="empty-inline"><h3>Ingen indberetninger matcher</h3><p>Tilpas filtrene eller opret en ny indberetning.</p></div> : null}</div></aside>
       <section className="triage-detail-panel">{selectedReport && unit ? <>
-        <button className="mobile-back" type="button" onClick={() => setMobileDetail(false)}><Icon name="chevron" size={15} />Tilbage til listen</button>
+        <button className="mobile-back" type="button" onClick={() => { setMobileDetail(false); onBack("/indberetninger"); }}><Icon name="chevron" size={15} />Tilbage til listen</button>
         <header><div><span className="eyebrow">{selectedReport.number} · {CASE_STATUSES[selectedCase.status]}</span><h2>{selectedReport.title}</h2><p>{unit.number} · {modelLabel(unit)} · {unit.department}</p>{selectedReport.origin === "service_automation" ? <span className="integration-badge">Automatisk oprettet fra Service</span> : null}</div><span className={`priority-pill ${selectedCase.priority}`}>{CASE_PRIORITIES[selectedCase.priority]} prioritet</span></header>
         <div className="report-unit-summary"><UnitThumbnail unit={unit} /><div><strong>{unit.number}</strong><span>{modelLabel(unit)}</span><small>{formatMeter(unit)}</small></div><div className="inline-actions"><button type="button" onClick={() => onNavigate(`/enheder/${unit.id}`)}>Åbn enhed</button><button type="button" onClick={() => onNavigate(`/sager/${selectedCase.id}`)}>Sagsmappe <Icon name="external" size={13} /></button></div></div>
         <div className="original-report"><span className="eyebrow">{selectedReport.readOnly ? "Serverstyret servicevarsel" : "Oprindelig indberetning"} · {selectedReport.reporterName}</span><p>{selectedReport.description}</p><dl><div><dt>Type</dt><dd>{REPORT_TYPES[selectedReport.type]}</dd></div><div><dt>Kategori</dt><dd>{selectedReport.category}</dd></div><div><dt>Oplevet alvorlighed</dt><dd>{SEVERITIES[selectedReport.severity]}</dd></div><div><dt>Oplevet anvendelighed</dt><dd>{USABILITY[selectedReport.usability]}</dd></div><div><dt>Målerobservation</dt><dd>{selectedReport.meterObservation?.value == null ? "Ikke oplyst" : `${selectedReport.meterObservation.value.toLocaleString("da-DK")} ${selectedReport.meterObservation.unit === "hours" ? "t" : "km"}`}</dd></div></dl></div>

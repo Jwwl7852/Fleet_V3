@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFleetData } from "../data/FleetDataContext";
 import { formatCurrency, formatDimension, formatMeter, formatNumber, meterUnit, modelLabel, relationsForUnit, statusMeta, typeLabel, unitCost } from "../data/unitSelectors";
 import { Icon } from "./Icon";
@@ -110,25 +110,26 @@ function GpsTab({ related, unit, onNavigate }) {
   return <section className="profile-tab-card gps-tab"><header><div><span className="eyebrow">Demoposition – ikke live</span><h2>Senest kendte position</h2></div><button className="secondary-button" type="button" onClick={() => onNavigate(`/livekort?unit=${unit.id}`)}>Åbn i Livekort <Icon name="external" size={14} /></button></header><div className="gps-detail"><GeoMap positions={[position]} units={[unit]} selectedUnitId={unit.id} compact /><dl><div><dt>Enhed</dt><dd>{unit.number}</dd></div><div><dt>Position</dt><dd>{position.label}</dd></div><div><dt>Koordinater</dt><dd>{position.latitude.toFixed(4)}, {position.longitude.toFixed(4)}</dd></div><div><dt>Positionsmåling</dt><dd>{dateTime(position.measuredAt)} · {freshness.label}</dd></div><div><dt>Seneste kontakt</dt><dd>{dateTime(position.lastContactAt)}</dd></div><div><dt>Bevægelse</dt><dd>{MOVEMENT_STATES[position.movementState]}</dd></div><div><dt>Forbindelse</dt><dd>{CONNECTION_STATES[position.connectionStatus]}</dd></div><div><dt>Nøjagtighed</dt><dd>{position.accuracyMeters != null ? `± ${position.accuracyMeters} m` : "Ikke oplyst"}</dd></div><div><dt>Datakilde</dt><dd>{position.source}</dd></div></dl></div></section>;
 }
 
-export function UnitProfile({ unitId, onNavigate, onNotice, vehicleLookup, imageProcessor }) {
+export function UnitProfile({ unitId, initialViewState, onViewStateChange, onNavigate, onBack = onNavigate, onNotice, vehicleLookup, imageProcessor }) {
   const { units, relations, loading, saveUnit, tenantId } = useFleetData();
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState(() => initialViewState?.tab || "overview");
   const [editing, setEditing] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const unit = units.find((item) => item.id === unitId);
   const related = useMemo(() => relationsForUnit(relations, unitId), [relations, unitId]);
   const usability = useMemo(() => deriveUnitUsability(unitId, relations.reports || [], relations.cases || [], relations.workshopTasks || []), [relations, unitId]);
   const serviceSummary = useMemo(() => unit ? serviceForUnitSummary(unit, relations) : null, [unit, relations]);
+  useEffect(() => { onViewStateChange?.(unitId, { tab }); }, [onViewStateChange, tab, unitId]);
 
   if (loading) return <main className="workspace-page loading-state" id="main-content"><span className="loading-spinner" /><p>Indlæser enhedsprofil …</p></main>;
-  if (!unit) return <main className="workspace-page not-found-state" id="main-content"><Icon name="warning" size={38} /><span className="eyebrow">FLEET v2 · lokal prototype</span><h1>Enheden findes ikke</h1><p>ID’et <code>{unitId}</code> findes ikke i det lokale testdatasæt.</p><button className="primary-button" type="button" onClick={() => onNavigate("/enheder")}>Tilbage til Enhedskartotek</button></main>;
+  if (!unit) return <main className="workspace-page not-found-state" id="main-content"><Icon name="warning" size={38} /><span className="eyebrow">FLEET v2 · lokal prototype</span><h1>Enheden findes ikke</h1><p>ID’et <code>{unitId}</code> findes ikke i det lokale testdatasæt.</p><button className="primary-button" type="button" onClick={() => onBack("/enheder")}>Tilbage til Enhedskartotek</button></main>;
 
   const meta = statusMeta(unit);
   const position = related.positions?.[0];
   const save = async (next) => { await saveUnit(next); onNotice(`${next.number} er gemt lokalt i prototypen`); };
   return (
     <main className="workspace-page profile-page" id="main-content">
-      <div className="profile-breadcrumb"><button type="button" onClick={() => onNavigate("/enheder")}>Enheder</button><Icon name="chevron" size={13} /><span>{unit.number}</span><em>Fiktive demodata</em></div>
+      <div className="profile-breadcrumb"><button type="button" onClick={() => onBack("/enheder")}>Enheder</button><Icon name="chevron" size={13} /><span>{unit.number}</span><em>Fiktive demodata</em></div>
       <header className="profile-hero">
         <UnitThumbnail unit={unit} large />
         <div className="profile-title"><span className="title-line"><h1>{unit.number}</h1><span className={`status-badge ${meta.tone}`}><i />{meta.label}</span></span><p>{modelLabel(unit)} · {typeLabel(unit)}</p><div><span>{unit.energy === "electric" ? "EL" : unit.meterType === "hours" ? "Driftstimer" : "FLEET"}</span>{unit.registration ? <span>{unit.registration}</span> : null}<span>{unit.department}</span></div></div>

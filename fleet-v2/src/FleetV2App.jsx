@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fleetDemo } from "./demoData";
 import { Icon } from "./components/Icon";
 import { Overview } from "./components/Overview";
@@ -25,6 +25,7 @@ import { MobileReporting } from "./components/MobileReporting";
 import { FleetEconomy } from "./components/FleetEconomy";
 import { FleetStatistics } from "./components/FleetStatistics";
 import { FleetDataProvider } from "./data/FleetDataContext";
+import { afgoerRetur, opretReturtilstand } from "./data/navigationHistory";
 
 export const routeFromPath = (pathname, basePath = "") => {
   const absolute = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
@@ -78,6 +79,8 @@ export function FleetV2App({
   canCreateSupplier = false,
   embedded = false,
   imageProcessor,
+  navigationState,
+  onBack,
   onCreateSupplier,
   onNavigate,
   pathname,
@@ -93,6 +96,11 @@ export function FleetV2App({
   const route = useMemo(() => routeFromPath(activePathname, basePath), [activePathname, basePath]);
   const statusFilter = new URLSearchParams(activePathname.split("?")[1] || "").get("status") || "";
   const selectedSupplierId = new URLSearchParams(activePathname.split("?")[1] || "").get("leverandoer") || "";
+  const katalogvisning = useRef(null);
+  const koevisning = useRef(null);
+  const triagevisning = useRef(null);
+  const profilvisninger = useRef(new Map());
+  const afventetScroll = useRef(null);
 
   const showUnavailable = (label) => {
     setNotice(`${label}: Ikke implementeret i denne etape`);
@@ -112,34 +120,70 @@ export function FleetV2App({
     return () => window.removeEventListener("popstate", handlePopState);
   }, [controlled]);
 
-  const navigate = (path) => {
+  useEffect(() => {
+    if (controlled || afventetScroll.current == null) return undefined;
+    const scrollY = afventetScroll.current;
+    afventetScroll.current = null;
+    const foerste = window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY, left: 0, behavior: "instant" });
+    }));
+    return () => window.cancelAnimationFrame(foerste);
+  }, [activePathname, controlled]);
+
+  const navigate = (path, options = {}) => {
     const target = absoluteFleetPath(basePath, path);
     if (controlled) {
-      onNavigate(target);
+      onNavigate(target, options);
       return;
     }
-    if (`${window.location.pathname}${window.location.search}` !== target) window.history.pushState({}, "", target);
+    if (`${window.location.pathname}${window.location.search}` !== target) {
+      const historyState = {
+        ...(options.state || {}),
+        ...opretReturtilstand(activePathname, window.scrollY),
+      };
+      if (options.replace) window.history.replaceState(historyState, "", target);
+      else window.history.pushState(historyState, "", target);
+    }
     setLocalPathname(target);
   };
 
+  const back = (fallback) => {
+    const target = absoluteFleetPath(basePath, fallback);
+    if (onBack) { onBack(target); return; }
+    const retur = afgoerRetur({
+      tilstand: navigationState || window.history.state,
+      fallback: target,
+      tilladteRodstier: [basePath || "/"],
+    });
+    if (retur.handling === "historik") {
+      afventetScroll.current = retur.scrollY;
+      window.history.back();
+    }
+    else navigate(retur.sti, { replace: true });
+  };
+  const huskKatalogvisning = useCallback((visning) => { katalogvisning.current = visning; }, []);
+  const huskKoevisning = useCallback((visning) => { koevisning.current = visning; }, []);
+  const huskTriagevisning = useCallback((visning) => { triagevisning.current = visning; }, []);
+  const huskProfilvisning = useCallback((unitId, visning) => { profilvisninger.current.set(unitId, visning); }, []);
+
   let content;
-  if (route.kind === "catalog") content = <UnitCatalog initialStatus={statusFilter} onNavigate={navigate} onNotice={setNotice} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} />;
-  else if (route.kind === "profile") content = <UnitProfile unitId={route.unitId} onNavigate={navigate} onNotice={setNotice} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} />;
+  if (route.kind === "catalog") content = <UnitCatalog initialStatus={statusFilter} initialViewState={katalogvisning.current} onViewStateChange={huskKatalogvisning} onNavigate={navigate} onNotice={setNotice} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} />;
+  else if (route.kind === "profile") content = <UnitProfile unitId={route.unitId} initialViewState={profilvisninger.current.get(route.unitId)} onViewStateChange={huskProfilvisning} onBack={back} onNavigate={navigate} onNotice={setNotice} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} />;
   else if (route.kind === "new-report") content = <ReportWizard onNavigate={navigate} imageProcessor={imageProcessor} />;
-  else if (route.kind === "triage") content = <ReportTriage reportId={route.reportId} onNavigate={navigate} />;
-  else if (route.kind === "queue") content = <WorkQueue caseId={route.caseId} onNavigate={navigate} />;
+  else if (route.kind === "triage") content = <ReportTriage reportId={route.reportId} initialViewState={triagevisning.current} onViewStateChange={huskTriagevisning} onBack={back} onNavigate={navigate} />;
+  else if (route.kind === "queue") content = <WorkQueue caseId={route.caseId} initialViewState={koevisning.current} onViewStateChange={huskKoevisning} onBack={back} onNavigate={navigate} />;
   else if (route.kind === "workshop-overview") content = <WorkshopOverview onNavigate={navigate} />;
   else if (route.kind === "workshop-calendar") content = <WorkshopCalendar onNavigate={navigate} />;
   else if (route.kind === "workshop-task") content = <WorkshopTaskDetail taskId={route.taskId} onNavigate={navigate} imageProcessor={imageProcessor} />;
-  else if (route.kind === "case-folder") content = <CaseFolder caseId={route.caseId} onNavigate={navigate} />;
-  else if (route.kind === "workshop-assignment") content = <WorkshopAssignment caseId={route.caseId} canCreateSupplier={canCreateSupplier} onCreateSupplier={onCreateSupplier ? () => onCreateSupplier(absoluteFleetPath(basePath, `/sager/${encodeURIComponent(route.caseId)}/bestilling`)) : undefined} onNavigate={navigate} selectedSupplierId={selectedSupplierId} />;
+  else if (route.kind === "case-folder") content = <CaseFolder caseId={route.caseId} onBack={back} onNavigate={navigate} />;
+  else if (route.kind === "workshop-assignment") content = <WorkshopAssignment caseId={route.caseId} canCreateSupplier={canCreateSupplier} onCreateSupplier={onCreateSupplier ? () => onCreateSupplier(absoluteFleetPath(basePath, `/sager/${encodeURIComponent(route.caseId)}/bestilling`)) : undefined} onBack={back} onNavigate={navigate} selectedSupplierId={selectedSupplierId} />;
   else if (route.kind === "service-overview") content = <ServiceOverview onNavigate={navigate} />;
   else if (route.kind === "live-map") content = <LiveMap onNavigate={navigate} />;
-  else if (route.kind === "documents-overview") content = <DocumentsOverview documentId={route.documentId} onNavigate={navigate} />;
+  else if (route.kind === "documents-overview") content = <DocumentsOverview documentId={route.documentId} onBack={back} onNavigate={navigate} />;
   else if (route.kind === "leasing-overview") content = <LeasingOverview onNavigate={navigate} imageProcessor={imageProcessor} />;
-  else if (route.kind === "lease-detail") content = <LeasingDetail leaseId={route.leaseId} view={route.view} onNavigate={navigate} imageProcessor={imageProcessor} />;
-  else if (route.kind === "lease-delivery") content = <LeaseDeliveryCase leaseId={route.leaseId} onNavigate={navigate} />;
-  else if (route.kind === "lease-contract-review") content = <LeaseContractReview leaseId={route.leaseId} onNavigate={navigate} />;
+  else if (route.kind === "lease-detail") content = <LeasingDetail leaseId={route.leaseId} view={route.view} onBack={back} onNavigate={navigate} imageProcessor={imageProcessor} />;
+  else if (route.kind === "lease-delivery") content = <LeaseDeliveryCase leaseId={route.leaseId} onBack={back} onNavigate={navigate} />;
+  else if (route.kind === "lease-contract-review") content = <LeaseContractReview leaseId={route.leaseId} onBack={back} onNavigate={navigate} />;
   else if (route.kind === "mobile") content = <MobileReporting view={route.view} reportId={route.reportId} onNavigate={navigate} imageProcessor={imageProcessor} />;
   else if (route.kind === "economy") content = <FleetEconomy onNavigate={navigate} />;
   else if (route.kind === "statistics") content = <FleetStatistics onNavigate={navigate} />;

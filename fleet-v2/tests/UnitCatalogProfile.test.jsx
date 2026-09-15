@@ -37,6 +37,27 @@ describe("Enhedskartotek og Enhedsprofil", () => {
     expect(screen.getByText(/Demoposition – ikke live/i)).toBeTruthy();
   });
 
+  it("bevarer katalogfilter, visning og profilfane gennem sagsmappe-retur", async () => {
+    render(<FleetV2App repository={createMemoryUnitRepository()} />);
+    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    fireEvent.change(screen.getByLabelText("Søg i enheder"), { target: { value: "Silence" } });
+    fireEvent.click(screen.getByRole("button", { name: "Kortvisning" }));
+    fireEvent.click(screen.getByText("SC-104"));
+    await screen.findByRole("heading", { name: "SC-104" });
+    fireEvent.click(screen.getByRole("tab", { name: "Skader" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Sagsmappe" })[0]);
+    await screen.findByText(/Sagsmappe · SAG-00001/);
+
+    fireEvent.click(screen.getByRole("button", { name: "Arbejdskø" }));
+    await screen.findByRole("heading", { name: "SC-104" });
+    expect(screen.getByRole("tab", { name: "Skader" }).getAttribute("aria-selected")).toBe("true");
+
+    fireEvent.click(document.querySelector(".profile-breadcrumb button"));
+    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    expect(screen.getByLabelText("Søg i enheder").value).toBe("Silence");
+    expect(screen.getByRole("button", { name: "Kortvisning" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("opretter og redigerer en enhed med stabilt internt ID", async () => {
     const repository = createMemoryUnitRepository();
     const { unmount } = render(<FleetV2App repository={repository} />);

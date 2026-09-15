@@ -33,11 +33,15 @@ function exportCsv(units, costs) {
   URL.revokeObjectURL(url);
 }
 
-export function UnitCatalog({ initialStatus = "", onNavigate, onNotice, vehicleLookup, imageProcessor }) {
+export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateChange, onNavigate, onNotice, vehicleLookup, imageProcessor }) {
   const { units, relations, loading, error, saveUnit, tenantId } = useFleetData();
-  const [filters, setFilters] = useState(() => ({ ...initialFilters, status: initialStatus }));
-  const [page, setPage] = useState(1);
-  const [view, setView] = useState("table");
+  const [filters, setFilters] = useState(() => ({
+    ...initialFilters,
+    ...(initialViewState?.filters || {}),
+    status: initialStatus || initialViewState?.filters?.status || "",
+  }));
+  const [page, setPage] = useState(() => initialViewState?.page || 1);
+  const [view, setView] = useState(() => initialViewState?.view || "table");
   const [editing, setEditing] = useState(null);
   const [creating, setCreating] = useState(false);
   const filtered = useMemo(() => filterAndSortUnits(units, filters), [filters, units]);
@@ -48,6 +52,7 @@ export function UnitCatalog({ initialStatus = "", onNavigate, onNotice, vehicleL
   useEffect(() => setPage(1), [filters]);
   useEffect(() => { if (page > pageCount) setPage(pageCount); }, [page, pageCount]);
   useEffect(() => { setFilters((current) => ({ ...current, status: initialStatus })); }, [initialStatus]);
+  useEffect(() => { onViewStateChange?.({ filters, page, view }); }, [filters, onViewStateChange, page, view]);
 
   const setFilter = (key) => (event) => setFilters((current) => ({ ...current, [key]: event.target.value }));
   const openUnit = (unit) => onNavigate(`/enheder/${unit.id}`);

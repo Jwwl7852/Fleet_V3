@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FleetV2App } from "../../../fleet-v2/src/FleetV2App.jsx";
 import { createIndexedDbUnitRepository } from "../../../fleet-v2/src/data/unitRepository.js";
@@ -7,6 +7,7 @@ import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harModul } from "../../fleet/moduler.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { useFleetSharedData } from "./useFleetSharedData.js";
+import { afgoerRetur, opretReturtilstand } from "../../../fleet-v2/src/data/navigationHistory.js";
 import {
   createFleetServiceClient,
   mapServerCaseToFleet,
@@ -27,6 +28,8 @@ export default function FleetV2Module() {
   const { tenantId, bruger, moduler } = useFleet();
   const location = useLocation();
   const navigate = useNavigate();
+  const afventetScroll = useRef(null);
+  const aktuelSti = `${location.pathname}${location.search}${location.hash}`;
   const requiredPermission = fleetV2PermissionForPath(location.pathname);
   const hasModule = harModul(moduler, "flaade");
   const hasPermission = harPerm(bruger?.perms, requiredPermission);
@@ -52,6 +55,15 @@ export default function FleetV2Module() {
   );
   const basePath = location.pathname.startsWith("/opsaetning/enheder")
     ? "/opsaetning" : FLEET_V2_ROUTE_PREFIX;
+  useEffect(() => {
+    if (afventetScroll.current == null) return undefined;
+    const scrollY = afventetScroll.current;
+    afventetScroll.current = null;
+    const foerste = requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY, left: 0, behavior: "instant" });
+    }));
+    return () => cancelAnimationFrame(foerste);
+  }, [aktuelSti]);
   const repository = useMemo(() => createIndexedDbUnitRepository({
     databaseName,
     tenantId,
@@ -149,7 +161,24 @@ export default function FleetV2Module() {
         });
         navigate(`/indkoeb/leverandoerer?${params.toString()}`);
       }}
-      onNavigate={navigate}
+      navigationState={location.state}
+      onBack={(fallback) => {
+        const retur = afgoerRetur({
+          tilstand: location.state,
+          fallback,
+          tilladteRodstier: [FLEET_V2_ROUTE_PREFIX, "/opsaetning"],
+        });
+        if (retur.handling === "historik") {
+          afventetScroll.current = retur.scrollY;
+          navigate(-1);
+        } else {
+          navigate(retur.sti, { replace: true });
+        }
+      }}
+      onNavigate={(target, options = {}) => navigate(target, {
+        ...options,
+        state: { ...(options.state || {}), ...opretReturtilstand(aktuelSti, window.scrollY) },
+      })}
       pathname={`${location.pathname}${location.search}`}
       repository={repository}
       serviceBackend={serviceBackend}

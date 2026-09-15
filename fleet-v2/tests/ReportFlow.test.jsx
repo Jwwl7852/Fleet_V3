@@ -92,6 +92,43 @@ describe("indberetning, triage og Arbejdskø", () => {
     expect(within(caseDialog).queryByRole("navigation", { name: "Sagsmapper" })).toBeNull();
   });
 
+  it("bevarer arbejdskøens filter og visning gennem værkstedstildeling", async () => {
+    start("/arbejdsko");
+    await screen.findByRole("heading", { name: "Arbejdskø" });
+    fireEvent.change(screen.getByLabelText("Søg i sager"), { target: { value: "Knirkende" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tabel" }));
+    fireEvent.click(screen.getByRole("button", { name: "SAG-00001" }));
+    const caseDialog = await screen.findByRole("dialog", { name: /VYR-2025-00001/ });
+    fireEvent.click(within(caseDialog).getByRole("button", { name: /Tildel værksted/ }));
+    await screen.findByRole("heading", { name: "Tildel værksted og klargør mail" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Tilbage til sag" }));
+    await screen.findByRole("dialog", { name: /VYR-2025-00001/ });
+    expect(screen.getByLabelText("Søg i sager").value).toBe("Knirkende");
+    expect(screen.getByRole("button", { name: "Tabel" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("bevarer triagefilter og valgt indberetning gennem sagsmappen", async () => {
+    start("/indberetninger/report-demo-001");
+    await screen.findByRole("heading", { name: "Knirkende bremser" });
+    fireEvent.change(screen.getByLabelText("Søg i indberetninger"), { target: { value: "Knirkende" } });
+    fireEvent.click(screen.getByRole("button", { name: /Sagsmappe/ }));
+    await screen.findByText(/Sagsmappe · SAG-00001/);
+
+    fireEvent.click(screen.getByRole("button", { name: "Arbejdskø" }));
+    await screen.findByRole("heading", { name: "Knirkende bremser" });
+    expect(screen.getByLabelText("Søg i indberetninger").value).toBe("Knirkende");
+    expect(window.location.pathname).toBe("/indberetninger/report-demo-001");
+  });
+
+  it("bruger intern fallback fra en direkte sags-URL", async () => {
+    start("/sager/case-demo-001");
+    await screen.findByText(/Sagsmappe · SAG-00001/);
+    fireEvent.click(screen.getByRole("button", { name: "Arbejdskø" }));
+    await screen.findByRole("heading", { name: "Arbejdskø" });
+    expect(window.location.pathname).toBe("/arbejdsko");
+  });
+
   it("beskytter ugemte dialogændringer ved X og lukker efter bekræftelse", async () => {
     const confirmSpy = vi.spyOn(globalThis, "confirm").mockReturnValue(false);
     start("/arbejdsko/case-demo-002");

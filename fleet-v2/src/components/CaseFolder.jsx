@@ -14,7 +14,7 @@ const dateTime = (value) => value ? new Date(value).toLocaleString("da-DK", { da
 const dateOnly = (value) => value ? new Date(value).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "Ikke oplyst";
 const actorName = (id) => DEMO_ACTORS.find((item) => item.id === id)?.name || "Ikke tildelt";
 
-export function CaseFolder({ caseId, onNavigate, dialog = false, onDirtyChange }) {
+export function CaseFolder({ caseId, onNavigate, onBack = onNavigate, dialog = false, onDirtyChange }) {
   const { units, relations, closeCase, reopenCase, updateCase, loading } = useFleetData();
   const [closeMode, setCloseMode] = useState("normal");
   const [confirmed, setConfirmed] = useState(false);
@@ -33,7 +33,7 @@ export function CaseFolder({ caseId, onNavigate, dialog = false, onDirtyChange }
   const timeline = useMemo(() => [...(relations.caseEvents || []), ...(relations.workshopEvents || []), ...(relations.serviceEvents || []), ...(relations.orderEvents || []), ...(relations.invoiceEvents || [])].filter((item) => item.caseId === caseId).sort((a, b) => b.at?.localeCompare(a.at || "") || b.receivedAt?.localeCompare(a.receivedAt || "")), [relations, caseId]);
   const Root = dialog ? "section" : "main";
   if (loading) return <Root className="workspace-page loading-state" {...(!dialog ? { id: "main-content" } : {})}><span className="loading-spinner" /></Root>;
-  if (!caseItem || !unit) return <Root className="workspace-page not-found-state" {...(!dialog ? { id: "main-content" } : {})}><Icon name="warning" size={38} /><span className="eyebrow">FLEET v2 · lokal prototype</span><h1>Sagen findes ikke</h1><p>ID’et <code>{caseId}</code> findes ikke i det lokale datasæt.</p><button className="primary-button" onClick={() => onNavigate("/arbejdsko")} type="button">Til Arbejdskø</button></Root>;
+  if (!caseItem || !unit) return <Root className="workspace-page not-found-state" {...(!dialog ? { id: "main-content" } : {})}><Icon name="warning" size={38} /><span className="eyebrow">FLEET v2 · lokal prototype</span><h1>Sagen findes ikke</h1><p>ID’et <code>{caseId}</code> findes ikke i det lokale datasæt.</p><button className="primary-button" onClick={() => onBack("/arbejdsko")} type="button">Til Arbejdskø</button></Root>;
   const close = async () => { setBusy(true); setMessage(""); try { await closeCase(caseId, { mode: closeMode, confirmClosure: confirmed, reason }, DEMO_ACTORS[1]); setMessage("Sagen er lukket og hændelsen er gemt lokalt."); } catch (error) { setMessage(error.message); } finally { setBusy(false); } };
   const reopen = async () => { setBusy(true); setMessage(""); try { await reopenCase(caseId, reason, DEMO_ACTORS[1]); setMessage("Sagen er genåbnet med historik."); } catch (error) { setMessage(error.message); } finally { setBusy(false); } };
   const latestTask = tasks.at(-1);
@@ -47,7 +47,7 @@ export function CaseFolder({ caseId, onNavigate, dialog = false, onDirtyChange }
   const serverControlled = caseItem.readOnly === true;
 
   return <Root className={`workspace-page case-folder-page${dialog ? " case-folder-dialog-content" : ""}`} {...(!dialog ? { id: "main-content" } : {})}>
-    {!dialog ? <div className="profile-breadcrumb"><button onClick={() => onNavigate("/arbejdsko")} type="button">Arbejdskø</button><Icon name="chevron" size={13} /><span>{caseItem.reference}</span><em>{serverControlled ? "Serverstyret" : "Lokal prototype"}</em></div> : null}
+    {!dialog ? <div className="profile-breadcrumb"><button onClick={() => onBack("/arbejdsko")} type="button">Arbejdskø</button><Icon name="chevron" size={13} /><span>{caseItem.reference}</span><em>{serverControlled ? "Serverstyret" : "Lokal prototype"}</em></div> : null}
     <header className="case-folder-hero"><div><span className="eyebrow">Sagsmappe · {caseItem.number}</span><h1>{report?.title || caseItem.title || caseItem.reference}</h1><p>{caseItem.reference} · {CASE_STATUSES[caseItem.status]}</p></div><div className="page-actions"><button className="secondary-button" type="button" onClick={() => onNavigate(`/indberetninger/${report?.id}`)} disabled={!report}>Åbn indberetning</button>{!serverControlled ? <button className="primary-button" type="button" onClick={() => onNavigate(`/sager/${caseId}/bestilling`)}><Icon name="document" size={16} />Tildel værksted</button> : null}</div></header>
 
     <section className="case-unit-row" aria-label="Enhed for sagen">
