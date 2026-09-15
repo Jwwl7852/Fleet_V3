@@ -117,7 +117,9 @@ export async function seedProcureAuthEmulator() {
   });
   await databaseWrite(TENANT_A, tenantBase);
   await databaseWrite(TENANT_B, { _findes: true, virksomhed: { navn: "Anden syntetisk tenant" }, abonnement: { status: "aktiv" }, moduler: { indkoeb: true }, brugere: { [users.foreign.uid]: { email: users.foreign.email, navn: users.foreign.name, rolle: users.foreign.role } }, forbrugsvarer: { foreign: { navn: "Kun anden tenant", varenummer: "B-1", enhed: "stk.", bestillingsenhed: "stk.", grundenhed: "stk.", antalPrBestillingsenhed: 1, bestillingsprisOere: 100, leverandoerId: "foreign", varegruppe: "Andet", aktiv: true } }, procureQrMaerkater: { "qr-other-tenant": { forbrugsvareId: "foreign", placering: "B1", aktiv: true, anmodningsnoegle: "seed-other", oprettetAf: users.foreign.uid, oprettetMs: now, aendretAf: users.foreign.uid, aendretMs: now } } });
-  console.log(JSON.stringify({ ok: true, projectId: PROJECT_ID, tenants: [TENANT_A, TENANT_B], users: Object.fromEntries(Object.entries(users).map(([key, user]) => [key, { uid: user.uid, email: user.email, tenant: user.tenant, role: user.role }])) }, null, 2));
+  const result = { ok: true, projectId: PROJECT_ID, tenants: [TENANT_A, TENANT_B], users };
+  console.log(JSON.stringify({ ...result, users: Object.fromEntries(Object.entries(users).map(([key, user]) => [key, { uid: user.uid, email: user.email, tenant: user.tenant, role: user.role }])) }, null, 2));
+  return result;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) seedProcureAuthEmulator().catch((error) => { console.error(error); process.exitCode = 1; });

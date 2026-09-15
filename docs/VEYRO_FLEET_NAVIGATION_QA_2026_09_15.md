@@ -6,7 +6,8 @@ Den afsluttende prøve blev kørt fra
 `C:\Users\DennisChristensen\Documents\GitHub\Fleet_V3-integration` på branch
 `codex/veyro-integration-v1` og produktcommits
 `97858a5fc9375af5eb6256beb6a9ecb2b868655d` og
-`167d93706891543beb8a4d627b80e0632be2d3d7`.
+`167d93706891543beb8a4d627b80e0632be2d3d7` samt
+`c14e52dcb62549fba841468711a09dc539d11d34`.
 
 Det var den byggede **samlede root-app med indlejret FLEET**, ikke FLEETs
 standalone-app:
@@ -26,8 +27,10 @@ Serveren brugte den isolerede Firebase Emulator Suite for projekt
 `127.0.0.1:9000`, Functions `127.0.0.1:5001` og Storage
 `127.0.0.1:9199`. `scripts/seed-integration-v2-pilot.mjs` oprettede fem
 syntetiske brugere/claims, tenant `procure-auth-a`, moduladgang og seks
-syntetiske fælles enheder. Seedet nægter at køre mod andet end demo-projektet
-og de fire localhost-porte.
+syntetiske fælles enheder samt fire syntetiske serverfakturaer. Seedet nægter
+at køre mod andet end demo-projektet og de fire localhost-porte. Root-buildet
+blev eksplicit bygget med samme `demo-veyro-owner`-namespace som seed og
+Functions; den almindelige `.env.local` blev ikke ændret.
 
 Normal Firebase Auth, aktivt abonnement, tenant-claims og modulpermissions var
 aktive. Der blev ikke indført loginomgåelse, claims-fallback eller skjult
@@ -69,11 +72,17 @@ modulbevis og tæller ikke som integreret browserbevis.
 - En dirty manuel-sag-dialog blev ikke lukket af ESC uden den fælles
   bekræftelse. Bekræftet X-lukning lukkede den, og fokus kom tilbage til
   åbneren.
-- Fakturacenter viste Indbakke og Arkiv. Ekstra kontrol var korrekt skjult,
-  fordi funktionen ikke var aktiveret i den syntetiske tenant. Ingen handling
-  var fejlagtigt mærket betaling eller bogføring. Den tomme serverliste
-  dokumenterer kun den integrerede side og adgangsgrænsen, ikke FC-03/04s
-  tobruger- eller masseflow.
+- Fakturacenter viste Indbakke, aktiv betinget Ekstra kontrol og Arkiv.
+  Første administrator kontrollerede `FC-ENKELT-OVER` og blev i Indbakke;
+  fakturaen flyttede til Ekstra kontrol. Samme brugers ekstra godkendelse blev
+  afvist af serveren, mens en ny normal session som den udpegede godkender
+  flyttede posten til Arkiv.
+- Nettogrænsen var 100.000 øre ekskl. moms. I massekontrollen blev posten på
+  90.000 øre netto/22.500 øre moms arkiveret, posten på 125.000 øre netto
+  sendt til Ekstra kontrol, og posten uden destination bevaret i Indbakke med
+  serverens konkrete afvisningsgrund. UI viste `2 lykkedes, 1 blokeret` og ét
+  præcist resultat pr. faktura. Alle fire fakturaers betalingsstatus forblev
+  `modtaget`; ingen handling blev præsenteret som betaling eller bogføring.
 - Service viste først permanent `Indlæser servicekrav …`, selv efter alle seks
   serverprojektioner var færdige og tomme. Browserfundet blev rettet ved at
   medtage indberetnings-, sags- og historikprojektionernes loading-/fejltilstand
@@ -103,6 +112,10 @@ Maskinlæsbar evidens og samtlige screenshots ligger i
 - `12-fakturacenter-integreret-1440x900.png`;
 - de 40 route-/viewportbilleder `04-*` til `09-*` og `13-*` til `16-*`;
 - dirty-dialogbillederne `17-dirty-dialog-*` ved alle fire viewports;
+- `18-ekstra-kontrol-egen-afvist-1440x900.png`;
+- `19-ekstra-kontrol-anden-godkender-1440x900.png`;
+- `20-massekontrol-bekraeftelse-1440x900.png`;
+- `21-massekontrol-delvis-succes-1440x900.png`;
 - `RESULTAT.json` med alle målte assertions og nul runtimeproblemer.
 
 Matrixen er et aktuelt slutgrundlagsbevis for de nævnte skærme og lukker
@@ -114,7 +127,7 @@ dialogaudit og reelle save-/delete-fejlforløb ikke er fuldt browserprøvet.
 - Root-lint: bestået.
 - FLEET-lint: bestået.
 - Designgate: 11/11 bestået.
-- FLEET: 32 testfiler og 205/205 tests bestået.
+- FLEET: 32 testfiler og 206/206 tests bestået.
 - Root-produktionsbuild: bestået, 767 moduler transformeret.
 - FLEET-produktionsbuild: bestået, 195 moduler transformeret.
 - Functions-syntaks: bestået.

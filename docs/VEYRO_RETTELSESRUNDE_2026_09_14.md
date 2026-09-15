@@ -908,3 +908,31 @@ Den tværgående, aktuelle 36-kravsvurdering er samlet i
 - REG-03 er derfor flyttet fra delvist til implementeret. Den samlede
   opgørelse er 21 implementerede og 15 delvise krav; obligatoriske manglende
   backend-, datakilde- og integrationsbeviser er fortsat delvise.
+
+### Etape 25 — integreret Fakturacenter med to brugere og delvis massesucces
+
+- Root-build, Auth, Database og Functions bruger nu dokumenteret samme
+  proceslokale `demo-veyro-owner`-namespace. Den eksisterende `.env.local` er
+  ikke ændret; buildvariablerne blev kun sat for previewprocessen.
+- Pilotseedet indeholder fire syntetiske serverfakturaer, en nettogrænse på
+  100.000 øre og to udpegede normale brugere. Første bruger kontrollerede en
+  faktura over grænsen og blev i Indbakke. Serveren afviste brugerens egen
+  ekstra godkendelse, mens den anden bruger afsluttede kontrollen til Arkiv.
+- Tre filtrerede fakturaer blev massebehandlet efter én synlig bekræftelse:
+  to lykkedes, mens posten uden destination blev afvist og bevaret i
+  Indbakke. Resultatlisten viser nu serverens konkrete begrundelse og skelner
+  mellem Arkiv og Ekstra kontrol. Betalingsstatus forblev `modtaget` for alle
+  poster.
+- Posten med 90.000 øre netto og 22.500 øre moms blev arkiveret, selv om
+  bruttobeløbet oversteg grænsen; posten med 125.000 øre netto gik til Ekstra
+  kontrol. Det giver databåret browserbevis for den afklarede nettogrænse.
+- Kørselen fandt også en tværmodul timingfejl, hvor autoritative enheder kunne
+  ankomme før den lokale FLEET-økonomiprojektion. Nedetidsberegningen tåler nu
+  den tomme mellemtilstand, så modulet ikke blanker.
+- Produktcommit:
+  `c14e52dcb62549fba841468711a09dc539d11d34`. Aktuelt slutbevis:
+  root-/Rules-gate 4.626/4.626, FLEET 206/206, design 11/11,
+  functions-paritet 29/29, root-/FLEET-lint, begge builds og fuld browser-QA
+  med nul runtimeproblemer.
+- FC-03 og FC-04 er flyttet fra delvist til implementeret. Den samlede
+  opgørelse er 23 implementerede og 13 delvise krav.

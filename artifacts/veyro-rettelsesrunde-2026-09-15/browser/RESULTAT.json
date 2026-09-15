@@ -81,8 +81,37 @@
     "invoiceCenter": {
       "inbox": true,
       "archive": true,
-      "extra": false,
+      "extra": true,
       "paymentMislabel": false
+    },
+    "invoiceSingleControl": {
+      "path": "/oekonomi/fakturacenter?sektion=indbakke",
+      "message": "Fakturaen blev kontrolleret og sendt til Ekstra kontrol. Du er stadig i Indbakke.×",
+      "stillInbox": true
+    },
+    "invoiceSelfApprovalDenied": "Ekstra kontrol blev ikke gennemført: Ekstra kontrol skal udføres af en anden person.×",
+    "invoiceSecondApprover": {
+      "archive": true,
+      "user": "TEST\nSyntetiske testdata i demo-veyro-owner. Ingen eksterne handlinger.\nversion 3.0\nVeyro pilotdrift — syntetisk\n‹\nFÆLLES\nDashboard\nFakturaer & bilag\nIndbakke\n3\nEkstra kontrol\n0\nArkiv\n1\nDRIFTSMODULER\nProcure\nWAREHOUSE\nUnitbooking\nWorkforce\nADMINISTRATION\nKunder\nLeverandører\nOpsætning\nHJÆLP\nHjælp\nSG\nSyntetisk godkender\nprocure-approver@example.invalid\nLOG IND SOM\nprocure-approver@example.invalid\nadmin (dig)\nchauffoer\ndisponent\nkoordinator\nlagermedarbejder\nrevisor\nadmin\nVisningen og adgangen skifter til den valgte testrolle.\nLog ud\n−\n100 %\n+\nNulstil visning\nTilsluttet Fakturacenter\nListen og kontrolstatus læses fra kundens autoritative fakturakilde. Der bruges ingen demo-fallback.\nSERVER\n\nFAKTURAKONTROL\n\nFakturacenter\n\nModtag, match, fordel og kontrollér fakturaer. Arkiv betyder afsluttet Veyro-kontrol — ikke betalingsgodkendelse eller bogføring.\n\nUpload vises først, når serverens modtage- og dubletkontrakt er tilsluttet.\n3\nI indbakken\n1\nI arkiv\n1.200,00 kr.\nKontrolleret netto\nDen ekstra kontrol er godkendt. Fakturaen er flyttet til Arkiv.\n×\nFAKTURAER\nArkiveret\n1\nNulstil\nSøg i synlig arbejdsliste\nMatchfilter\nAlle\nMatchet\nVælg match\nMangler match\nDelvist fordelt\nModul\nAlle moduler\nFLEET\nFACILITY\nPROCURE\nWAREHOUSE\nFlere moduler\nUafklaret destination\nFC-ENKELT-OVER\nMatchet\nNordisk Materialehandel A/S\nManuelt valgt\nNordisk Materialehandel A/S\n1.200,00 kr.\nFAKTURA\nNordisk Materialehandel A/S\n\nFaktura FC-ENKELT-OVER fra den tilsluttede datakilde.\n\nArkiveret\nLåst\nORIGINALDOKUMENT\nFC-ENKELT-OVER.pdf\n−\n100 %\n+\nV\nNordisk Materialehandel A/S\nIngen leverandør identificeret\nFAKTURAOPLYSNINGER\nFakturanummer\nFC-ENKELT-OVER\nFakturadato\n2026-09-14\nForfaldsdato\nIkke oplyst\nReference\nIkke oplyst\nNetto\n1.200,00 kr.\nMoms\n300,00 kr.\nI alt\n1.500,00 kr.\n\nDette er metadata fra den autoritative fakturapost. Et originaldokument vises kun, når serveren har registreret en sikker dokumentreference.\n\nKilde\nsyntetisk-integrationsfixture\nType\napplication/pdf\nSHA-256\n—\nModtaget\n14. sep. 2026, 12.00\n1\nAflæste oplysninger\nFra tilsluttet datakilde\nLeverandør\nNordisk Materialehandel A/S\nCVR\n—\nFakturanummer\nFC-ENKELT-OVER\nValuta / land\nDKK / —\nNettobeløb\n1.200,00 kr.\nMoms\n300,00 kr.\nSamlet beløb\n1.500,00 kr.\nEnhed / aktiv\n—\n\nVisningen ændrer ikke de serverregistrerede dokumentoplysninger.\n\n2\nMatch\nManuel behandling\nserverregistreret destination\nManuelt valgt\nBeløb bruges kun til rangering og statistik, aldrig som blokering.\nFLEET\nFLEET-sag · case-demo-001\nIngen enhed · ukendt fakturavindue\nNordisk Materialehandel A/S ·\nEstimat (neutral statistik): Ikke aflæst\nManuelt valgt\n3\nFordeling\nUfuldstændig\n\nIngen fordeling endnu.\n\nFordelt netto\n0,00 kr. / 1.200,00 kr.\n4\nKontrol\nArkiveret i Veyros kontrolforløb\nBetalingsstatus: modtaget\nKontrolrevision 2\n\nArkiv betyder afsluttet Veyro-kontrol. Visningen påstår ikke, at fakturaen er bogført eller betalt.\n\nHistorik 2"
+    },
+    "invoiceBulkPartial": {
+      "message": "Massekontrol: 2 lykkedes, 1 blokeret.×",
+      "rows": [
+        "fc-masse-mangler-grundlagMangler kontrolgrundlagDestination og kontrolgrundlag skal være afklaret først.",
+        "fc-masse-net-underArkiveret efter kontrolVeyro-kontrollen er afsluttet; det er ikke en betalings- eller bogføringsstatus.",
+        "fc-masse-overTil ekstra kontrolFørste kontrol er gennemført; fakturaen afventer en anden godkender."
+      ]
+    },
+    "invoiceServerState": {
+      "single": {
+        "status": "arkiveret",
+        "paymentStatus": "modtaget",
+        "differentApprover": true
+      },
+      "massOver": "ekstra-kontrol",
+      "massNetUnder": "arkiveret",
+      "massMissingBasis": "indbakke",
+      "allPaymentStatusesUnchanged": true
     }
   },
   "viewports": [
@@ -214,7 +243,7 @@
       "clientWidth": 1905,
       "scrollWidth": 1905,
       "clientHeight": 1080,
-      "scrollHeight": 1551,
+      "scrollHeight": 1881,
       "maxScrollX": 0,
       "compact": false,
       "zoom": "100 %",
@@ -239,7 +268,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1517,
+          "height": 1847,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -313,7 +342,7 @@
         },
         "activeSub": {
           "top": 281,
-          "height": 62,
+          "height": 93,
           "overflowX": "visible",
           "overflowY": "visible"
         },
@@ -614,7 +643,7 @@
       "clientWidth": 1425,
       "scrollWidth": 1425,
       "clientHeight": 900,
-      "scrollHeight": 1551,
+      "scrollHeight": 1881,
       "maxScrollX": 0,
       "compact": false,
       "zoom": "100 %",
@@ -639,7 +668,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1517,
+          "height": 1847,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -713,7 +742,7 @@
         },
         "activeSub": {
           "top": 281,
-          "height": 62,
+          "height": 93,
           "overflowX": "visible",
           "overflowY": "visible"
         },
@@ -2177,7 +2206,7 @@
       "clientWidth": 1905,
       "scrollWidth": 1905,
       "clientHeight": 1080,
-      "scrollHeight": 1551,
+      "scrollHeight": 1881,
       "maxScrollX": 0,
       "compact": false,
       "zoom": "100 %",
@@ -2202,7 +2231,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1517,
+          "height": 1847,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -2217,7 +2246,7 @@
       "clientWidth": 1905,
       "scrollWidth": 1905,
       "clientHeight": 1080,
-      "scrollHeight": 1889,
+      "scrollHeight": 2301,
       "maxScrollX": 0,
       "compact": false,
       "zoom": "125 %",
@@ -2242,7 +2271,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1855,
+          "height": 2267,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -2257,7 +2286,7 @@
       "clientWidth": 1905,
       "scrollWidth": 1905,
       "clientHeight": 1080,
-      "scrollHeight": 1551,
+      "scrollHeight": 1881,
       "maxScrollX": 0,
       "compact": true,
       "zoom": "100 %",
@@ -2282,7 +2311,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1517,
+          "height": 1847,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -2297,7 +2326,7 @@
       "clientWidth": 1905,
       "scrollWidth": 1905,
       "clientHeight": 1080,
-      "scrollHeight": 1889,
+      "scrollHeight": 2301,
       "maxScrollX": 0,
       "compact": true,
       "zoom": "125 %",
@@ -2322,7 +2351,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1855,
+          "height": 2267,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -2516,7 +2545,7 @@
         },
         "activeSub": {
           "top": 281,
-          "height": 62,
+          "height": 93,
           "overflowX": "visible",
           "overflowY": "visible"
         },
@@ -2556,7 +2585,7 @@
         },
         "activeSub": {
           "top": 281,
-          "height": 62,
+          "height": 93,
           "overflowX": "visible",
           "overflowY": "visible"
         },
@@ -3777,7 +3806,7 @@
       "clientWidth": 1425,
       "scrollWidth": 1425,
       "clientHeight": 900,
-      "scrollHeight": 1551,
+      "scrollHeight": 1881,
       "maxScrollX": 0,
       "compact": false,
       "zoom": "100 %",
@@ -3802,7 +3831,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1517,
+          "height": 1847,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -3817,7 +3846,7 @@
       "clientWidth": 1425,
       "scrollWidth": 1425,
       "clientHeight": 900,
-      "scrollHeight": 1889,
+      "scrollHeight": 2301,
       "maxScrollX": 0,
       "compact": false,
       "zoom": "125 %",
@@ -3842,7 +3871,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1855,
+          "height": 2267,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -3857,7 +3886,7 @@
       "clientWidth": 1425,
       "scrollWidth": 1425,
       "clientHeight": 900,
-      "scrollHeight": 1551,
+      "scrollHeight": 1881,
       "maxScrollX": 0,
       "compact": true,
       "zoom": "100 %",
@@ -3882,7 +3911,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1517,
+          "height": 1847,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -3897,7 +3926,7 @@
       "clientWidth": 1425,
       "scrollWidth": 1425,
       "clientHeight": 900,
-      "scrollHeight": 1889,
+      "scrollHeight": 2301,
       "maxScrollX": 0,
       "compact": true,
       "zoom": "125 %",
@@ -3922,7 +3951,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1855,
+          "height": 2267,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -4116,7 +4145,7 @@
         },
         "activeSub": {
           "top": 281,
-          "height": 62,
+          "height": 93,
           "overflowX": "visible",
           "overflowY": "visible"
         },
@@ -4156,7 +4185,7 @@
         },
         "activeSub": {
           "top": 281,
-          "height": 62,
+          "height": 93,
           "overflowX": "visible",
           "overflowY": "visible"
         },
@@ -8181,7 +8210,7 @@
       "clientWidth": 1425,
       "scrollWidth": 1425,
       "clientHeight": 900,
-      "scrollHeight": 1551,
+      "scrollHeight": 1881,
       "maxScrollX": 0,
       "compact": false,
       "zoom": "100 %",
@@ -8206,7 +8235,7 @@
         },
         "main": {
           "top": 34,
-          "height": 1517,
+          "height": 1847,
           "overflowX": "visible",
           "overflowY": "visible"
         }
@@ -8422,7 +8451,155 @@
         },
         "activeSub": {
           "top": 281,
-          "height": 62,
+          "height": 93,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "18-ekstra-kontrol-egen-afvist-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "clientHeight": 900,
+      "scrollHeight": 900,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 475,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 281,
+          "height": 93,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "19-ekstra-kontrol-anden-godkender-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "clientHeight": 900,
+      "scrollHeight": 900,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 475,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 281,
+          "height": 93,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "20-massekontrol-bekraeftelse-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "clientHeight": 900,
+      "scrollHeight": 900,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 475,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 281,
+          "height": 93,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "main": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "21-massekontrol-delvis-succes-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "clientHeight": 900,
+      "scrollHeight": 900,
+      "maxScrollX": 0,
+      "compact": false,
+      "zoom": "100 %",
+      "shellGeometry": {
+        "side": {
+          "top": 34,
+          "height": 866,
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "nav": {
+          "top": 177,
+          "height": 475,
+          "overflowX": "auto",
+          "overflowY": "auto"
+        },
+        "activeSub": {
+          "top": 281,
+          "height": 93,
           "overflowX": "visible",
           "overflowY": "visible"
         },

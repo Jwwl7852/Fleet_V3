@@ -6,6 +6,11 @@ import { SYNTHETIC_PASSWORD, TEST_USERS } from "./procure-auth-emulator-seed.mjs
 
 const baseUrl = process.env.VEYRO_BROWSER_QA_URL || "http://127.0.0.1:5197";
 if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(baseUrl)) throw new Error("Browser-QA må kun køre mod localhost.");
+const databaseHost = process.env.FIREBASE_DATABASE_EMULATOR_HOST || "127.0.0.1:9000";
+const projectId = process.env.GCLOUD_PROJECT || "demo-veyro-owner";
+if (!/^(127\.0\.0\.1|localhost):\d+$/.test(databaseHost) || projectId !== "demo-veyro-owner") {
+  throw new Error("Browser-QA må kun læse sit syntetiske lokale emulatordatasæt.");
+}
 const outputDir = path.resolve(process.argv[2] || "artifacts/veyro-rettelsesrunde-2026-09-15/browser");
 await mkdir(outputDir, { recursive: true });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -74,6 +79,7 @@ async function login(browser, user, route) {
 const anonymous = await openBrowser("anonymous");
 const denied = await openBrowser("denied");
 const admin = await openBrowser("admin");
+const approver = await openBrowser("approver");
 const checks = {}; const screenshots = []; const viewports = []; const layoutMatrix = [];
 try {
   await anonymous.viewport(390, 844);
@@ -222,13 +228,80 @@ try {
   assert(checks.dialogFocusReturned, "Fokus returnerede ikke til dialogens åbner.");
 
   await admin.spaNavigate("/oekonomi/fakturacenter", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Fakturacenter'))");
+  await admin.waitFor("document.body.innerText.includes('FC-ENKELT-OVER')", "serverfakturaer i Fakturacenter");
   checks.invoiceCenter = await admin.evaluate("({inbox:document.body.innerText.includes('Indbakke'),archive:document.body.innerText.includes('Arkiv'),extra:document.body.innerText.includes('Ekstra kontrol'),paymentMislabel:/betal|bogfør/i.test([...document.querySelectorAll('button')].map((node)=>node.textContent).join(' '))})");
   screenshots.push(await admin.screenshot("12-fakturacenter-integreret-1440x900.png"));
+
+  await admin.evaluate(setInput('.fic-filter input', "FC-ENKELT-OVER"));
+  await admin.waitFor("document.querySelectorAll('.fic-invoice').length===1", "enkelt faktura over nettogrænse");
+  await admin.evaluate("document.querySelector('.fic-invoice-main').click()");
+  await admin.evaluate(clickText("button", "Markér som kontrolleret"));
+  await admin.waitFor("document.body.innerText.includes('sendt til Ekstra kontrol')", "første kontrol bliver i Indbakke");
+  checks.invoiceSingleControl = await admin.evaluate("({path:location.pathname+location.search,message:[...document.querySelectorAll('[role=status]')].map((node)=>node.textContent.trim()).find((text)=>text.includes('sendt til Ekstra kontrol')),stillInbox:location.search.includes('sektion=indbakke')||!location.search.includes('sektion=')})");
+  assert(checks.invoiceSingleControl.stillInbox, "Enkeltkontrol forlod Indbakke.");
+
+  await admin.spaNavigate("/oekonomi/fakturacenter?sektion=ekstra-kontrol", "document.body.innerText.includes('FC-ENKELT-OVER')");
+  await admin.evaluate("document.querySelector('.fic-invoice-main').click()");
+  await admin.evaluate(clickText("button", "Godkend ekstra kontrol"));
+  await admin.waitFor("document.body.innerText.includes('anden person')", "egen ekstra godkendelse afvises");
+  checks.invoiceSelfApprovalDenied = await admin.evaluate("[...document.querySelectorAll('[role=status]')].map((node)=>node.textContent.trim()).find((text)=>text.includes('anden person'))");
+  screenshots.push(await admin.screenshot("18-ekstra-kontrol-egen-afvist-1440x900.png"));
+
+  await approver.viewport(1440, 900, false);
+  await login(approver, TEST_USERS.approver, "/oekonomi/fakturacenter?sektion=ekstra-kontrol");
+  await approver.waitFor("document.body.innerText.includes('FC-ENKELT-OVER')", "ekstra kontrol som anden bruger");
+  await approver.evaluate("document.querySelector('.fic-invoice-main').click()");
+  await approver.evaluate(clickText("button", "Godkend ekstra kontrol"));
+  await approver.waitFor("document.body.innerText.includes('flyttet til Arkiv')", "anden bruger godkender ekstra kontrol");
+  await approver.spaNavigate("/oekonomi/fakturacenter?sektion=arkiv", "document.body.innerText.includes('FC-ENKELT-OVER')");
+  checks.invoiceSecondApprover = await approver.evaluate("({archive:document.body.innerText.includes('FC-ENKELT-OVER'),user:document.querySelector('.fc-bruger')?.textContent||document.body.innerText})");
+  screenshots.push(await approver.screenshot("19-ekstra-kontrol-anden-godkender-1440x900.png"));
+
+  await admin.spaNavigate("/oekonomi/fakturacenter?sektion=indbakke", "document.body.innerText.includes('FC-MASSE-OVER')");
+  await admin.evaluate(setInput('.fic-filter input', "FC-MASSE"));
+  await admin.waitFor("document.querySelectorAll('.fic-invoice').length===3", "tre synlige massefakturaer");
+  await admin.evaluate("document.querySelector('.fic-select-all input').click()");
+  await admin.waitFor("document.querySelector('.fic-bulk')?.textContent.includes('3 valgte')", "tre valgte massefakturaer");
+  await admin.evaluate("document.querySelector('.fic-bulk .fic-primary').click()");
+  await admin.waitFor("document.querySelector('[role=dialog]')?.textContent.includes('Bekræft massekontrol')", "massekontrolbekræftelse");
+  screenshots.push(await admin.screenshot("20-massekontrol-bekraeftelse-1440x900.png"));
+  await admin.evaluate(clickText("[role=dialog] button", "Bekræft og markér som kontrolleret"));
+  await admin.waitFor("document.body.innerText.includes('2 lykkedes, 1 blokeret')", "massekontrol med delvis succes");
+  await admin.waitFor("document.querySelector('.fic-bulk-results')", "resultat pr. faktura");
+  checks.invoiceBulkPartial = await admin.evaluate("({message:[...document.querySelectorAll('[role=status]')].map((node)=>node.textContent.trim()).find((text)=>text.includes('2 lykkedes, 1 blokeret')),rows:[...document.querySelectorAll('.fic-bulk-results li')].map((node)=>node.textContent.trim())})");
+  assert(checks.invoiceBulkPartial.rows.length === 3, "Massekontrollen viste ikke et resultat for hver faktura.");
+  screenshots.push(await admin.screenshot("21-massekontrol-delvis-succes-1440x900.png"));
+
+  const invoiceResponse = await fetch(`http://${databaseHost}/tenants/procure-auth-a/fakturaer.json?ns=${projectId}`, {
+    headers: { authorization: "Bearer owner" },
+  });
+  assert(invoiceResponse.ok, `Emulatorens fakturakontrol kunne ikke efterprøves: ${invoiceResponse.status}.`);
+  const invoiceState = await invoiceResponse.json();
+  checks.invoiceServerState = {
+    single: {
+      status: invoiceState["fc-enkelt-over"].kontrolstatus,
+      paymentStatus: invoiceState["fc-enkelt-over"].status,
+      differentApprover: invoiceState["fc-enkelt-over"].kontrolleretAf
+        !== invoiceState["fc-enkelt-over"].ekstraKontrolleretAf,
+    },
+    massOver: invoiceState["fc-masse-over"].kontrolstatus,
+    massNetUnder: invoiceState["fc-masse-net-under"].kontrolstatus,
+    massMissingBasis: invoiceState["fc-masse-mangler-grundlag"].kontrolstatus,
+    allPaymentStatusesUnchanged: Object.values(invoiceState).every((invoice) => invoice.status === "modtaget"),
+  };
+  assert(checks.invoiceServerState.single.status === "arkiveret"
+    && checks.invoiceServerState.single.paymentStatus === "modtaget"
+    && checks.invoiceServerState.single.differentApprover
+    && checks.invoiceServerState.massOver === "ekstra-kontrol"
+    && checks.invoiceServerState.massNetUnder === "arkiveret"
+    && checks.invoiceServerState.massMissingBasis === "indbakke"
+    && checks.invoiceServerState.allPaymentStatusesUnchanged,
+  `Fakturacenterets servertilstand matcher ikke de dokumenterede kontroludfald: ${JSON.stringify(checks.invoiceServerState)}`);
 
   const runtimeProblems = admin.events.filter((event) => event.method === "Runtime.exceptionThrown").map((event) => event.params?.exceptionDetails?.text || "Runtime exception");
   const result = { ok: true, baseUrl, app: "root-app med embedded FLEET", backend: { auth: "Firebase Auth emulator", sharedData: "Realtime Database emulator", fleetPrototype: "lokal IndexedDB med syntetiske fixtures", externalServices: false }, checks, viewports, layoutMatrix, screenshots, runtimeProblems };
   await writeFile(path.join(outputDir, "RESULTAT.json"), `${JSON.stringify(result, null, 2)}\n`, "utf8");
   console.log(JSON.stringify(result, null, 2));
 } finally {
-  await Promise.allSettled([anonymous.close(), denied.close(), admin.close()]);
+  await Promise.allSettled([anonymous.close(), denied.close(), admin.close(), approver.close()]);
 }
