@@ -1089,3 +1089,30 @@ En senere adapter skal koble autoritative Fakturacenter-/bogføringsposter på
 uden at blande statusser eller dobbeltregistrere en bestilling og dens faktura.
 Der er ikke aktiveret OBD, migreret produktionsdata eller anvendt eksterne
 tjenester.
+
+## 23. Integreret FLEET-serviceklient — 2026-09-15
+
+Den integrerede Service-visning bruger nu en særskilt serveradapter. Den læser
+fælles enheder fra `koeretoejer` og bevarer disse ID'er som autoritative
+referencer i serverens servicekrav og forekomster. Gem og manuel kontrol går
+gennem de eksisterende callables; afvisning eller forbindelsesfejl falder ikke
+tilbage til det lokale FLEET-repository.
+
+I servertilstand kører browserens minutinterval ikke. Brugerfladen viser den
+timebaserede scheduler og tilbyder kun mutationer til en bruger med
+`koeretoejer.skriv`. Serverkravet bærer nu også kategori, fast årlig hændelse,
+ansvarlig, leverandør, dokumentreferencer og noter. Flere kalendergrænser
+fortolkes som den først nåede dato, og en gennemført fast årshændelse flytter
+den eksplicitte forfaldsdato til næste gyldige år.
+
+Overgangen er stadig kontrolleret og ufuldstændig: de serveroprettede
+indberetninger og sager er endnu ikke indlæst i FLEET-prototypens generelle
+sagsrepository, og historisk service, planlægning og mailopsætning har endnu
+ingen serveradapter. UI'et skjuler disse handlinger og viser serverreferencen
+uden et dødt link. Eksisterende lokale browserdata er bevaret, men bruges ikke
+som fallback for serverkrav.
+
+Etapegrundlaget består 13 fokuserede serviceklient-/motortests, hele FLEET-
+suiten 192/192, lint, produktionsbuild, designgate 11/11 og den fulde isolerede
+Rules-/platformsgate 4.613/4.613. Ingen deployment eller produktionsmigration
+er gennemført.

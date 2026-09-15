@@ -8,6 +8,12 @@ import { harModul } from "../../fleet/moduler.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import { useFleetSharedData } from "./useFleetSharedData.js";
 import {
+  createFleetServiceClient,
+  mapServerOccurrenceToFleet,
+  mapServerRequirementToFleet,
+  mapSharedUnitToFleet,
+} from "../../fleet/fleet-service-client.js";
+import {
   FLEET_V2_INTEGRATION_DATABASE,
   FLEET_V2_ROUTE_PREFIX,
   fleetV2ActorFromUser,
@@ -23,9 +29,11 @@ export default function FleetV2Module() {
   const hasPermission = harPerm(bruger?.perms, requiredPermission);
   const mayReadSuppliers = harPerm(bruger?.perms, PERM.leverandoererLaes);
   const mayCreateSuppliers = harPerm(bruger?.perms, PERM.leverandoererSkriv);
-  const { categories, suppliers } = useFleetSharedData({
+  const mayManageService = harPerm(bruger?.perms, PERM.koeretoejerSkriv);
+  const { categories, suppliers, service } = useFleetSharedData({
     mayReadCategories: hasPermission,
     mayReadSuppliers,
+    mayReadService: hasPermission,
   });
   const databaseName = import.meta.env.VITE_FLEET_V2_DATABASE_NAME
     || FLEET_V2_INTEGRATION_DATABASE;
@@ -48,6 +56,47 @@ export default function FleetV2Module() {
     sharedCategories,
   }), [databaseName, sharedCategories, sharedSuppliers, tenantId]);
   const actor = useMemo(() => fleetV2ActorFromUser(bruger), [bruger]);
+  const serviceUnitsPayload = JSON.stringify(service.units.data);
+  const serviceRequirementsPayload = JSON.stringify(service.requirements.data);
+  const serviceOccurrencesPayload = JSON.stringify(service.occurrences.data);
+  const serviceBackend = useMemo(() => {
+    const units = JSON.parse(serviceUnitsPayload).map(mapSharedUnitToFleet);
+    const requirements = JSON.parse(serviceRequirementsPayload).map(mapServerRequirementToFleet);
+    const occurrences = JSON.parse(serviceOccurrencesPayload).map(mapServerOccurrenceToFleet);
+    const client = createFleetServiceClient();
+    const reload = () => {
+      service.requirements.genindlaes();
+      service.occurrences.genindlaes();
+    };
+    return {
+      kind: "server",
+      units,
+      relations: { serviceRequirements: requirements, serviceOccurrences: occurrences },
+      loading: service.units.henter || service.requirements.henter || service.occurrences.henter,
+      error: service.units.fejl || service.requirements.fejl || service.occurrences.fejl || null,
+      capabilities: {
+        saveRequirement: mayManageService,
+        runAutomation: mayManageService,
+        planService: false,
+        saveHistory: false,
+        saveSettings: false,
+      },
+      async saveRequirement(input) {
+        const current = requirements.find((item) => item.id === input.id) || null;
+        const result = await client.saveRequirement(input, units, current);
+        reload();
+        return result;
+      },
+      async runAutomation() {
+        const result = await client.runAutomation();
+        reload();
+        return result;
+      },
+    };
+  }, [service.units.henter, service.units.fejl, service.requirements.henter,
+    service.requirements.fejl, service.occurrences.henter, service.occurrences.fejl,
+    serviceUnitsPayload, serviceRequirementsPayload, serviceOccurrencesPayload,
+    service.requirements.genindlaes, service.occurrences.genindlaes, mayManageService]);
 
   if (!hasModule || !hasPermission) {
     return (
@@ -80,6 +129,7 @@ export default function FleetV2Module() {
       onNavigate={navigate}
       pathname={`${location.pathname}${location.search}`}
       repository={repository}
+      serviceBackend={serviceBackend}
     />
   );
 }

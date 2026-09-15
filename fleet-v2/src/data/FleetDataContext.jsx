@@ -5,16 +5,17 @@ const FleetDataContext = createContext(null);
 
 const DEFAULT_ACTOR = { id: "demo-lars", name: "Lars Hansen", role: "Demo-disponent" };
 
-export function FleetDataProvider({ children, repository = defaultUnitRepository(), actor: authenticatedActor = null }) {
+export function FleetDataProvider({ children, repository = defaultUnitRepository(), actor: authenticatedActor = null, serviceBackend = null }) {
   const [dataset, setDataset] = useState(null);
   const [error, setError] = useState(null);
+  const serverControlledService = serviceBackend?.kind === "server";
 
   useEffect(() => {
     let active = true;
     setDataset(null);
     setError(null);
     repository.load()
-      .then(() => repository.runServiceAutomation ? repository.runServiceAutomation() : repository.load())
+      .then(() => !serverControlledService && repository.runServiceAutomation ? repository.runServiceAutomation() : repository.load())
       .then(() => repository.runLeaseAutomation ? repository.runLeaseAutomation() : repository.load())
       .then((result) => {
       if (active) setDataset(result.dataset || result);
@@ -37,7 +38,7 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
   }, [repository]);
 
   useEffect(() => {
-    if (!dataset || !repository.runServiceAutomation) return undefined;
+    if (!dataset || serverControlledService || !repository.runServiceAutomation) return undefined;
     const interval = window.setInterval(() => {
       repository.runServiceAutomation()
         .then(() => repository.runLeaseAutomation ? repository.runLeaseAutomation() : repository.load())
@@ -45,7 +46,7 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
         .catch((cause) => setError(cause));
     }, 60000);
     return () => window.clearInterval(interval);
-  }, [dataset?.tenantId, repository]);
+  }, [dataset?.tenantId, repository, serverControlledService]);
 
   const submitReport = useCallback(async (input, options) => {
     const contextualInput = authenticatedActor ? {
@@ -62,7 +63,7 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
     const result = await repository[method](...args);
     setDataset(result.dataset);
     return result;
-  }, [repository]);
+  }, [repository, serverControlledService]);
   const resolveActor = useCallback(
     (suppliedActor) => authenticatedActor || suppliedActor || DEFAULT_ACTOR,
     [authenticatedActor],
@@ -83,11 +84,25 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
   const reopenCase = useCallback((caseId, reason, suppliedActor, options) => runMutation("reopenCase", caseId, reason, resolveActor(suppliedActor), options), [resolveActor, runMutation]);
   const saveEvidence = useCallback((caseId, input, suppliedActor, options) => runMutation("saveEvidence", caseId, input, resolveActor(suppliedActor), options), [resolveActor, runMutation]);
   const applyInvoiceFixture = useCallback((...args) => runMutation("applyInvoiceFixture", ...args), [runMutation]);
-  const saveServiceRequirement = useCallback((input, suppliedActor, options) => runMutation("saveServiceRequirement", input, resolveActor(suppliedActor), options), [resolveActor, runMutation]);
-  const planService = useCallback((requirementId, input, suppliedActor, options) => runMutation("planService", requirementId, input, resolveActor(suppliedActor), options), [resolveActor, runMutation]);
-  const saveHistoricalService = useCallback((input, suppliedActor, options) => runMutation("saveHistoricalService", input, resolveActor(suppliedActor), options), [resolveActor, runMutation]);
-  const runServiceAutomation = useCallback((...args) => runMutation("runServiceAutomation", ...args), [runMutation]);
-  const saveServiceSettings = useCallback((...args) => runMutation("saveServiceSettings", ...args), [runMutation]);
+  const saveServiceRequirement = useCallback(async (input, suppliedActor, options) => {
+    if (serverControlledService) return serviceBackend.saveRequirement(input, resolveActor(suppliedActor), options);
+    return runMutation("saveServiceRequirement", input, resolveActor(suppliedActor), options);
+  }, [resolveActor, runMutation, serverControlledService, serviceBackend]);
+  const planService = useCallback(async (requirementId, input, suppliedActor, options) => {
+    if (serverControlledService) throw new Error("Planlægning fra serverkravet afventer den fælles sagsadapter. Intet blev gemt lokalt.");
+    return runMutation("planService", requirementId, input, resolveActor(suppliedActor), options);
+  }, [resolveActor, runMutation, serverControlledService]);
+  const saveHistoricalService = useCallback(async (input, suppliedActor, options) => {
+    if (serverControlledService) throw new Error("Historisk service afventer serveradapteren. Intet blev gemt lokalt.");
+    return runMutation("saveHistoricalService", input, resolveActor(suppliedActor), options);
+  }, [resolveActor, runMutation, serverControlledService]);
+  const runServiceAutomation = useCallback((...args) => serverControlledService
+    ? serviceBackend.runAutomation(...args) : runMutation("runServiceAutomation", ...args),
+  [runMutation, serverControlledService, serviceBackend]);
+  const saveServiceSettings = useCallback(async (...args) => {
+    if (serverControlledService) throw new Error("Mailindstillinger er ikke del af den serverstyrede servicegrænse endnu.");
+    return runMutation("saveServiceSettings", ...args);
+  }, [runMutation, serverControlledService]);
   const savePositionMeasurement = useCallback((...args) => runMutation("savePositionMeasurement", ...args), [runMutation]);
   const runPositionDemo = useCallback((...args) => runMutation("runPositionDemo", ...args), [runMutation]);
   const uploadDocuments = useCallback((input, suppliedActor, options) => runMutation("uploadDocuments", input, resolveActor(suppliedActor), options), [resolveActor, runMutation]);
@@ -132,6 +147,11 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
     return result;
   }, [repository, resolveActor]);
 
+  const serviceRelations = useMemo(() => ({
+    ...(dataset?.relations || {}),
+    ...(serviceBackend?.relations || {}),
+  }), [dataset?.relations, serviceBackend?.relations]);
+
   const value = useMemo(() => ({
     dataset,
     actor: authenticatedActor || DEFAULT_ACTOR,
@@ -173,7 +193,16 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
     saveBooking,
     cancelBooking,
     repositoryKind: repository.kind,
-  }), [authenticatedActor, dataset, error, repository.kind, repository.tenantId, saveUnit, submitReport, saveReportDraft, createManualCase, saveWorkshopOrder, closeCase, reopenCase, saveEvidence, applyInvoiceFixture, saveServiceRequirement, planService, saveHistoricalService, runServiceAutomation, saveServiceSettings, savePositionMeasurement, runPositionDemo, uploadDocuments, updateDocument, replaceDocumentFile, removeDocumentRelation, archiveDocument, saveLease, runLeaseAutomation, updateLeaseDelivery, saveLeaseMeterObservation, saveContractReview, saveManualCost, updateCase, createWorkshopTask, updateWorkshopTask, saveBooking, cancelBooking]);
+    serviceUnits: serverControlledService ? serviceBackend.units : dataset?.units || [],
+    serviceRelations,
+    serviceLoading: serverControlledService ? serviceBackend.loading : !dataset && !error,
+    serviceError: serverControlledService ? serviceBackend.error : error,
+    serviceBackendKind: serverControlledService ? "server" : "prototype",
+    serviceCapabilities: serviceBackend?.capabilities || {
+      saveRequirement: true, runAutomation: true, planService: true,
+      saveHistory: true, saveSettings: true,
+    },
+  }), [authenticatedActor, dataset, error, repository.kind, repository.tenantId, saveUnit, submitReport, saveReportDraft, createManualCase, saveWorkshopOrder, closeCase, reopenCase, saveEvidence, applyInvoiceFixture, saveServiceRequirement, planService, saveHistoricalService, runServiceAutomation, saveServiceSettings, savePositionMeasurement, runPositionDemo, uploadDocuments, updateDocument, replaceDocumentFile, removeDocumentRelation, archiveDocument, saveLease, runLeaseAutomation, updateLeaseDelivery, saveLeaseMeterObservation, saveContractReview, saveManualCost, updateCase, createWorkshopTask, updateWorkshopTask, saveBooking, cancelBooking, serverControlledService, serviceBackend, serviceRelations]);
 
   return <FleetDataContext.Provider value={value}>{children}</FleetDataContext.Provider>;
 }

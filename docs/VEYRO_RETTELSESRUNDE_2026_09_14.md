@@ -59,8 +59,8 @@ aktuelle kodegrundlag.
 | FL-10 | Sagsmappe | Godkendt samlet design uden fanebjælke, kompakt enhedsrække, foldesektioner og tilstands-/permissionstyret næste handling. | CaseFolder, CaseActionPanel og CSS | implementeret lokalt | Ingen tabs; kompakt enhedsrække; `Problem og næste handling`; foldbare indberetning, medier, enhedsdata, økonomi og historik; sticky højre infokolonne. Browserbevis ved 1920, 1440/125 %, 390 og 360. | Autoritative statusser og fakturaafklaring er bevaret; data er lokal prototype |
 | FL-11 | Kompakt kø | Permanent Flyt sag fjernes; statusændring bevares i sagsmappe/diskret menu; kolonner ruller. | WorkQueue og CSS | implementeret lokalt | Kolonne-/statusregression | Tabelvisning og sagsmappe bevarer lovlige statushandlinger; workflowstadier er uændrede |
 | FL-12 | Leverandører | FLEET v2 brugte sit lokale `relations.workshops` som en parallel leverandørstamme. Eksterne værksteder læses nu fra fælles `leverandoerer`; interne ressourcer og historiske referencer bevares uden at kopiere fælles stamdata til IndexedDB. Autoriseret oprettelse går til samme register med værksted forvalgt og sikker retur til den bevarede sagskladde. | `FleetV2Module`, `supplierWorkshopAdapter`, `supplierReturn`, `WorkshopAssignment`, fælles leverandører | implementeret og verificeret | 7/7 adapter-/returtests; fuld FLEET-suite 179/179; integreret browser ved 1919×1080 CSS-pixel/100 % arbejdsområdezoom | Ekstern portal får ingen intern adgang. Produktlagring er fortsat det eksisterende tenantafgrænsede leverandørregister; mailafsendelse er ikke aktiveret. |
-| FL-13 | Service | Dateret seneste service/måler, kalender/km/timer, varsler, faste hændelser og forklarlig næste grænse. | Service domain/UI | implementeret som lokal prototype | 24/24 Service-domæne-/komponenttests | Den først nåede dato- eller målergrænse udløser behovet; tallet `500` er målerinterval i den viste enheds km eller driftstimer |
-| FL-14 | Serviceautomatik | Én indberetning pr. krav/cyklus, idempotens/samtidighed, manglende grundlag, gennemførsel og ændring/deaktivering. | `functions/fleet-service-automation.js`, callables/scheduler, Rules og lokal service-UI | delvist implementeret | Servermotoren opretter atomisk deterministisk forekomst, indberetning og sag; 16/16 callable-/samtidighedsassertions, 49/49 målrettede Rules-tests og fuld gate 4.605/4.605 består | UI'et bruger endnu det lokale repository. Adapter/migration og kontrolleret håndtering af allerede åbne forekomster ved kravændring/deaktivering mangler |
+| FL-13 | Service | Dateret seneste service/måler, kalender/km/timer, varsler, faste hændelser og forklarlig næste grænse. | Service domain/UI og `fleet-service-client.js` | delvist implementeret | Servicevisningen læser nu serverkrav og fælles enheder; serveren bevarer formularfelterne og vælger den først nåede kalendergrænse. FLEET 192/192 og 13/13 fokuserede klient-/motortests | Planlægning og historisk gennemførsel fra den integrerede UI afventer serveradapter; tallet `500` er målerinterval i den viste enheds km eller driftstimer |
+| FL-14 | Serviceautomatik | Én indberetning pr. krav/cyklus, idempotens/samtidighed, manglende grundlag, gennemførsel og ændring/deaktivering. | `functions/fleet-service-automation.js`, callables/scheduler, Rules og integreret serviceklient | delvist implementeret | Integreret UI bruger servernoder/callables uden lokal fallback og starter ikke browsertimeren; fuld gate 4.613/4.613 består | UI-rute til serveroprettet indberetning/sag samt kontrolleret håndtering af åbne forekomster ved kravændring/deaktivering mangler |
 | FL-15 | Kategorier | Indberetninger brugte fri tekst, mens økonomi brugte en separat hardkodet liste. Der er nu én tenantafgrænset kategori-stamdata med opret/redigér/sortér/deaktivér, anvendelsesmapping og historiske snapshots. | `src/moduler/opsaetning/FleetKategorier.jsx`, `fleetCategories`, `categoryAdapter`, Reports/Økonomi, Rules | delvist implementeret | 5/5 kategoridomænetests; fuld FLEET-suite 184/184; fuld Rules-/platformsgate 4.599/4.599; browser desktop/mobil og begge forbrugere | Kategoristamdata lagres serverstyret. Selve indberetningerne og økonomiposterne er fortsat lokal FLEET-prototype og skal flyttes til den autoritative servergrænse, før kravet lukkes samlet. |
 | FL-16 | OBD-statistik | Kun registrerede og understøttede målinger vises/filtreres/eksporteres; kilde/periode/enhed mærkes; manglende forbindelse er tydelig. | `fleet-v2/src/data/fleetStatistics.js`, `FleetStatistics.jsx`, route/nav og CSS | delvist implementeret lokalt | 4/4 statistikdomænetests; fuld FLEET-suite 191/191; lint/build. Integreret browserbevis afventer autentificeret emulator, som ved kontrol svarede `Der er ikke forbindelse til login-tjenesten`. | Der findes kun daterede km-observationer samt position/hastighed i prototypen. Ingen valideret OBD-kilde er tilsluttet, og UI'et opfinder derfor ikke øvrige målinger. |
 | FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | `fleet-v2/src/data/economyWorkflow.js`, `FleetEconomy.jsx` og CSS | delvist implementeret lokalt | 8/8 økonomidomænetests; fuld FLEET-suite 191/191; lint/build | Manuelle, kontrollerede, bogførte, foreløbige, estimerede og kontraktlige beløb er særskilt. Månedlige kontrakter materialiseres inden for start/slut, samme økonomiske hændelse deduplikeres, og kreditnotaens negative fortegn bevares. Autoritativ Fakturacenter-/bogføringsadapter mangler. |
@@ -658,3 +658,47 @@ før/efter-beviser for de prioriterede synlige fejl.
 | FL-17 | Implementeret og komponentverificeret for filtrering, særskilte statuskort, sporbarhed og datadækning | Delvist implementeret: periode, kategori, kontraktperioder, kr./km-gate, valuta, kreditnota og hændelsesdeduplikering er implementeret; periodisering og fuld livscyklusdækning kræver autoritativ kildemodel | Delvist implementeret: lokal IndexedDB-prototype; ingen fælles faktura-/bogføringsadapter | Delvist implementeret: eksisterende FLEET-rutepermission, men ingen servermutation for økonomiposter | 8/8 domænetests og FLEET 191/191 | Delvist implementeret |
 | FL-18 | Implementeret og enhedstestet for downloadindhold | Implementeret for dansk separator/decimal, kilde/status/reference og BOM | Lokal filgenerering; ingen serverlagring nødvendig for selve eksporten | Arver læseadgang fra de to ruter | UTF-8-byteprøver i begge eksporttests; manuel dansk Excel-kontrol mangler | Delvist implementeret |
 | REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, design 11/11, FLEET 191/191 og fuld gate 4.605/4.605 på Etape-15-grundlaget | Delvist implementeret |
+
+### Etape 16 — integreret servergrænse for FLEET-service
+
+- Den integrerede Service-visning læser nu de autoritative fælles enheder fra
+  `koeretoejer` samt krav og forekomster fra `fleetServiceKrav` og
+  `fleetServiceForekomster`. Adapteren bevarer det fælles enheds-ID; der
+  oprettes ikke en ny redigerbar FLEET-kopi.
+- Oprettelse og redigering går gennem `fleetServiceKravGem`, og manuel
+  varslingskontrol går gennem `fleetServiceKontrolNu`. En callable-fejl
+  medfører en synlig fejl og aldrig skjult skrivning til IndexedDB.
+- Den lokale browserautomatik startes ikke i servertilstand. UI'et forklarer,
+  at den timebaserede serverkørsel fortsætter uden en åben browser. En bruger
+  uden `koeretoejer.skriv` kan læse krav, men får ingen opret-, rediger- eller
+  manuel kontrolhandling.
+- Servervalideringen bevarer nu de redigerbare kategori-, årshændelses-,
+  ansvarlig-, leverandør-, dokument- og notefelter. Når både en fast dato og
+  et månedsinterval gælder, anvendes den tidligste beregnede dato. Ved
+  gennemført fast årshændelse beregnes næste kalendercyklus, inklusive sidste
+  gyldige dag i februar.
+- Serveren opretter allerede indberetning og sag atomisk, men den integrerede
+  FLEET-prototype læser endnu ikke disse serverposter ind i sine generelle
+  indberetnings- og sagslister. Derfor vises serverreferencen som tekst i
+  Service i stedet for et dødt link. Planlægning, historisk service og
+  mailopsætning er tilsvarende skjult i servertilstand, indtil deres
+  serveradaptere findes.
+- Browserbillede kunne ikke fremstilles fra den integrerede autentificerede
+  app: den lokale loginvisning svarede fortsat, at login-tjenesten ikke var
+  tilgængelig. Browserdata og lokale præferencer blev ikke ryddet, og et
+  gammelt designreferencebillede er ikke genbrugt som bevis.
+- Teknisk gate på etapegrundlaget: 13/13 fokuserede serviceklient-/motortests,
+  servertilstandskomponenttesten, hele FLEET-suiten 192/192, root lint,
+  produktionsbuild, designgate 11/11 og fuld isoleret Rules-/platformsgate
+  4.613/4.613. Første fulde gate fandt alene det forventede dokumentationstal
+  219 efter tilføjelsen af prøvefil nr. 220; tælleren blev rettet, og hele
+  gaten blev kørt grønt igen. Ingen Rules eller negative tests blev svækket.
+
+#### Delstatus efter Etape 16
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FL-13 | Implementeret, men ikke integreret browserverificeret: serverkrav og fælles enheder vises og redigeres i den eksisterende serviceflade | Implementeret for dato/km/timer, faste årshændelser og først nåede kalendergrænse | Delvist implementeret: krav gemmes servermæssigt; historisk service og planlægning af sag/opgave mangler adapter | Implementeret og komponentverificeret: læsning følger FLEET-adgang, skrivning kræver `koeretoejer.skriv` | 13/13 fokuserede tests, FLEET 192/192; browser blokeret af login-tjenesten | Delvist implementeret |
+| FL-14 | Delvist implementeret: serverstatus og manuel serverkontrol er koblet; serveroprettede sager er endnu ikke åbne fra FLEET-listen | Delvist implementeret: idempotent cyklus, manglende grundlag, gennemførsel og næste årscyklus; ændring/deaktivering med åben forekomst mangler | Delvist implementeret: UI bruger callables/noder og ingen browsertimer; overgang af eksisterende lokale poster og sagsadapter mangler | Implementeret og verificeret for tenant, aktivt abonnement, FLEET-modul, `koeretoejer.skriv`, læseadgang og afvist direkte skrivning | 13/13 fokuserede tests, servertilstandskomponenttest og fuld gate 4.613/4.613 | Delvist implementeret |
+| REG-01 | Ikke relevant | Implementeret og verificeret for denne serverkobling | Implementeret og verificeret uden lokal fallback | Implementeret og verificeret | Fuld gate 4.613/4.613 | Delvist implementeret, fordi kommende serveretaper fortsat mangler |
+| REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, design 11/11, FLEET 192/192 og fuld gate 4.613/4.613 | Delvist implementeret |

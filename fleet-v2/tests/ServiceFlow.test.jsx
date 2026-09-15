@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FleetV2App } from "../src/FleetV2App";
 import { createMemoryUnitRepository } from "../src/data/unitRepository";
 
@@ -16,6 +16,25 @@ describe("selvstændigt Service-modul", () => {
     expect(screen.getByText("Overskredet", { selector: ".service-kpis span" })).toBeTruthy();
     expect(screen.getByText("Mangler grundlag", { selector: ".service-kpis span" })).toBeTruthy();
     expect(window.location.pathname).toBe("/service");
+  });
+
+  it("viser kun serverens serviceprojektion og starter ikke browserautomatik i servertilstand", async () => {
+    window.history.replaceState({}, "", "/service");
+    const repository = createMemoryUnitRepository();
+    repository.runServiceAutomation = vi.fn();
+    render(<FleetV2App repository={repository} serviceBackend={{
+      kind: "server",
+      units: [{ id: "shared-unit-1", number: "Fælles 1", model: "Serverenhed", meterType: "km", meter: 1000 }],
+      relations: { serviceRequirements: [], serviceOccurrences: [] },
+      loading: false,
+      error: null,
+      capabilities: { saveRequirement: false, runAutomation: false, planService: false, saveHistory: false, saveSettings: false },
+    }} />);
+    expect(await screen.findByText("serverstyrede serviceplaner", { exact: false })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Opret servicekrav" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Serviceautomatik" })).toBeNull();
+    expect(screen.getByText("Serveraktiv · skriveadgang kræves")).toBeTruthy();
+    expect(repository.runServiceAutomation).not.toHaveBeenCalled();
   });
 
   it("opretter et kombineret krav og planlægger det uden dubletsag", async () => {

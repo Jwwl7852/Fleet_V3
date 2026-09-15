@@ -39,6 +39,31 @@ describe("serverstyret FLEET-serviceautomatik", () => {
     assert.equal(evaluation.reason, "missing_meter");
   });
 
+  it("bevarer formularens serverfelter og validerer en årlig kalenderbegivenhed", () => {
+    const validated = validateFleetServiceRequirement({
+      ...dueRequirement,
+      kategori: "inspection", aarligMaaned: 2, aarligDag: 29,
+      ansvarligId: "admin-1", leverandoerId: "leverandoer-1",
+      dokumentIder: ["doc-1", "doc-1"], noter: "Kontrollér dokumentation",
+    });
+    assert.equal(validated.ok, true);
+    assert.equal(validated.value.kategori, "inspection");
+    assert.equal(validated.value.aarligMaaned, 2);
+    assert.deepEqual(validated.value.dokumentIder, ["doc-1"]);
+    assert.equal(validateFleetServiceRequirement({ ...dueRequirement, aarligMaaned: 13, aarligDag: 1 }).ok, false);
+  });
+
+  it("bruger den først nåede kalendergrænse, når flere datogrænser gælder", () => {
+    const evaluation = evaluateFleetServiceRequirement({
+      ...dueRequirement,
+      sidsteServiceDato: "2026-01-01",
+      intervalMaaneder: 12,
+      naesteDato: "2026-11-01",
+    }, tenant().koeretoejer["unit-1"], "2026-10-15");
+    assert.equal(evaluation.dueDate, "2026-11-01");
+    assert.equal(evaluation.alert, true);
+  });
+
   it("opretter én sammenhængende forekomst, indberetning og sag", () => {
     const result = applyFleetServiceAutomation(tenant(), { nowMs: Date.parse("2026-09-15T08:00:00Z"), today: "2026-09-15" });
     assert.equal(result.created.length, 1);
@@ -79,6 +104,18 @@ describe("serverstyret FLEET-serviceautomatik", () => {
       dato: "2026-09-19", maaler: 120_200, actorId: "admin-1",
     }, { nowMs: 5 });
     assert.deepEqual({ ok: conflict.ok, code: conflict.code }, { ok: false, code: "completion_conflict" });
+  });
+
+  it("beregner næste faste kalendercyklus efter gennemført service", () => {
+    const annualTenant = tenant();
+    annualTenant.fleetServiceKrav["servicekrav-1"] = {
+      ...dueRequirement, aarligMaaned: 2, aarligDag: 29, naesteDato: "2026-02-28",
+    };
+    const first = applyFleetServiceAutomation(annualTenant, { nowMs: 1, today: "2026-02-20" });
+    const completed = completeFleetServiceOccurrence(first.tenant, first.created[0].occurrenceId, {
+      dato: "2026-02-28", maaler: 120_100, actorId: "admin-1",
+    }, { nowMs: 2 });
+    assert.equal(completed.tenant.fleetServiceKrav["servicekrav-1"].naesteDato, "2027-02-28");
   });
 
   it("eksponerer scheduler, manuel kontrol, gem og gennemførsel som serverfunktioner", () => {

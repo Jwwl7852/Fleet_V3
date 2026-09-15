@@ -82,6 +82,7 @@ export function FleetV2App({
   onNavigate,
   pathname,
   repository,
+  serviceBackend,
   vehicleLookup,
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -145,7 +146,7 @@ export function FleetV2App({
   else content = <Overview onUnavailable={showUnavailable} onNavigate={navigate} />;
 
   return (
-    <FleetDataProvider actor={actor} repository={repository}>
+    <FleetDataProvider actor={actor} repository={repository} serviceBackend={serviceBackend}>
       <div className="veyro-module--fleet">
         <div className={embedded ? "fleet-v2-embedded" : "fleet-v2-shell"}>
         <a className="skip-link" href="#main-content">Gå til indhold</a>

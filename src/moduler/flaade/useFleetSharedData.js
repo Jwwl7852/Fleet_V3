@@ -17,7 +17,7 @@ const FALLBACK_CATEGORIES = DEFAULT_FLEET_CATEGORIES.map((item) => ({
  * lovlige FLEET-ruter uden leverandørnavne. Kategorierne følger FLEETs brede
  * læseadgang og er nødvendige i både mobil indberetning og økonomi.
  */
-export function useFleetSharedData({ mayReadCategories, mayReadSuppliers }) {
+export function useFleetSharedData({ mayReadCategories, mayReadSuppliers, mayReadService = false }) {
   const suppliers = useListe("leverandoerer", {
     ordnPaa: "navn",
     vindue: "alle",
@@ -32,5 +32,27 @@ export function useFleetSharedData({ mayReadCategories, mayReadSuppliers }) {
     demo: FALLBACK_CATEGORIES,
     hent: mayReadCategories,
   });
-  return { categories, suppliers };
+  const units = useListe("koeretoejer", {
+    ordnPaa: "kaldenavn",
+    vindue: "alle",
+    graense: 1000,
+    hent: mayReadService,
+  });
+  const serviceRequirements = useListe("fleetServiceKrav", {
+    ordnPaa: "enhedId",
+    vindue: "alle",
+    graense: 2000,
+    hent: mayReadService,
+  });
+  const serviceOccurrences = useListe("fleetServiceForekomster", {
+    ordnPaa: "servicekravId",
+    vindue: "alle",
+    graense: 2000,
+    hent: mayReadService,
+  });
+  return {
+    categories,
+    suppliers,
+    service: { units, requirements: serviceRequirements, occurrences: serviceOccurrences },
+  };
 }

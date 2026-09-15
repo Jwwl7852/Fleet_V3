@@ -6,6 +6,7 @@ const integerOrNull = (value) => value === null || value === undefined || value 
   ? null
   : (Number.isSafeInteger(Number(value)) ? Number(value) : null);
 const shortText = (value, max = 160) => String(value || "").trim().slice(0, max);
+const SERVICE_CATEGORIES = new Set(["maintenance", "inspection", "tyres", "insurance", "compliance", "other"]);
 
 function addMonths(date, months) {
   const source = new Date(`${date}T12:00:00.000Z`);
@@ -22,6 +23,18 @@ function subtractDays(date, days) {
   const value = new Date(`${date}T12:00:00.000Z`);
   value.setUTCDate(value.getUTCDate() - days);
   return value.toISOString().slice(0, 10);
+}
+
+function nextAnnualDate(completedDate, month, day = 1) {
+  if (!ISO_DATE.test(completedDate || "") || !Number.isInteger(month) || month < 1 || month > 12) return null;
+  let year = Number(completedDate.slice(0, 4));
+  const candidate = () => {
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    return `${year}-${String(month).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
+  };
+  let value = candidate();
+  while (value <= completedDate) { year += 1; value = candidate(); }
+  return value;
 }
 
 function currentMeter(unit, meterUnit) {
@@ -44,6 +57,8 @@ export function validateFleetServiceRequirement(input) {
   const fixedDate = ISO_DATE.test(input?.naesteDato || "") ? input.naesteDato : null;
   const lastMeter = integerOrNull(input?.sidsteServiceMaaler);
   const nextMeter = integerOrNull(input?.naesteMaaler);
+  const annualMonth = integerOrNull(input?.aarligMaaned);
+  const annualDay = integerOrNull(input?.aarligDag);
 
   if (!title) errors.titel = "Angiv servicekravets titel.";
   if (!unitId) errors.enhedId = "Vælg en enhed.";
@@ -51,6 +66,9 @@ export function validateFleetServiceRequirement(input) {
   if (intervalMeter != null && (intervalMeter < 1 || intervalMeter > 10_000_000)) errors.intervalMaeler = "Målerintervallet er ugyldigt.";
   if (warningDays < 0 || warningDays > 730) errors.varselDage = "Datovarsel skal være 0-730 dage.";
   if (warningMeter < 0 || warningMeter > 1_000_000) errors.varselMaeler = "Målervarslet er ugyldigt.";
+  if (annualMonth != null && (annualMonth < 1 || annualMonth > 12)) errors.aarligMaaned = "Årlig måned skal være 1-12.";
+  if (annualMonth != null && (annualDay == null || annualDay < 1 || annualDay > 31)) errors.aarligDag = "Årlig dag skal være 1-31.";
+  if (annualMonth == null && annualDay != null) errors.aarligDag = "Årlig dag kræver en årlig måned.";
   if (!fixedDate && intervalMonths == null && intervalMeter == null && nextMeter == null) errors.interval = "Angiv en dato eller et kalender-/målerinterval.";
   if (intervalMonths != null && !fixedDate && !lastDate) errors.sidsteServiceDato = "Kalenderinterval kræver seneste servicedato eller en fast næste dato.";
   if (intervalMeter != null && nextMeter == null && lastMeter == null) errors.sidsteServiceMaaler = "Målerinterval kræver seneste servicemåler eller en fast næste grænse.";
@@ -72,14 +90,27 @@ export function validateFleetServiceRequirement(input) {
       naesteDato: fixedDate,
       naesteMaaler: nextMeter,
       beskrivelse: shortText(input?.beskrivelse, 500) || null,
+      kategori: SERVICE_CATEGORIES.has(input?.kategori) ? input.kategori : "maintenance",
+      aarligMaaned: annualMonth,
+      aarligDag: annualDay,
+      ansvarligId: shortText(input?.ansvarligId, 128) || null,
+      leverandoerId: shortText(input?.leverandoerId, 80) || null,
+      leverandoerKontakt: shortText(input?.leverandoerKontakt, 160) || null,
+      udstyrLabel: shortText(input?.udstyrLabel, 160) || null,
+      instruktioner: shortText(input?.instruktioner, 1000) || null,
+      dokumentIder: Array.isArray(input?.dokumentIder)
+        ? [...new Set(input.dokumentIder.map((id) => shortText(id, 80)).filter(Boolean))].slice(0, 50) : [],
+      noter: shortText(input?.noter, 1000) || null,
     },
   };
 }
 
 export function evaluateFleetServiceRequirement(requirement, unit, today) {
-  const dueDate = requirement.naesteDato
-    || (requirement.sidsteServiceDato && requirement.intervalMaaneder
-      ? addMonths(requirement.sidsteServiceDato, requirement.intervalMaaneder) : null);
+  const dueDate = [
+    requirement.naesteDato,
+    requirement.sidsteServiceDato && requirement.intervalMaaneder
+      ? addMonths(requirement.sidsteServiceDato, requirement.intervalMaaneder) : null,
+  ].filter(Boolean).sort()[0] || null;
   const dueMeter = integerOrNull(requirement.naesteMaaler)
     ?? (integerOrNull(requirement.sidsteServiceMaaler) != null && integerOrNull(requirement.intervalMaeler) != null
       ? integerOrNull(requirement.sidsteServiceMaaler) + integerOrNull(requirement.intervalMaeler) : null);
@@ -200,7 +231,8 @@ export function completeFleetServiceOccurrence(tenantInput, occurrenceId, input,
   tenant.fleetServiceKrav[occurrence.servicekravId] = {
     ...requirement, sidsteServiceDato: serviceDate,
     sidsteServiceMaaler: serviceMeter ?? requirement.sidsteServiceMaaler ?? null,
-    naesteDato: null, naesteMaaler: null, aktivForekomstId: null,
+    naesteDato: nextAnnualDate(serviceDate, requirement.aarligMaaned, requirement.aarligDag || 1),
+    naesteMaaler: null, aktivForekomstId: null,
     senesteResultat: "service_gennemfoert", opdateretMs: nowMs,
   };
   if (tenant.fleetIndberetninger?.[occurrence.indberetningId]) {
