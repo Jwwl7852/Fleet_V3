@@ -52,7 +52,7 @@ async function openBrowser(name) {
   const evaluate = async (expression) => { const response = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true }, sessionId); if (response.exceptionDetails) throw new Error(response.exceptionDetails.exception?.description || response.exceptionDetails.text); return response.result?.value; };
   const waitFor = async (expression, label, attempts = 800) => {
     for (let i = 0; i < attempts; i += 1) { if (await evaluate(`Boolean(${expression})`)) return; await sleep(75); }
-    const state = await evaluate(`(async()=>({url:location.href,text:document.body.innerText.slice(0,900),indexedDb:typeof indexedDB,indexedDatabases:typeof indexedDB==='undefined'?[]:await indexedDB.databases(),viteError:document.querySelector('vite-error-overlay')?.shadowRoot?.textContent||null}))()`);
+    const state = await evaluate(`(async()=>({url:location.href,text:document.body.innerText.slice(0,900),alerts:[...document.querySelectorAll('[role=alert],[role=status],.form-alert')].map((node)=>node.textContent.trim()).filter(Boolean),indexedDb:typeof indexedDB,indexedDatabases:typeof indexedDB==='undefined'?[]:await indexedDB.databases(),viteError:document.querySelector('vite-error-overlay')?.shadowRoot?.textContent||null}))()`);
     state.browserEvents = events.filter((event) => ['Runtime.exceptionThrown','Log.entryAdded','Inspector.targetCrashed'].includes(event.method)).slice(-12);
     throw new Error(`Timeout ${name}: ${label} · ${JSON.stringify(state)}`);
   };
@@ -67,6 +67,34 @@ async function openBrowser(name) {
 
 const setInput = (selector, value) => `(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)return false;const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:el.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,${JSON.stringify(String(value))});el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));return true})()`;
 const clickText = (selector, value) => `(()=>{const el=[...document.querySelectorAll(${JSON.stringify(selector)})].find((node)=>node.textContent.trim().includes(${JSON.stringify(value)}));if(!el)return false;el.focus();el.click();return true})()`;
+
+async function dragSeparator(browser, selector, index, deltaX) {
+  const point = await browser.evaluate(`(()=>{const node=document.querySelectorAll(${JSON.stringify(selector)})[${index}];if(!node)return null;const box=node.getBoundingClientRect();return{x:box.left+box.width/2,y:box.top+box.height/2}})()`);
+  assert(point, `Separator ${selector}[${index}] blev ikke fundet.`);
+  await browser.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y }, browser.sessionId);
+  await browser.send("Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", buttons: 1, clickCount: 1 }, browser.sessionId);
+  for (const fraction of [0.25, 0.5, 0.75, 1]) {
+    await browser.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x + deltaX * fraction, y: point.y, button: "left", buttons: 1 }, browser.sessionId);
+    await sleep(35);
+  }
+  await browser.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x + deltaX, y: point.y, button: "left", buttons: 0, clickCount: 1 }, browser.sessionId);
+  await sleep(100);
+}
+
+const unitUrl = (unitId) => `http://${databaseHost}/tenants/procure-auth-a/koeretoejer/${unitId}.json?ns=${projectId}`;
+async function readSharedUnit(unitId) {
+  const response = await fetch(unitUrl(unitId), { headers: { authorization: "Bearer owner" } });
+  assert(response.ok, `Fælles enhed ${unitId} kunne ikke læses: ${response.status}.`);
+  return response.json();
+}
+async function writeSharedUnit(unitId, unit) {
+  const response = await fetch(unitUrl(unitId), {
+    method: "PUT",
+    headers: { authorization: "Bearer owner", "content-type": "application/json" },
+    body: JSON.stringify(unit),
+  });
+  assert(response.ok, `Fælles enhed ${unitId} kunne ikke opdateres i den isolerede emulator: ${response.status}.`);
+}
 
 async function login(browser, user, route) {
   await browser.navigate(route, "document.querySelector('#fc-email')");
@@ -169,10 +197,15 @@ try {
     { menu: "compact", zoomSteps: 0, zoom: "100 %" },
     { menu: "compact", zoomSteps: 5, zoom: "125 %" },
   ];
-  for (const [width, height] of [[1920,1080],[1440,900],[390,844],[360,800]]) {
+  const viewportMatrixEnabled = process.env.VEYRO_BROWSER_QA_VIEWPORT_MATRIX !== "false";
+  for (const [width, height] of (viewportMatrixEnabled ? [[1920,1080],[1440,900],[390,844],[360,800]] : [])) {
     await admin.viewport(width, height, width <= 480);
     for (const [route, ready, prefix] of routes) {
-      await admin.spaNavigate(route, ready);
+      // Viewportmatricen dokumenterer også direkte URL/reload. En manuel
+      // pushState+popstate i hurtig rækkefølge kan afbryde providerens
+      // asynkrone fixture-indlæsning og er ikke den navigation, en bruger
+      // udfører. De egentlige SPA-tilbageforløb prøves separat nedenfor.
+      await admin.navigate(route, ready);
       await admin.evaluate("document.querySelector('.fc-nulstil-visning')?.click()");
       const shot = await admin.screenshot(`${prefix}-${width}x${height}.png`);
       viewports.push({ route, width, height, ...shot });
@@ -209,6 +242,9 @@ try {
   checks.draggableDialog = await admin.evaluate(`(()=>{const d=document.querySelector('.fleet-route-dialog').getBoundingClientRect();const b=document.querySelector('.fleet-dialog-backdrop').getBoundingClientRect();return{movedX:Math.round(d.left-${dragStart.dialog.left}),movedY:Math.round(d.top-${dragStart.dialog.top}),inside:d.left>=b.left+11&&d.right<=b.right-11&&d.top>=b.top+11&&d.bottom<=b.bottom-11}})()`);
   assert(checks.draggableDialog.movedX < -50 && checks.draggableDialog.inside, `Arbejdskødialogen kunne ikke flyttes sikkert inden for arbejdsfladen: ${JSON.stringify(checks.draggableDialog)}`);
   screenshots.push(await admin.screenshot("22-flytbar-dialog-1920x1080.png"));
+  await admin.viewport(1440, 900, false);
+  await sleep(100);
+  screenshots.push(await admin.screenshot("22-flytbar-dialog-1440x900.png"));
   await admin.viewport(390, 844, true);
   await admin.spaNavigate("/fleet-v2/arbejdsko/case-demo-002", "document.querySelector('.fleet-route-dialog.draggable')");
   checks.mobileDialog = await admin.evaluate("(()=>{const d=document.querySelector('.fleet-route-dialog').getBoundingClientRect();return{left:Math.round(d.left),top:Math.round(d.top),width:Math.round(d.width),height:Math.round(d.height),viewport:{width:innerWidth,height:innerHeight},overflow:getComputedStyle(document.querySelector('.fleet-route-dialog-body')).overflowY}})()");
@@ -321,11 +357,87 @@ try {
   await admin.send("Input.dispatchKeyEvent", { type: "keyUp", key: "ArrowRight", code: "ArrowRight" }, admin.sessionId);
   const panelAfterDrag = await admin.evaluate("(()=>{const s=document.querySelector('.fic-panel-separator');return{now:Number(s.getAttribute('aria-valuenow')),storage:localStorage.getItem('veyro:fakturacenter:panel-layout:v1')}})()");
   assert(panelAfterDrag.now !== panelBefore.now && panelAfterDrag.storage, "Fakturacenterets panelbredde blev ikke ændret og gemt fra separatorens tastaturbetjening.");
+  const pointerBefore = await admin.evaluate("[...document.querySelectorAll('.fic-panel-separator')].map((node)=>Number(node.getAttribute('aria-valuenow'))) ");
+  assert(pointerBefore.length === 2, "Fakturacenteret viste ikke begge panelseparatorer.");
+  await dragSeparator(admin, ".fic-panel-separator", 0, 48);
+  await dragSeparator(admin, ".fic-panel-separator", 1, -56);
+  const pointerAfter = await admin.evaluate("[...document.querySelectorAll('.fic-panel-separator')].map((node)=>Number(node.getAttribute('aria-valuenow'))) ");
+  assert(pointerAfter[0] !== pointerBefore[0] && pointerAfter[1] !== pointerBefore[1], `Begge Fakturacenter-separatorer reagerede ikke på pointertræk: ${JSON.stringify({ pointerBefore, pointerAfter })}`);
+  const invoiceScroll = await admin.evaluate("(()=>{const selectors=['.fic-inbox-list','.fic-document-panel','.fic-review-panel'];return selectors.map((selector,index)=>{const node=document.querySelector(selector);const before=node.scrollTop;node.scrollTop=Math.min(node.scrollHeight-node.clientHeight,35+index*20);return{selector,before,after:node.scrollTop,overflowY:getComputedStyle(node).overflowY,scrollHeight:node.scrollHeight,clientHeight:node.clientHeight};});})()");
+  assert(invoiceScroll.every((item) => item.overflowY === "auto" && item.scrollHeight > item.clientHeight && item.after > 0), `Fakturacenterets tre scrollområder var ikke uafhængigt rulbare: ${JSON.stringify(invoiceScroll)}`);
   await admin.send("Page.reload", {}, admin.sessionId);
   await admin.waitFor("document.querySelector('.fic-panel-separator')", "Fakturacenter efter reload");
-  const panelAfterReload = await admin.evaluate("(()=>{const s=document.querySelector('.fic-panel-separator');const regions=[...document.querySelectorAll('.fic-inbox-list,.fic-document-scroll,.fic-workspace-detail')];return{now:Number(s.getAttribute('aria-valuenow')),storage:localStorage.getItem('veyro:fakturacenter:panel-layout:v1'),scrollRegions:regions.map((node)=>({className:node.className,overflowY:getComputedStyle(node).overflowY,scrollHeight:node.scrollHeight,clientHeight:node.clientHeight}))}})()");
-  assert(panelAfterReload.now === panelAfterDrag.now && panelAfterReload.storage === panelAfterDrag.storage, "Fakturacenterets panelbredde blev ikke bevaret efter reload.");
-  checks.invoicePanelPersistence = { input: "separatorens ArrowRight", before: panelBefore, afterAdjustment: panelAfterDrag, afterReload: panelAfterReload };
+  await admin.evaluate("document.querySelector('.fic-invoice-main')?.click()");
+  await admin.waitFor("document.querySelectorAll('.fic-panel-separator').length===2", "begge Fakturacenter-separatorer efter genvalg");
+  const panelAfterReload = await admin.evaluate("(()=>{const separators=[...document.querySelectorAll('.fic-panel-separator')];return{values:separators.map((node)=>Number(node.getAttribute('aria-valuenow'))),storage:localStorage.getItem('veyro:fakturacenter:panel-layout:v1')}})()");
+  assert(panelAfterReload.values[0] === pointerAfter[0] && panelAfterReload.values[1] === pointerAfter[1] && panelAfterReload.storage, `Fakturacenterets to panelbredder blev ikke bevaret efter reload: ${JSON.stringify({ pointerAfter, panelAfterReload })}`);
+  checks.invoicePanelPersistence = { keyboardInput: "første separators ArrowRight", pointerInput: "begge separatorer", before: panelBefore, afterKeyboard: panelAfterDrag, pointerBefore, pointerAfter, afterReload: panelAfterReload, independentScrollRegions: invoiceScroll };
+
+  await admin.spaNavigate("/fleet-v2/indberetninger", "document.querySelectorAll('.fleet-panel-handle').length===2");
+  const reportPanelsBefore = await admin.evaluate("[...document.querySelectorAll('.fleet-panel-handle')].map((node)=>Number(node.getAttribute('aria-valuenow'))) ");
+  await dragSeparator(admin, ".fleet-panel-handle", 0, 54);
+  await dragSeparator(admin, ".fleet-panel-handle", 1, -54);
+  const reportPanelsAfter = await admin.evaluate("[...document.querySelectorAll('.fleet-panel-handle')].map((node)=>Number(node.getAttribute('aria-valuenow'))) ");
+  assert(reportPanelsAfter[0] !== reportPanelsBefore[0] && reportPanelsAfter[1] !== reportPanelsBefore[1], `Indberetningernes to separatorer reagerede ikke på pointertræk: ${JSON.stringify({ reportPanelsBefore, reportPanelsAfter })}`);
+  const reportScroll = await admin.evaluate("(()=>{const layout=document.querySelector('.triage-layout');layout.style.minHeight='0';layout.style.height='360px';const selectors=['.triage-list','.triage-detail-panel','.case-action-panel'];return selectors.map((selector,index)=>{const node=document.querySelector(selector);node.scrollTop=Math.min(node.scrollHeight-node.clientHeight,30+index*20);return{selector,after:node.scrollTop,overflowY:getComputedStyle(node).overflowY,scrollHeight:node.scrollHeight,clientHeight:node.clientHeight};});})()");
+  assert(reportScroll.every((item) => item.overflowY === "auto" && item.scrollHeight > item.clientHeight && item.after > 0), `Indberetningernes tre paneler var ikke uafhængigt rulbare i en kontrolleret 360 px arbejdsflade: ${JSON.stringify(reportScroll)}`);
+  await admin.send("Page.reload", {}, admin.sessionId);
+  await admin.waitFor("document.querySelectorAll('.fleet-panel-handle').length===2", "Indberetningspaneler efter reload");
+  const reportPanelsReload = await admin.evaluate("[...document.querySelectorAll('.fleet-panel-handle')].map((node)=>Number(node.getAttribute('aria-valuenow'))) ");
+  assert(reportPanelsReload[0] === reportPanelsAfter[0] && reportPanelsReload[1] === reportPanelsAfter[1], "Indberetningernes panelbredder blev ikke bevaret efter reload.");
+  checks.reportPanelPersistence = { pointerInput: "begge separatorer", before: reportPanelsBefore, after: reportPanelsAfter, afterReload: reportPanelsReload, constrainedWorkspaceHeight: 360, independentScrollRegions: reportScroll };
+
+  await admin.spaNavigate("/fleet-v2/enheder", "document.querySelector('.unit-table')");
+  const statusUnitBefore = await readSharedUnit("unit-nb-003");
+  await writeSharedUnit("unit-nb-003", { ...statusUnitBefore, fleetProfil: { ...statusUnitBefore.fleetProfil, meter: statusUnitBefore.kmStand - 980 } });
+  await admin.evaluate(setInput('[aria-label="Søg i enheder"]', 'NB-003'));
+  await admin.waitFor("[...document.querySelectorAll('.unit-table tbody tr')].some((node)=>node.textContent.includes('NB-003'))", "eksisterende fælles enhed NB-003");
+  await admin.evaluate("[...document.querySelectorAll('.unit-table tbody tr')].find((node)=>node.textContent.includes('NB-003')).querySelector('.row-action').click()");
+  await admin.waitFor("document.querySelector('.unit-dialog')", "redigering af eksisterende fælles enhed");
+  const openedExisting = await admin.evaluate("(()=>{const fields=[...document.querySelectorAll('.unit-form-field')];const value=(label)=>fields.find((node)=>node.querySelector('span')?.textContent.trim()===label)?.querySelector('input,select,textarea')?.value;return{meter:value('Målerstand *'),status:value('Driftsstatus *'),source:document.querySelector('.unit-dialog .eyebrow')?.textContent.trim()}})()");
+  assert(Number(openedExisting.meter) === statusUnitBefore.kmStand && openedExisting.status === "action" && openedExisting.source === "Fælles enhedsregister", `Eksisterende ude-af-drift-enhed blev ikke åbnet fra den autoritative måler/status: ${JSON.stringify(openedExisting)}`);
+  await admin.evaluate(setInput('.unit-dialog textarea', 'R1/R2 syntetisk roundtrip uden måler- eller statusændring'));
+  screenshots.push(await admin.screenshot("36-eksisterende-enhed-redigering-1440x900.png"));
+  await admin.evaluate("window.confirm=()=>true;document.querySelector('.unit-dialog form button[type=submit]').click()");
+  await admin.waitFor("!document.querySelector('.unit-dialog')", "eksisterende enhed gemt");
+  await admin.send("Page.reload", {}, admin.sessionId);
+  await admin.waitFor("document.querySelector('[aria-label=\"Søg i enheder\"]')", "enhedsregister efter roundtrip reload");
+  const roundtripUnit = await readSharedUnit("unit-nb-003");
+  assert(roundtripUnit.status === "udeAfDrift" && roundtripUnit.kmStand === statusUnitBefore.kmStand && roundtripUnit.fleetProfil.meter === statusUnitBefore.kmStand, `R1/R2-roundtrip ændrede status eller måler: ${JSON.stringify(roundtripUnit)}`);
+
+  await admin.evaluate(setInput('[aria-label="Søg i enheder"]', 'NB-003'));
+  await admin.waitFor("[...document.querySelectorAll('.unit-table tbody tr')].some((node)=>node.textContent.includes('NB-003'))", "NB-003 før samtidighedsprøve");
+  await admin.evaluate("[...document.querySelectorAll('.unit-table tbody tr')].find((node)=>node.textContent.includes('NB-003')).querySelector('.row-action').click()");
+  await admin.waitFor("document.querySelector('.unit-dialog')", "åben formular før nyere servermåler");
+  const concurrentMeter = roundtripUnit.kmStand + 120;
+  await writeSharedUnit("unit-nb-003", { ...roundtripUnit, kmStand: concurrentMeter, fleetProfil: { ...roundtripUnit.fleetProfil, meter: concurrentMeter, updatedAt: new Date().toISOString() } });
+  await sleep(250);
+  await admin.evaluate(setInput('.unit-dialog textarea', 'Uvedkommende redigering efter nyere servermåler'));
+  await admin.evaluate("window.confirm=()=>true;document.querySelector('.unit-dialog form button[type=submit]').click()");
+  await admin.waitFor("!document.querySelector('.unit-dialog')", "uvedkommende redigering med nyere servermåler");
+  const preservedConcurrent = await readSharedUnit("unit-nb-003");
+  assert(preservedConcurrent.kmStand === concurrentMeter && preservedConcurrent.fleetProfil.meter === concurrentMeter, `En nyere servermåler blev overskrevet af en uvedkommende redigering: ${JSON.stringify(preservedConcurrent)}`);
+
+  await admin.evaluate(setInput('[aria-label="Søg i enheder"]', 'NB-003'));
+  await admin.waitFor("[...document.querySelectorAll('.unit-table tbody tr')].some((node)=>node.textContent.includes('NB-003'))", "NB-003 før konfliktprøve");
+  await admin.evaluate("[...document.querySelectorAll('.unit-table tbody tr')].find((node)=>node.textContent.includes('NB-003')).querySelector('.row-action').click()");
+  await admin.waitFor("document.querySelector('.unit-dialog')", "åben formular før konflikt");
+  const conflictServerMeter = concurrentMeter + 80;
+  await writeSharedUnit("unit-nb-003", { ...preservedConcurrent, kmStand: conflictServerMeter, fleetProfil: { ...preservedConcurrent.fleetProfil, meter: conflictServerMeter, updatedAt: new Date().toISOString() } });
+  await admin.evaluate("(()=>{const field=[...document.querySelectorAll('.unit-form-field')].find((node)=>node.querySelector('span')?.textContent.trim()==='Målerstand *')?.querySelector('input');const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(field,String(field.value-10));field.dispatchEvent(new Event('input',{bubbles:true}));field.dispatchEvent(new Event('change',{bubbles:true}));})()");
+  const conflictInput = await admin.evaluate("[...document.querySelectorAll('.unit-form-field')].find((node)=>node.querySelector('span')?.textContent.trim()==='Målerstand *')?.querySelector('input').value");
+  await admin.evaluate("window.confirm=()=>true;document.querySelector('.unit-dialog form button[type=submit]').click()");
+  await admin.waitFor("document.querySelector('.unit-dialog [role=alert]')?.textContent.includes('siden ændret')", "målerkonflikt med bevaret formular");
+  const conflictEvidence = await admin.evaluate(`(()=>({open:!!document.querySelector('.unit-dialog'),input:[...document.querySelectorAll('.unit-form-field')].find((node)=>node.querySelector('span')?.textContent.trim()==='Målerstand *')?.querySelector('input').value,error:document.querySelector('.unit-dialog [role=alert]')?.textContent.trim()}))()`);
+  const conflictServer = await readSharedUnit("unit-nb-003");
+  assert(conflictEvidence.open && conflictEvidence.input === conflictInput && conflictServer.kmStand === conflictServerMeter, `Målerkonflikten bevarede ikke input/serverværdi: ${JSON.stringify({ conflictEvidence, conflictServer })}`);
+  screenshots.push(await admin.screenshot("37-enhedsmaaler-konflikt-1440x900.png"));
+  checks.existingSharedUnitEdit = { unitId: "unit-nb-003", initial: { sharedMeter: statusUnitBefore.kmStand, staleProfileMeter: statusUnitBefore.kmStand - 980, status: statusUnitBefore.status }, openedExisting, afterUnrelatedSave: { sharedMeter: roundtripUnit.kmStand, profileMeter: roundtripUnit.fleetProfil.meter, status: roundtripUnit.status }, newerServerMeterPreserved: concurrentMeter, conflict: { attemptedMeter: Number(conflictInput), serverMeter: conflictServerMeter, inputPreserved: conflictEvidence.input === conflictInput, error: conflictEvidence.error } };
+  await admin.evaluate("window.confirm=()=>true;document.querySelector('.unit-dialog header button').click()");
+  await admin.waitFor("!document.querySelector('.unit-dialog')", "konfliktformular lukket efter dokumenteret test");
+  await admin.spaNavigate("/planning-v2/ressourcer", "document.querySelector('.pr-shared-resources')");
+  await admin.waitFor("document.body.innerText.includes('NB-003')", "eksisterende fælles enhed i PLANNING efter redigering");
+  checks.existingSharedUnitEdit.planningVisibleAfterEdit = true;
 
   await admin.spaNavigate("/fleet-v2/enheder", "document.querySelector('.unit-table')");
   await admin.evaluate(clickText('button', 'Opret enhed'));

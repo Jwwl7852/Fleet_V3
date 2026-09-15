@@ -232,7 +232,7 @@ export const NAV = [
         under: "Samlet lokalt prototypeoverblik over flådens drift." },
       { key: "fleetV2Enheder", sti: "/fleet-v2/enheder", label: "Tidligere Enheder", skjulINav: true,
         kraeverPerm: "koeretoejer.laes", titel: "FLEET – enheder",
-        under: "Enheder, profiler, billeder og stamdata i lokal prototypelagring." },
+        under: "Enheder, profiler og stamdata i tenantens fælles serverregister." },
       { key: "fleetV2Indberetninger", sti: "/fleet-v2/indberetninger", label: "Indberetninger",
         kraeverPerm: "indberetninger.skrivAlle", titel: "FLEET – indberetninger",
         under: "Triage og sammenhængende lokale sagsforløb." },
