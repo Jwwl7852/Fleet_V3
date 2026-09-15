@@ -321,6 +321,12 @@ export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
 export const NODE_MODUL = {
   koeretoejer: "flaade",
   fleetKategorier: "flaade",
+  fleetServiceKrav: "flaade",
+  fleetServiceForekomster: "flaade",
+  fleetIndberetninger: "flaade",
+  fleetSager: "flaade",
+  fleetServiceHistorik: "flaade",
+  fleetServiceAutomatik: "flaade",
   "sensitive/koeretoejer": "flaade",
   /* ⚠ KOM MED SENSITIVE-NODEN.  har hele tiden staaet her;
      dens klassificerede satellit fandtes bare ikke i regelfilen — selv om

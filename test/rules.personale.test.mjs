@@ -223,6 +223,30 @@ describe("fælles FLEET-kategorier", () => {
   });
 });
 
+describe("serverstyret FLEET-serviceautomatik", () => {
+  const NODES = [
+    "fleetServiceKrav", "fleetServiceForekomster", "fleetIndberetninger",
+    "fleetSager", "fleetServiceHistorik", "fleetServiceAutomatik",
+  ];
+
+  it("kan læses med FLEET-adgang, men aldrig skrives direkte", async () => {
+    await miljoe.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.database();
+      for (const node of NODES) {
+        await set(ref(db, sti(node, "server-post")), { id: "server-post" });
+      }
+    });
+    const reader = medPerms("uid-service-reader", [PERM.koeretoejerLaes]);
+    const admin = medPerms("uid-service-admin", ALLE_PERMS);
+    const denied = medPerms("uid-service-denied", ALLE_PERMS.filter((perm) => perm !== PERM.koeretoejerLaes));
+    for (const node of NODES) {
+      await assertSucceeds(get(ref(reader, `tenants/${T}/${node}`)));
+      await assertFails(get(ref(denied, `tenants/${T}/${node}`)));
+      await assertFails(set(ref(admin, sti(node, "direkte")), { id: "direkte" }));
+    }
+  });
+});
+
 /* ---- Flådelogikken, uden emulator ----------------------------------- */
 
 describe("flaade.js", () => {

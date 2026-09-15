@@ -60,13 +60,13 @@ aktuelle kodegrundlag.
 | FL-11 | Kompakt kø | Permanent Flyt sag fjernes; statusændring bevares i sagsmappe/diskret menu; kolonner ruller. | WorkQueue og CSS | implementeret lokalt | Kolonne-/statusregression | Tabelvisning og sagsmappe bevarer lovlige statushandlinger; workflowstadier er uændrede |
 | FL-12 | Leverandører | FLEET v2 brugte sit lokale `relations.workshops` som en parallel leverandørstamme. Eksterne værksteder læses nu fra fælles `leverandoerer`; interne ressourcer og historiske referencer bevares uden at kopiere fælles stamdata til IndexedDB. Autoriseret oprettelse går til samme register med værksted forvalgt og sikker retur til den bevarede sagskladde. | `FleetV2Module`, `supplierWorkshopAdapter`, `supplierReturn`, `WorkshopAssignment`, fælles leverandører | implementeret og verificeret | 7/7 adapter-/returtests; fuld FLEET-suite 179/179; integreret browser ved 1919×1080 CSS-pixel/100 % arbejdsområdezoom | Ekstern portal får ingen intern adgang. Produktlagring er fortsat det eksisterende tenantafgrænsede leverandørregister; mailafsendelse er ikke aktiveret. |
 | FL-13 | Service | Dateret seneste service/måler, kalender/km/timer, varsler, faste hændelser og forklarlig næste grænse. | Service domain/UI | implementeret som lokal prototype | 24/24 Service-domæne-/komponenttests | Den først nåede dato- eller målergrænse udløser behovet; tallet `500` er målerinterval i den viste enheds km eller driftstimer |
-| FL-14 | Serviceautomatik | Én indberetning pr. krav/cyklus, idempotens/samtidighed, manglende grundlag, gennemførsel og ændring/deaktivering. | Service automation, Functions/Rules | lokalt implementeret; serverdel blokeret | ServiceAutomation dækker gentagelse, samtidige fanekald, manglende grundlag, deaktivering og ny cyklus | Den aktuelle kontrol kører kun ved appstart/hvert minut i browseren; varig serverstyret scheduler og emulatorbevis mangler |
+| FL-14 | Serviceautomatik | Én indberetning pr. krav/cyklus, idempotens/samtidighed, manglende grundlag, gennemførsel og ændring/deaktivering. | `functions/fleet-service-automation.js`, callables/scheduler, Rules og lokal service-UI | delvist implementeret | Servermotoren opretter atomisk deterministisk forekomst, indberetning og sag; 16/16 callable-/samtidighedsassertions, 49/49 målrettede Rules-tests og fuld gate 4.605/4.605 består | UI'et bruger endnu det lokale repository. Adapter/migration og kontrolleret håndtering af allerede åbne forekomster ved kravændring/deaktivering mangler |
 | FL-15 | Kategorier | Indberetninger brugte fri tekst, mens økonomi brugte en separat hardkodet liste. Der er nu én tenantafgrænset kategori-stamdata med opret/redigér/sortér/deaktivér, anvendelsesmapping og historiske snapshots. | `src/moduler/opsaetning/FleetKategorier.jsx`, `fleetCategories`, `categoryAdapter`, Reports/Økonomi, Rules | delvist implementeret | 5/5 kategoridomænetests; fuld FLEET-suite 184/184; fuld Rules-/platformsgate 4.599/4.599; browser desktop/mobil og begge forbrugere | Kategoristamdata lagres serverstyret. Selve indberetningerne og økonomiposterne er fortsat lokal FLEET-prototype og skal flyttes til den autoritative servergrænse, før kravet lukkes samlet. |
 | FL-16 | OBD-statistik | Kun faktiske målinger vises/filtreres/eksporteres; kilde/periode/enhed mærkes; manglende forbindelse er tydelig. | FLEET statistik | åben | Datafeltinventar og syntetisk UI-test | Ekstern OBD er ikke del af opgaven |
 | FL-17 | Økonomi | Per enhed/samlet, periode/kategori, faste/enkeltstående poster, kr./km, historik og sporbarhed uden dobbeltoptælling. | FLEET economy domain/UI | åben | Beregnings-/drilldowntests | Estimat, kontrolleret og bogført holdes adskilt |
 | FL-18 | Eksport | Dansk CSV/Excel-visning uden mojibake og med entydige beløbs-/momskolonner. | FLEET economy export | delvist implementeret lokalt | Domænetest af dansk indhold og UTF-8-rundtur | Download har nu UTF-8 BOM; manuel åbning i dansk Excel og udvidede momskolonner udestår |
-| REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.599/4.599 grøn i isoleret emulator. Målrettet Fakturacenter-callable 21 assertions, UNIT/WAREHOUSE/modul 48/48, tenant 24/24 og kategori-Rules inkl. hard-delete/audit/ugyldig mapping. | FL-14 og øvrige kommende serverfunktioner kræver egne emulatorbeviser før deres samlede krav kan lukkes. |
-| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint og build grøn; Rules-/platformsgate 4.599/4.599 grøn; FLEET 184/184 grøn efter Etape 13 | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
+| REG-01 | Sikkerhed | Tilladt/afvist rolle, tenant, revision, samtidighed, idempotens og ingen demo-fallback. | Rules, Functions og modultests | i gang | Fuld lokal Rules-/platformsgate 4.605/4.605 grøn i isoleret emulator. Service: 16/16 integrationassertions, samtidighed, gentagelse, fremmed tenant og afvist læser; direkte skrivning til seks servernoder afvist. Fakturacenter, UNIT/WAREHOUSE, tenant og kategorier er fortsat grønne. | Kommende økonomi-/statistikserverfunktioner kræver egne emulatorbeviser før den samlede sikkerhedsgate kan lukkes. |
+| REG-02 | Samlet regression | WORKFORCE–PLANNING, UNIT–WAREHOUSE og Support–Ejerforbindelser bevares. | Hele integrationen | i gang | Root lint, design 11/11, produktionsbuild og fuld Rules-/platformsgate 4.605/4.605 grøn efter Etape 14 | Endelig tværmodul- og browserregression gentages efter de resterende backend-etaper. |
 | REG-03 | Visuel gate | 1440×900, 1920×1080, 390×844, 360×800; normal/kompakt menu og flere arbejdszoomniveauer. | Berørte brugerflader | i gang | Ny Etape-7-pakke dækker sagsmappe/dialog ved alle fire viewports, normal/kompakt menu, 100/125 % og Nulstil; Fakturacenter/menu/manuel sag ved 1440×900 | Samme matrix skal fortsat køres på resterende FLEET-, service-, kategori- og økonomiskærme |
 
 ## Baseline
@@ -578,3 +578,46 @@ før/efter-beviser for de prioriterede synlige fejl.
 | --- | --- | --- | --- | --- | --- | --- |
 | FL-15 | Implementeret og verificeret på desktop og mobil; samme kilde ses i Opsætning, indberetning og økonomi | Implementeret og verificeret for stabile ID'er, anvendelsesmapping, sortering, deaktivering og historiske snapshots | Delvist implementeret: kategori-stamdata er tenantafgrænset RTDB; de forbrugende FLEET-forretningsposter er fortsat lokal prototype | Implementeret og verificeret med `koeretoejer.laes`/`koeretoejer.skriv`, tenant-/modulgate, auditvalidering og afvist hard delete | 5/5 kategoritests, FLEET 184/184, fuld gate 4.599/4.599 og fire nye browserbilleder | Delvist implementeret |
 | REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint/build, FLEET 184/184 og fuld gate 4.599/4.599 | Delvist implementeret |
+
+### Etape 14 — serverstyret FLEET-serviceautomatik
+
+- Der er tilføjet en servermotor, som beregner dato- og målerforfald ud fra
+  tenantens autoritative `koeretoejer`-post. Den gætter ikke en manglende
+  måling og skriver i så fald ingen indberetning.
+- En stabil cyklusnøgle af servicekrav, næste dato og næste målergrænse
+  afleder ID'erne til forekomst, indberetning og sag. Hele tenantroden ændres
+  i én RTDB-transaktion, så samtidige scheduler-/manuelle kald ikke kan
+  oprette dubletter.
+- `fleetServiceKravGem` håndhæver revision og idempotens, validerer enheden
+  mod den fælles enhedsstamme og gemmer audit. `fleetServiceGennemfoer`
+  opdaterer servicegrundlaget, men flytter sagen til fakturaafklaring frem
+  for at kalde den afsluttet. En genafspilning med ændret dato eller
+  målerstand afvises som konflikt.
+- `fleetServiceKontrolPlanlagt` kører servermæssigt hver time i tidszonen
+  Europe/Copenhagen. Den browserbaserede prototype er dermed ikke længere
+  den eneste motor, men UI'et er endnu ikke koblet til servernoderne.
+- De seks serviceområder er serverejede: klienter med FLEET-læseadgang kan
+  læse dem, mens direkte skrivning afvises selv for en bruger med alle
+  permissions. Mutationer går gennem callables med aktivt abonnement,
+  FLEET-modul og `koeretoejer.skriv`.
+- Den isolerede Database-emulator brugte demo-projektet
+  `demo-fleetcontrol-rules-test`, den allerede installerede portable Temurin
+  21.0.12.1 og den cachede Firebase CLI 15.29.0. `TEMP`/`TMP` blev kun fjernet
+  for emulatorprocessen. Der blev ikke installeret noget eller kontaktet
+  produktion.
+- Testbevis: 5/5 rene service-tests; 16/16 integrationassertions for callable,
+  revision, idempotens, to samtidige kontroller, tenantadskillelse,
+  permissionafvisning og gennemførsel; 49/49 målrettede Rules-/domænetests;
+  designgate 11/11, produktionsbuild og fuld lint-/Rules-/platformsgate
+  4.605/4.605.
+- Etapen ændrer ingen synlig brugerflade. Derfor er der ikke fremstillet et
+  misvisende nyt browserbillede som backendbevis; de eksisterende
+  servicebilleder dokumenterer fortsat kun den lokale prototype.
+
+#### Delstatus efter Etape 14
+
+| ID | Brugerflade og betjening | Domænelogik | Lagring og backend | Adgangskontrol | Testbevis | Samlet |
+| --- | --- | --- | --- | --- | --- | --- |
+| FL-14 | Delvist implementeret: den eksisterende lokale service-UI forklarer beregningen, men kalder endnu ikke serveren | Delvist implementeret: dato/km/timer, manglende grundlag, cyklus, idempotens, gennemførsel og fakturaafklaring er implementeret; åbne forekomster ved kravændring/deaktivering mangler | Delvist implementeret: callables, RTDB-transaktion og scheduler er emulatorverificeret; UI-adapter og kontrolleret overgang af lokale poster mangler | Implementeret og verificeret for tenant, aktivt abonnement, FLEET-modul, `koeretoejer.skriv`, læseadgang og afvist direkte skrivning | 5/5 enhedstests, 16/16 integrationassertions, 49/49 målrettet Rules og 4.605/4.605 fuld gate | Delvist implementeret |
+| REG-01 | Ikke relevant | Implementeret og verificeret for serviceetapen | Implementeret og verificeret for serviceetapen | Implementeret og verificeret for serviceetapen | 16/16 serviceintegration og 4.605/4.605 fuld gate | Delvist implementeret, fordi kommende serveretaper endnu mangler |
+| REG-02 | Ikke relevant | Delvist implementeret | Delvist implementeret | Delvist implementeret | Root lint, design 11/11, produktionsbuild og fuld gate 4.605/4.605 | Delvist implementeret |

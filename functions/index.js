@@ -70,6 +70,11 @@ import {
 } from "./openai-salgsassistent.js";
 import { koerMailjobWorker, MailjobWorkerFejl } from "./mailjob-worker.js";
 import { findOffentligLoginKontekst } from "./offentlig-login-kontekst.js";
+import {
+  completeFleetServiceOccurrence,
+  runFleetServiceAutomationForTenant,
+  validateFleetServiceRequirement,
+} from "./fleet-service-automation.js";
 
 import {
   AUDIT, LOGBARE_FELTER, KLASSER, klasseFor, diff, forfaldnePartitioner
@@ -14334,4 +14339,140 @@ export const salgsanalyseautomatisk = onSchedule({ region: REGION, schedule: "ev
       console.error("salgsanalyseautomatisk fejlede", { traadId, besked: tekst(aarsag.message, 500) });
     }
   }
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FLEET SERVICEAUTOMATIK — serverstyret og idempotent pr. servicecyklus.
+
+   Browserprototypen må gerne forklare beregningen, men den må ikke være den
+   proces der holder øje. Scheduler og manuel emulatorvej kalder præcis samme
+   tenanttransaktion. Forekomst-, indberetnings- og sags-id'er afledes af den
+   stabile cyklusnøgle; gentagelse eller samtidighed kan derfor ikke oprette
+   en dublet. Ingen mail eller ekstern forbindelse aktiveres her.
+   ══════════════════════════════════════════════════════════════════════ */
+
+export const fleetServiceKravGem = onCall({ region: REGION }, async (req) => {
+  const { rod, tenantId, uid } = await procureDoer(req, { perm: PERM.koeretoejerSkriv, modul: "flaade" });
+  const mutationId = kortStreng(req.data?.mutationId, 80);
+  const requestedId = kortStreng(req.data?.id, 80);
+  const expectedRevision = Number(req.data?.forventetRevision ?? 0);
+  if (!mutationId || !erGyldigtSendRequestId(mutationId) || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
+    throw new HttpsError("invalid-argument", "Gemmereference eller forventet revision er ugyldig.");
+  }
+  const validated = validateFleetServiceRequirement(req.data?.krav || {});
+  if (!validated.ok) {
+    throw new HttpsError("invalid-argument", Object.values(validated.errors)[0], { fejl: validated.errors });
+  }
+  const requirementId = requestedId || `servicekrav_${createHash("sha256").update(`${tenantId}:${mutationId}`).digest("hex").slice(0, 24)}`;
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(requirementId)) throw new HttpsError("invalid-argument", "Servicekrav-id er ugyldigt.");
+  const requestHash = createHash("sha256").update(JSON.stringify(validated.value)).digest("hex");
+  let rejected = null;
+  let saved = null;
+  let repeated = false;
+  const nowMs = Date.now();
+  const before = await rod.once("value");
+  let warm = before.exists();
+  const tx = await rod.transaction((tenant) => {
+    if (!tenant && warm) tenant = structuredClone(before.val());
+    warm = false;
+    if (!tenant) { rejected = { code: "not-found", message: "Tenant findes ikke." }; return; }
+    if (!tenant.koeretoejer?.[validated.value.enhedId]) {
+      rejected = { code: "failed-precondition", message: "Den valgte enhed findes ikke i den fælles enhedsstamme." };
+      return;
+    }
+    const current = tenant.fleetServiceKrav?.[requirementId] || null;
+    if (current?.sidsteMutationId === mutationId) {
+      if (current.sidsteMutationHash !== requestHash) {
+        rejected = { code: "already-exists", message: "Gemmereferencen er brugt med et andet indhold." };
+        return;
+      }
+      repeated = true; saved = current; return tenant;
+    }
+    const revision = Number(current?.revision || 0);
+    if (revision !== expectedRevision) {
+      rejected = { code: "aborted", message: "Servicekravet blev ændret samtidigt." };
+      return;
+    }
+    const next = {
+      ...validated.value,
+      revision: revision + 1,
+      oprettetMs: current?.oprettetMs || nowMs,
+      oprettetAf: current?.oprettetAf || uid,
+      opdateretMs: nowMs,
+      opdateretAf: uid,
+      sidsteMutationId: mutationId,
+      sidsteMutationHash: requestHash,
+      ...(current?.aktivForekomstId ? { aktivForekomstId: current.aktivForekomstId } : {}),
+    };
+    tenant.fleetServiceKrav ||= {};
+    tenant.fleetServiceKrav[requirementId] = next;
+    tenant.fleetServiceHistorik ||= {};
+    const eventId = `svcevt_${createHash("sha256").update(`${requirementId}:${mutationId}`).digest("hex").slice(0, 24)}`;
+    tenant.fleetServiceHistorik[eventId] = {
+      id: eventId, servicekravId: requirementId,
+      handling: current ? "krav_aendret" : "krav_oprettet",
+      aktor: uid, tidspunktMs: nowMs, revision: next.revision,
+    };
+    saved = next;
+    return tenant;
+  });
+  if (!tx.committed || rejected) throw new HttpsError(rejected?.code || "aborted", rejected?.message || "Servicekravet kunne ikke gemmes.");
+  return { ok: true, id: requirementId, revision: saved.revision, gentaget: repeated };
+});
+
+export const fleetServiceKontrolNu = onCall({ region: REGION, timeoutSeconds: 120 }, async (req) => {
+  const { rod } = await procureDoer(req, { perm: PERM.koeretoejerSkriv, modul: "flaade" });
+  const result = await runFleetServiceAutomationForTenant(rod, { nowMs: Date.now() });
+  return {
+    ok: result.committed,
+    oprettet: result.created.length,
+    genbrugt: result.reused.length,
+    sprungetOver: result.skipped.length,
+    resultater: result.created,
+  };
+});
+
+export const fleetServiceGennemfoer = onCall({ region: REGION }, async (req) => {
+  const { rod, uid } = await procureDoer(req, { perm: PERM.koeretoejerSkriv, modul: "flaade" });
+  const occurrenceId = kortStreng(req.data?.forekomstId, 80);
+  if (!occurrenceId) throw new HttpsError("invalid-argument", "Serviceforekomst mangler.");
+  let outcome = null;
+  const before = await rod.once("value");
+  let warm = before.exists();
+  const tx = await rod.transaction((tenant) => {
+    if (!tenant && warm) tenant = structuredClone(before.val());
+    warm = false;
+    if (!tenant) return;
+    outcome = completeFleetServiceOccurrence(tenant, occurrenceId, {
+      dato: req.data?.dato,
+      maaler: req.data?.maaler,
+      actorId: uid,
+    }, { nowMs: Date.now() });
+    if (!outcome.ok) return;
+    return outcome.tenant;
+  });
+  if (!tx.committed || !outcome?.ok) {
+    const code = outcome?.code === "occurrence_missing" ? "not-found" : "failed-precondition";
+    throw new HttpsError(code, `Service kunne ikke registreres: ${outcome?.code || "ukendt fejl"}.`);
+  }
+  return { ok: true, gentaget: outcome.repeated };
+});
+
+export const fleetServiceKontrolPlanlagt = onSchedule({
+  region: REGION, schedule: "every 60 minutes", timeZone: "Europe/Copenhagen", timeoutSeconds: 300,
+}, async () => {
+  const db = getDatabase();
+  const index = (await db.ref("udbyder/kunder").once("value")).val() || {};
+  let tenants = 0; let created = 0; let failed = 0;
+  for (const tenantId of Object.keys(index)) {
+    try {
+      const result = await runFleetServiceAutomationForTenant(db.ref(`tenants/${tenantId}`), { nowMs: Date.now() });
+      if (result.committed) tenants += 1;
+      created += result.created.length;
+    } catch (error) {
+      failed += 1;
+      console.error("FLEET servicekontrol fejlede", { tenantId, code: error?.code || "ukendt" });
+    }
+  }
+  console.log("FLEET servicekontrol afsluttet", { tenants, created, failed });
 });

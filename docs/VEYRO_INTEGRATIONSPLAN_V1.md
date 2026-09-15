@@ -1037,3 +1037,27 @@ og bevarer ukendte historiske referencer som inaktive snapshots; den opretter
 ikke parallelle redigerbare kopier. Før FL-15 kan lukkes samlet, skal de
 forbrugende forretningsposter flyttes til samme servergrænse med migration,
 tenantkontrol og revisionsbeskyttelse. Ingen produktionsmigration er kørt.
+
+## 21. Serverstyret FLEET-serviceautomatik — 2026-09-15
+
+Servicevarsling har nu en serverejet beregnings- og lagringsgrænse. Krav gemmes
+med revision, idempotens og audit gennem en callable. En timebaseret scheduler
+og den manuelle serverkontrol bruger samme rene motor og samme atomiske
+tenanttransaktion. En stabil cyklusnøgle sikrer præcis én forekomst, én
+indberetning og én sag pr. servicecyklus, også ved samtidige kald.
+
+Gennemført service opdaterer det daterede servicegrundlag og målerstanden, men
+lukker ikke sagen: den går til fakturaafklaring. Et identisk genforsøg er
+idempotent, mens et genforsøg med en anden dato eller målerstand afvises. En
+manglende aktuel måling bliver rapporteret som manglende grundlag og bliver
+ikke erstattet af et opdigtet tal.
+
+De seks nye serviceområder er læsbare for autoriserede FLEET-brugere, men
+direkte klientskrivning er altid lukket. Den isolerede emulatorintegration
+bestod 16 assertions, den målrettede Rules-suite 49/49 og den fulde lokale
+Rules-/platformsgate 4.605/4.605. Der er ikke deployet eller migreret data.
+
+Overgangen er fortsat todelt: den eksisterende service-UI og dens lokale
+repository skal kobles til callables/noderne, og allerede åbne forekomster skal
+håndteres eksplicit ved ændring eller deaktivering af et krav. Indtil den
+adapter og overgang er gennemført, er FL-14 samlet set delvist implementeret.

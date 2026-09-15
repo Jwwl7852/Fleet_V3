@@ -20,12 +20,14 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   // Ejerens tenantløse udbydergrænse bruger ikke legacy-tenantallowlisten.
   // WAREHOUSEs fælles unitbevægelseshistorik tilføjer én tenantbundet
   // dual-read. UNIT-importens læsbare kladde løftede den til 103; FLEETs
-  // fælles kategorier tilføjer en læse- og en skriverregel.
-  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 105);
+  // fælles kategorier tilføjer en læse- og en skriverregel. De seks
+  // serverejede serviceområder tilføjer seks læseregler, men ingen
+  // direkte klientskrivning.
+  assert.equal(rules.split("child('legacyClaimsAllowlist').child(auth.uid).child('expiresAtMs').val() > now").length - 1, 111);
   // WAREHOUSE må ikke oprette fælles unittyper eller units direkte. De to
   // skrivegrene er derfor fjernet, mens den læsbare PROCURE-godkendelseskø
   // fortsat har både den kompakte indkoeb.laes-gate og legacy-permissionen.
-  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 176);
+  assert.equal(rules.split("auth.token.perms.contains('|" ).length - 1, 188);
   // PROCUREs serverlukkede kladder/opsætning, linjespor og læsbare
   // godkendelseskø udvider den målte regelkontrakt med ca. 3 kB. Bevar et
   // snævert loft, så senere ukontrolleret vækst fortsat opdages.
@@ -34,11 +36,14 @@ it("lokal preflight bevarer dual-read, revocation og kopiparitet uden deploy", (
   // Den samlede PROCURE-, ejer-, WORKFORCE- og WAREHOUSE-regelmodel udvider
   // kilden kontrolleret. FLEET-kategoriernes eksplicitte læse-, skrive- og
   // feltvalideringer løfter den målte LF-normaliserede kilde til 474.228 byte.
-  assert.ok(Buffer.byteLength(rules.replace(/\r\n/g, "\n"), "utf8") < 478_000);
+  // FLEETs serverejede serviceområder løfter den til 483.102 byte. Loftet
+  // giver fortsat kun et lille spillerum til bevidste regelændringer.
+  assert.ok(Buffer.byteLength(rules.replace(/\r\n/g, "\n"), "utf8") < 487_000);
   // WAREHOUSEs nye læseregel kontrollerer både revocationens eksistens og
   // tidspunkt. UNIT-importens læser løftede den målte forekomst til 252;
-  // FLEET-kategoriernes to auth-regler tilføjer fire forekomster.
-  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 256);
+  // FLEET-kategoriernes to auth-regler tilføjer fire forekomster, og de
+  // seks nye læseregler for serviceområder tilføjer tolv.
+  assert.equal(rules.split("child('authRevocations').child(auth.uid)").length - 1, 268);
   assert.match(rules, /"authRevocations"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /"legacyClaimsAllowlist"[\s\S]*?"\.read": false[\s\S]*?"\.write": false/);
   assert.match(rules, /child\('tenant'\)\.val\(\) === auth\.token\.tenant/);
