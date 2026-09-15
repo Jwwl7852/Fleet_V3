@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   createFleetServiceClient,
+  fleetServiceProjectionState,
   mapServerCaseToFleet,
   mapServerOccurrenceToFleet,
   mapServerReportToFleet,
@@ -12,6 +13,18 @@ import {
 } from "../src/fleet/fleet-service-client.js";
 
 describe("FLEET-serviceklientens autoritative grænse", () => {
+  it("afslutter loading, når alle seks serverprojektioner er færdige og tomme", () => {
+    const ready = { data: [], henter: false, fejl: null };
+    const service = {
+      units: ready, requirements: ready, occurrences: ready,
+      reports: ready, cases: ready, history: ready,
+    };
+    assert.deepEqual(fleetServiceProjectionState(service), { loading: false, error: null });
+    assert.equal(fleetServiceProjectionState({ ...service, history: { ...ready, henter: true } }).loading, true);
+    const error = new Error("afvist");
+    assert.equal(fleetServiceProjectionState({ ...service, reports: { ...ready, fejl: error } }).error, error);
+  });
+
   it("mapper den fælles enheds-ID uden at oprette et nyt FLEET-ID", () => {
     const mapped = mapSharedUnitToFleet({
       id: "kt-104", kaldenavn: "Bil 104", navn: "Mercedes Actros",

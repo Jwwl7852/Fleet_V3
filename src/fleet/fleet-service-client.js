@@ -12,6 +12,27 @@ const requestId = (prefix) => `${prefix}-${globalThis.crypto?.randomUUID?.()
 const integerOrNull = (value) => value === "" || value == null
   ? null : (Number.isSafeInteger(Number(value)) ? Number(value) : null);
 
+/**
+ * Samler loading/fejl for hele den autoritative serviceprojektion. Alle seks
+ * lister tæller, også når deres færdige resultat fortsat er en tom liste.
+ * Ellers kan React-memoisering fastholde `loading: true`, fordi `[]` før og
+ * efter hentningen har samme serialiserede payload.
+ */
+export function fleetServiceProjectionState(service = {}) {
+  const projections = [
+    service.units,
+    service.requirements,
+    service.occurrences,
+    service.reports,
+    service.cases,
+    service.history,
+  ];
+  return {
+    loading: projections.some((projection) => Boolean(projection?.henter)),
+    error: projections.find((projection) => projection?.fejl)?.fejl || null,
+  };
+}
+
 export function mapSharedUnitToFleet(unit = {}) {
   const type = unit.art === "scooter" ? "scooter"
     : ["truck", "maskine", "udstyr"].includes(unit.art) ? "machine" : "vehicle";

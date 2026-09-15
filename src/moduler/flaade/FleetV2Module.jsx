@@ -10,6 +10,7 @@ import { useFleetSharedData } from "./useFleetSharedData.js";
 import { afgoerRetur, opretReturtilstand } from "../../../fleet-v2/src/data/navigationHistory.js";
 import {
   createFleetServiceClient,
+  fleetServiceProjectionState,
   mapServerCaseToFleet,
   mapServerOccurrenceToFleet,
   mapServerReportToFleet,
@@ -77,6 +78,7 @@ export default function FleetV2Module() {
   const serviceReportsPayload = JSON.stringify(service.reports.data);
   const serviceCasesPayload = JSON.stringify(service.cases.data);
   const serviceHistoryPayload = JSON.stringify(service.history.data);
+  const serviceState = fleetServiceProjectionState(service);
   const serviceBackend = useMemo(() => {
     const units = JSON.parse(serviceUnitsPayload).map(mapSharedUnitToFleet);
     const requirements = JSON.parse(serviceRequirementsPayload).map(mapServerRequirementToFleet);
@@ -102,10 +104,8 @@ export default function FleetV2Module() {
         cases,
         caseEvents,
       },
-      loading: service.units.henter || service.requirements.henter || service.occurrences.henter
-        || service.reports.henter || service.cases.henter || service.history.henter,
-      error: service.units.fejl || service.requirements.fejl || service.occurrences.fejl
-        || service.reports.fejl || service.cases.fejl || service.history.fejl || null,
+      loading: serviceState.loading,
+      error: serviceState.error,
       capabilities: {
         saveRequirement: mayManageService,
         runAutomation: mayManageService,
@@ -127,6 +127,8 @@ export default function FleetV2Module() {
     };
   }, [service.units.henter, service.units.fejl, service.requirements.henter,
     service.requirements.fejl, service.occurrences.henter, service.occurrences.fejl,
+    service.reports.henter, service.reports.fejl, service.cases.henter,
+    service.cases.fejl, service.history.henter, service.history.fejl,
     serviceUnitsPayload, serviceRequirementsPayload, serviceOccurrencesPayload,
     serviceReportsPayload, serviceCasesPayload, serviceHistoryPayload,
     service.requirements.genindlaes, service.occurrences.genindlaes,
