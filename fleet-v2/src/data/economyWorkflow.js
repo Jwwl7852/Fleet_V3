@@ -170,5 +170,23 @@ export function applyManualCostSave(dataset, input, actor, options = {}) {
 
 export function economyCsv(entries, units) {
   const quote = (value) => `"${String(value ?? "").replaceAll('"','""')}"`;
-  return `\ufeff${["Dato;Enhed;Kategori;Beløb;Valuta;Status;Kilde;Reference", ...entries.map((item) => [item.date, units.find((unit) => unit.id === item.unitId)?.number, item.category, (item.amountMinor/100).toFixed(2).replace(".",","), item.currency, COST_STATES[item.state], item.source, item.caseId || item.taskId || item.leaseId || ""].map(quote).join(";"))].join("\r\n")}`;
+  const decimal = (minor) => Number.isFinite(minor) ? (minor / 100).toFixed(2).replace(".", ",") : "";
+  const vatBasisLabel = (value) => value === "excl_vat" || value === "exclusive" ? "Ekskl. moms" : value === "incl_vat" || value === "inclusive" ? "Inkl. moms" : "Uafklaret";
+  const vatAmounts = (item) => {
+    let netMinor = Number.isFinite(item.netAmountMinor) ? item.netAmountMinor : null;
+    let vatMinor = Number.isFinite(item.vatAmountMinor) ? item.vatAmountMinor : null;
+    let grossMinor = Number.isFinite(item.grossAmountMinor) ? item.grossAmountMinor : null;
+    if (netMinor == null && (item.vatBasis === "excl_vat" || item.vatBasis === "exclusive")) netMinor = item.amountMinor;
+    if (grossMinor == null && (item.vatBasis === "incl_vat" || item.vatBasis === "inclusive")) grossMinor = item.amountMinor;
+    if (netMinor != null && vatMinor != null && grossMinor == null) grossMinor = netMinor + vatMinor;
+    if (grossMinor != null && vatMinor != null && netMinor == null) netMinor = grossMinor - vatMinor;
+    if (netMinor != null && grossMinor != null && vatMinor == null) vatMinor = grossMinor - netMinor;
+    return { netMinor, vatMinor, grossMinor };
+  };
+  const header = "Dato;Enhed;Kategori;Beløb;Beløbsgrundlag;Beløb ekskl. moms;Momsbeløb;Beløb inkl. moms;Valuta;Status;Kilde;Reference";
+  const rows = entries.map((item) => {
+    const vat = vatAmounts(item);
+    return [item.date, units.find((unit) => unit.id === item.unitId)?.number, item.category, decimal(item.amountMinor), vatBasisLabel(item.vatBasis), decimal(vat.netMinor), decimal(vat.vatMinor), decimal(vat.grossMinor), item.currency, COST_STATES[item.state], item.source, item.caseId || item.taskId || item.leaseId || ""].map(quote).join(";");
+  });
+  return `\ufeff${[header, ...rows].join("\r\n")}`;
 }

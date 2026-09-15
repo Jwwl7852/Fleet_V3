@@ -35,8 +35,23 @@ describe("økonomi og flådestatistik", () => {
     const csv = economyCsv(buildEconomyEntries(dataset), dataset.units);
     expect(csv.charCodeAt(0)).toBe(0xfeff);
     expect(csv).toContain("Beløb");
+    expect(csv).toContain("Beløbsgrundlag;Beløb ekskl. moms;Momsbeløb;Beløb inkl. moms");
     expect(csv).toMatch(/\"\d+,\d{2}\"/);
     expect([...new TextEncoder().encode(csv).slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+  });
+
+  it("eksporterer kun de momsbeløb, som datagrundlaget faktisk dokumenterer", () => {
+    const units = [{ id: "unit-1", number: "ØKO-Æ01" }];
+    const csv = economyCsv([
+      { id: "net", unitId: "unit-1", date: "2026-09-15", category: "Brændstof", amountMinor: 10000, netAmountMinor: 10000, vatAmountMinor: 2500, vatBasis: "excl_vat", currency: "DKK", state: "booked", source: "test" },
+      { id: "gross", unitId: "unit-1", date: "2026-09-15", category: "Værksted", amountMinor: 12500, grossAmountMinor: 12500, vatAmountMinor: 2500, vatBasis: "incl_vat", currency: "DKK", state: "booked", source: "test" },
+      { id: "unknown", unitId: "unit-1", date: "2026-09-15", category: "Andet", amountMinor: 5000, vatBasis: "unknown", currency: "DKK", state: "actual", source: "test" },
+    ], units);
+    const lines = csv.slice(1).split("\r\n");
+    expect(lines[1]).toContain('"100,00";"Ekskl. moms";"100,00";"25,00";"125,00"');
+    expect(lines[2]).toContain('"125,00";"Inkl. moms";"100,00";"25,00";"125,00"');
+    expect(lines[3]).toContain('"50,00";"Uafklaret";"";"";""');
+    expect(csv).toContain("ØKO-Æ01");
   });
 
   it("materialiserer en månedlig kontrakt inden for kontraktens og filtrets periode", () => {
