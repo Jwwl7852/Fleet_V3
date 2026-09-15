@@ -499,6 +499,13 @@ button { color: inherit; }
   .topbar { grid-template-columns: 40px 1fr 43px; }.company-picker { font-size: 11px; }
   .page-heading-row h1 { font-size: 26px; }.page-actions { display: grid; grid-template-columns: 1fr 1fr; }.page-actions .primary-button { grid-column: 1 / -1; grid-row: 1; }.catalog-toolbar { grid-template-columns: 1fr; }.catalog-toolbar > * { grid-column: 1 !important; grid-row: auto !important; }.unit-card-grid { grid-template-columns: 1fr; }.catalog-pagination { flex-wrap: wrap; }.catalog-pagination > div { width: 100%; margin-left: 0; }.profile-hero { grid-template-columns: 92px 1fr; gap: 12px; }.profile-hero > .unit-thumbnail { width: 92px; height: 68px; }.profile-title > p { margin: 4px 0 7px; font-size: 11px; }.profile-title > div { flex-wrap: wrap; }.profile-kpis { grid-template-columns: 1fr; }.profile-actions small { display: none; }.activity-timeline::before { left: 46px; }.activity-timeline article { grid-template-columns: 32px minmax(0, 1fr) auto; padding: 8px 0; }.activity-timeline time { grid-column: 2 / -1; }.activity-timeline .timeline-icon { grid-column: 1; grid-row: 1 / 3; }.activity-timeline article > div { grid-column: 2; }.relation-chip { grid-column: 3; grid-row: 2; }.location-panel { grid-template-columns: 1fr; grid-template-rows: 44px 180px auto; }.profile-mini-map, .location-copy { margin: 10px; }.record-list article { grid-template-columns: 40px 1fr; padding: 10px 0; }.record-list article > span:not(.record-icon), .record-list article > b { grid-column: 2; }.economy-summary { padding: 18px; }.economy-summary article { grid-template-columns: 1fr auto; }.economy-summary i { grid-column: 1 / -1; }.unit-dialog form, .unit-dialog > header { padding-right: 15px; padding-left: 15px; }
   .registration-lookup, .unit-image-row, .lookup-field-list, .equipment-grid { grid-template-columns: 1fr; }.registration-lookup .secondary-button { width: 100%; }.unit-image-preview { height: 150px; }
+  .fleet-v2-embedded > .workspace-page { padding-top: 6px; }
+  .fleet-v2-embedded .page-heading-row { gap: 8px; }
+  .fleet-v2-embedded .page-heading-row h1 { font-size: 22px; }
+  .fleet-v2-embedded .page-heading-row p { display: none; }
+  .fleet-v2-embedded .demo-inline { margin-top: 4px; }
+  .fleet-v2-embedded .case-folder-hero { gap: 8px; padding-top: 4px; }
+  .fleet-v2-embedded .case-folder-hero h1 { margin-block: 2px; }
 }
 
 /* Stage: mobile reporting, shared unit images and fleet economy */

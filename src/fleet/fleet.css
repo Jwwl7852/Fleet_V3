@@ -2248,3 +2248,26 @@ body:has(.fc-login-side){margin:0}
   .fc-justerbare-paneler.fc-support-layout .fc-support-main,.fc-justerbare-paneler.fc-support-layout .fc-support-side{padding:0}
 }
 @media(max-width:720px){.fc-visningslinje{padding-inline:16px}.fc-nulstil-visning{display:none}}
+
+/* Mobilskallen skal stadig vise miljø, logo, navigation og arbejdszoom, men
+   de fire lag må ikke skubbe selve sagsarbejdet under folden. Den aktive
+   modulrække forbliver vandret og tastatur-/touchbetjent. */
+@media(max-width:720px){
+  .fc-miljoe{min-height:28px;padding:4px 10px;font-size:var(--fc-t-xs)}
+  .fc-miljoe span{display:none}
+  .fc-side{display:grid;grid-template-columns:82px minmax(0,1fr);align-items:start;padding:3px 6px 4px}
+  .fc-brand-logo{grid-column:1;min-height:34px;padding:0 5px}
+  .fc-brand-logo .veyro-logo{width:72px}
+  .fc-ver,.fc-tenant{display:none}
+  .fc-nav{grid-column:2;min-height:34px;align-items:flex-start}
+  .fc-link{min-height:34px;padding:6px 8px;gap:6px}
+  .fc-link svg{width:16px;height:16px;flex-basis:16px}
+  .fc-nav-modul.fc-modul-aaben>.fc-sub{width:min(250px,calc(100vw - 100px));margin-top:1px}
+  .fc-sublink{min-height:30px;padding:5px 7px}
+  .fc-visningslinje{min-height:34px;padding:2px 10px}
+  .fc-zoomkontroller{grid-template-columns:30px 54px 30px;min-height:30px}
+  .fc-zoomkontroller button{min-height:30px}
+  .fc-main:has(.fc-slot .veyro-module--fleet)>.fc-top,
+  .fc-main:has(.fc-slot .veyro-module--planning)>.fc-top{display:none}
+  .fc-slot{padding:8px 10px 16px}
+}
