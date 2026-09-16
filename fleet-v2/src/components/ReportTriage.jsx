@@ -33,7 +33,7 @@ export function ReportTriage({ reportId, initialViewState, onViewStateChange, on
   if (loading) return <main className="workspace-page loading-state" id="main-content"><span className="loading-spinner" /><p>Indlæser indberetninger …</p></main>;
   if (reportId && !reports.some((item) => item.id === reportId)) return <main className="workspace-page not-found-state" id="main-content"><Icon name="warning" size={38} /><span className="eyebrow">FLEET v2</span><h1>Indberetningen findes ikke</h1><p>ID’et <code>{reportId}</code> findes ikke i de tilgængelige data.</p><button className="primary-button" type="button" onClick={() => onBack("/indberetninger")}>Tilbage til Indberetninger</button></main>;
 
-  return <main className={`workspace-page triage-page${mobileDetail ? " mobile-detail" : ""}`} id="main-content">
+  return <main className={`workspace-page triage-page${mobileDetail ? " triage-detail-selected" : ""}`} id="main-content">
     <header className="page-heading-row"><div><span className="eyebrow">FLEET v2 · indberetninger</span><h1>Indberetninger og triage</h1><p>Gennemgå, vurder og forbind den oprindelige indberetning med samme sag i Arbejdskø.</p></div><button className="primary-button" type="button" onClick={() => onNavigate("/indberetninger/ny")}><Icon name="plus" size={17} />Ny indberetning</button></header>
     {serverProjectionError ? <div className="form-alert danger" role="alert">Serverens serviceindberetninger kunne ikke indlæses. Lokale poster vises fortsat adskilt.</div> : null}
     <section className="triage-filters">

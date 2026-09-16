@@ -61,6 +61,8 @@ describe("indberetning, triage og Arbejdskø", () => {
   it("opdaterer triage og viser samme sag i kanban og tabel", async () => {
     const repository = start("/indberetninger/report-demo-002");
     await screen.findByRole("heading", { name: "AdBlue-advarsel" });
+    expect(document.querySelector(".triage-page").classList.contains("triage-detail-selected")).toBe(true);
+    expect(document.querySelector(".triage-page").classList.contains("mobile-detail")).toBe(false);
     fireEvent.change(screen.getByLabelText("Vurderet prioritet"), { target: { value: "high" } });
     fireEvent.change(screen.getByLabelText("Ansvarlig"), { target: { value: "demo-lars" } });
     fireEvent.change(screen.getByLabelText("Flyt status"), { target: { value: "assessing" } });
