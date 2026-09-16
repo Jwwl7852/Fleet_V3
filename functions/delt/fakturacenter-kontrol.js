@@ -31,10 +31,19 @@ export const FAKTURAKONTROL_MODEL = Object.freeze({
   overBeloeb: "over-beloeb",
 });
 
-export const STANDARD_FAKTURAKONTROL_OPSAETNING = Object.freeze({
+export const FAKTURAKONTROL_MODULER = Object.freeze(["fleet", "facility", "procure"]);
+
+const STANDARD_MODULREGEL = Object.freeze({
   model: FAKTURAKONTROL_MODEL.ingen,
   graenseNettoOere: null,
-  kontrollantUids: [],
+  kontrollantUid: null,
+});
+
+export const STANDARD_FAKTURAKONTROL_OPSAETNING = Object.freeze({
+  version: 2,
+  moduler: Object.freeze(Object.fromEntries(
+    FAKTURAKONTROL_MODULER.map((modul) => [modul, STANDARD_MODULREGEL]),
+  )),
   revision: 0,
 });
 
@@ -47,22 +56,32 @@ export function kontrolRevision(faktura) {
   return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0;
 }
 
-export function normaliserFakturakontrolOpsaetning(opsaetning = {}) {
-  const model = modeller.has(opsaetning.model)
-    ? opsaetning.model
-    : FAKTURAKONTROL_MODEL.ingen;
-  const kontrollantUids = [...new Set(
-    (Array.isArray(opsaetning.kontrollantUids) ? opsaetning.kontrollantUids : [])
-      .map((uid) => String(uid || "").trim())
-      .filter(Boolean),
-  )].sort();
-  const graense = Number(opsaetning.graenseNettoOere);
-  const revision = Number(opsaetning.revision ?? 0);
+function normaliserModulregel(regel = {}) {
+  const model = modeller.has(regel.model) ? regel.model : FAKTURAKONTROL_MODEL.ingen;
+  const legacyUid = Array.isArray(regel.kontrollantUids) ? regel.kontrollantUids[0] : null;
+  const kontrollantUid = String(regel.kontrollantUid || legacyUid || "").trim() || null;
+  const graense = Number(regel.graenseNettoOere);
   return {
     model,
     graenseNettoOere: model === FAKTURAKONTROL_MODEL.overBeloeb
       && Number.isSafeInteger(graense) && graense >= 0 ? graense : null,
-    kontrollantUids,
+    kontrollantUid,
+  };
+}
+
+export function normaliserFakturakontrolOpsaetning(opsaetning = {}) {
+  /* Version 1 havde én global regel. Den læses fortsat deterministisk som
+     samme regel for alle tre moduler, men alle nye writes gemmes som v2. */
+  const harModuler = opsaetning.moduler && typeof opsaetning.moduler === "object";
+  const legacyRegel = normaliserModulregel(opsaetning);
+  const moduler = Object.fromEntries(FAKTURAKONTROL_MODULER.map((modul) => [
+    modul,
+    normaliserModulregel(harModuler ? opsaetning.moduler[modul] : legacyRegel),
+  ]));
+  const revision = Number(opsaetning.revision ?? 0);
+  return {
+    version: 2,
+    moduler,
     revision: Number.isSafeInteger(revision) && revision >= 0 ? revision : 0,
   };
 }
@@ -70,29 +89,65 @@ export function normaliserFakturakontrolOpsaetning(opsaetning = {}) {
 export function validerFakturakontrolOpsaetning(opsaetning = {}) {
   const normaliseret = normaliserFakturakontrolOpsaetning(opsaetning);
   const fejl = {};
-  if (!modeller.has(opsaetning.model)) fejl.model = "Vælg en gyldig kontrolmodel.";
-  if (normaliseret.model === FAKTURAKONTROL_MODEL.overBeloeb
-    && normaliseret.graenseNettoOere == null) {
-    fejl.graenseNettoOere = "Beløbsgrænsen skal være et positivt beløb i hele øre ekskl. moms.";
-  }
-  if (normaliseret.model !== FAKTURAKONTROL_MODEL.ingen
-    && normaliseret.kontrollantUids.length === 0) {
-    fejl.kontrollantUids = "Udpeg mindst én ekstra kontrollant, før ekstra kontrol aktiveres.";
-  }
-  if (normaliseret.kontrollantUids.some((uid) => uid.length > 128)) {
-    fejl.kontrollantUids = "En kontrollantreference er ugyldig.";
+  for (const modul of FAKTURAKONTROL_MODULER) {
+    const rå = opsaetning.moduler?.[modul] || (!opsaetning.moduler ? opsaetning : {});
+    const regel = normaliseret.moduler[modul];
+    if (!modeller.has(rå.model)) fejl[`${modul}.model`] = `Vælg en gyldig kontrolmodel for ${modul}.`;
+    if (regel.model === FAKTURAKONTROL_MODEL.overBeloeb && regel.graenseNettoOere == null) {
+      fejl[`${modul}.graenseNettoOere`] = `Beløbsgrænsen for ${modul} skal være i hele øre ekskl. moms.`;
+    }
+    if (regel.model !== FAKTURAKONTROL_MODEL.ingen && !regel.kontrollantUid) {
+      fejl[`${modul}.kontrollantUid`] = `Udpeg en ekstra kontrollant for ${modul}.`;
+    }
+    if (regel.kontrollantUid && regel.kontrollantUid.length > 128) {
+      fejl[`${modul}.kontrollantUid`] = `Kontrollantreferencen for ${modul} er ugyldig.`;
+    }
   }
   return { ok: Object.keys(fejl).length === 0, fejl, opsaetning: normaliseret };
 }
 
-/** Beløbsgrænsen er ekskl. moms. Kreditnotaer vurderes på absolut størrelse. */
-export function fakturaKraeverEkstraKontrol(faktura, opsaetning) {
+function modulsummer(faktura = {}) {
+  const summer = Object.fromEntries(FAKTURAKONTROL_MODULER.map((modul) => [modul, 0]));
+  if (Array.isArray(faktura.fordelinger) && faktura.fordelinger.length) {
+    for (const post of faktura.fordelinger) {
+      const modul = String(post?.modul || "").toLowerCase();
+      const nettoOere = Number(post?.nettoOere);
+      if (modul in summer && Number.isSafeInteger(nettoOere)) summer[modul] += nettoOere;
+    }
+    return summer;
+  }
+  const modul = String(faktura.destinationArt || "").toLowerCase();
+  const nettoOere = Number(faktura.beloebOere);
+  if (modul in summer && Number.isSafeInteger(nettoOere)) summer[modul] = nettoOere;
+  return summer;
+}
+
+/** Et trin beregnes på modulets summerede nettoandel ekskl. moms. */
+export function fakturakontrolTrin(faktura, opsaetning) {
   const indstilling = normaliserFakturakontrolOpsaetning(opsaetning);
-  if (indstilling.model === FAKTURAKONTROL_MODEL.ingen) return false;
-  if (indstilling.model === FAKTURAKONTROL_MODEL.alle) return true;
-  const nettoOere = Number(faktura?.beloebOere);
-  return Number.isSafeInteger(nettoOere)
-    && Math.abs(nettoOere) > indstilling.graenseNettoOere;
+  const summer = modulsummer(faktura);
+  return FAKTURAKONTROL_MODULER.flatMap((modul) => {
+    const nettoOere = summer[modul];
+    const regel = indstilling.moduler[modul];
+    const kræves = nettoOere !== 0 && (regel.model === FAKTURAKONTROL_MODEL.alle
+      || (regel.model === FAKTURAKONTROL_MODEL.overBeloeb
+        && Math.abs(nettoOere) > regel.graenseNettoOere));
+    return kræves ? [{ modul, nettoOere, kontrollantUid: regel.kontrollantUid }] : [];
+  });
+}
+
+export function fakturaKraeverEkstraKontrol(faktura, opsaetning) {
+  return fakturakontrolTrin(faktura, opsaetning).length > 0;
+}
+
+function eksisterendeKontroltrin(faktura, opsaetning) {
+  if (faktura?.modulKontroller && Object.keys(faktura.modulKontroller).length) {
+    return faktura.modulKontroller;
+  }
+  /* Allerede igangsatte v1-fakturaer kan afsluttes uden datamigration. */
+  return Object.fromEntries(fakturakontrolTrin(faktura, opsaetning).map((trin) => [
+    trin.modul, { ...trin, status: "afventer" },
+  ]));
 }
 
 function grundlagErAfklaret(faktura) {
@@ -103,7 +158,7 @@ function grundlagErAfklaret(faktura) {
   return typeof faktura.destinationId === "string" && faktura.destinationId.length > 0;
 }
 
-export function vurderFakturakontrol({ faktura, opsaetning, handling, uid, forventetRevision, begrundelse } = {}) {
+export function vurderFakturakontrol({ faktura, opsaetning, handling, uid, modul, forventetRevision, begrundelse } = {}) {
   const status = faktura?.kontrolstatus || FAKTURAKONTROL_STATUS.indbakke;
   const revision = kontrolRevision(faktura);
   if (!handlinger.has(handling)) return { ok: false, kode: "ugyldig-handling", besked: "Vælg en gyldig kontrolhandling." };
@@ -134,30 +189,57 @@ export function vurderFakturakontrol({ faktura, opsaetning, handling, uid, forve
   if (status !== FAKTURAKONTROL_STATUS.ekstraKontrol) {
     return { ok: false, kode: "forkert-status", besked: "Fakturaen afventer ikke ekstra kontrol." };
   }
-  const indstilling = normaliserFakturakontrolOpsaetning(opsaetning);
-  if (!indstilling.kontrollantUids.includes(uid)) {
-    return { ok: false, kode: "ikke-udpeget", besked: "Du er ikke udpeget som ekstra kontrollant." };
+  const modulKontroller = eksisterendeKontroltrin(faktura, opsaetning);
+  const afventende = Object.values(modulKontroller)
+    .filter((trin) => trin?.status === "afventer");
+  const valgtModul = modul || (afventende.length === 1 ? afventende[0].modul : null);
+  const trin = modulKontroller[valgtModul];
+  if (!trin || trin.status !== "afventer") {
+    return { ok: false, kode: "mangler-modul", besked: "Vælg det modul, der skal ekstra kontrolleres." };
   }
   if (faktura.kontrolleretAf === uid) {
     return { ok: false, kode: "egen-godkendelse", besked: "Ekstra kontrol skal udføres af en anden person." };
+  }
+  if (trin.kontrollantUid !== uid) {
+    return { ok: false, kode: "ikke-udpeget", besked: "Du er ikke udpeget som ekstra kontrollant." };
   }
   if (handling === FAKTURAKONTROL_HANDLING.ekstraAfvis
     && !String(begrundelse || "").trim()) {
     return { ok: false, kode: "mangler-begrundelse", besked: "Skriv hvorfor fakturaen sendes tilbage." };
   }
-  return { ok: true };
+  return { ok: true, modul: valgtModul };
 }
 
-export function anvendFakturakontrol({ faktura, opsaetning, handling, uid, nu, operationId, begrundelse } = {}) {
+export function anvendFakturakontrol({ faktura, opsaetning, handling, uid, modul, nu, operationId, begrundelse } = {}) {
   const fra = faktura?.kontrolstatus || FAKTURAKONTROL_STATUS.indbakke;
   let til;
+  let valgtModul = modul;
+  let modulKontroller = { ...eksisterendeKontroltrin(faktura, opsaetning) };
   if (handling === FAKTURAKONTROL_HANDLING.kontroller) {
-    til = fakturaKraeverEkstraKontrol(faktura, opsaetning)
-      ? FAKTURAKONTROL_STATUS.ekstraKontrol
-      : FAKTURAKONTROL_STATUS.arkiveret;
+    const trin = fakturakontrolTrin(faktura, opsaetning);
+    modulKontroller = Object.fromEntries(trin.map((post) => [post.modul, {
+      ...post, status: "afventer", oprettetMs: nu,
+    }]));
+    til = trin.length ? FAKTURAKONTROL_STATUS.ekstraKontrol : FAKTURAKONTROL_STATUS.arkiveret;
   } else if (handling === FAKTURAKONTROL_HANDLING.ekstraGodkend) {
-    til = FAKTURAKONTROL_STATUS.arkiveret;
+    if (!valgtModul) {
+      const afventende = Object.values(modulKontroller).filter((trin) => trin?.status === "afventer");
+      valgtModul = afventende.length === 1 ? afventende[0].modul : null;
+    }
+    modulKontroller[valgtModul] = {
+      ...modulKontroller[valgtModul], status: "godkendt", godkendtAf: uid, godkendtMs: nu,
+    };
+    til = Object.values(modulKontroller).every((trin) => trin.status === "godkendt")
+      ? FAKTURAKONTROL_STATUS.arkiveret : FAKTURAKONTROL_STATUS.ekstraKontrol;
   } else {
+    if (!valgtModul) {
+      const afventende = Object.values(modulKontroller).filter((trin) => trin?.status === "afventer");
+      valgtModul = afventende.length === 1 ? afventende[0].modul : null;
+    }
+    modulKontroller[valgtModul] = {
+      ...modulKontroller[valgtModul], status: "afvist", afvistAf: uid, afvistMs: nu,
+      begrundelse: String(begrundelse || "").trim(),
+    };
     til = FAKTURAKONTROL_STATUS.indbakke;
   }
 
@@ -169,12 +251,14 @@ export function anvendFakturakontrol({ faktura, opsaetning, handling, uid, nu, o
     uid,
     ms: nu,
     operationId,
+    ...(valgtModul ? { modul: valgtModul } : {}),
     ...(String(begrundelse || "").trim() ? { begrundelse: String(begrundelse).trim() } : {}),
   };
   const naeste = {
     ...faktura,
     kontrolstatus: til,
     kontrolRevision: revision,
+    modulKontroller,
   };
 
   if (handling === FAKTURAKONTROL_HANDLING.kontroller) {

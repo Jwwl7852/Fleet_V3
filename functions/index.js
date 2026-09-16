@@ -9698,20 +9698,22 @@ const kontrolHistorikId = (uid, requestId) => `h_${createHash("sha256")
 function fakturakontrolFejlkode(kode) {
   if (kode === "revisionskonflikt") return "aborted";
   if (["egen-godkendelse", "ikke-udpeget"].includes(kode)) return "permission-denied";
-  if (["ugyldig-handling", "ugyldig-revision", "mangler-bruger", "mangler-begrundelse"].includes(kode)) {
+  if (["ugyldig-handling", "ugyldig-revision", "mangler-bruger", "mangler-begrundelse", "mangler-modul"].includes(kode)) {
     return "invalid-argument";
   }
   return "failed-precondition";
 }
 
 function validerKontrollanterITenant(tenantData, opsaetning) {
-  for (const uid of opsaetning.kontrollantUids) {
+  for (const [modul, regel] of Object.entries(opsaetning.moduler || {})) {
+    if (!regel.kontrollantUid) continue;
+    const uid = regel.kontrollantUid;
     const bruger = tenantData?.brugere?.[uid];
     if (!bruger || bruger.spaerret === true) {
-      return `Den valgte kontrollant ${uid} findes ikke eller har et spærret login.`;
+      return `Den valgte kontrollant for ${modul} findes ikke eller har et spærret login.`;
     }
     if (!permsForTenant(bruger.rolle, tenantData?.roller || {}).includes(PERM.fakturaerGodkend)) {
-      return `Den valgte kontrollant ${uid} har ikke ${PERM.fakturaerGodkend}.`;
+      return `Den valgte kontrollant for ${modul} har ikke ${PERM.fakturaerGodkend}.`;
     }
   }
   return null;
@@ -9788,13 +9790,13 @@ export const fakturacenterOpsaetningGem = onCall({ region: REGION }, async (req)
   }
   if (!gentaget) {
     await logProcure(tenantId, uid, AUDIT.aendre, "fakturacenterOpsaetning", tenantId,
-      null, { status: resultat.model, revision: resultat.revision }, "kundens ekstra fakturakontrol ændret");
+      null, { version: resultat.version, revision: resultat.revision }, "modulvise fakturagodkendelsesregler ændret");
   }
   return { opsaetning: normaliserFakturakontrolOpsaetning(resultat), gentaget };
 });
 
 async function udførFakturakontrol({ rod, tenantId, uid, fakturaId, handling,
-  forventetRevision, requestId, begrundelse }) {
+  modul, forventetRevision, requestId, begrundelse }) {
   const kortFakturaId = kortStreng(fakturaId, 68);
   const kortRequestId = kortStreng(requestId, 60);
   const kortBegrundelse = kortStreng(begrundelse, 250);
@@ -9803,7 +9805,8 @@ async function udførFakturakontrol({ rod, tenantId, uid, fakturaId, handling,
     throw new HttpsError("invalid-argument", "Faktura, revision eller handlingsreference er ugyldig.");
   }
   const fingeraftryk = kontrolFingeraftryk({
-    fakturaId: kortFakturaId, handling, forventetRevision, begrundelse: kortBegrundelse || null,
+    fakturaId: kortFakturaId, handling, modul: modul || null,
+    forventetRevision, begrundelse: kortBegrundelse || null,
   });
   const operationId = kontrolHistorikId(uid, kortRequestId);
   let afvist = null;
@@ -9834,19 +9837,24 @@ async function udførFakturakontrol({ rod, tenantId, uid, fakturaId, handling,
     if (!faktura) { afvist = { kode: "not-found", besked: "Fakturaen findes ikke." }; return; }
     const opsaetning = tenantData.fakturacenterOpsaetning || STANDARD_FAKTURAKONTROL_OPSAETNING;
     const vurdering = vurderFakturakontrol({
-      faktura, opsaetning, handling, uid, forventetRevision, begrundelse: kortBegrundelse,
+      faktura, opsaetning, handling, uid, modul,
+      forventetRevision, begrundelse: kortBegrundelse,
     });
     if (!vurdering.ok) {
       afvist = { kode: fakturakontrolFejlkode(vurdering.kode), besked: vurdering.besked, detalje: vurdering.kode };
       return;
     }
     const ændring = anvendFakturakontrol({
-      faktura, opsaetning, handling, uid, nu, operationId, begrundelse: kortBegrundelse,
+      faktura, opsaetning, handling, uid, modul: vurdering.modul || modul,
+      nu, operationId, begrundelse: kortBegrundelse,
     });
     ændring.faktura.kontrolHistorik = ændring.faktura.kontrolHistorik || {};
     ændring.faktura.kontrolHistorik[operationId] = ændring.historik;
     tenantData.fakturaer[kortFakturaId] = ændring.faktura;
-    resultat = { ok: true, fakturaId: kortFakturaId, status: ændring.status, revision: ændring.revision };
+    resultat = {
+      ok: true, fakturaId: kortFakturaId, status: ændring.status, revision: ændring.revision,
+      modulKontroller: ændring.faktura.modulKontroller || {},
+    };
     tenantData.fakturacenterKontrolOperationer[uid][kortRequestId] = {
       fingeraftryk,
       fakturaId: kortFakturaId,
@@ -9877,6 +9885,7 @@ export const fakturakontrolUdfoer = onCall({ region: REGION }, async (req) => {
     forventetRevision: Number(req.data?.forventetRevision),
     requestId: req.data?.requestId,
     begrundelse: req.data?.begrundelse,
+    modul: kortStreng(req.data?.modul, 16) || undefined,
   });
 });
 

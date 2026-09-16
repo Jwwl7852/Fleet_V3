@@ -38,6 +38,14 @@ const invoice = (number, extra = {}) => ({
   destinationId: "po-1",
   ...extra,
 });
+const moduleSettings = (reviewer = anden) => ({
+  version: 2,
+  moduler: {
+    fleet: { model: "ingen", graenseNettoOere: null, kontrollantUid: null },
+    facility: { model: "ingen", graenseNettoOere: null, kontrollantUid: null },
+    procure: { model: "alle", graenseNettoOere: null, kontrollantUid: reviewer },
+  },
+});
 
 await db.ref().set(null);
 await db.ref(`tenants/${tenantA}`).set({
@@ -68,7 +76,7 @@ await assert.rejects(
   run(functions.fakturacenterOpsaetningGem, {
     forventetRevision: 0,
     mutationId: "config-chauffoer",
-    opsaetning: { model: "alle", kontrollantUids: [udenAdgang] },
+    opsaetning: moduleSettings(udenAdgang),
   }),
   (error) => error?.code === "failed-precondition" && /fakturaer\.godkend/.test(error.message),
 );
@@ -76,19 +84,20 @@ await assert.rejects(
   run(functions.fakturacenterOpsaetningGem, {
     forventetRevision: 0,
     mutationId: "config-uden-admin",
-    opsaetning: { model: "alle", kontrollantUids: [anden] },
+    opsaetning: moduleSettings(),
   }, auth(udenAdgang, tenantA, "chauffoer")),
   (error) => error?.code === "permission-denied",
 );
 const gemt = await run(functions.fakturacenterOpsaetningGem, {
   forventetRevision: 0,
   mutationId: "config-1",
-  opsaetning: { model: "alle", kontrollantUids: [foerste, anden] },
+  opsaetning: moduleSettings(),
 });
 assert.equal(gemt.opsaetning.revision, 1);
-assert.deepEqual(gemt.opsaetning.kontrollantUids, [anden, foerste].sort());
+assert.equal(gemt.opsaetning.moduler.procure.kontrollantUid, anden);
 const konfiguration = await run(functions.fakturacenterOpsaetningHent, {});
-assert.equal(konfiguration.opsaetning.model, "alle");
+assert.equal(konfiguration.opsaetning.version, 2);
+assert.equal(konfiguration.opsaetning.moduler.procure.model, "alle");
 
 /* Første kontrollant kan ikke selv udføre den ekstra kontrol. */
 const foersteSvar = await run(functions.fakturakontrolUdfoer, {
@@ -99,12 +108,14 @@ assert.equal((await db.ref(`tenants/${tenantA}/fakturaer/f-egen/status`).get()).
   "Veyro-kontrol må ikke ændre betalingsstatus");
 await assert.rejects(
   run(functions.fakturakontrolUdfoer, {
-    fakturaId: "f-egen", handling: "ekstra-godkend", forventetRevision: 1, requestId: "egen-2",
+    fakturaId: "f-egen", handling: "ekstra-godkend", modul: "procure",
+    forventetRevision: 1, requestId: "egen-2",
   }),
   (error) => error?.code === "permission-denied" && /anden person/.test(error.message),
 );
 const andenSvar = await run(functions.fakturakontrolUdfoer, {
-  fakturaId: "f-egen", handling: "ekstra-godkend", forventetRevision: 1, requestId: "egen-3",
+  fakturaId: "f-egen", handling: "ekstra-godkend", modul: "procure",
+  forventetRevision: 1, requestId: "egen-3",
 }, auth(anden));
 assert.equal(andenSvar.status, "arkiveret");
 assert.equal((await db.ref(`tenants/${tenantA}/fakturaer/f-egen/ekstraKontrolleretAf`).get()).val(), anden);

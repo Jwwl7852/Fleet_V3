@@ -104,6 +104,7 @@ export default function FakturacenterWorkspace({
     || scenarie.faktura.kontrolstatus === KONTROL_STATUS.kontrolleret;
   const erEkstraKontrol = scenarie.faktura.serverKontrolstatus
     === FAKTURAKONTROL_STATUS.ekstraKontrol;
+  const modulKontroller = Object.values(scenarie.faktura.modulKontroller || {});
   const harAdvarsler = scenarie.faktura.uløsteAdvarsler?.length > 0;
 
   return (
@@ -394,20 +395,31 @@ export default function FakturacenterWorkspace({
             )}
             {serverKilde && erEkstraKontrol && (
               <div className="fic-extra-control">
-                <p>Serveren kontrollerer, at du er udpeget, og at du ikke er den første kontrollant.</p>
-                <button type="button" className="fic-primary"
-                        onClick={onEkstraGodkend} disabled={!kanKontrollere || serverHandling}>
-                  {serverHandling ? "Behandler…" : "Godkend ekstra kontrol"}
-                </button>
+                <p>Hvert berørt modul godkender sin egen summerede nettoandel. Serveren håndhæver den
+                  navngivne anden godkender og afviser egen godkendelse.</p>
+                <div className="fic-module-control-list">
+                  {modulKontroller.map((trin) => <article key={trin.modul}>
+                    <div><b>{String(trin.modul).toUpperCase()}</b>
+                      <span>{kroner(trin.nettoOere)} · {trin.status}</span></div>
+                    {trin.status === "afventer" ? <>
+                      <button type="button" className="fic-primary"
+                        onClick={() => onEkstraGodkend(trin.modul)}
+                        disabled={!kanKontrollere || serverHandling}>
+                        {serverHandling ? "Behandler…" : `Godkend ${String(trin.modul).toUpperCase()}`}
+                      </button>
+                      <button type="button" className="fic-secondary"
+                        onClick={() => onEkstraAfvis(trin.modul)}
+                        disabled={!kanKontrollere || serverHandling || !begrundelse.trim()}>
+                        Send tilbage
+                      </button>
+                    </> : null}
+                  </article>)}
+                </div>
                 <label className="fic-reason">
                   <span>Begrundelse ved tilbagesendelse</span>
                   <textarea value={begrundelse} onChange={(event) => setBegrundelse(event.target.value)}
-                            placeholder="Beskriv hvorfor fakturaen sendes tilbage…" />
+                    placeholder="Beskriv hvorfor fakturaen sendes tilbage…" />
                 </label>
-                <button type="button" className="fic-secondary" onClick={onEkstraAfvis}
-                        disabled={!kanKontrollere || serverHandling || !begrundelse.trim()}>
-                  Send tilbage til Indbakke
-                </button>
               </div>
             )}
             {serverKilde && erLåst && (

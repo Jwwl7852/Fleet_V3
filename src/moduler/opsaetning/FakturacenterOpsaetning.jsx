@@ -10,7 +10,10 @@ import {
   DEMO_MAILBOX,
   DEMO_VEYRO_MAIL,
 } from "../../fleet/demo-fakturacenter-intake.js";
-import { EKSTRA_KONTROL_MODEL } from "../../fleet/fakturacenter-intake.js";
+import {
+  FAKTURAKONTROL_MODEL as EKSTRA_KONTROL_MODEL,
+  FAKTURAKONTROL_MODULER,
+} from "../../fleet/fakturacenter-kontrol.js";
 import { Kort } from "../../fleet/ui.jsx";
 import { MailForbindelserPanel } from "../oekonomi/FakturacenterPrototypeDele.jsx";
 import "../oekonomi/FakturacenterIntake.css";
@@ -26,9 +29,11 @@ import "../oekonomi/FakturacenterIntake.css";
 export default function FakturacenterOpsaetning() {
   const { bruger } = useFleet();
   const måAdministrere = harPerm(bruger?.perms, PERM.brugereSkriv);
-  const [model, setModel] = useState(EKSTRA_KONTROL_MODEL.ingen);
-  const [graense, setGraense] = useState("");
-  const [kontrollanter, setKontrollanter] = useState([]);
+  const [regler, setRegler] = useState(() => Object.fromEntries(
+    FAKTURAKONTROL_MODULER.map((modul) => [modul, {
+      model: EKSTRA_KONTROL_MODEL.ingen, graense: "", kontrollantUid: "",
+    }]),
+  ));
   const [revision, setRevision] = useState(0);
   const [tilstand, setTilstand] = useState("henter");
   const [besked, setBesked] = useState(null);
@@ -57,12 +62,16 @@ export default function FakturacenterOpsaetning() {
         return;
       }
       const opsaetning = svar.data?.opsaetning || {};
-      setModel(opsaetning.model || EKSTRA_KONTROL_MODEL.ingen);
-      setGraense(Number.isSafeInteger(opsaetning.graenseNettoOere)
-        ? new Intl.NumberFormat("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-          .format(opsaetning.graenseNettoOere / 100)
-        : "");
-      setKontrollanter(opsaetning.kontrollantUids || []);
+      setRegler(Object.fromEntries(FAKTURAKONTROL_MODULER.map((modul) => {
+        const regel = opsaetning.moduler?.[modul] || {};
+        return [modul, {
+          model: regel.model || EKSTRA_KONTROL_MODEL.ingen,
+          graense: Number.isSafeInteger(regel.graenseNettoOere)
+            ? new Intl.NumberFormat("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              .format(regel.graenseNettoOere / 100) : "",
+          kontrollantUid: regel.kontrollantUid || "",
+        }];
+      })));
       setRevision(Number(opsaetning.revision || 0));
       setTilstand("klar");
       setBesked(null);
@@ -70,30 +79,39 @@ export default function FakturacenterOpsaetning() {
     return () => { aktiv = false; };
   }, []);
 
-  const skiftKontrollant = (uid) => setKontrollanter((valgte) =>
-    valgte.includes(uid) ? valgte.filter((id) => id !== uid) : [...valgte, uid]);
+  const opdatérRegel = (modul, felt, værdi) => setRegler((nuværende) => ({
+    ...nuværende, [modul]: { ...nuværende[modul], [felt]: værdi },
+  }));
 
-  const parseGraenseOere = () => {
+  const parseGraenseOere = (graense) => {
     const normaliseret = graense.trim().replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
     const tal = Number(normaliseret);
     return Number.isFinite(tal) && tal >= 0 ? Math.round(tal * 100) : null;
   };
 
   const gem = async () => {
-    const graenseNettoOere = model === EKSTRA_KONTROL_MODEL.overBeloeb ? parseGraenseOere() : null;
-    if (model === EKSTRA_KONTROL_MODEL.overBeloeb && graenseNettoOere == null) {
-      setBesked("Angiv en gyldig beløbsgrænse ekskl. moms.");
-      return;
-    }
-    if (model !== EKSTRA_KONTROL_MODEL.ingen && kontrollanter.length === 0) {
-      setBesked("Udpeg mindst én ekstra kontrollant, før funktionen aktiveres.");
-      return;
-    }
+    const moduler = Object.fromEntries(FAKTURAKONTROL_MODULER.map((modul) => {
+      const regel = regler[modul];
+      return [modul, {
+        model: regel.model,
+        graenseNettoOere: regel.model === EKSTRA_KONTROL_MODEL.overBeloeb
+          ? parseGraenseOere(regel.graense) : null,
+        kontrollantUid: regel.model === EKSTRA_KONTROL_MODEL.ingen
+          ? null : regel.kontrollantUid,
+      }];
+    }));
+    const ugyldigGraense = FAKTURAKONTROL_MODULER.find((modul) =>
+      moduler[modul].model === EKSTRA_KONTROL_MODEL.overBeloeb
+      && moduler[modul].graenseNettoOere == null);
+    if (ugyldigGraense) return setBesked(`Angiv en gyldig nettogrænse for ${ugyldigGraense.toUpperCase()}.`);
+    const udenKontrollant = FAKTURAKONTROL_MODULER.find((modul) =>
+      moduler[modul].model !== EKSTRA_KONTROL_MODEL.ingen && !moduler[modul].kontrollantUid);
+    if (udenKontrollant) return setBesked(`Udpeg en anden godkender for ${udenKontrollant.toUpperCase()}.`);
     setTilstand("gemmer");
     setBesked(null);
     const svar = await gemFakturacenterOpsaetning({
       forventetRevision: revision,
-      opsaetning: { model, graenseNettoOere, kontrollantUids: kontrollanter },
+      opsaetning: { version: 2, moduler },
     });
     if (!svar.ok) {
       setTilstand("fejl");
@@ -109,37 +127,42 @@ export default function FakturacenterOpsaetning() {
     <div className="fc-grid" style={{ gap: 16 }}>
       <Kort titel="Ekstra fakturakontrol">
         <p className="fc-hint">
-          Beløbsgrænsen beregnes ekskl. moms. Den ekstra kontrollant skal være
-          udpeget af kunden og være en anden person end første kontrollant.
+          Reglerne gælder fakturakontrol og er adskilt fra PROCUREs ordregodkendelser.
+          Nettogrænsen beregnes pr. berørt modul ekskl. moms. Hvert modul kan
+          have sin egen navngivne anden godkender.
         </p>
-        <div className="fic-settings-grid">
-          <label className="fic-settings-field">
-            <span>Kontrolmodel</span>
-            <select value={model} onChange={(event) => setModel(event.target.value)}
-              disabled={!måAdministrere || tilstand === "henter" || tilstand === "gemmer"}>
-              <option value={EKSTRA_KONTROL_MODEL.ingen}>Ingen ekstra kontrol</option>
-              <option value={EKSTRA_KONTROL_MODEL.alle}>Ekstra kontrol af alle fakturaer</option>
-              <option value={EKSTRA_KONTROL_MODEL.overBeloeb}>Ekstra kontrol over beløbsgrænse</option>
-            </select>
-          </label>
-          <label className="fic-settings-field">
-            <span>Beløbsgrænse ekskl. moms</span>
-            <input type="text" inputMode="decimal" placeholder="Fx 25.000,00 kr."
-              value={graense} onChange={(event) => setGraense(event.target.value)}
-              disabled={!måAdministrere || tilstand === "henter" || tilstand === "gemmer"
-                || model !== EKSTRA_KONTROL_MODEL.overBeloeb} />
-          </label>
-          <fieldset className="fic-settings-field fic-reviewer-field" disabled={!måAdministrere
-            || tilstand === "henter" || tilstand === "gemmer" || model === EKSTRA_KONTROL_MODEL.ingen}>
-            <legend>Udpegede ekstra kontrollanter</legend>
-            {muligeKontrollanter.length ? muligeKontrollanter.map((post) => (
-              <label key={post.id} className="fic-reviewer-choice">
-                <input type="checkbox" checked={kontrollanter.includes(post.id)}
-                  onChange={() => skiftKontrollant(post.id)} />
-                <span>{post.navn || post.email || post.id}<small>{post.rolle}</small></span>
+        <div className="fic-module-rules">
+          {FAKTURAKONTROL_MODULER.map((modul) => {
+            const regel = regler[modul];
+            const låst = !måAdministrere || tilstand === "henter" || tilstand === "gemmer";
+            return <fieldset key={modul} className="fic-module-rule" disabled={låst}>
+              <legend>{modul.toUpperCase()}</legend>
+              <label className="fic-settings-field"><span>Kontrol</span>
+                <select value={regel.model}
+                  onChange={(event) => opdatérRegel(modul, "model", event.target.value)}>
+                  <option value={EKSTRA_KONTROL_MODEL.ingen}>Ingen ekstra kontrol</option>
+                  <option value={EKSTRA_KONTROL_MODEL.overBeloeb}>Over nettogrænse</option>
+                  <option value={EKSTRA_KONTROL_MODEL.alle}>Alle fakturaer</option>
+                </select>
               </label>
-            )) : <span className="fc-hint">Ingen aktive brugere med rettigheden fakturaer.godkend.</span>}
-          </fieldset>
+              <label className="fic-settings-field"><span>Nettogrænse ekskl. moms</span>
+                <input type="text" inputMode="decimal" placeholder="Fx 25.000,00 kr."
+                  value={regel.graense}
+                  onChange={(event) => opdatérRegel(modul, "graense", event.target.value)}
+                  disabled={låst || regel.model !== EKSTRA_KONTROL_MODEL.overBeloeb} />
+              </label>
+              <label className="fic-settings-field"><span>Anden godkender</span>
+                <select value={regel.kontrollantUid}
+                  onChange={(event) => opdatérRegel(modul, "kontrollantUid", event.target.value)}
+                  disabled={låst || regel.model === EKSTRA_KONTROL_MODEL.ingen}>
+                  <option value="">Vælg navngiven bruger</option>
+                  {muligeKontrollanter.map((post) => <option key={post.id} value={post.id}>
+                    {post.navn || post.email || post.id} · {post.rolle}
+                  </option>)}
+                </select>
+              </label>
+            </fieldset>;
+          })}
         </div>
         <div className="fc-formular-knapper" style={{ marginTop: 14 }}>
           <button type="button" className="fic-primary" onClick={gem}

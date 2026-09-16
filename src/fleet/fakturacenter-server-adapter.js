@@ -181,6 +181,8 @@ export function serverFakturaTilScenarie(faktura = {}) {
       kontrolRevision: Number.isSafeInteger(Number(faktura.kontrolRevision))
         ? Number(faktura.kontrolRevision)
         : 0,
+      modulKontroller: faktura.modulKontroller && typeof faktura.modulKontroller === "object"
+        ? structuredClone(faktura.modulKontroller) : {},
       matchOprindelse: destination ? MATCH_OPRINDELSE.manuel : MATCH_OPRINDELSE.ikkePlaceret,
       låst: serverKontrolstatus === FAKTURAKONTROL_STATUS.arkiveret,
       historik,

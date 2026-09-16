@@ -61,10 +61,11 @@ export async function gemFakturacenterOpsaetning({ opsaetning, forventetRevision
 
 /** Veyro-kontrol ændrer ikke betalings-/bogføringsstatus. */
 export async function udførFakturakontrol({ fakturaId, handling = "kontroller",
-  forventetRevision, begrundelse, requestId } = {}) {
+  modul, forventetRevision, begrundelse, requestId } = {}) {
   return kald("fakturakontrolUdfoer", {
     fakturaId,
     handling,
+    modul: modul || undefined,
     forventetRevision: Number(forventetRevision),
     begrundelse: begrundelse ? String(begrundelse).trim() : undefined,
     requestId: requestId || nyRequestId("fc-kontrol"),

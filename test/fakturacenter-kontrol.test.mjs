@@ -6,6 +6,7 @@ import {
   FAKTURAKONTROL_STATUS as S,
   anvendFakturakontrol,
   fakturaKraeverEkstraKontrol,
+  fakturakontrolTrin,
   validerFakturakontrolOpsaetning,
   vurderFakturakontrol,
 } from "../src/fleet/fakturacenter-kontrol.js";
@@ -31,10 +32,81 @@ const opsaetning = (ekstra = {}) => ({
   ...ekstra,
 });
 
+const modulOpsaetning = (moduler) => ({ version: 2, revision: 1, moduler: {
+  fleet: { model: M.ingen, kontrollantUid: null },
+  facility: { model: M.ingen, kontrollantUid: null },
+  procure: { model: M.ingen, kontrollantUid: null },
+  ...moduler,
+} });
+
 test("ekstra kontrol kan ikke aktiveres uden udpeget kontrollant", () => {
   const svar = validerFakturakontrolOpsaetning({ model: M.alle, kontrollantUids: [] });
   assert.equal(svar.ok, false);
-  assert.match(svar.fejl.kontrollantUids, /mindst én/i);
+  assert.match(svar.fejl["fleet.kontrollantUid"], /udpeg/i);
+});
+
+test("modulregler vurderer den summerede nettoandel og ikke hele fakturaen", () => {
+  const post = faktura({
+    beloebOere: 300_000,
+    fordelinger: [
+      { modul: "fleet", nettoOere: 80_000 },
+      { modul: "fleet", nettoOere: 30_001 },
+      { modul: "procure", nettoOere: 189_999 },
+    ],
+  });
+  const regler = modulOpsaetning({
+    fleet: { model: M.overBeloeb, graenseNettoOere: 110_000, kontrollantUid: "uid-fleet" },
+    procure: { model: M.overBeloeb, graenseNettoOere: 200_000, kontrollantUid: "uid-procure" },
+  });
+  assert.deepEqual(fakturakontrolTrin(post, regler), [{
+    modul: "fleet", nettoOere: 110_001, kontrollantUid: "uid-fleet",
+  }]);
+});
+
+test("fler-modulfaktura arkiveres først efter alle krævede modultrin", () => {
+  const regler = modulOpsaetning({
+    fleet: { model: M.alle, kontrollantUid: "uid-fleet" },
+    procure: { model: M.alle, kontrollantUid: "uid-procure" },
+  });
+  const oprindelig = faktura({ fordelinger: [
+    { modul: "fleet", nettoOere: 40_000 }, { modul: "procure", nettoOere: 60_000 },
+  ] });
+  const første = anvendFakturakontrol({
+    faktura: oprindelig, opsaetning: regler, handling: H.kontroller,
+    uid: "uid-1", nu: 100, operationId: "multi-1",
+  });
+  assert.equal(første.status, S.ekstraKontrol);
+  assert.deepEqual(Object.keys(første.faktura.modulKontroller), ["fleet", "procure"]);
+  assert.equal(vurderFakturakontrol({
+    faktura: første.faktura, opsaetning: regler, handling: H.ekstraGodkend,
+    modul: "fleet", uid: "uid-fleet", forventetRevision: 1,
+  }).ok, true);
+  const fleetGodkendt = anvendFakturakontrol({
+    faktura: første.faktura, opsaetning: regler, handling: H.ekstraGodkend,
+    modul: "fleet", uid: "uid-fleet", nu: 200, operationId: "multi-2",
+  });
+  assert.equal(fleetGodkendt.status, S.ekstraKontrol);
+  const procureGodkendt = anvendFakturakontrol({
+    faktura: fleetGodkendt.faktura, opsaetning: regler, handling: H.ekstraGodkend,
+    modul: "procure", uid: "uid-procure", nu: 300, operationId: "multi-3",
+  });
+  assert.equal(procureGodkendt.status, S.arkiveret);
+});
+
+test("modultrinnet kan kun godkendes af den navngivne anden godkender", () => {
+  const regler = modulOpsaetning({ fleet: { model: M.alle, kontrollantUid: "uid-fleet" } });
+  const første = anvendFakturakontrol({
+    faktura: faktura({ destinationArt: "fleet" }), opsaetning: regler,
+    handling: H.kontroller, uid: "uid-1", nu: 100, operationId: "named-1",
+  });
+  assert.equal(vurderFakturakontrol({
+    faktura: første.faktura, opsaetning: regler, handling: H.ekstraGodkend,
+    modul: "fleet", uid: "uid-other", forventetRevision: 1,
+  }).kode, "ikke-udpeget");
+  assert.equal(vurderFakturakontrol({
+    faktura: første.faktura, opsaetning: regler, handling: H.ekstraGodkend,
+    modul: "fleet", uid: "uid-fleet", forventetRevision: 1,
+  }).ok, true);
 });
 
 test("beløbsgrænsen bruger netto ekskl. moms og ikke moms/total", () => {

@@ -614,7 +614,7 @@ function FakturacenterPrototype({ bruger }) {
     setLokalBesked("Fakturaen blev låst og flyttet til Arkiv i den lokale prototype. Du er stadig i Indbakke.");
   };
 
-  const afslutEkstraKontrol = async (handling) => {
+  const afslutEkstraKontrol = async (handling, modul) => {
     if (!valgt || erLokalDemo) return;
     if (!kanKontrollere) {
       setLokalBesked("Du mangler rettigheden fakturaer.godkend.");
@@ -626,6 +626,7 @@ function FakturacenterPrototype({ bruger }) {
     const svar = await udførFakturakontrol({
       fakturaId: valgt.faktura.fakturaId,
       handling,
+      modul,
       forventetRevision: valgt.faktura.kontrolRevision,
       begrundelse: handling === FAKTURAKONTROL_HANDLING.ekstraAfvis ? begrundelse : undefined,
     });
@@ -1005,8 +1006,8 @@ function FakturacenterPrototype({ bruger }) {
                   ? [valgt.match.placering] : [])}
                 onFordelLigeligt={() => fordelHeleNetto(valgt.match.kandidater)}
                 onAccepterAdvarsler={accepterAdvarsler} onKontrollér={kontrollér}
-                onEkstraGodkend={() => afslutEkstraKontrol(FAKTURAKONTROL_HANDLING.ekstraGodkend)}
-                onEkstraAfvis={() => afslutEkstraKontrol(FAKTURAKONTROL_HANDLING.ekstraAfvis)}
+                onEkstraGodkend={(modul) => afslutEkstraKontrol(FAKTURAKONTROL_HANDLING.ekstraGodkend, modul)}
+                onEkstraAfvis={(modul) => afslutEkstraKontrol(FAKTURAKONTROL_HANDLING.ekstraAfvis, modul)}
                 onGenåbn={genåbn} onGenåbnDestination={genåbnDestination}
                 onKlassificérMailfil={klassificérMailfil} onOpdelMailbundle={opdelMailbundle}
                 onKørBlandetMasseEksempel={kørBlandetMasseEksempel} />
