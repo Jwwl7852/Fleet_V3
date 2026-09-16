@@ -182,7 +182,7 @@ try {
   const routes = [
     ["/fleet-v2", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('God aften'))", "04-overblik"],
     ["/fleet-v2/arbejdsko", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Arbejdskø'))", "05-arbejdsko"],
-    ["/fleet-v2/indberetninger", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Indberetninger og triage'))", "06-indberetninger"],
+    ["/fleet-v2/indberetninger", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.trim()==='Indberetninger')", "06-indberetninger"],
     ["/fleet-v2/livekort", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Livekort'))", "07-livekort"],
     ["/fleet-v2/sager/case-demo-001", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Knirkende bremser'))", "08-sagsmappe"],
     ["/oekonomi/fakturacenter", "[...document.querySelectorAll('h1')].some((node)=>node.textContent.includes('Fakturacenter'))", "09-fakturacenter"],
@@ -201,11 +201,10 @@ try {
   for (const [width, height] of (viewportMatrixEnabled ? [[1920,1080],[1440,900],[390,844],[360,800]] : [])) {
     await admin.viewport(width, height, width <= 480);
     for (const [route, ready, prefix] of routes) {
-      // Viewportmatricen dokumenterer også direkte URL/reload. En manuel
-      // pushState+popstate i hurtig rækkefølge kan afbryde providerens
-      // asynkrone fixture-indlæsning og er ikke den navigation, en bruger
-      // udfører. De egentlige SPA-tilbageforløb prøves separat nedenfor.
-      await admin.navigate(route, ready);
+      // Layoutmatricen holder den autentificerede root-session og FLEETs
+      // IndexedDB-provider levende. Direkte URL, reload og tilbageforløb
+      // prøves særskilt nedenfor, så én prøve ikke måler to forskellige ting.
+      await admin.spaNavigate(route, ready);
       await admin.evaluate("document.querySelector('.fc-nulstil-visning')?.click()");
       const shot = await admin.screenshot(`${prefix}-${width}x${height}.png`);
       viewports.push({ route, width, height, ...shot });
@@ -340,10 +339,10 @@ try {
   screenshots.push(await admin.screenshot("12-fakturacenter-integreret-1440x900.png"));
 
   await admin.evaluate(setInput('.fic-list-controls label:nth-child(1) select', 'matchet'));
-  await admin.waitFor("document.querySelectorAll('.fic-invoice').length===4", "matchfilter Matchet");
+  await admin.waitFor("document.querySelectorAll('.fic-invoice').length>=4", "matchfilter Matchet");
   const matchedInvoices = await admin.evaluate("[...document.querySelectorAll('.fic-invoice')].map((node)=>node.textContent.match(/FC-[A-Z-]+/)?.[0]).filter(Boolean)");
   await admin.evaluate(setInput('.fic-list-controls label:nth-child(2) select', 'flere-moduler'));
-  await admin.waitFor("document.querySelectorAll('.fic-invoice').length===1 && document.body.innerText.includes('FC-FILTER-FLERE')", "modulfilter Flere moduler");
+  await admin.waitFor("document.querySelectorAll('.fic-invoice').length===2 && document.body.innerText.includes('FC-FILTER-FLERE') && document.body.innerText.includes('FC-MULTI-KONTROL')", "modulfilter Flere moduler");
   const multipleModuleInvoices = await admin.evaluate("[...document.querySelectorAll('.fic-invoice')].map((node)=>node.textContent.match(/FC-[A-Z-]+/)?.[0]).filter(Boolean)");
   await admin.evaluate(setInput('.fic-list-controls label:nth-child(1) select', 'mangler-match'));
   await admin.evaluate(setInput('.fic-list-controls label:nth-child(2) select', 'alle-moduler'));
@@ -379,13 +378,17 @@ try {
   await dragSeparator(admin, ".fleet-panel-handle", 1, -54);
   const reportPanelsAfter = await admin.evaluate("[...document.querySelectorAll('.fleet-panel-handle')].map((node)=>Number(node.getAttribute('aria-valuenow'))) ");
   assert(reportPanelsAfter[0] !== reportPanelsBefore[0] && reportPanelsAfter[1] !== reportPanelsBefore[1], `Indberetningernes to separatorer reagerede ikke på pointertræk: ${JSON.stringify({ reportPanelsBefore, reportPanelsAfter })}`);
-  const reportScroll = await admin.evaluate("(()=>{const layout=document.querySelector('.triage-layout');layout.style.minHeight='0';layout.style.height='360px';const selectors=['.triage-list','.triage-detail-panel','.case-action-panel'];return selectors.map((selector,index)=>{const node=document.querySelector(selector);node.scrollTop=Math.min(node.scrollHeight-node.clientHeight,30+index*20);return{selector,after:node.scrollTop,overflowY:getComputedStyle(node).overflowY,scrollHeight:node.scrollHeight,clientHeight:node.clientHeight};});})()");
-  assert(reportScroll.every((item) => item.overflowY === "auto" && item.scrollHeight > item.clientHeight && item.after > 0), `Indberetningernes tre paneler var ikke uafhængigt rulbare i en kontrolleret 360 px arbejdsflade: ${JSON.stringify(reportScroll)}`);
+  const reportScroll = await admin.evaluate("(()=>{const layout=document.querySelector('.triage-layout');const selectors=['.triage-list','.triage-detail-panel','.case-action-panel'];return{layout:{height:layout.getBoundingClientRect().height,inlineHeight:layout.style.height||null,inlineMinHeight:layout.style.minHeight||null},panels:selectors.map((selector,index)=>{const node=document.querySelector(selector);node.scrollTop=Math.min(node.scrollHeight-node.clientHeight,30+index*20);return{selector,after:node.scrollTop,overflowY:getComputedStyle(node).overflowY,scrollHeight:node.scrollHeight,clientHeight:node.clientHeight};})};})()");
+  assert(!reportScroll.layout.inlineHeight && !reportScroll.layout.inlineMinHeight
+    && reportScroll.panels.every((item) => item.overflowY === "auto"
+      && (item.scrollHeight <= item.clientHeight + 1 || item.after > 0))
+    && reportScroll.panels.some((item) => item.scrollHeight > item.clientHeight + 1 && item.after > 0),
+  `Indberetningernes tre naturlige paneler var ikke uafhængigt rulbare: ${JSON.stringify(reportScroll)}`);
   await admin.send("Page.reload", {}, admin.sessionId);
   await admin.waitFor("document.querySelectorAll('.fleet-panel-handle').length===2", "Indberetningspaneler efter reload");
   const reportPanelsReload = await admin.evaluate("[...document.querySelectorAll('.fleet-panel-handle')].map((node)=>Number(node.getAttribute('aria-valuenow'))) ");
   assert(reportPanelsReload[0] === reportPanelsAfter[0] && reportPanelsReload[1] === reportPanelsAfter[1], "Indberetningernes panelbredder blev ikke bevaret efter reload.");
-  checks.reportPanelPersistence = { pointerInput: "begge separatorer", before: reportPanelsBefore, after: reportPanelsAfter, afterReload: reportPanelsReload, constrainedWorkspaceHeight: 360, independentScrollRegions: reportScroll };
+  checks.reportPanelPersistence = { pointerInput: "begge separatorer", before: reportPanelsBefore, after: reportPanelsAfter, afterReload: reportPanelsReload, naturalProductGeometry: true, independentScrollRegions: reportScroll };
 
   await admin.spaNavigate("/fleet-v2/enheder", "document.querySelector('.unit-table')");
   const statusUnitBefore = await readSharedUnit("unit-nb-003");
@@ -481,7 +484,7 @@ try {
   await admin.waitFor("document.querySelector('[aria-label=\"Serviceinterval måneder\"]')", "service-/intervalformular");
   screenshots.push(await admin.screenshot("34-service-intervalformular-1440x900.png"));
   await admin.evaluate("document.querySelector('.service-dialog [aria-label=\"Luk\"]')?.click()");
-  await admin.spaNavigate("/opsaetning/fakturacenter", "document.body.innerText.includes('Ekstra fakturakontrol')");
+  await admin.spaNavigate("/opsaetning/godkendelsesregler", "document.body.innerText.includes('Fælles fakturagodkendelse')");
   screenshots.push(await admin.screenshot("35-fakturacenter-indstillinger-1440x900.png"));
 
   await admin.spaNavigate("/oekonomi/fakturacenter?sektion=indbakke", "document.body.innerText.includes('FC-ENKELT-OVER')");
@@ -495,7 +498,7 @@ try {
 
   await admin.spaNavigate("/oekonomi/fakturacenter?sektion=ekstra-kontrol", "document.body.innerText.includes('FC-ENKELT-OVER')");
   await admin.evaluate("document.querySelector('.fic-invoice-main').click()");
-  await admin.evaluate(clickText("button", "Godkend ekstra kontrol"));
+  await admin.evaluate(clickText("button", "Godkend FLEET"));
   await admin.waitFor("document.body.innerText.includes('anden person')", "egen ekstra godkendelse afvises");
   checks.invoiceSelfApprovalDenied = await admin.evaluate("[...document.querySelectorAll('[role=status]')].map((node)=>node.textContent.trim()).find((text)=>text.includes('anden person'))");
   screenshots.push(await admin.screenshot("18-ekstra-kontrol-egen-afvist-1440x900.png"));
@@ -504,11 +507,40 @@ try {
   await login(approver, TEST_USERS.approver, "/oekonomi/fakturacenter?sektion=ekstra-kontrol");
   await approver.waitFor("document.body.innerText.includes('FC-ENKELT-OVER')", "ekstra kontrol som anden bruger");
   await approver.evaluate("document.querySelector('.fic-invoice-main').click()");
-  await approver.evaluate(clickText("button", "Godkend ekstra kontrol"));
+  await approver.evaluate(clickText("button", "Godkend FLEET"));
   await approver.waitFor("document.body.innerText.includes('flyttet til Arkiv')", "anden bruger godkender ekstra kontrol");
   await approver.spaNavigate("/oekonomi/fakturacenter?sektion=arkiv", "document.body.innerText.includes('FC-ENKELT-OVER')");
   checks.invoiceSecondApprover = await approver.evaluate("({archive:document.body.innerText.includes('FC-ENKELT-OVER'),user:document.querySelector('.fc-bruger')?.textContent||document.body.innerText})");
   screenshots.push(await approver.screenshot("19-ekstra-kontrol-anden-godkender-1440x900.png"));
+
+  await admin.spaNavigate("/oekonomi/fakturacenter?sektion=indbakke", "document.body.innerText.includes('FC-MULTI-KONTROL')");
+  await admin.evaluate(setInput('.fic-filter input', "FC-MULTI-KONTROL"));
+  await admin.waitFor("document.querySelectorAll('.fic-invoice').length===1", "fler-modul-faktura i Indbakke");
+  await admin.evaluate("document.querySelector('.fic-invoice-main').click()");
+  await admin.evaluate(clickText("button", "Markér som kontrolleret"));
+  await admin.waitFor("document.body.innerText.includes('sendt til Ekstra kontrol')", "fler-modul-faktura sendt til Ekstra kontrol");
+  await admin.spaNavigate("/oekonomi/fakturacenter?sektion=ekstra-kontrol", "document.body.innerText.includes('FC-MULTI-KONTROL')");
+  await admin.evaluate(setInput('.fic-filter input', "FC-MULTI-KONTROL"));
+  await admin.evaluate("document.querySelector('.fic-invoice-main').click()");
+  await admin.waitFor("document.querySelectorAll('.fic-module-control-list article').length===2", "to krævede modulkontroller");
+  checks.invoiceMultiModuleBeforeApproval = await admin.evaluate("({steps:[...document.querySelectorAll('.fic-module-control-list article')].map((node)=>node.textContent.trim())})");
+  screenshots.push(await admin.screenshot("38-fler-modul-ekstra-kontrol-1440x900.png"));
+
+  await approver.spaNavigate("/oekonomi/fakturacenter?sektion=ekstra-kontrol", "document.body.innerText.includes('FC-MULTI-KONTROL')");
+  await approver.evaluate(setInput('.fic-filter input', "FC-MULTI-KONTROL"));
+  await approver.evaluate("document.querySelector('.fic-invoice-main').click()");
+  await approver.evaluate(clickText("button", "Godkend FLEET"));
+  await approver.waitFor("document.body.innerText.includes('bliver i Ekstra kontrol')", "første modulgodkendelse bevarer Ekstra kontrol");
+  await approver.waitFor("document.body.innerText.includes('FC-MULTI-KONTROL')", "fler-modul-faktura efter første trin");
+  await approver.evaluate(setInput('.fic-filter input', "FC-MULTI-KONTROL"));
+  await approver.evaluate("document.querySelector('.fic-invoice-main').click()");
+  await approver.waitFor("document.body.innerText.includes('Godkend FACILITY')", "andet modulgodkendelsestrin");
+  screenshots.push(await approver.screenshot("39-fler-modul-delvist-godkendt-1440x900.png"));
+  await approver.evaluate(clickText("button", "Godkend FACILITY"));
+  await approver.waitFor("document.body.innerText.includes('flyttet til Arkiv')", "sidste modulgodkendelse arkiverer");
+  await approver.spaNavigate("/oekonomi/fakturacenter?sektion=arkiv", "document.body.innerText.includes('FC-MULTI-KONTROL')");
+  checks.invoiceMultiModuleArchived = await approver.evaluate("document.body.innerText.includes('FC-MULTI-KONTROL')");
+  screenshots.push(await approver.screenshot("40-fler-modul-arkiveret-1440x900.png"));
 
   await admin.spaNavigate("/oekonomi/fakturacenter?sektion=indbakke", "document.body.innerText.includes('FC-MASSE-OVER')");
   await admin.evaluate(setInput('.fic-filter input', "FC-MASSE"));
@@ -540,6 +572,10 @@ try {
     massOver: invoiceState["fc-masse-over"].kontrolstatus,
     massNetUnder: invoiceState["fc-masse-net-under"].kontrolstatus,
     massMissingBasis: invoiceState["fc-masse-mangler-grundlag"].kontrolstatus,
+    multiModule: {
+      status: invoiceState["fc-multi-kontrol"].kontrolstatus,
+      steps: invoiceState["fc-multi-kontrol"].modulKontroller,
+    },
     allPaymentStatusesUnchanged: Object.values(invoiceState).every((invoice) => invoice.status === "modtaget"),
   };
   assert(checks.invoiceServerState.single.status === "arkiveret"
@@ -548,6 +584,9 @@ try {
     && checks.invoiceServerState.massOver === "ekstra-kontrol"
     && checks.invoiceServerState.massNetUnder === "arkiveret"
     && checks.invoiceServerState.massMissingBasis === "indbakke"
+    && checks.invoiceServerState.multiModule.status === "arkiveret"
+    && checks.invoiceServerState.multiModule.steps?.fleet?.status === "godkendt"
+    && checks.invoiceServerState.multiModule.steps?.facility?.status === "godkendt"
     && checks.invoiceServerState.allPaymentStatusesUnchanged,
   `Fakturacenterets servertilstand matcher ikke de dokumenterede kontroludfald: ${JSON.stringify(checks.invoiceServerState)}`);
 

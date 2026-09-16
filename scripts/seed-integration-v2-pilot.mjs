@@ -6,6 +6,7 @@
  * emulatorporte. Ingen ekstern transport eller produktionsdata anvendes.
  */
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { seedProcureAuthEmulator, TENANT_A } from "./procure-auth-emulator-seed.mjs";
 
 const projectId = process.env.GCLOUD_PROJECT || "demo-veyro-owner";
@@ -19,6 +20,18 @@ assert.equal(authHost, "127.0.0.1:9099");
 assert.equal(databaseHost, "127.0.0.1:9000");
 assert.equal(functionsHost, "127.0.0.1:5001");
 assert.equal(storageHost, "127.0.0.1:9199");
+
+// Firebase CLI lægger konfigurationsreglerne på *-default-rtdb. Browseren og
+// Functions bruger projekt-id'et som runtime-namespace i denne samlede QA.
+// Installer derfor repositoryets uændrede regler eksplicit dér; ellers kan
+// indekserede, autentificerede forespørgsler fejle med et misvisende tomt UI.
+const rules = await readFile(new URL("../firebase.rules.json", import.meta.url), "utf8");
+const rulesResponse = await fetch(`http://${databaseHost}/.settings/rules.json?ns=${projectId}`, {
+  method: "PUT",
+  headers: { "content-type": "application/json", authorization: "Bearer owner" },
+  body: rules,
+});
+assert.equal(rulesResponse.ok, true, await rulesResponse.text());
 
 const { users } = await seedProcureAuthEmulator();
 
@@ -90,6 +103,21 @@ const invoices = {
       facility: { fordelingId: "fc-filter-flere-facility", modul: "facility", destinationId: "facility-case-synthetic", nettoOere: 40_000 },
     },
   }),
+  "fc-multi-kontrol": invoice("FC-MULTI-KONTROL", 260_000, {
+    fordelinger: {
+      fleet: { fordelingId: "fc-multi-kontrol-fleet", modul: "fleet", destinationId: "case-demo-001", nettoOere: 120_000 },
+      facility: { fordelingId: "fc-multi-kontrol-facility", modul: "facility", destinationId: "facility-case-synthetic", nettoOere: 40_000 },
+      procure: { fordelingId: "fc-multi-kontrol-procure", modul: "procure", destinationId: "procure-order-synthetic", nettoOere: 100_000 },
+    },
+  }),
+  ...Object.fromEntries(Array.from({ length: 9 }, (_, index) => {
+    const nummer = String(index + 1).padStart(2, "0");
+    return [`fc-scroll-${nummer}`, invoice(`FC-SCROLL-${nummer}`, 35_000 + index * 2_500, {
+      destinationId: index % 2 ? "case-demo-002" : "case-demo-001",
+      destinationNavn: `FLEET-sag · case-demo-00${index % 2 ? 2 : 1}`,
+      modtagetMs: Date.parse(`2026-09-${String(13 - index).padStart(2, "0")}T10:00:00Z`),
+    })];
+  })),
 };
 
 const patch = {
@@ -97,9 +125,12 @@ const patch = {
   [`tenants/${TENANT_A}/virksomhed/navn`]: "Veyro pilotdrift — syntetisk",
   [`tenants/${TENANT_A}/koeretoejer`]: units,
   [`tenants/${TENANT_A}/fakturacenterOpsaetning`]: {
-    model: "over-beloeb",
-    graenseNettoOere: 100_000,
-    kontrollantUids: [users.admin.uid, users.approver.uid].sort(),
+    version: 2,
+    moduler: {
+      fleet: { model: "over-beloeb", graenseNettoOere: 100_000, kontrollantUid: users.approver.uid },
+      facility: { model: "alle", graenseNettoOere: null, kontrollantUid: users.approver.uid },
+      procure: { model: "over-beloeb", graenseNettoOere: 200_000, kontrollantUid: users.approver.uid },
+    },
     revision: 1,
   },
   [`tenants/${TENANT_A}/fakturaer`]: invoices,
@@ -119,7 +150,7 @@ console.log(JSON.stringify({
   syntheticUnits: Object.keys(units).length,
   sharedUnitSource: "tenants/<tenant>/koeretoejer",
   syntheticInvoices: Object.keys(invoices).length,
-  invoiceControl: "net threshold 100000 øre + second approver",
+  invoiceControl: "per-module net thresholds + named second approver",
   modules: Object.keys(modules),
   externalServices: false,
 }, null, 2));
