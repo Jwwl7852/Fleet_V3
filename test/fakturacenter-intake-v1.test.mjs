@@ -1389,7 +1389,7 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
   test("mail er flyttet til Opsætning, mens Arkiv genbruger trepanelvisningen", () => {
     const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
     const opsætning = readFileSync("src/moduler/opsaetning/FakturacenterOpsaetning.jsx", "utf8");
-    assert.match(ui, /navigate\("\/opsaetning\/fakturacenter"/);
+    assert.match(ui, /navigate\("\/opsaetning\/godkendelsesregler"/);
     assert.match(ui, /INDBAKKE_SEKTION\.arkiv\]\.includes\(sektion\)/);
     assert.match(opsætning, /MailForbindelserPanel/);
   });
