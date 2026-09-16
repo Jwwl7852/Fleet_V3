@@ -11,10 +11,11 @@ const erObjekt = (vaerdi) => vaerdi !== null
 
 export function feltPatch(foer, efter, sti = "", resultat = {}) {
   if (Object.is(foer, efter)) return resultat;
-  if (erObjekt(foer) && erObjekt(efter)) {
-    const noegler = new Set([...Object.keys(foer), ...Object.keys(efter)]);
+  if (erObjekt(efter)) {
+    const foerObjekt = erObjekt(foer) ? foer : {};
+    const noegler = new Set([...Object.keys(foerObjekt), ...Object.keys(efter)]);
     for (const noegle of noegler) {
-      feltPatch(foer[noegle], efter[noegle], sti ? `${sti}/${noegle}` : noegle, resultat);
+      feltPatch(foerObjekt[noegle], efter[noegle], sti ? `${sti}/${noegle}` : noegle, resultat);
     }
     return resultat;
   }

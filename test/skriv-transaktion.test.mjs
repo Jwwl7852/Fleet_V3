@@ -50,6 +50,42 @@ describe("optimistisk RTDB-transport", () => {
     assert.deepEqual({ reads, writes, accepted }, { reads: 8, writes: 8, accepted: 0 });
   });
 
+  it("opretter en ny enhed atomisk uden et ugyldigt tomt PATCH-felt", async () => {
+    const kandidat = {
+      enhedsnummer: "QA-NEW-001",
+      status: "aktiv",
+      kmStand: 42,
+      fleetProfil: { afdeling: "Testafdeling" },
+    };
+    let patchKald = 0;
+    let putBody = null;
+    handler = async (request, response) => {
+      if (request.method === "GET") {
+        response.writeHead(200, { "content-type": "application/json", etag: "\"null_etag\"" });
+        response.end("null");
+        return;
+      }
+      putBody = await new Promise((resolve) => {
+        let body = "";
+        request.setEncoding("utf8");
+        request.on("data", (chunk) => { body += chunk; });
+        request.on("end", () => resolve(JSON.parse(body)));
+      });
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify(putBody));
+    };
+
+    const result = await run({
+      opdater: () => kandidat,
+      opdaterPatch: async () => { patchKald += 1; },
+    });
+
+    assert.equal(result.udfald, "put");
+    assert.equal(patchKald, 0);
+    assert.deepEqual(putBody, kandidat);
+    assert.deepEqual(result.efter, kandidat);
+  });
+
   it("læser igen efter 412 og returnerer kun den accepterede serverværdi", async () => {
     let reads = 0;
     let writes = 0;
