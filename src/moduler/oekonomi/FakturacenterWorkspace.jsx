@@ -400,7 +400,8 @@ export default function FakturacenterWorkspace({
                 <div className="fic-module-control-list">
                   {modulKontroller.map((trin) => <article key={trin.modul}>
                     <div><b>{String(trin.modul).toUpperCase()}</b>
-                      <span>{kroner(trin.nettoOere)} · {trin.status}</span></div>
+                      <span>{kroner(trin.nettoOere)} · {trin.status}</span>
+                      <small>Anden godkender: {trin.kontrollantUid}</small></div>
                     {trin.status === "afventer" ? <>
                       <button type="button" className="fic-primary"
                         onClick={() => onEkstraGodkend(trin.modul)}

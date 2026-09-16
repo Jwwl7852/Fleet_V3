@@ -232,7 +232,8 @@ function FakturacenterPrototype({ bruger }) {
       scenarier.filter((scenarie) => sektionMatcher(scenarie, id)).length]),
     ["__ekstraKontrolAktiv", erLokalDemo
       ? false
-      : Boolean(serverOpsaetning && serverOpsaetning.model !== FAKTURAKONTROL_MODEL.ingen)
+      : Object.values(serverOpsaetning?.moduler || {})
+        .some((regel) => regel?.model !== FAKTURAKONTROL_MODEL.ingen)
         || scenarier.some((scenarie) => scenarie.sektion === INDBAKKE_SEKTION.ekstraKontrol)]],
   ), [erLokalDemo, scenarier, serverOpsaetning]);
 
@@ -251,7 +252,7 @@ function FakturacenterPrototype({ bruger }) {
   useEffect(() => {
     if (!ønsketSektion || FAKTURACENTER_SEKTIONER.some(({ id }) => id === ønsketSektion)) return;
     if (legacyMål === "opsaetning") {
-      navigate("/opsaetning/fakturacenter", { replace: true });
+      navigate("/opsaetning/godkendelsesregler", { replace: true });
       return;
     }
     const næste = new URLSearchParams(searchParams);
@@ -639,7 +640,9 @@ function FakturacenterPrototype({ bruger }) {
     setValgtId(næsteSynlige);
     setAktivtPanel(næsteSynlige ? "dokument" : "liste");
     setLokalBesked(handling === FAKTURAKONTROL_HANDLING.ekstraGodkend
-      ? "Den ekstra kontrol er godkendt. Fakturaen er flyttet til Arkiv."
+      ? (svar.data?.status === FAKTURAKONTROL_STATUS.arkiveret
+        ? "Den ekstra kontrol er godkendt. Fakturaen er flyttet til Arkiv."
+        : `${String(modul || "Modulet").toUpperCase()} er godkendt. Fakturaen bliver i Ekstra kontrol, indtil alle krævede moduler er godkendt.`)
       : "Fakturaen er sendt tilbage til Indbakke med den registrerede begrundelse.");
     fakturaListe.genindlaes();
   };

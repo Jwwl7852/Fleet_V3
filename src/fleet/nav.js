@@ -239,8 +239,8 @@ export const NAV = [
       { key: "fleetV2Arbejdskoe", sti: "/fleet-v2/arbejdsko", label: "Arbejdskø",
         kraeverPerm: "sag.laes", titel: "FLEET – arbejdskø",
         under: "Prioritering, sagsmappe og statuskorrektion." },
-      { key: "fleetV2Vaerksted", sti: "/fleet-v2/vaerksted", label: "Værksted",
-        kraeverPerm: "koeretoejer.laes", titel: "FLEET – værksted",
+      { key: "fleetV2Vaerksted", sti: "/fleet-v2/vaerksted", label: "Internt værksted",
+        kraeverPerm: "koeretoejer.laes", titel: "Internt værksted",
         under: "Værkstedsopgaver, booking og kalender i lokal prototype." },
       { key: "fleetV2Service", sti: "/fleet-v2/service", label: "Service",
         kraeverPerm: "koeretoejer.laes", titel: "FLEET – service",
@@ -661,10 +661,10 @@ export const NAV = [
         under: "Logins, adgang og tenant-tilknytning. Medarbejdere uden login oprettes ved siden af under Medarbejdere." },
       { key: "integrationer", sti: "/opsaetning/integrationer", label: "Integrationer", skjulINav: true,
         titel: "Integrationer", under: "Kort, brændstofkort, regnskab og løn" },
-      { key: "fakturacenterOpsaetning", sti: "/opsaetning/fakturacenter",
-        label: "Fakturacenter",
-        titel: "Fakturacenter – opsætning",
-        under: "Ekstra kontrol, kontrollanter og deaktiverede mailforbindelser." },
+      { key: "fakturacenterOpsaetning", sti: "/opsaetning/godkendelsesregler",
+        label: "Godkendelsesregler",
+        titel: "Godkendelsesregler",
+        under: "Fælles fakturakontrol for FLEET, FACILITY og PROCURE." },
       /* ⚠ PROCURE TARGET, TRIN 4 (produktejer-review 2026-09-02) — FLYTTET
          HERTIL FRA Godkendelser.jsx. Dette er kun ADMINISTRATIONS-UI'et: hvem
          der må godkende, og hvornår. Selve KØEN af ordrer der venter, og
@@ -678,8 +678,8 @@ export const NAV = [
          skærmen, som Godkendelser.jsx altid har gjort det. */
       { key: "procureGodkendelsesregler", kraeverPerm: "indkoeb.laes",
         sti: "/opsaetning/procure/godkendelsesregler", kraeverModul: "indkoeb",
-        label: "Godkendelsesregler", titel: "Procure – godkendelsesregler",
-        under: "Beløbsgrænse og fakturagodkendelse for indkøb. Sættes af en administrator." },
+        label: "PROCURE-ordregodkendelse", titel: "PROCURE – ordregodkendelse",
+        under: "Beløbsgrænse og godkendelse af indkøbsordrer. Sættes af en administrator." },
     ],
   },
   {

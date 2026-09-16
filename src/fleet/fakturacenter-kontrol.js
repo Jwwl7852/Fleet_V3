@@ -101,10 +101,19 @@ export function validerFakturakontrolOpsaetning(opsaetning = {}) {
   return { ok: Object.keys(fejl).length === 0, fejl, opsaetning: normaliseret };
 }
 
+function fordelingsposter(faktura = {}) {
+  if (Array.isArray(faktura.fordelinger)) return faktura.fordelinger;
+  if (faktura.fordelinger && typeof faktura.fordelinger === "object") {
+    return Object.values(faktura.fordelinger);
+  }
+  return [];
+}
+
 function modulsummer(faktura = {}) {
   const summer = Object.fromEntries(FAKTURAKONTROL_MODULER.map((modul) => [modul, 0]));
-  if (Array.isArray(faktura.fordelinger) && faktura.fordelinger.length) {
-    for (const post of faktura.fordelinger) {
+  const fordelinger = fordelingsposter(faktura);
+  if (fordelinger.length) {
+    for (const post of fordelinger) {
       const modul = String(post?.modul || "").toLowerCase();
       const nettoOere = Number(post?.nettoOere);
       if (modul in summer && Number.isSafeInteger(nettoOere)) summer[modul] += nettoOere;
@@ -115,6 +124,22 @@ function modulsummer(faktura = {}) {
   const nettoOere = Number(faktura.beloebOere);
   if (modul in summer && Number.isSafeInteger(nettoOere)) summer[modul] = nettoOere;
   return summer;
+}
+
+function kontrolgrundlag(faktura = {}) {
+  const fordelinger = fordelingsposter(faktura)
+    .map((post) => ({
+      modul: String(post?.modul || "").toLowerCase(),
+      destinationId: String(post?.destinationId || ""),
+      nettoOere: Number(post?.nettoOere),
+    })).sort((a, b) => `${a.modul}:${a.destinationId}:${a.nettoOere}`
+      .localeCompare(`${b.modul}:${b.destinationId}:${b.nettoOere}`));
+  return JSON.stringify({
+    beloebOere: Number(faktura.beloebOere),
+    destinationArt: faktura.destinationArt || null,
+    destinationId: faktura.destinationId || null,
+    fordelinger,
+  });
 }
 
 /** Et trin beregnes på modulets summerede nettoandel ekskl. moms. */
@@ -183,6 +208,9 @@ export function vurderFakturakontrol({ faktura, opsaetning, handling, uid, modul
 
   if (status !== FAKTURAKONTROL_STATUS.ekstraKontrol) {
     return { ok: false, kode: "forkert-status", besked: "Fakturaen afventer ikke ekstra kontrol." };
+  }
+  if (faktura.kontrolGrundlag && faktura.kontrolGrundlag !== kontrolgrundlag(faktura)) {
+    return { ok: false, kode: "grundlag-aendret", besked: "Fakturaens fordeling er ændret siden første kontrol." };
   }
   const modulKontroller = eksisterendeKontroltrin(faktura, opsaetning);
   const afventende = Object.values(modulKontroller)
@@ -259,6 +287,7 @@ export function anvendFakturakontrol({ faktura, opsaetning, handling, uid, modul
   if (handling === FAKTURAKONTROL_HANDLING.kontroller) {
     naeste.kontrolleretAf = uid;
     naeste.kontrolleretMs = nu;
+    naeste.kontrolGrundlag = kontrolgrundlag(faktura);
     delete naeste.ekstraKontrolleretAf;
     delete naeste.ekstraKontrolleretMs;
   } else if (handling === FAKTURAKONTROL_HANDLING.ekstraGodkend) {

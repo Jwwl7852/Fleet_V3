@@ -63,6 +63,32 @@ test("modulregler vurderer den summerede nettoandel og ikke hele fakturaen", () 
   }]);
 });
 
+test("RTDB-objekter med fordelinger bevarer hvert krævet modultrin", () => {
+  const regler = modulOpsaetning({
+    fleet: { model: M.alle, kontrollantUid: "uid-fleet" },
+    facility: { model: M.alle, kontrollantUid: "uid-facility" },
+  });
+  const post = faktura({
+    destinationArt: "fleet",
+    beloebOere: 160_000,
+    fordelinger: {
+      fleet: { modul: "fleet", destinationId: "case-1", nettoOere: 120_000 },
+      facility: { modul: "facility", destinationId: "facility-1", nettoOere: 40_000 },
+    },
+  });
+
+  assert.deepEqual(fakturakontrolTrin(post, regler), [
+    { modul: "fleet", nettoOere: 120_000, kontrollantUid: "uid-fleet" },
+    { modul: "facility", nettoOere: 40_000, kontrollantUid: "uid-facility" },
+  ]);
+  const første = anvendFakturakontrol({
+    faktura: post, opsaetning: regler, handling: H.kontroller,
+    uid: "uid-1", nu: 100, operationId: "rtdb-object-1",
+  });
+  assert.deepEqual(Object.keys(første.faktura.modulKontroller), ["fleet", "facility"]);
+  assert.match(første.faktura.kontrolGrundlag, /facility-1/);
+});
+
 test("fler-modulfaktura arkiveres først efter alle krævede modultrin", () => {
   const regler = modulOpsaetning({
     fleet: { model: M.alle, kontrollantUid: "uid-fleet" },
@@ -107,6 +133,23 @@ test("modultrinnet kan kun godkendes af den navngivne anden godkender", () => {
     faktura: første.faktura, opsaetning: regler, handling: H.ekstraGodkend,
     modul: "fleet", uid: "uid-fleet", forventetRevision: 1,
   }).ok, true);
+});
+
+test("ændret fordeling kan ikke genbruge tidligere modulgodkendelsesgrundlag", () => {
+  const regler = modulOpsaetning({ fleet: { model: M.alle, kontrollantUid: "uid-fleet" } });
+  const første = anvendFakturakontrol({
+    faktura: faktura({ destinationArt: "fleet", fordelinger: [
+      { modul: "fleet", destinationId: "case-1", nettoOere: 100_000 },
+    ] }),
+    opsaetning: regler, handling: H.kontroller, uid: "uid-1", nu: 100, operationId: "basis-1",
+  });
+  const ændret = { ...første.faktura, fordelinger: [
+    { modul: "fleet", destinationId: "case-2", nettoOere: 100_000 },
+  ] };
+  assert.equal(vurderFakturakontrol({
+    faktura: ændret, opsaetning: regler, handling: H.ekstraGodkend,
+    modul: "fleet", uid: "uid-fleet", forventetRevision: 1,
+  }).kode, "grundlag-aendret");
 });
 
 test("beløbsgrænsen bruger netto ekskl. moms og ikke moms/total", () => {

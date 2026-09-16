@@ -125,7 +125,7 @@ export default function FakturacenterOpsaetning() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <Kort titel="Ekstra fakturakontrol">
+      <Kort titel="Fælles fakturagodkendelse">
         <p className="fc-hint">
           Reglerne gælder fakturakontrol og er adskilt fra PROCUREs ordregodkendelser.
           Nettogrænsen beregnes pr. berørt modul ekskl. moms. Hvert modul kan

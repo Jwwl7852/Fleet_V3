@@ -773,6 +773,7 @@ export default function App() {
             <Route path="opsaetning/brugere" element={<Brugere />} />
             <Route path="opsaetning/integrationer" element={<Integrationer />} />
             <Route path="opsaetning/fakturacenter" element={<FakturacenterOpsaetning />} />
+            <Route path="opsaetning/godkendelsesregler" element={<FakturacenterOpsaetning />} />
             <Route path="opsaetning/procure/godkendelsesregler" element={<ProcureGodkendelsesregler />} />
 
             {/* v1.4-stier holdes i live, så gamle links og bogmærker virker */}
