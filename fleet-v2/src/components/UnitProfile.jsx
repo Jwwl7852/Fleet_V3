@@ -127,7 +127,7 @@ export function UnitProfile({ unitId, initialViewState, onViewStateChange, onNav
 
   const meta = statusMeta(unit);
   const position = related.positions?.[0];
-  const save = async (next) => { await saveUnit(next); onNotice(sharedStorage
+  const save = async (next, options) => { await saveUnit(next, options); onNotice(sharedStorage
     ? `${next.number} er gemt i det fælles enhedsregister`
     : `${next.number} er gemt lokalt i prototypen`); };
   return (

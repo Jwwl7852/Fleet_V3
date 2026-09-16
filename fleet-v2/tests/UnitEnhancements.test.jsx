@@ -6,6 +6,7 @@ import { validateUnitImage } from "../src/data/unitImage";
 import { CURRENT_DATASET_VERSION, createMemoryUnitRepository, migrateDataset } from "../src/data/unitRepository";
 import { parsePositiveDanishNumber, validateUnit } from "../src/data/unitSelectors";
 import { mapVehicleLookupResult, normalizeDanishRegistration, normalizeExternalLength } from "../src/data/vehicleLookup";
+import { UnitFormDialog } from "../src/components/UnitFormDialog";
 
 const fillRequired = (dialog, number = "QA-920") => {
   fireEvent.change(within(dialog).getByLabelText(/Enhedsnummer/), { target: { value: number } });
@@ -125,6 +126,32 @@ describe("FLEET v2 enhedsforbedringer", () => {
     });
     expect(await screen.findByText("Udvendig længde")).toBeTruthy();
     expect(screen.getByText("599,5 cm")).toBeTruthy();
+  });
+
+  it("bevarer dialogens åbningssnapshot, når enheden opdateres mens formularen er åben", async () => {
+    const opened = createFixtureDataset().units.find((item) => item.number === "NB-001");
+    const newer = { ...opened, meter: opened.meter + 250, status: "workshop" };
+    const onSave = vi.fn(async () => {});
+    const onClose = vi.fn();
+    const props = { unit: opened, units: [opened], tenantId: opened.tenantId, storageKind: "shared-unit-register", onClose, onSave };
+    const view = render(<UnitFormDialog {...props} />);
+
+    view.rerender(<UnitFormDialog {...props} unit={newer} units={[newer]} />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(globalThis.confirm).not.toHaveBeenCalled();
+
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Noter"), { target: { value: "Ny note fra åben dialog" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Gem ændringer" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const [submitted, options] = onSave.mock.calls[0];
+    expect(submitted.meter).toBe(opened.meter);
+    expect(submitted.status).toBe(opened.status);
+    expect(submitted.notes).toBe("Ny note fra åben dialog");
+    expect(options.openedUnit.meter).toBe(opened.meter);
+    expect(options.openedUnit.status).toBe(opened.status);
+    expect(options.openedUnit).not.toBe(opened);
   });
 
   it("gemmer indvendige mål og særskilte udstyrsvalg og viser dem på profilen", async () => {

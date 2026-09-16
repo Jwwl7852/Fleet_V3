@@ -91,8 +91,9 @@ function LookupReview({ result, selected, onToggle, onApply, onDismiss }) {
 
 export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb-prototype", onClose, onSave, vehicleLookup = disconnectedVehicleLookup, imageProcessor = prepareUnitImage }) {
   const sharedStorage = storageKind === "shared-unit-register";
-  const [values, setValues] = useState(() => valuesFromUnit(unit));
-  const [image, setImage] = useState(unit?.image || null);
+  const openedUnitRef = useRef(unit ? structuredClone(unit) : null);
+  const [values, setValues] = useState(() => valuesFromUnit(openedUnitRef.current));
+  const [image, setImage] = useState(openedUnitRef.current?.image || null);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -103,7 +104,8 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
   const registrationRef = useRef(values.registration);
   const valuesRef = useRef(values);
   const errors = useMemo(() => validateUnit(values, units, unit?.id), [unit?.id, units, values]);
-  const dirty = JSON.stringify(values) !== JSON.stringify(valuesFromUnit(unit)) || image !== (unit?.image || null);
+  const dirty = JSON.stringify(values) !== JSON.stringify(valuesFromUnit(openedUnitRef.current))
+    || image !== (openedUnitRef.current?.image || null);
   const { dialogRef, requestClose, onBackdropMouseDown } = useModalDialog({ onClose, dirty, busy: saving });
   useEffect(() => { valuesRef.current = values; }, [values]);
   const set = (key) => (event) => {
@@ -186,7 +188,7 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
         interiorDimensions,
         equipment: { towHook: values.towHook, trailerCoupling: values.trailerCoupling, crane: values.crane, lift: values.lift },
         updatedAt: new Date().toISOString(),
-      }, { openedUnit: unit || null });
+      }, { openedUnit: openedUnitRef.current });
       onClose();
     } catch (cause) { setSaveError(cause.message || `Enheden kunne ikke gemmes ${sharedStorage ? "i det fælles register" : "lokalt"}. Prøv igen.`); }
     finally { setSaving(false); }
