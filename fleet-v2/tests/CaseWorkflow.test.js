@@ -57,7 +57,7 @@ describe("fælles indberetnings- og sagsforløb", () => {
 
   it("filtrerer og sorterer samme sager for begge køvisninger", () => {
     const dataset = createFixtureDataset();
-    const result = filterAndSortCases(dataset.relations.cases, dataset.relations.reports, dataset.units, { query: "SC-104", priority: "high", sort: "due" });
+    const result = filterAndSortCases(dataset.relations.cases, dataset.relations.reports, dataset.units, { query: "IND-00001", priority: "high", sort: "due" });
     expect(result).toHaveLength(1);
     expect(result[0].reportId).toBe("report-demo-001");
   });

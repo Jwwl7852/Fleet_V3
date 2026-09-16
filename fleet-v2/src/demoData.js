@@ -3,7 +3,7 @@ export const fleetNavigation = [
   { id: "units", label: "Enheder", icon: "unit", implemented: true, path: "/enheder" },
   { id: "reports", label: "Indberetninger", icon: "report", implemented: true, path: "/indberetninger" },
   { id: "queue", label: "Arbejdskø", icon: "queue", implemented: true, path: "/arbejdsko" },
-  { id: "workshop", label: "Værksted", icon: "workshop", implemented: true, path: "/vaerksted" },
+  { id: "workshop", label: "Internt værksted", icon: "workshop", implemented: true, path: "/vaerksted" },
   { id: "service", label: "Service", icon: "service", implemented: true, path: "/service" },
   { id: "map", label: "Livekort", icon: "map", implemented: true, path: "/livekort" },
   { id: "documents", label: "Dokumenter", icon: "document", implemented: true, path: "/dokumenter" },

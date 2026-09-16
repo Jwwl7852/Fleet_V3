@@ -1069,6 +1069,9 @@ button { color: inherit; }
   .report-wizard-page, .triage-page, .queue-page { height: auto; min-height: calc(100dvh - 56px); overflow: visible; }
   .wizard-card, .triage-layout { min-height: 620px; }.queue-page { grid-template-rows: auto auto auto auto 590px; }.triage-page { grid-template-rows: auto auto 690px; }
 }
+@media (min-width: 1121px) {
+  .fleet-v2-embedded > .triage-page { height:calc(100dvh - 52px); min-height:0; overflow:hidden; grid-template-rows:auto 45px minmax(0,1fr); }
+}
 @media (max-width: 1120px) {
   .triage-filters { grid-template-columns: repeat(3, 1fr); }.queue-toolbar { grid-template-columns: repeat(3, 1fr); }.triage-layout.fleet-three-panel { grid-template-columns: minmax(240px,.8fr) 12px minmax(390px,1.35fr); }.fleet-three-panel > .fleet-panel-handle:nth-of-type(2) { display:none; }.triage-layout > .case-action-panel { grid-column: 1 / -1; min-height: 450px; }.queue-kpis { grid-template-columns: repeat(2, 1fr); }
 }

@@ -9,13 +9,13 @@ describe("FLEET v2-demodata", () => {
     const overview = deriveOverview(dataset.units, dataset.relations);
     expect(overview.totals.units).toBe(dataset.units.length);
     expect(overview.totals.needsAction).toBe(dataset.relations.cases.filter((item) => ["new", "assessing"].includes(item.status)).length);
-    expect(overview.actionItems).toHaveLength(overview.totals.needsAction);
+    expect(overview.actionItems).toHaveLength(Math.min(5, overview.totals.needsAction));
     expect(overview.costByMonth.at(-1)).toBe(overview.totals.monthlyCost);
   });
 
   it("har de aftalte navigationselementer og særskilt statistik og økonomi", () => {
     expect(fleetNavigation.map((item) => item.label)).toEqual([
-      "Overblik", "Enheder", "Indberetninger", "Arbejdskø", "Værksted", "Service",
+      "Overblik", "Enheder", "Indberetninger", "Arbejdskø", "Internt værksted", "Service",
       "Livekort", "Dokumenter", "Leasing", "Mobil indberetning", "Statistik", "Økonomi",
     ]);
     expect(fleetNavigation.filter((item) => item.implemented).map((item) => item.id)).toEqual(["overview", "units", "reports", "queue", "workshop", "service", "map", "documents", "leasing", "mobile", "statistics", "economy"]);

@@ -16,7 +16,7 @@ describe("Værksted og kalender", () => {
 
   it("viser værkstedsoversigt og åbner eksempelopgaven direkte", async () => {
     start("/vaerksted");
-    expect(await screen.findByRole("heading", { name: "Værksted" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Internt værksted" })).toBeTruthy();
     expect(screen.getByText("VO-00001")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /VO-00001/ }));
     expect(await screen.findByRole("heading", { name: "Udskift beskadiget strømkabel" })).toBeTruthy();
@@ -29,7 +29,7 @@ describe("Værksted og kalender", () => {
     dataset.relations.bookings = [];
     dataset.relations.workshopEvents = [];
     const repository = start("/vaerksted", dataset);
-    await screen.findByRole("heading", { name: "Værksted" });
+    await screen.findByRole("heading", { name: "Internt værksted" });
     fireEvent.click(screen.getByRole("button", { name: "Ny værkstedsopgave" }));
     fireEvent.change(screen.getByLabelText("Opgavetitel"), { target: { value: "Udskift kabel sikkert" } });
     fireEvent.click(screen.getByRole("button", { name: "Opret opgave" }));

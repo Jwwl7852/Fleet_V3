@@ -26,7 +26,7 @@ describe("FLEET v2 navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Enheder" }));
     expect(await screen.findByRole("heading", { name: "Enhedskartotek" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Indberetninger" }));
-    expect(await screen.findByRole("heading", { name: "Indberetninger og triage" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Indberetninger", level: 1 })).toBeTruthy();
     expect(window.location.pathname).toBe("/indberetninger");
   });
 
