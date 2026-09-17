@@ -1,6 +1,6 @@
-/* Lokal, syntetisk WORKFORCE-fixture til det integrerede Version 1-review.
+/* Lokal, syntetisk reviewfixture til det integrerede Version 1-review.
  * Scriptet nægter at køre mod andre værter eller projekter og patcher kun de
- * WORKFORCE-noder, der mangler i den eksisterende review-tenant. Det sletter
+ * navngivne testnoder, der mangler i den eksisterende review-tenant. Det sletter
  * ikke andre tenantdata, brugere eller emulatorfixtures. */
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
@@ -13,6 +13,48 @@ const apiKey = process.env.VITE_FB_API_KEY || "synthetic";
 const password = process.env.VITE_DEV_BRUGER_KODE;
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST || "127.0.0.1:9099";
 const databaseHost = process.env.FIREBASE_DATABASE_EMULATOR_HOST || "127.0.0.1:9000";
+const FIXTURE = "moduloverblik-v1-synthetic";
+
+export const REVIEW_CATALOG_SUPPLIERS = [
+  { id: "review-supplier-drift", navn: "Syntetisk Driftmateriel ApS", adresse: "Testvej 10, 8000 Aarhus C", kontaktEmail: "drift@example.invalid", prisaftale: "Syntetisk rammeaftale A", bestillingsmetode: "mail" },
+  { id: "review-supplier-teknik", navn: "Syntetisk Teknikpartner A/S", adresse: "Prøvegade 20, 5000 Odense C", kontaktEmail: "teknik@example.invalid", prisaftale: "Syntetisk rammeaftale B", bestillingsmetode: "webshop" },
+  { id: "review-supplier-kontor", navn: "Syntetisk Kontor & Lager ApS", adresse: "Demovej 30, 9000 Aalborg", kontaktEmail: "kontor@example.invalid", prisaftale: "Syntetisk nettoprisliste", bestillingsmetode: "begge" },
+];
+
+export const REVIEW_CATALOG_ITEMS = [
+  { id: "review-item-long", varenummer: "TEST-LANG-001", navn: "Syntetisk sikkerheds- og afspærringspakke med refleksmarkering til midlertidige arbejdsområder", varegruppe: "Arbejdsmiljø", leverandoerId: "review-supplier-drift", enhed: "sæt", pakningsstoerrelse: "1 komplet sæt", indkoebsprisOere: 129995, favorit: true, tidligereKoeb: true, billedeType: "safety" },
+  { id: "review-item-gloves", varenummer: "TEST-HAND-010", navn: "Syntetiske nitrilhandsker str. 10", varegruppe: "Arbejdsmiljø", leverandoerId: "review-supplier-drift", enhed: "par", pakningsstoerrelse: "12 par", indkoebsprisOere: 1895, favorit: true, tidligereKoeb: true, billedeType: "safety" },
+  { id: "review-item-cleaner", varenummer: "TEST-REN-005", navn: "Syntetisk universalrengøring koncentrat", varegruppe: "Rengøring", leverandoerId: "review-supplier-drift", enhed: "liter", pakningsstoerrelse: "5 liters dunk", indkoebsprisOere: 23750, tidligereKoeb: true, billedeType: "cleaning" },
+  { id: "review-item-filter", varenummer: "TEST-FIL-042", navn: "Syntetisk pollenfilter til servicekøretøj", varegruppe: "Reservedele", leverandoerId: "review-supplier-teknik", enhed: "stk.", pakningsstoerrelse: "1 stk.", indkoebsprisOere: 8450, tidligereKoeb: true, billedeType: "parts" },
+  { id: "review-item-led", varenummer: "TEST-LED-120", navn: "Syntetisk LED-rør 1200 mm neutral hvid", varegruppe: "El-materiel", leverandoerId: "review-supplier-teknik", enhed: "stk.", pakningsstoerrelse: "10 stk.", indkoebsprisOere: 9975, billedeType: "electrical" },
+  { id: "review-item-cable", varenummer: "TEST-KAB-050", navn: "Syntetisk installationskabel 3G2,5 mm²", varegruppe: "El-materiel", leverandoerId: "review-supplier-teknik", enhed: "meter", pakningsstoerrelse: "50 meter rulle", indkoebsprisOere: 1485, favorit: true, billedeType: "electrical" },
+  { id: "review-item-bolts", varenummer: "TEST-BOL-M8", navn: "Syntetisk boltsæt M8 rustfri", varegruppe: "Befæstelse", leverandoerId: "review-supplier-teknik", enhed: "æske", pakningsstoerrelse: "100 stk.", indkoebsprisOere: 32400, billedeType: "parts" },
+  { id: "review-item-tape", varenummer: "TEST-TAP-048", navn: "Syntetisk pakketape klar 48 mm", varegruppe: "Emballage", leverandoerId: "review-supplier-kontor", enhed: "rulle", pakningsstoerrelse: "6 ruller", indkoebsprisOere: 2495, tidligereKoeb: true, billedeType: "packaging" },
+  { id: "review-item-paper", varenummer: "TEST-PAP-A4", navn: "Syntetisk kopipapir A4 80 g", varegruppe: "Kontorartikler", leverandoerId: "review-supplier-kontor", enhed: "pakke", pakningsstoerrelse: "500 ark", indkoebsprisOere: 4595, billedeType: "office" },
+  { id: "review-item-marker", varenummer: "TEST-MAR-BLU", navn: "Syntetisk permanent marker blå", varegruppe: "Kontorartikler", leverandoerId: "review-supplier-kontor", enhed: "stk.", pakningsstoerrelse: "10 stk.", indkoebsprisOere: 1275, billedeType: "office" },
+  { id: "review-item-battery", varenummer: "TEST-BAT-18V", navn: "Syntetisk batteripakke 18 V 5,0 Ah", varegruppe: "Værktøj", leverandoerId: "review-supplier-teknik", enhed: "stk.", pakningsstoerrelse: "1 stk.", indkoebsprisOere: 74900, favorit: true, billedeType: "tools" },
+  { id: "review-item-ties", varenummer: "TEST-BIN-300", navn: "Syntetiske kabelbindere 300 mm UV-bestandige", varegruppe: "Befæstelse", leverandoerId: "review-supplier-kontor", enhed: "pose", pakningsstoerrelse: "100 stk.", indkoebsprisOere: 3895, billedeType: "parts" },
+];
+
+function catalogPatch() {
+  return Object.fromEntries([
+    ...REVIEW_CATALOG_SUPPLIERS.map((row) => [`tenants/${TENANT_ID}/leverandoerer/${row.id}`, { ...row, aktiv: true, fixture: FIXTURE }]),
+    ...[...new Set(REVIEW_CATALOG_ITEMS.map((row) => row.varegruppe))].map((name, index) => [`tenants/${TENANT_ID}/ressourceKategorier/varer/review-category-${index + 1}`, { navn: name, aktiv: true, sortering: (index + 1) * 100, fixture: FIXTURE }]),
+    ...REVIEW_CATALOG_ITEMS.map((row) => [`tenants/${TENANT_ID}/forbrugsvarer/${row.id}`, {
+      ...row,
+      aktiv: true,
+      bestillingsenhed: row.enhed,
+      grundenhed: row.enhed,
+      antalPrBestillingsenhed: 1,
+      bestillingsprisOere: row.indkoebsprisOere,
+      minimumsantal: 1,
+      bestillingstrin: 1,
+      enkeltsalg: true,
+      standardAfdelingId: "review-department-drift",
+      fixture: FIXTURE,
+    }]),
+  ]);
+}
 
 function assertLocalHost(host, name) {
   assert.match(host || "", /^(127\.0\.0\.1|localhost):\d+$/, `${name} skal være en lokal emulator.`);
@@ -34,6 +76,7 @@ export function workforcePatch({ uid, now = Date.now() }) {
   const hour = 3_600_000;
   const day = 24 * hour;
   return {
+    ...catalogPatch(),
     [`tenants/${TENANT_ID}/_findes`]: true,
     [`tenants/${TENANT_ID}/abonnement/status`]: "aktiv",
     [`tenants/${TENANT_ID}/moduler/bemanding`]: true,
@@ -47,7 +90,7 @@ export function workforcePatch({ uid, now = Date.now() }) {
       navn: "Syntetisk administrator",
       rolle: "admin",
       personId: "wf-review-admin",
-      fixture: "moduloverblik-v1-synthetic",
+      fixture: FIXTURE,
     },
     [`tenants/${TENANT_ID}/personale/wf-review-admin`]: {
       navn: "Syntetisk administrator",
@@ -199,9 +242,11 @@ export async function seedModuleOverviewWorkforce() {
     projectId: PROJECT_ID,
     tenantId: TENANT_ID,
     dataSource: "Realtime Database emulator",
-    fixture: "moduloverblik-v1-synthetic",
+    fixture: FIXTURE,
     employees: 3,
     units: 3,
+    catalogItems: REVIEW_CATALOG_ITEMS.length,
+    catalogSuppliers: REVIEW_CATALOG_SUPPLIERS.length,
     externalServices: false,
   };
 }

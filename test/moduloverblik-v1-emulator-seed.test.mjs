@@ -5,7 +5,9 @@ process.env.VITE_FB_PROJECT_ID ||= "demo-veyro-integration";
 process.env.VITE_DEV_EJER_MAIL ||= "admin@integration.invalid";
 process.env.VITE_DEV_BRUGER_KODE ||= "test-only-not-used";
 
-const { TENANT_ID, workforcePatch } = await import("../scripts/moduloverblik-v1-emulator-seed.mjs");
+const {
+  TENANT_ID, REVIEW_CATALOG_ITEMS, REVIEW_CATALOG_SUPPLIERS, workforcePatch,
+} = await import("../scripts/moduloverblik-v1-emulator-seed.mjs");
 
 describe("Version 1 moduloverblik – WORKFORCE emulatorfixture", () => {
   it("opretter tenantmarkør, aktivt modul og tenantbundet bruger", () => {
@@ -38,5 +40,22 @@ describe("Version 1 moduloverblik – WORKFORCE emulatorfixture", () => {
     assert.equal(patch[`tenants/${TENANT_ID}/kasser/moduloverblik-v1-ledig`].status, "ledig");
     assert.equal(patch[`tenants/${TENANT_ID}/kasser/moduloverblik-v1-udlaant`].status, "udlaant");
     assert.equal(patch[`tenants/${TENANT_ID}/kasser/moduloverblik-v1-ude-af-drift`].status, "udeAfDrift");
+  });
+
+  it("leverer et varieret, tydeligt syntetisk varekatalog til layoutkontrol", () => {
+    const patch = workforcePatch({ uid: "uid-review", now: Date.parse("2026-09-17T10:00:00Z") });
+    const items = REVIEW_CATALOG_ITEMS.map((item) => patch[`tenants/${TENANT_ID}/forbrugsvarer/${item.id}`]);
+    const suppliers = REVIEW_CATALOG_SUPPLIERS.map((supplier) => patch[`tenants/${TENANT_ID}/leverandoerer/${supplier.id}`]);
+
+    assert.equal(items.length, 12);
+    assert.equal(suppliers.length, 3);
+    assert.ok(items.some((item) => item.navn.length >= 80), "langt varenavn skal være dækket");
+    assert.ok(new Set(items.map((item) => item.varegruppe)).size >= 6, "flere kategorier skal være dækket");
+    assert.ok(new Set(items.map((item) => item.enhed)).size >= 6, "flere enheder skal være dækket");
+    assert.ok(Math.min(...items.map((item) => item.indkoebsprisOere)) < 2000, "lav pris skal være dækket");
+    assert.ok(Math.max(...items.map((item) => item.indkoebsprisOere)) > 100000, "høj pris skal være dækket");
+    for (const row of [...items, ...suppliers]) {
+      assert.equal(row.fixture, "moduloverblik-v1-synthetic");
+    }
   });
 });
