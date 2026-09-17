@@ -1,43 +1,32 @@
 # Billedmanifest
 
-Alle filer er aktuelle original-PNG'er fra commit `f51173ae4fd75830e3fd68a7aafb9701e7f62fa2`, browserzoom 100 % og arbejdsområdezoom 100 %.
+Alle billeder er originale PNG-filer. Browserzoom og arbejdsområdezoom er 100 %. Der indgår ingen loginoplysninger, browserprofiler eller credentials.
 
-## Isoleret demo
+## Aktuelle integrerede beviser
 
-Rolle: demo-administrator. Datakilde: lokale syntetiske fixtures. Global DEMO-markering og modulernes testdatamærker er synlige. Disse billeder er modul-/UI-bevis, ikke serverbevis.
+Version: `874e24c9856c5616339be043b8efad4f0e13c35f`. App: samlet Version 1-root-app med én AppShell. Rolle: syntetisk administrator. Tenant: `procure-auth-a`. Datakilde: tenantlagrede syntetiske data i projektet `demo-veyro-integration` via lokale Auth-, Realtime Database- og Functions-emulatorer. Den globale TEST-markering er synlig.
 
-| Fil | Modul/route | Viewport |
-|---|---|---|
-| `screenshots/1440x900-fleet.png` | FLEET `/fleet-v2` | 1440×900 |
-| `screenshots/1440x900-facility.png` | FACILITY `/facility-v2` | 1440×900 |
-| `screenshots/1440x900-procure.png` | PROCURE `/indkoeb` | 1440×900 |
-| `screenshots/1440x900-workforce.png` | WORKFORCE `/workforce-v2` | 1440×900 |
-| `screenshots/1440x900-unitbooking.png` | UNITBOOKING `/unitbooking` | 1440×900 |
-| `screenshots/1440x900-warehouse.png` | WAREHOUSE `/warehouse` | 1440×900 |
-| `screenshots/390x844-fleet.png` | FLEET `/fleet-v2` | 390×844 |
-| `screenshots/390x844-facility.png` | FACILITY `/facility-v2` | 390×844 |
-| `screenshots/390x844-procure.png` | PROCURE `/indkoeb` | 390×844 |
-| `screenshots/390x844-workforce.png` | WORKFORCE `/workforce-v2` | 390×844 |
-| `screenshots/390x844-unitbooking.png` | UNITBOOKING `/unitbooking` | 390×844 |
-| `screenshots/390x844-warehouse.png` | WAREHOUSE `/warehouse` | 390×844 |
+| Fil | Krav/forløb | Route | Viewport | Status |
+|---|---|---|---|---|
+| `screenshots-authenticated/1440x900-workforce.png` | WORKFORCE-overblik efter normalt login | `/workforce-v2` | 1440×900 | Aktuel |
+| `screenshots-authenticated/390x844-workforce.png` | WORKFORCE-overblik efter normalt login | `/workforce-v2` | 390×844 | Aktuel |
+| `screenshots-authenticated/1440x900-unitbooking.png` | UNITBOOKING-overblik | `/unitbooking` | 1440×900 | Aktuel |
+| `screenshots-authenticated/390x844-unitbooking.png` | UNITBOOKING-overblik | `/unitbooking` | 390×844 | Aktuel |
+| `screenshots-authenticated/1440x900-unitbooking-belaegning.png` | Belægningskort og kassekartotek | `/ressourcer/units` | 1440×900 | Aktuel |
+| `screenshots-authenticated/390x844-unitbooking-belaegning.png` | Belægningskort og kassekartotek | `/ressourcer/units` | 390×844 | Aktuel |
 
-## Autentificeret samlet Version 1-app
+WORKFORCE-billederne viser KPI'erne 1 på arbejde, 1 på fravær og 7,5 timer til godkendelse samt tenantlagrede rækker. Belægningsbillederne viser 50 %, grundlaget `1 af 2 brugbare · 1 ude af drift` og tre tenantlagrede units.
 
-Rolle: syntetisk administrator (`admin (dig)`). Tenant: `procure-auth-a`. Datakilde: lokale emulatorer. Global TEST-markering er synlig. Billederne er integreret browserbevis. WORKFORCE-filerne viser den aktuelle, korrekte blokering uden skjult fixture-fallback.
+`screenshots-authenticated/capture-manifest.json` indeholder capturetidspunkt, fuld kodeversion, ruter, viewports og dataklassifikation for disse seks aktuelle billeder.
 
-| Fil | Modul/route | Viewport | Resultat |
+## Historiske, uændrede modulbeviser
+
+Filerne i `screenshots/` er historiske UI-/kontraktbeviser fra commit `f51173ae4fd75830e3fd68a7aafb9701e7f62fa2`, optaget mod tydeligt mærkede lokale fixtures. De er ikke serverbevis. De øvrige autentificerede FLEET-, FACILITY-, PROCURE- og WAREHOUSE-billeder blev ikke genoptaget, fordi denne fejlretning ikke ændrer disse moduler; de skal derfor læses som historiske.
+
+| Mappe/filer | Rolle | Datakilde | Klassifikation |
 |---|---|---|---|
-| `screenshots-authenticated/1440x900-fleet.png` | FLEET `/fleet-v2` | 1440×900 | Indlæst |
-| `screenshots-authenticated/1440x900-facility.png` | FACILITY `/facility-v2` | 1440×900 | Indlæst |
-| `screenshots-authenticated/1440x900-procure.png` | PROCURE `/indkoeb` | 1440×900 | Indlæst |
-| `screenshots-authenticated/1440x900-workforce.png` | WORKFORCE `/workforce-v2` | 1440×900 | Blokeret: tenant findes ikke |
-| `screenshots-authenticated/1440x900-unitbooking.png` | UNITBOOKING `/unitbooking` | 1440×900 | Indlæst |
-| `screenshots-authenticated/1440x900-warehouse.png` | WAREHOUSE `/warehouse` | 1440×900 | Indlæst |
-| `screenshots-authenticated/390x844-fleet.png` | FLEET `/fleet-v2` | 390×844 | Indlæst |
-| `screenshots-authenticated/390x844-facility.png` | FACILITY `/facility-v2` | 390×844 | Indlæst |
-| `screenshots-authenticated/390x844-procure.png` | PROCURE `/indkoeb` | 390×844 | Indlæst |
-| `screenshots-authenticated/390x844-workforce.png` | WORKFORCE `/workforce-v2` | 390×844 | Blokeret: tenant findes ikke |
-| `screenshots-authenticated/390x844-unitbooking.png` | UNITBOOKING `/unitbooking` | 390×844 | Indlæst |
-| `screenshots-authenticated/390x844-warehouse.png` | WAREHOUSE `/warehouse` | 390×844 | Indlæst |
-
-De to `capture-manifest.json`-filer indeholder capturetidspunkt, præcis version og miljøklassifikation.
+| `screenshots/*.png` | demo-administrator | lokale syntetiske fixtures | Historisk modulbevis |
+| `screenshots-authenticated/*-fleet.png` | syntetisk administrator | lokale emulatorer | Historisk integreret bevis |
+| `screenshots-authenticated/*-facility.png` | syntetisk administrator | lokale emulatorer | Historisk integreret bevis |
+| `screenshots-authenticated/*-procure.png` | syntetisk administrator | lokale emulatorer | Historisk integreret bevis |
+| `screenshots-authenticated/*-warehouse.png` | syntetisk administrator | lokale emulatorer | Historisk integreret bevis |

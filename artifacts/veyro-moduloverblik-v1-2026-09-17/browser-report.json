@@ -1,46 +1,98 @@
 {
-  "codeCommit": "f51173ae4fd75830e3fd68a7aafb9701e7f62fa2",
+  "codeCommit": "874e24c9856c5616339be043b8efad4f0e13c35f",
   "capturedOn": "2026-09-17",
   "planningUnchanged": true,
-  "desktop1440x900": [
-    { "route": "/fleet-v2", "kpis": ["0", "11", "0"], "rows": [0, 5], "pageOverflow": false },
-    { "route": "/facility-v2", "kpis": ["4", "4", "3"], "rows": [3, 4], "pageOverflow": false },
-    { "route": "/indkoeb", "kpis": ["4", "1", "2"], "rows": [2, 5], "pageOverflow": false },
-    { "route": "/workforce-v2", "kpis": ["1", "0", "7,38 t"], "rows": [1, 2], "pageOverflow": false },
-    { "route": "/unitbooking", "kpis": ["3", "7", "0"], "rows": [5, 0], "pageOverflow": false },
-    { "route": "/warehouse", "kpis": ["7", "Mangler dato", "0"], "rows": [1, 5], "pageOverflow": false }
-  ],
-  "responsive": {
-    "1280x800": { "routesChecked": 6, "pageOverflowFailures": 0, "kpiColumns": 3 },
-    "390x844": { "measuredViewport": [389, 843], "routesChecked": 6, "pageOverflowFailures": 0, "kpiColumns": 1, "tablesUseLocalScroll": true }
-  },
-  "actions": [
-    { "from": "/fleet-v2", "action": "Opret sag", "to": "/fleet-v2/indberetninger/ny" },
-    { "from": "/facility-v2", "action": "Opret opgave", "to": "/facility-v2/arbejdsko" },
-    { "from": "/indkoeb", "action": "Ny bestilling", "to": "/indkoeb/bestillinger?ny=1" },
-    { "from": "/workforce-v2", "action": "Registrér fravær", "to": "/workforce-v2/fravaer" },
-    { "from": "/unitbooking", "action": "Opret booking", "to": "/unitbooking/import" },
-    { "from": "/fleet-v2", "action": "første række + Enter", "to": "/fleet-v2/sager/case-demo-008", "tabIndex": 0 }
-  ],
+  "designV2Unchanged": true,
   "authenticatedIntegrated": {
     "baseUrl": "http://127.0.0.1:5197",
+    "app": "samlet Version 1-root-app med én AppShell",
     "role": "syntetisk administrator",
     "tenant": "procure-auth-a",
-    "dataSource": "lokale emulatorer; global TEST-markering",
+    "firebaseProject": "demo-veyro-integration",
+    "dataSource": "tenantlagrede syntetiske data i lokale Auth-, Realtime Database- og Functions-emulatorer",
     "normalLogin": true,
+    "hiddenDemoFallback": false,
     "results": [
-      { "route": "/fleet-v2", "loaded": true, "kpis": ["1", "8", "0"], "pageOverflow": false },
-      { "route": "/facility-v2", "loaded": true, "kpis": ["4", "4", "3"], "pageOverflow": false },
-      { "route": "/indkoeb", "loaded": true, "kpis": ["0", "0", "0"], "pageOverflow": false },
-      { "route": "/workforce-v2", "loaded": false, "error": "WORKFORCE-data kunne ikke hentes. Tenant findes ikke.", "hiddenDemoFallback": false },
-      { "route": "/unitbooking", "loaded": true, "kpis": ["0", "0", "0"], "pageOverflow": false },
-      { "route": "/warehouse", "loaded": true, "kpis": ["0", "0", "0"], "pageOverflow": false }
+      {
+        "route": "/workforce-v2",
+        "viewport": "1440x900 og 390x844",
+        "loaded": true,
+        "kpis": ["1", "1", "7,5 t"],
+        "rows": [2, 2],
+        "pageOverflow": false,
+        "tenantError": false
+      },
+      {
+        "route": "/unitbooking",
+        "viewport": "1440x900 og 390x844",
+        "loaded": true,
+        "kpis": ["1", "1", "0"],
+        "rows": [1, 0],
+        "pageOverflow": false
+      },
+      {
+        "route": "/ressourcer/units",
+        "viewport": "1440x900 og 390x844",
+        "loaded": true,
+        "occupancy": "50 %",
+        "basis": "1 af 2 brugbare · 1 ude af drift",
+        "rows": 3,
+        "pageOverflow": false
+      }
     ]
   },
-  "isolatedDemo": {
+  "workforceDiagnosis": {
+    "observed": "WORKFORCE-data kunne ikke hentes. Tenant findes ikke.",
+    "cause": "Den normale browser og Functions-emulatoren brugte demo-veyro-integration, mens den tidligere tenantfixture var seedet i et andet emulator-namespace.",
+    "resolution": "Et localhost- og projektlåst flersti-seed opretter tenantmarkør, aktivt WORKFORCE-modul, brugerbinding og syntetiske WORKFORCE-poster i demo-veyro-integration uden at overskrive øvrige tenantnoder.",
+    "accessBoundary": "Serverens tenant-, claims-, abonnements- og permissionkontrol er uændret; ingen demo-fallback er indført.",
+    "callableProof": {
+      "tenantId": "procure-auth-a",
+      "actorEmployeeId": "wf-review-admin",
+      "workforceEnabled": true,
+      "employees": 3,
+      "shifts": 1,
+      "leaves": 2,
+      "skills": 1,
+      "timeEntries": 2
+    }
+  },
+  "unitbookingComparison": {
+    "baselineCommit": "4568dd1964c9f0c02a36c8f9149d6c51e063f928",
+    "baseline": {
+      "tests": 177,
+      "passed": 174,
+      "failed": 3
+    },
+    "baselineFailures": [
+      "begge kalder kassebelaegning()",
+      "OG BEGGE SKRIVER `ude af drift` VED SIDEN AF TALLET",
+      "OG TALLET FORMATERES MED pct(), ikke med en egen streng"
+    ],
+    "current": {
+      "tests": 177,
+      "passed": 177,
+      "failed": 0
+    },
+    "cause": "Kasser.jsx havde mistet det fælles belægningskort, mens Udlån fortsat brugte den delte kassebelaegning()-funktion.",
+    "resolution": "Kassekartoteket bruger nu samme kassebelaegning(), pct() og eksplicit ude-af-drift-grundlag som Udlån. Testen er ikke svækket."
+  },
+  "testResults": {
+    "unitbooking": "177/177 bestået",
+    "emulatorSeed": "4/4 bestået",
+    "combinedRelevant": "197/197 bestået i 43 suites",
+    "workforce": "29/29 bestået",
+    "rootLint": "bestået",
+    "rootBuild": "bestået, 776 moduler; eksisterende chunk-size-advarsel",
+    "diffCheck": "bestået",
+    "parallelRunner": "Node-teststarteren fik spawn EPERM ved fire worker-processer, før testkode blev kørt; samme fire filer bestod 197/197 med --test-isolation=none",
+    "rulesFunctionsGate": "ikke genkørt; ingen backendfunktion, regel eller adgangsgrænse ændret"
+  },
+  "historicalIsolatedDemo": {
+    "codeCommit": "f51173ae4fd75830e3fd68a7aafb9701e7f62fa2",
     "baseUrlDuringTest": "http://127.0.0.1:5199",
     "dataSource": "lokale syntetiske fixtures, tydeligt mærket",
     "externalServices": "ikke tilsluttet",
-    "purpose": "UI- og kontraktbevis; ikke serverbevis"
+    "purpose": "Historisk UI- og kontraktbevis; ikke serverbevis"
   }
 }

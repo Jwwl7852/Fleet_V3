@@ -10,14 +10,21 @@ const CODE_COMMIT = process.env.VEYRO_OVERVIEW_COMMIT || "ikke-angivet";
 const EMAIL = process.env.VITE_DEV_EJER_MAIL || "";
 const PASSWORD = process.env.VITE_DEV_BRUGER_KODE || "";
 const ALLOW_ERRORS = process.env.VEYRO_OVERVIEW_ALLOW_ERRORS === "1";
-const routes = [
-  ["fleet", "/fleet-v2"],
-  ["facility", "/facility-v2"],
-  ["procure", "/indkoeb"],
-  ["workforce", "/workforce-v2"],
-  ["unitbooking", "/unitbooking"],
-  ["warehouse", "/warehouse"],
+const configuredRoutes = [
+  ["fleet", "/fleet-v2", ".fc-overview-kpis"],
+  ["facility", "/facility-v2", ".fc-overview-kpis"],
+  ["procure", "/indkoeb", ".fc-overview-kpis"],
+  ["workforce", "/workforce-v2", ".fc-overview-kpis"],
+  ["unitbooking", "/unitbooking", ".fc-overview-kpis"],
+  ["warehouse", "/warehouse", ".fc-overview-kpis"],
+  ["unitbooking-belaegning", "/ressourcer/units", ".fc-kpis"],
 ];
+const selectedNames = new Set((process.env.VEYRO_OVERVIEW_MODULES || "")
+  .split(",").map((name) => name.trim()).filter(Boolean));
+const routes = selectedNames.size
+  ? configuredRoutes.filter(([name]) => selectedNames.has(name))
+  : configuredRoutes;
+if (!routes.length) throw new Error("VEYRO_OVERVIEW_MODULES matchede ingen kendte captures.");
 
 const edge = [
   process.env.VEYRO_OVERVIEW_BROWSER,
@@ -73,10 +80,11 @@ async function waitFor(expression, message, timeout = 10000) {
 async function setViewport(width, height) {
   await call("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width < 600, screenWidth: width, screenHeight: height });
 }
-async function navigate(path) {
+async function navigate(path, selector) {
   await call("Page.navigate", { url: `${BASE}${path}` });
   await waitFor("document.readyState === 'complete'", `${path} blev ikke indlæst`);
-  await waitFor(ALLOW_ERRORS ? "Boolean(document.querySelector('.fc-overview-kpis,[role=alert]'))" : "Boolean(document.querySelector('.fc-overview-kpis'))", `${path} viste ikke overblikket`);
+  const readySelector = ALLOW_ERRORS ? `${selector},[role=alert]` : selector;
+  await waitFor(`Boolean(document.querySelector(${JSON.stringify(readySelector)}))`, `${path} viste ikke det forventede indhold`);
   await pause(200);
 }
 async function capture(name, width, height) {
@@ -97,12 +105,12 @@ try {
     await evaluate(`(()=>{const set=(selector,value)=>{const element=document.querySelector(selector);const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(element,value);element.dispatchEvent(new Event('input',{bubbles:true}));};set('input[type=email]',${JSON.stringify(EMAIL)});set('input[type=password]',${JSON.stringify(PASSWORD)});document.querySelector('form').requestSubmit();return true})()`);
     await waitFor("location.pathname !== '/login'", "Det lokale emulatorlogin fejlede", 15000);
   }
-  for (const [name, path] of routes) {
-    await setViewport(1440, 900); await navigate(path);
-    captures.push({ file: `1440x900-${name}.png`, route: path, viewport: "1440x900", dataSource: "Tydeligt mærkede lokale syntetiske fixtures" });
+  for (const [name, path, selector] of routes) {
+    await setViewport(1440, 900); await navigate(path, selector);
+    captures.push({ file: `1440x900-${name}.png`, route: path, viewport: "1440x900", dataSource: "Tenantlagrede syntetiske data i lokale emulatorer" });
     await capture(name, 1440, 900);
     await setViewport(390, 844); await pause(120);
-    captures.push({ file: `390x844-${name}.png`, route: path, viewport: "390x844", dataSource: "Tydeligt mærkede lokale syntetiske fixtures" });
+    captures.push({ file: `390x844-${name}.png`, route: path, viewport: "390x844", dataSource: "Tenantlagrede syntetiske data i lokale emulatorer" });
     await capture(name, 390, 844);
   }
   writeFileSync(join(OUT, "capture-manifest.json"), `${JSON.stringify({
