@@ -112,3 +112,38 @@ Windows-sandboxen afviste desuden test/build-procesoprettelse med `spawn EPERM`.
 - PLANNINGs visuelle prototype er ikke omskrevet; dens Enheder-genvej bruger nu samme serverregister som FLEET.
 - Permanent billedlagring for enheder afventer den særskilte Storage-adapter og markeres sådan i formularen.
 - En ressourceformular gemmer stamdata før den særskilte atomiske hardwarefunktion. Hvis hardwarekaldet afvises, bevares formularinput og brugeren får en præcis fejl; stamdata og hardwarelink udgør ikke én fælles transaktion.
+
+## Rettelser fra `17-9-2026, Ressourcer.docx`
+
+Implementeret i lokalt commit `126d10b3586b6dbe93b2b6e5c31f5ad64b97568b` på `codex/veyro-integration-v1`.
+
+- Medarbejderfunktioner er kundekategorier under Opsætning → Ressourcer → Medarbejdere. Ny/rediger medarbejder bruger en valgliste med valgte kategorier; den tidligere faste afkrydsningsliste er fjernet.
+- Stationeret er koblet til en separat, kundedefineret afdelingskategori samme sted. Nye medarbejdere kræver en gyldig afdeling.
+- Funktion- og afdelingsreferencer valideres mod samme tenant i Realtime Database Rules. Ældre `funktioner` og fritekststationering bevares for bagudkompatibilitet.
+- PLANNING-adapteren modtager både ældre tekniske funktionskoder og de nye stabile kategori-id'er samt en stabil afdelingsreference.
+- Medarbejdere er ændret til fuldbredde rækkeliste med søgning, funktions-/afdelingsfilter, sortering og nulstilling. Hele rækken åbner en centreret detaljedialog; det permanente højrepanel er fjernet.
+- Ejendomme er ændret til fuldbredde rækkeliste uden permanent højrepanel. Hele rækken er klik- og tastaturåbnbar.
+- Units, Lagerlokationer og Certifikater har ikke længere KPI-kortene markeret med rødt kryds. De viser kompakte filter-/sorteringslinjer og deres registre som rækker.
+- Enheder har ikke længere den dobbelte hjælpetekst eller knappen “Gem visning”. AppShell skjuler den generiske ekstra overskrift på Ressourcer-ruterne, så hver side kun ejer sin egen titel.
+- Den tydelige TEST-markering for syntetiske emulatorposter er bevaret.
+
+### Aktuelt browserbevis
+
+Integreret root-app på `http://127.0.0.1:5197/`, normal login og eksisterende isoleret emulatoropsætning. Prøven brugte den syntetiske administrator og data fra `demo-veyro-integration`; ingen skjult demofallback eller ekstern tjeneste blev aktiveret.
+
+- `/opsaetning/ressourcer/medarbejdere`: separate registre for Funktioner og Afdelinger, begge med stabile ID'er og deaktivering frem for sletning.
+- `/ressourcer/medarbejdere`: fuldbredde liste, fire filter-/sorteringskontroller, centreret Ny medarbejder-dialog, kategorivalg uden checkbokse og afdelingsvalg fra Opsætning. Den aktuelle emulator havde 0 medarbejdere og 0 kategorier, så tomtilstanden blev prøvet uden at skrive testdata.
+- `/facility-v2/ejendomme`: fire eksisterende syntetiske ejendomme i fuldbreddetabel; klik på hele rækken `EJ-008` åbnede den korrekte ejendomsprofil.
+- `/ressourcer`, `/ressourcer/enheder`, `/ressourcer/units`, `/ressourcer/varekatalog`, `/ressourcer/lagerlokationer` og `/ressourcer/certifikater`: ingen dokumentbredde-overløb, ingen dubletoverskrift og ingen fjernede KPI-rækker på de markerede sider.
+
+### Aktuel teststatus for rettelsescommittet
+
+- Root lint: bestået.
+- Ressourcer-struktur: 8/8 bestået.
+- PLANNING-/Workforce-adaptere og arkitekturgrænser: 15/15 bestået.
+- Designkontrol: 11/11 bestået.
+- Root produktionsbuild: bestået, 776 moduler; kun kendt Vite-advarsel om store chunks.
+- Whitespace-kontrol: bestået; kun Git-advarsler om linjeslutninger.
+- Fuld Rules-/platformgate: **ikke gennemført på dette commit**. Database-emulatoren stoppede før tests med `failed to create a child event loop` → `Unable to establish loopback connection` → `SocketException: Invalid argument: connect`. Portene 9200, 9399, 4410 og 4510 var ledige; fejlen er dermed fortsat Java/Netty-loopbackopstart og ikke dokumenteret som en fejlet sikkerhedsassertion. Den nye personnel-rules-regression er implementeret, men må genkøres, når emulatoren kan starte.
+
+Rigtig OBD/GPS-integration er fortsat **udskudt efter aftale** og er ikke en blokering for denne visuelle Ressourcer-gennemgang.
