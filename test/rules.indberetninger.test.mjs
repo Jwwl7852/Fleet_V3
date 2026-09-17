@@ -70,6 +70,12 @@ before(async () => {
   });
   await miljoe.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.database();
+    /* Testen bruger bevidst faste id'er for at gøre write-once-forløbene
+       læsbare. En varm/genbrugt emulator kan derfor indeholde underskrifter
+       fra en tidligere kørsel. Ryd kun denne tests egen tenant før seedning;
+       ellers fejler de seks forventet tilladte FØRSTE skrivninger, netop fordi
+       produktreglen korrekt afviser en anden underskrift. */
+    await remove(ref(db, `tenants/${T}`));
     await set(ref(db, `tenants/${T}/_findes`), true);
     /* koeretoejId slår op — uden bilen fejler hver skrivning på VALIDERING og
        ville ligne en manglende permission. */
