@@ -1,0 +1,79 @@
+{
+  "date": "2026-09-17",
+  "branch": "codex/veyro-integration-v1",
+  "baseHead": "d1356cd71cc1606b49fb2e142e960bf01fe6e26a",
+  "implementationCommit": "e9d932d",
+  "application": {
+    "kind": "integrated-root-app",
+    "url": "http://127.0.0.1:5197/",
+    "authentication": "normal Firebase Auth emulator login",
+    "role": "synthetic administrator",
+    "dataSource": "tenant-scoped Firebase RTDB emulator; explicitly synthetic fixtures",
+    "emulators": { "auth": 9099, "database": 9000, "functions": 5001 },
+    "externalServicesActivated": false
+  },
+  "observations": [
+    {
+      "id": "resources-navigation",
+      "route": "/ressourcer",
+      "result": "passed",
+      "steps": [
+        "Open the authenticated integrated root app.",
+        "Expand Ressourcer in the common navigation.",
+        "Verify Overblik, Enheder, Ejendomme, Medarbejdere, Units, Varekatalog, Lagerlokationer and Certifikater."
+      ]
+    },
+    {
+      "id": "setup-cleanup",
+      "route": "/opsaetning",
+      "result": "passed",
+      "steps": [
+        "Expand Opsætning.",
+        "Verify only Generelt, Ressourcer, Priser, Brugere & roller and Godkendelsesregler are visible.",
+        "Verify old Enheder, FLEET-kategorier, Medarbejdere, Kasseliste, Standardpriser, Kundepriser and PROCURE approval entries are not duplicated."
+      ]
+    },
+    {
+      "id": "obd-single-attachment",
+      "route": "/ressourcer/enheder",
+      "result": "passed",
+      "fixture": "QA-MU4E1ZK7 + REVIEW-OBD-20260917",
+      "steps": [
+        "Open the existing synthetic unit.",
+        "Select the free OBD device and confirm save.",
+        "Reload and verify the OBD device remains selected.",
+        "Open NB-001 and verify the attached OBD is absent from selectable options.",
+        "Call the authenticated emulator function for NB-001 and verify ALREADY_EXISTS."
+      ]
+    },
+    {
+      "id": "gps-single-attachment",
+      "route": "/opsaetning/ressourcer/units",
+      "result": "passed",
+      "fixture": "REVIEW-UNIT-20260917 + REVIEW-GPS-20260917",
+      "steps": [
+        "Register GPS hardware in the authenticated setup UI.",
+        "Attach it to a clearly marked synthetic unit through the authenticated local function.",
+        "Reload setup and verify the registered attachment.",
+        "Attempt attachment to REVIEW-UNIT-SECONDARY and verify ALREADY_EXISTS."
+      ]
+    }
+  ],
+  "limitations": [
+    "No external OBD or GPS service was called or enabled.",
+    "All browser data in this report is synthetic emulator data.",
+    "The browser run covers the authenticated administrator path; route/rules tests cover permission denial and tenant isolation."
+  ],
+  "testSummary": {
+    "focused": { "passed": 197, "failed": 0 },
+    "design": { "passed": 11, "failed": 0 },
+    "fullPlatformGate": {
+      "passed": 4650,
+      "failed": 6,
+      "status": "not green on final working tree",
+      "startup": "standard emulator start failed twice with Java/Netty loopback error",
+      "failures": "six first-write signature assertions in rules.indberetninger.test.mjs; separate from Resource changes"
+    },
+    "historicalFullPlatformGate": { "passed": 4656, "failed": 0 }
+  }
+}
