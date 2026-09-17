@@ -8,7 +8,7 @@ const RESSOURCER = [
   {
     key: "enheder", label: "Enheder", ikon: "lastbil", til: "/ressourcer/enheder",
     moduler: ["flaade", "booking"], perm: "koeretoejer.laes",
-    tekst: "Det fælles køretøjs- og maskinregister, som FLEET og PLANNING læser fra.",
+    tekst: "Det fælles enheds- og maskinregister, som FLEET og PLANNING læser fra.",
     kilde: "koeretoejer",
   },
   {
