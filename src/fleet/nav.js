@@ -558,13 +558,10 @@ export const NAV = [
     key: "unitbooking", sti: "/unitbooking", label: "Unitbooking", titel: "Unitbooking",
     under: "Transportkasser, reolpladser og udlån", gruppe: "drift",
     born: [
-      /* ⚠ KASSELISTEN ER FLYTTET TIL RESSOURCER (fælles struktur 2026-09-17).
-         Kalenderen er nu modulets FORSIDE og ligger paa /unitbooking,
-         hvor Kasser laa — samme snit som da Driftskalenderen overtog /flaade,
-         da Enheder gik til Ressourcer. /unitbooking/kalender lever videre som
-         redirect, saa et bogmaerke ikke doer af en menuomlaegning.
-         Den gamle reolpladsrute er skjult, men bevares som kompatibilitetslink. */
-      { key: "unitbookingKalender", sti: "/unitbooking", label: "Kalender",
+      { key: "unitbookingOverblik", sti: "/unitbooking", label: "Overblik",
+        titel: "Unitbooking – overblik",
+        under: "Ledige units, aktive bookinger og importer til kontrol" },
+      { key: "unitbookingKalender", sti: "/unitbooking/kalender", label: "Kalender",
         titel: "Unitbooking – kalender",
         under: "Kasser × dage, og listen over hvad der skal ud og hjem" },
       { key: "unitbookingImport", sti: "/unitbooking/import", label: "Importér booking",
@@ -766,13 +763,6 @@ export const REDIRECTS = [
      links til den tomme oversigt — og fejlen ville se ud som et forældet
      link frem for en redirect der tabte noget. Videresend() i App.jsx
      bygger målet af de samme parametre. */
-  /* ⚠ KALENDEREN OVERTOG /unitbooking, da Kasselisten gik til Opsaetning.
-     Stien /unitbooking/kalender har staaet i sidebaren siden modulet kom.
-     ⚠ Og prisen ved flytningen staar her, saa ingen tror den er gratis: et
-     bogmaerke til /unitbooking, sat da det var KASSELISTEN, lander nu paa
-     kalenderen. De to kan ikke skelnes — stien er den samme. Samme
-     omkostning som da Driftskalenderen overtog /flaade fra Enheder. */
-  { fra: "/unitbooking/kalender", til: "/unitbooking" },
   { fra: "/opsaetning/enheder", til: "/ressourcer/enheder" },
   { fra: "/opsaetning/enheder/:id", til: "/ressourcer/enheder/:id" },
   { fra: "/opsaetning/fleet-kategorier", til: "/opsaetning/ressourcer/enheder" },

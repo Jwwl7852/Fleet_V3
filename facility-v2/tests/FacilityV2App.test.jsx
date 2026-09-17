@@ -29,18 +29,20 @@ function renderEmbedded(path = '/facility-v2', dataset = createDemoDataset()) {
 describe('FACILITY v2 appskal', () => {
   it('viser et beregnet overblik og den første produktpakke uden FLEET', async () => {
     renderApp();
-    expect(await screen.findByRole('heading', { name: 'Overblik' })).toBeInTheDocument();
-    expect(screen.getByText('186.500 kr.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'FACILITY – overblik' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'FACILITY nøgletal' })).toHaveTextContent('Ejendomme4');
+    expect(screen.getByRole('heading', { name: 'Kommende eftersyn' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Åbne opgaver' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'FLEET' })).not.toBeInTheDocument();
   });
 
   it('viser FLEET i den kombinerede demopakke uden at ændre FACILITY-data', async () => {
     const user = userEvent.setup();
     renderApp();
-    await screen.findByRole('heading', { name: 'Overblik' });
+    await screen.findByRole('heading', { name: 'FACILITY – overblik' });
     await user.selectOptions(screen.getByLabelText('Vælg produktpakke'), 'combined');
     expect(screen.getByRole('link', { name: 'FLEET' })).toBeInTheDocument();
-    expect(screen.getByText('186.500 kr.')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'FACILITY nøgletal' })).toHaveTextContent('Ejendomme4');
   });
 
   it('bevarer FACILITY-menuens foldetilstand i eget navnerum', async () => {
@@ -64,18 +66,20 @@ describe('FACILITY v2 appskal', () => {
     dataset.costs = [];
     dataset.serviceOccurrences = [];
     dataset.servicePlans = [];
+    dataset.tasks = [];
     renderApp('/facility', dataset);
-    await waitFor(() => expect(screen.getByText('Ingen ejendomme endnu')).toBeInTheDocument());
-    await waitFor(() => expect(document.querySelector('.cost-card')).toHaveTextContent('Ingen registrerede demoomkostninger'));
+    await waitFor(() => expect(screen.getByText('Der er ingen planlagte eftersyn i den viste 30-dagesperiode.')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Der er ingen åbne FACILITY-opgaver.')).toBeInTheDocument());
   });
 
   it('bruger platformens route-prefix uden at tegne en ekstra shell', async () => {
+    const user = userEvent.setup();
     renderEmbedded('/facility-v2/ejendomme');
     expect(await screen.findByRole('heading', { name: 'Ejendomme' })).toBeInTheDocument();
     expect(document.querySelector('.app-shell')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /Åbn/ })[0]).toHaveAttribute(
-      'href',
-      expect.stringMatching(/^\/facility-v2\/ejendomme\//),
-    );
+    const row = screen.getAllByRole('link', { name: /^Åbn / })[0];
+    expect(row).toHaveAttribute('tabindex', '0');
+    await user.click(row);
+    expect(await screen.findByText('EJENDOMSPROFIL')).toBeInTheDocument();
   });
 });

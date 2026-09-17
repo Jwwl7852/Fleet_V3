@@ -1,145 +1,51 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { OperationalOverview, OverviewStatus } from "../../fleet/OperationalOverview.jsx";
 import { useListe } from "../../fleet/useListe.js";
-import { num, pct } from "../../fleet/format.js";
-import {
-  Kort, Tabel, Pille, Henter, Datatilstand, Tom, Ikon,
-  KpiKort, KpiRaekke,
-} from "../../fleet/ui.jsx";
-import {
-  beholdningPrVare, forfaldneOptaellinger, plukkoe, underMinimum, udenLokation,
-} from "../../fleet/warehouse.js";
-import { belaegningPrPlads } from "../../fleet/reolplads.js";
-import { lagerBelægningPrOmraade, vareEjer } from "../../fleet/warehouse-unit.js";
-import {
-  DEMO_BEHOLDNING, DEMO_CARRIERS, DEMO_REOLPLADSER, DEMO_VARER,
-} from "../../fleet/demo-lager.js";
-import { DEMO_KASSER } from "../../fleet/demo-unitbooking.js";
-import { DEMO_KUNDER } from "../../fleet/demo-kunder.js";
+import { Henter, Datatilstand } from "../../fleet/ui.jsx";
+import { underMinimum, udenLokation } from "../../fleet/warehouse.js";
+import { demoMode } from "../../firebase.js";
+import { DEMO_BEHOLDNING, DEMO_CARRIERS, DEMO_VARER } from "../../fleet/demo-lager.js";
 
-const linkKnap = (til, tekst, primaer = false) => (
-  <Link className={`fc-btn${primaer ? " fc-btn-primaer" : ""}`} to={til}>{tekst}</Link>
-);
+const date = (value) => Number.isFinite(value) ? new Intl.DateTimeFormat("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Copenhagen" }).format(value) : "Dato mangler";
 
 export default function WarehouseOverblik() {
-  const { data: varer, henter, tilstand, genindlaes } = useListe("varer", {
-    graense: 2000, demo: DEMO_VARER,
-  });
-  const { data: beholdning } = useListe("beholdning", { graense: 5000, demo: DEMO_BEHOLDNING });
-  const { data: carriers } = useListe("carriers", { graense: 2000, demo: DEMO_CARRIERS });
-  const { data: pladser } = useListe("reolpladser", { graense: 2000, demo: DEMO_REOLPLADSER });
-  const { data: kasser } = useListe("kasser", { graense: 2000, demo: DEMO_KASSER });
-  const { data: ordrer } = useListe("plukordrer", { graense: 2000, demo: [] });
-  const { data: optaellinger } = useListe("optaellinger", { graense: 5000, demo: [] });
-  const { data: kunder } = useListe("kunder", { graense: 500, demo: DEMO_KUNDER });
-
-  if (henter) return <Henter hvad="WAREHOUSE-overblikket" />;
-
-  const lave = underMinimum(varer, beholdning);
-  const pluk = plukkoe(ordrer);
-  const forfaldne = forfaldneOptaellinger(beholdning, optaellinger, Date.now());
-  const modtagelser = carriers.filter((c) => c.status === "iTransit" || udenLokation(c));
-  const unitTilPlacering = kasser.filter((k) => k.status !== "udlaant" && !k.pladsId);
-  const afvigelser = optaellinger.filter((o) => Number(o.afvigelse) !== 0);
-  const belaegning = belaegningPrPlads({ beholdning, carriers, kasser });
-  const omraader = lagerBelægningPrOmraade(pladser, belaegning);
-  const total = beholdningPrVare(beholdning);
-
-  const opgaver = [
-    {
-      id: "modtag", label: "Modtag og placér", antal: modtagelser.length + unitTilPlacering.length,
-      tone: modtagelser.length + unitTilPlacering.length ? "warn" : "ok",
-      note: `${modtagelser.length} beholdere · ${unitTilPlacering.length} units`, til: "/warehouse/modtagelse",
-    },
-    {
-      id: "pluk", label: "Pluk og udlever", antal: pluk.length,
-      tone: pluk.length ? "warn" : "ok", note: "frigivne ordrer", til: "/warehouse/pluk",
-    },
-    {
-      id: "minimum", label: "Under minimum", antal: lave.length,
-      tone: lave.length ? "bad" : "ok", note: "varer kræver handling", til: "/warehouse/varer",
-    },
-    {
-      id: "optael", label: "Optælling", antal: forfaldne.length,
-      tone: forfaldne.length ? "warn" : "ok", note: `${afvigelser.length} registrerede afvigelser`, til: "/warehouse/optaelling",
-    },
-  ];
-
-  return (
-    <div className="fc-grid warehouse-workspace">
-      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
-
-      <div className="warehouse-hero">
-        <div>
-          <p className="warehouse-eyebrow">Dagens lagerarbejde</p>
-          <h2>WAREHOUSE-overblik</h2>
-          <p className="fc-hint">Modtagelser, pluk, afvigelser og faktisk belægning samlet ét sted.</p>
-        </div>
-        <div className="warehouse-hero-actions">
-          {linkKnap("/warehouse/scan", "Scan unit", true)}
-          {linkKnap("/warehouse/modtagelse", "Ny modtagelse")}
-        </div>
-      </div>
-
-      <KpiRaekke>
-        {opgaver.map((o, index) => (
-          <KpiKort key={o.id} label={o.label} vaerdi={num(o.antal)} note={o.note}
-                   ikon={index === 0 ? <Ikon navn="kasse" /> : undefined}
-                   tone={index === 0 ? "ikon-5" : undefined} rund={index === 0}
-                   til={o.til} />
-        ))}
-      </KpiRaekke>
-
-      <div className="warehouse-overview-grid">
-        <Kort titel="Kræver handling">
-          {opgaver.some((o) => o.antal > 0) ? (
-            <div className="warehouse-task-list">
-              {opgaver.filter((o) => o.antal > 0).map((o) => (
-                <Link key={o.id} to={o.til} className="warehouse-task-row">
-                  <span><b>{o.label}</b><span className="fc-hint">{o.note}</span></span>
-                  <Pille tone={o.tone}>{num(o.antal)}</Pille>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <Tom handling={linkKnap("/warehouse/scan", "Scan næste unit", true)}>
-              Ingen åbne lageropgaver. Start en scanning, når næste unit ankommer.
-            </Tom>
-          )}
-        </Kort>
-
-        <Kort titel="Belægning pr. lager og zone">
-          <Tabel
-            kolonner={[
-              { key: "lager", label: "Lager", render: (r) => <b>{r.lager}</b> },
-              { key: "zone", label: "Zone", render: (r) => r.zone },
-              { key: "belaegning", label: "Belægning", render: (r) => `${pct(r.belaegningPct, 0)} · ${r.optaget}/${r.pladser}` },
-              { key: "spaerret", label: "Spærret", num: true, render: (r) => num(r.spaerret) },
-            ]}
-            raekker={omraader}
-            noegle={(r) => `${r.lager}-${r.zone}`}
-            tom="Opret en lagerlokation for at se belægningen."
-          />
-          <div className="warehouse-card-action">{linkKnap("/ressourcer/lagerlokationer", "Administrér lokationer")}</div>
-        </Kort>
-      </div>
-
-      <Kort titel="Beholdning under minimum">
-        {lave.length ? (
-          <Tabel
-            kolonner={[
-              { key: "varenummer", label: "Varenr.", render: (r) => <b>{r.vare.varenummer}</b> },
-              { key: "vare", label: "Vare", render: (r) => r.vare.navn },
-              { key: "ejer", label: "Ejer", render: (r) => vareEjer(r.vare, kunder).label },
-              { key: "saldo", label: "På lager", num: true, render: (r) => num((total[r.vare.id] || 0) / 1000) },
-              { key: "minimum", label: "Minimum", num: true, render: (r) => num(r.vare.minimum) },
-            ]}
-            raekker={lave.slice(0, 8)}
-            noegle={(r) => r.vare.id}
-          />
-        ) : (
-          <Tom handling={linkKnap("/warehouse/varer", "Åbn varer")}>Ingen varer er under minimum.</Tom>
-        )}
-      </Kort>
-    </div>
-  );
+  const navigate = useNavigate();
+  const varer = useListe("varer", { graense: 2000, demo: DEMO_VARER });
+  const beholdning = useListe("beholdning", { graense: 5000, demo: DEMO_BEHOLDNING });
+  const carriers = useListe("carriers", { graense: 2000, demo: DEMO_CARRIERS });
+  const ordrer = useListe("plukordrer", { graense: 2000, demo: [] });
+  if (varer.henter || beholdning.henter || carriers.henter || ordrer.henter) return <Henter hvad="WAREHOUSE-overblikket" />;
+  const failed = [varer, beholdning, carriers, ordrer].find((source) => source.fejl);
+  if (failed) return <Datatilstand tilstand={failed.tilstand} genprov={failed.genindlaes} />;
+  const today = new Date(); today.setHours(0, 0, 0, 0); const tomorrow = today.getTime() + 86400000;
+  const incoming = carriers.data.filter((item) => item.status === "iTransit");
+  const outgoing = ordrer.data.filter((item) => !["afsendt", "annulleret"].includes(item.tilstand));
+  const outgoingToday = outgoing.filter((item) => Number.isFinite(item.afgangMs) && item.afgangMs >= today.getTime() && item.afgangMs < tomorrow);
+  const movements = [
+    ...incoming.map((item) => ({ id: `in-${item.id}`, dateMs: item.forventetModtagelseMs || null, reference: item.etapeId || item.id, type: "Modtagelse", party: item.kundeId || "Ikke angivet", units: item.kolli ?? 1, status: item.forventetModtagelseMs ? "Forventet" : "Dato mangler", tone: item.forventetModtagelseMs ? "warn" : "neutral", to: "/warehouse/modtagelse" })),
+    ...outgoing.map((item) => ({ id: `out-${item.id}`, dateMs: item.afgangMs || null, reference: item.nummer || item.id, type: "Udlevering", party: item.kundeId || "Ikke angivet", units: Object.keys(item.linjer || {}).length, status: item.tilstand || "Ikke angivet", tone: item.tilstand === "frigivet" ? "warn" : "info", to: "/warehouse/pluk" })),
+  ].sort((left, right) => (left.dateMs ?? Number.MAX_SAFE_INTEGER) - (right.dateMs ?? Number.MAX_SAFE_INTEGER)).slice(0, 5);
+  const low = underMinimum(varer.data, beholdning.data);
+  const tasks = [
+    ...carriers.data.filter((item) => item.status === "paaLager" && udenLokation(item)).map((item) => ({ id: `place-${item.id}`, task: "Placér carrier", object: item.id, priority: "Høj", status: "Mangler lokation", tone: "warn", to: "/warehouse/modtagelse" })),
+    ...low.map((item) => ({ id: `low-${item.vare.id}`, task: "Beholdning under minimum", object: `${item.vare.varenummer} · ${item.vare.navn}`, priority: "Høj", status: "Kræver handling", tone: "bad", to: "/warehouse/varer" })),
+    ...outgoing.filter((item) => ["frigivet", "plukker"].includes(item.tilstand)).map((item) => ({ id: `pick-${item.id}`, task: "Pluk og udlever", object: item.nummer || item.id, priority: item.prioritet === "høj" ? "Høj" : "Normal", status: item.tilstand, tone: "info", to: "/warehouse/pluk" })),
+  ].slice(0, 5);
+  return <OperationalOverview
+    module="WAREHOUSE" title="WAREHOUSE – overblik"
+    period="I dag og kommende registrerede hændelser · Europe/Copenhagen" source="WAREHOUSE-noder" testData={demoMode}
+    kpis={[
+      { label: "Items på lager", value: beholdning.data.length, note: "beholdningsposter; units og lokationer tælles ikke", icon: "▦", onClick: () => navigate("/warehouse/varer") },
+      { label: "Forventede modtagelser i dag", value: incoming.some((item) => !Number.isFinite(item.forventetModtagelseMs)) ? "Mangler dato" : incoming.filter((item) => item.forventetModtagelseMs >= today.getTime() && item.forventetModtagelseMs < tomorrow).length, note: "i transit; manglende forventet dato vises særskilt", icon: "↓", tone: "warn", onClick: () => navigate("/warehouse/modtagelse") },
+      { label: "Udleveringer i dag", value: outgoingToday.length, note: "åbne plukordrer med afgang i dag", icon: "↑", tone: "warn", onClick: () => navigate("/warehouse/pluk") },
+    ]}
+    tables={[
+      { id: "warehouse-movements", title: "Kommende modtagelser og udleveringer", note: "Registreret dato først; manglende dato til sidst · højst 5", onAll: () => navigate("/warehouse/bevaegelser"), rows: movements, onRow: (row) => navigate(row.to), columns: [
+        { key: "date", label: "Dato", render: (row) => date(row.dateMs) }, { key: "reference", label: "Reference", render: (row) => <strong>{row.reference}</strong> }, { key: "type", label: "Type" }, { key: "party", label: "Kunde / leverandør" }, { key: "units", label: "Antal items" }, { key: "status", label: "Status", render: (row) => <OverviewStatus tone={row.tone}>{row.status}</OverviewStatus> }, { key: "action", label: "Handling", render: () => <span className="fc-overview-link">Se detaljer →</span> },
+      ], empty: "Der er ingen registrerede modtagelser eller udleveringer. En hændelse uden dato gættes ikke." },
+      { id: "warehouse-tasks", title: "Lageropgaver til behandling", note: "Placering og minimumsafvigelser før almindelige pluk · højst 5", onAll: () => navigate("/warehouse/pluk"), rows: tasks, onRow: (row) => navigate(row.to), columns: [
+        { key: "task", label: "Opgave", render: (row) => <strong>{row.task}</strong> }, { key: "object", label: "Item / unit" }, { key: "priority", label: "Prioritet" }, { key: "status", label: "Status", render: (row) => <OverviewStatus tone={row.tone}>{row.status}</OverviewStatus> }, { key: "action", label: "Handling", render: () => <span className="fc-overview-link">Åbn arbejdsflade →</span> },
+      ], empty: "Der er ingen lageropgaver, som kræver behandling." },
+    ]}
+  />;
 }

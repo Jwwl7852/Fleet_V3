@@ -1,165 +1,44 @@
-import { useMemo, useState } from "react";
-import { fleetDemo } from "../demoData";
-import { Icon } from "./Icon";
-import { MiniBarChart, MiniLineChart, OperationChart } from "./OverviewCharts";
-import { GeoMap } from "./GeoMap";
+import { OperationalOverview, OverviewStatus } from "../../../src/fleet/OperationalOverview.jsx";
 import { useFleetData } from "../data/FleetDataContext";
+import { CASE_PRIORITIES, CASE_STATUSES, isOpenCase } from "../data/caseWorkflow";
 import { deriveOverview } from "../data/unitSelectors";
-import { OPERATION_PERIODS } from "../data/overviewWorkflow";
+import { demoMode } from "../../../src/firebase.js";
 
-const formatNumber = new Intl.NumberFormat("da-DK");
-
-function LinkButton({ children, onClick }) {
-  return <button className="link-button" onClick={onClick} type="button">{children}<Icon name="chevron" size={14} /></button>;
-}
-
-function CardHeader({ title, children }) {
-  return <div className="card-header"><h2>{title}</h2>{children}</div>;
-}
-
-function KpiCard({ icon, tone, value, label, percent, change, changeTone, caption, progress, onClick }) {
-  return (
-    <button type="button" className={`kpi-card ${tone}`} onClick={onClick} aria-label={`Åbn ${label}: ${value}`}>
-      <span className="kpi-icon"><Icon name={icon} size={30} strokeWidth={2} /></span>
-      <div className="kpi-main">
-        <strong>{value}</strong>
-        <span>{label}</span>
-      </div>
-      {percent ? <span className="kpi-percent">{percent}</span> : null}
-      <span className={`kpi-change ${changeTone || "positive"}`}>{change}</span>
-      <small>{caption}</small>
-      {progress ? <span className="progress-track"><i style={{ width: progress }} /></span> : null}
-    </button>
-  );
-}
-
-function ActionList({ items, total, onNavigate }) {
-  return (
-    <section className="card action-card">
-      <CardHeader title="Kræver handling nu"><LinkButton onClick={() => onNavigate("/arbejdsko")}>Se alle ({total})</LinkButton></CardHeader>
-      <div className="action-list">
-        {items.map((item) => (
-          <button type="button" key={`${item.unit}-${item.reportId}`} className={`action-row ${item.level}`} onClick={() => item.reportId ? onNavigate(`/indberetninger/${item.reportId}`) : onNavigate("/arbejdsko")}>
-            <span className="action-icon"><Icon name="warning" size={16} strokeWidth={2.3} /></span>
-            <span className="action-copy"><strong>{item.unit}</strong><small>{item.title}</small></span>
-            <time>{item.time}</time>
-          </button>
-        ))}
-      </div>
-      <small className="action-scope">Viser {items.length} af {total} åbne sager med status Ny eller Under vurdering.</small>
-    </section>
-  );
-}
-
-function ServiceCard({ data, onNavigate, total }) {
-  return (
-    <section className="card table-card service-card">
-      <CardHeader title="Kommende service og syn"><LinkButton onClick={() => onNavigate("/service")}>Se alle ({total})</LinkButton></CardHeader>
-      <div className="table-head service-grid"><span>Enhed</span><span>Type</span><span>Dato</span><span>Km</span><span>Status</span></div>
-      {data.map((item) => (
-        <button className="table-row service-grid" type="button" key={`${item.unit}-${item.type}`} onClick={() => onNavigate("/service")}>
-          <strong>{item.unit}</strong><span>{item.type}</span><span>{item.date}</span><span>{item.meter}</span><span className="due"><i />{item.status}</span>
-        </button>
-      ))}
-    </section>
-  );
-}
-
-function ReportsCard({ data, onNavigate, total }) {
-  return (
-    <section className="card table-card reports-card">
-      <CardHeader title="Åbne indberetninger"><LinkButton onClick={() => onNavigate("/indberetninger")}>Se alle ({total})</LinkButton></CardHeader>
-      <div className="table-head report-grid"><span>Type</span><span>Antal</span><span>Seneste</span></div>
-      {data.map((item) => (
-        <button className="table-row report-grid" type="button" key={item.label} onClick={() => onNavigate("/indberetninger")}>
-          <span className="report-type"><i className={item.color}><Icon name={item.icon} size={15} /></i>{item.label}</span>
-          <strong>{item.count}</strong><span>{item.latest}</span>
-        </button>
-      ))}
-    </section>
-  );
-}
-
-const monthLabel = (month, long = false) => new Date(`${month}-15T12:00:00Z`).toLocaleDateString("da-DK", {
-  timeZone: "UTC", month: long ? "long" : "short", year: long ? "numeric" : undefined,
-}).replace(".", "");
-
-function comparisonText(current, lastYear, unit = "") {
-  if (!Number.isFinite(current) || !Number.isFinite(lastYear)) return "Samme måned sidste år: mangler data";
-  const delta = current - lastYear;
-  const sign = delta > 0 ? "+" : "";
-  return `Samme måned sidste år: ${sign}${new Intl.NumberFormat("da-DK", { maximumFractionDigits: 1 }).format(delta)}${unit}`;
-}
-
-function CostsCard({ data, costMonths, selectedMonth, onMonthChange }) {
-  const months = data.chartMonths.map((month) => monthLabel(month));
-  return (
-    <section className="card cost-card">
-      <CardHeader title="Omkostninger og nedetid"><label className="period-picker"><span className="sr-only">Omkostningsmåned</span><select aria-label="Omkostningsmåned" value={selectedMonth} onChange={(event) => onMonthChange(event.target.value)}>{costMonths.map((month) => <option key={month} value={month}>{monthLabel(month, true)}</option>)}</select></label></CardHeader>
-      <div className="cost-columns">
-        <div className="cost-section">
-          <span>Registrerede faktiske flådeomkostninger</span>
-          <div className="cost-number">{Number.isFinite(data.totals.monthlyCost) ? `DKK ${formatNumber.format(data.totals.monthlyCost)}` : "Mangler data"}</div>
-          <p>{comparisonText(data.totals.monthlyCost, data.costLastYear, " DKK")}</p>
-          <MiniBarChart values={data.costByMonth} />
-          <div className="chart-months">{months.map((month) => <span key={`cost-${month}`}>{month}</span>)}</div>
-        </div>
-        <div className="cost-section downtime">
-          <span>Nedetid fra registrerede statusintervaller</span>
-          <div className="cost-number">{Number.isFinite(data.totals.downtimePct) ? `${String(data.totals.downtimePct).replace(".", ",")} %` : "Mangler data"}</div>
-          <p>{comparisonText(data.totals.downtimePct, data.downtimeLastYear, " procentpoint")}</p>
-          <MiniLineChart values={data.downtimeByMonth} />
-          <div className="chart-months">{months.map((month) => <span key={`down-${month}`}>{month}</span>)}</div>
-        </div>
-      </div>
-    </section>
-  );
-}
+const date = (value) => value ? new Intl.DateTimeFormat("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Copenhagen" }).format(new Date(value.length === 10 ? `${value}T12:00:00Z` : value)) : "—";
+const caseTone = (status) => ["new", "assessing"].includes(status) ? "warn" : status === "ready" ? "info" : "neutral";
 
 export function Overview({ onNavigate }) {
-  const { units, relations, loading } = useFleetData();
-  const costMonths = useMemo(() => [...new Set((relations.costs || []).map((item) => item.month || item.date?.slice(0, 7)).filter(Boolean))].sort(), [relations.costs]);
-  const [operationPeriod, setOperationPeriod] = useState("week");
-  const [selectedMonth, setSelectedMonth] = useState(() => costMonths.at(-1) || "2025-03");
-  const effectiveMonth = costMonths.includes(selectedMonth) ? selectedMonth : costMonths.at(-1) || selectedMonth;
-  const derived = deriveOverview(units, relations, { operationPeriod, costMonth: effectiveMonth });
-  const data = { ...fleetDemo, ...derived, totals: derived.totals };
-  const pct = (value) => data.totals.units ? `${Math.round(value / data.totals.units * 100)} %` : "0 %";
-  if (loading) return <main className="dashboard loading-state" id="main-content"><span className="loading-spinner" /><p>Indlæser lokale demodata …</p></main>;
-  return (
-    <main className="dashboard" id="main-content">
-      <section className="dashboard-heading">
-        <div><h1>God aften, Dennis</h1><p>Her er status på din flåde i dag, {data.meta.dateLabel}</p></div>
-        <div className="weather-block"><Icon name="weather" size={34} /><strong>6°</strong><span><b>København</b><small>Let skyet · demo</small></span></div>
-        <div className="sustainability"><span className="trend-mark">╱╱</span><span>Vi holder din flåde<br />kørende længere</span></div>
-        <span className="demo-badge">{data.meta.demoLabel}</span>
-      </section>
+  const { units, relations, loading, error } = useFleetData();
+  if (loading) return <main className="dashboard loading-state" id="main-content"><span className="loading-spinner" /><p>Indlæser FLEET-data …</p></main>;
+  if (error) return <main className="dashboard loading-state" id="main-content"><p role="alert">FLEET-data kunne ikke indlæses. Eksempeldata vises ikke ved fejl.</p></main>;
 
-      <section className="kpi-grid" aria-label="Flådens nøgletal">
-        <KpiCard icon="unit" tone="blue" value={data.totals.units} label="enheder" change="Lokalt" caption="beregnet fra prototypens enhedsregister" onClick={() => onNavigate("/enheder")} />
-        <KpiCard icon="check" tone="green" value={data.totals.inOperation} label="i drift" percent={pct(data.totals.inOperation)} change="Demo" caption="åbn enhedsregisteret og vælg status I drift" progress={pct(data.totals.inOperation)} onClick={() => onNavigate("/enheder?status=operation")} />
-        <KpiCard icon="wrench" tone="red" value={data.totals.workshop} label="på værksted" percent={pct(data.totals.workshop)} change="Demo" changeTone="negative" caption="åbn værkstedsforløb" progress={pct(data.totals.workshop)} onClick={() => onNavigate("/vaerksted")} />
-        <KpiCard icon="warning" tone="orange" value={data.totals.needsAction} label="kræver handling" percent={pct(data.totals.needsAction)} change="Demo" changeTone="negative" caption="åbn samlet arbejdskø" progress={pct(data.totals.needsAction)} onClick={() => onNavigate("/arbejdsko")} />
-      </section>
+  const derived = deriveOverview(units, relations);
+  const openCases = (relations.cases || []).filter(isOpenCase);
+  const reportById = new Map((relations.reports || []).map((item) => [item.id, item]));
+  const unitById = new Map(units.map((item) => [item.id, item]));
+  const priorityRank = { critical: 0, high: 1, normal: 2, low: 3 };
+  const caseRows = [...openCases].sort((left, right) => (priorityRank[left.priority] ?? 9) - (priorityRank[right.priority] ?? 9) || String(left.dueDate || "9999").localeCompare(String(right.dueDate || "9999"))).slice(0, 5);
+  const serviceRows = derived.serviceItems.slice(0, 5).map((item, index) => ({ ...item, id: `service-${index}` }));
 
-      <section className="middle-grid">
-        <section className="card operation-card">
-          <CardHeader title="Flådens driftsstatus"><label className="period-picker"><span className="sr-only">Driftsperiode</span><select aria-label="Driftsperiode" value={operationPeriod} onChange={(event) => setOperationPeriod(event.target.value)}>{Object.entries(OPERATION_PERIODS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></CardHeader>
-          <OperationChart days={data.operationDays} />
-          <div className="legend"><span><i className="green" />I drift</span><span><i className="red" />På værksted</span><span><i className="blue" />Kræver handling</span><small>Datadækning {data.operationCoverage.pct} % · syntetisk registreret historik</small></div>
-        </section>
-        <section className="card map-card">
-          <CardHeader title="Livekort"><span className="map-count"><i />{(relations.positions || []).length} positioner</span><button className="map-link" type="button" onClick={() => onNavigate("/livekort")}>Åbn livekort <Icon name="external" size={14} /></button></CardHeader>
-          <GeoMap positions={relations.positions || []} units={units} compact controls={false} onSelect={(unitId) => onNavigate(`/enheder/${unitId}`)} />
-        </section>
-        <ActionList items={data.actionItems} total={data.totals.needsAction} onNavigate={onNavigate} />
-      </section>
-
-      <section className="bottom-grid">
-        <ServiceCard data={data.serviceItems} total={data.totals.upcomingService} onNavigate={onNavigate} />
-        <ReportsCard data={data.reportItems} total={data.totals.reports} onNavigate={onNavigate} />
-        <CostsCard data={data} costMonths={costMonths} selectedMonth={effectiveMonth} onMonthChange={setSelectedMonth} />
-      </section>
-    </main>
-  );
+  return <OperationalOverview
+    module="FLEET"
+    title="FLEET – overblik"
+    period="Aktuelle åbne poster · datoer vist i Europe/Copenhagen"
+    source="Fælles enheds-, service- og sagsgrundlag"
+    testData={demoMode}
+    kpis={[
+      { label: "Enheder", value: derived.totals.units, note: "aktive poster i enhedsregisteret", icon: "▣", tone: "neutral", onClick: () => onNavigate("/enheder") },
+      { label: "Åbne sager", value: openCases.length, note: "afsluttede og afviste er udeladt", icon: "⚒", tone: "warn", onClick: () => onNavigate("/arbejdsko") },
+      { label: "Service snart", value: derived.totals.upcomingService, note: "overskredet, kommende eller planlagt", icon: "▦", tone: "warn", onClick: () => onNavigate("/service") },
+    ]}
+    action={{ label: "Opret sag", onClick: () => onNavigate("/indberetninger/ny") }}
+    tables={[
+      { id: "fleet-service", title: "Kommende service", note: "Kritisk/overskredet først, derefter nærmeste frist · højst 5", onAll: () => onNavigate("/service"), rows: serviceRows, onRow: () => onNavigate("/service"), columns: [
+        { key: "date", label: "Dato" }, { key: "unit", label: "Enhed", render: (row) => <strong>{row.unit}</strong> }, { key: "type", label: "Type" }, { key: "interval", label: "Interval", render: () => "Se serviceplan" }, { key: "meter", label: "Kilometer / timer" }, { key: "status", label: "Status", render: (row) => <OverviewStatus tone={row.status === "Overskredet" ? "bad" : "warn"}>{row.status}</OverviewStatus> }, { key: "action", label: "Handling", render: () => <span className="fc-overview-link">Se detaljer →</span> },
+      ], empty: "Der er ingen aktive servicekrav, som kræver handling." },
+      { id: "fleet-cases", title: "Åbne sager", note: "Kritisk/høj prioritet først, derefter nærmeste frist · højst 5", onAll: () => onNavigate("/arbejdsko"), rows: caseRows, onRow: (row) => onNavigate(`/sager/${row.id}`), columns: [
+        { key: "number", label: "Sagsnummer", render: (row) => <strong>{row.number}</strong> }, { key: "date", label: "Dato", render: (row) => date(row.createdAt) }, { key: "unit", label: "Enhed", render: (row) => unitById.get(row.unitId)?.number || row.unitId }, { key: "subject", label: "Emne", render: (row) => reportById.get(row.reportId)?.title || row.nextAction }, { key: "priority", label: "Prioritet", render: (row) => CASE_PRIORITIES[row.priority] || row.priority }, { key: "status", label: "Status", render: (row) => <OverviewStatus tone={caseTone(row.status)}>{CASE_STATUSES[row.status] || row.status}</OverviewStatus> }, { key: "owner", label: "Ansvarlig", render: (row) => row.assigneeId || "Ikke tildelt" }, { key: "action", label: "Handling", render: () => <span className="fc-overview-link">Se sag →</span> },
+      ], empty: "Der er ingen åbne FLEET-sager." },
+    ]}
+  />;
 }

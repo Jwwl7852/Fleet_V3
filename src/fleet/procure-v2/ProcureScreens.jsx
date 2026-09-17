@@ -11,6 +11,7 @@ import {
 import { decideApprovalLineBatch, getOrderPdf, registerReceipt } from "./procure-v2-adapter.js";
 import { createOrderPdfBytes } from "./procure-pdf.js";
 import { calculatedConsumptionIntervals, materialConsumptionCsv } from "./procure-inventory-domain.js";
+import { OperationalOverview, OverviewStatus } from "../OperationalOverview.jsx";
 
 const kr = (oere = 0) => new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK" }).format(oere / 100);
 const number = (value) => new Intl.NumberFormat("da-DK").format(value || 0);
@@ -38,6 +39,10 @@ function PageHead({ title, subtitle, demo, tenant, actions, back }) {
 
 function Status({ children, tone = "info" }) { return <span className={`procure-status ${tone}`}>{children}</span>; }
 
+const MetricCard = ({ icon, value, label, hint, to, tone = "info" }) => <Link className="procure-kpi" to={to}>
+  <span className={`procure-kpi-icon ${tone}`} aria-hidden="true">{icon}</span><span><strong>{value}</strong><b>{label}</b><small>{hint} →</small></span><span className="procure-chevron" aria-hidden="true">›</span>
+</Link>;
+
 function Toast({ message, tone = "info", onClose }) {
   if (!message) return null;
   return <div className={`procure-toast ${tone}`} role={tone === "bad" ? "alert" : "status"}><span>{message}</span><button aria-label="Luk besked" onClick={onClose}>×</button></div>;
@@ -64,32 +69,39 @@ function Modal({ title, subtitle, children, dirty = false, onClose, onSave, foot
   </div>;
 }
 
-const MetricCard = ({ icon, value, label, hint, to, tone = "info" }) => <Link className="procure-kpi" to={to}>
-  <span className={`procure-kpi-icon ${tone}`} aria-hidden="true">{icon}</span><span><strong>{value}</strong><b>{label}</b><small>{hint} →</small></span><span className="procure-chevron" aria-hidden="true">›</span>
-</Link>;
-
 export function OverviewScreen(props) {
   const { state, demo, tenant, busy, error } = props;
-  const pendingApprovals = state.approvals.filter((item) => item.status === "pending").length;
-  const waiting = state.orders.filter((item) => ["sent", "part-received"].includes(item.status)).length;
-  const deviations = state.invoices.filter((item) => item.approvalStatus === "pending").length;
-  const rows = [
-    [state.needs[0]?.title || "Ny bestilling", state.needs[0]?.id || "", "Lager", "Afventer godkendelse", "warn", "Gennemgå", "/indkoeb/godkendelser"],
-    ["Arbejdstøj", "PO-2026-0146", "Drift", "Levering forsinket", "warn", "Følg op", "/indkoeb/bestillinger/po-2026-0146"],
-    ["Pakketape", "PO-2026-0142", "Lager", "Delvist modtaget", "info", "Registrér levering", "/indkoeb/modtagelser/po-2026-0142"],
-    ["Faktura ND-8841", "", "Lager", "Prisafvigelse", "bad", "Åbn Fakturacenter", "/oekonomi/fakturacenter?sektion=arbejdsbord&kilde=procure&po=PO-2026-0142&retur=%2Findkoeb%2Fbestillinger%2Fpo-2026-0142"],
-    ["Rengøringsmidler", "BEH-0111", "Facility", "Kladde", "neutral", "Fortsæt bestilling", "/indkoeb/bestillinger?behov=BEH-0111"],
-  ];
-  return <section className="procure-v2">
-    <PageHead title="Indkøbsoverblik" subtitle="Se, hvad der kræver handling i dag." demo={demo} tenant={tenant} actions={<><Link className="procure-button secondary" to="/indkoeb/mobil">▦ Mobilbestilling</Link><Link className="procure-button" to="/indkoeb/mobil">＋ Ny bestilling</Link></>} />
-    <PageState busy={busy} error={error} />
-    {!busy && !error && <>
-      <div className="procure-kpis"><MetricCard icon="▤" value={state.needs.filter((item) => item.status === "new").length} label="Kladder" hint="Se bestillinger" to="/indkoeb/bestillinger?fane=draft" /><MetricCard icon="◎" value={pendingApprovals} label="Til godkendelse" hint="Se godkendelser" to="/indkoeb/godkendelser" /><MetricCard icon="▣" value={waiting} label="Afventer levering" hint="Se bestillinger" to="/indkoeb/bestillinger?fane=ordered" /><MetricCard icon="!" value={deviations} label="Fakturaafvigelser" hint="Se i Fakturacenter" to="/oekonomi/fakturacenter?sektion=arbejdsbord&kilde=procure" tone="bad" /></div>
-      <div className="procure-overview-grid"><article className="procure-card procure-action-card"><div className="procure-cardhead"><h2>Kræver handling</h2><label className="procure-search"><span>⌕</span><input aria-label="Søg i sager" placeholder="Søg i sager, varenavn, PO-nummer …" /></label></div><div className="procure-tabs" role="tablist"><button className="active" role="tab" aria-selected="true">Alle <span>{rows.length}</span></button><button role="tab">Mine</button><button role="tab">Min afdeling</button></div><div className="procure-table-wrap"><table><thead><tr><th>Sag</th><th>Afdeling</th><th>Status</th><th>Næste handling</th></tr></thead><tbody>{rows.map(([name,id,department,status,tone,action,to]) => <tr key={`${name}-${id}`}><td><b>{name}</b><small>{id}</small></td><td>{department}</td><td><Status tone={tone}>{status}</Status></td><td><Link to={to}>{action}<span aria-hidden="true">›</span></Link></td></tr>)}</tbody></table></div></article>
-        <article className="procure-card procure-reorder"><div className="procure-cardhead"><h2>Køb igen</h2><Link to="/ressourcer/varekatalog?fane=tidligere">Se hele kataloget →</Link></div>{state.catalog.filter((item) => item.boughtBefore).slice(0,3).map((item) => <div className="procure-reorder-row" key={item.id}><ProductVisual type={item.visual} /><span><b>{item.name}</b><small>Varenr. {item.sku}</small><strong>{kr(item.unitPriceOere)}</strong></span><Link className="procure-button small" to={`/ressourcer/varekatalog?tilfoej=${item.id}`}>Tilføj</Link></div>)}</article></div>
-      <article className="procure-card procure-deliveries"><div className="procure-cardhead"><h2>Leveringer denne uge</h2><Link to="/indkoeb/forbrug">Se indkøbsforbrug →</Link></div><div className="procure-table-wrap"><table><thead><tr><th>Leverandør</th><th>Bestilling (PO)</th><th>Varenavn</th><th>Antal</th><th>Forventet levering</th></tr></thead><tbody>{state.orders.slice(0,3).map((order) => <tr key={order.id}><td>{supplierFor(state, order.supplierId)?.name || order.supplierId}</td><td><Link to={`/indkoeb/bestillinger/${order.id}`}>{order.poNumber}</Link></td><td>{order.lines[0]?.name}</td><td>{order.lines[0]?.quantity} {order.lines[0]?.unit}</td><td>{order.wantedDate || "Ikke bekræftet"}</td></tr>)}</tbody></table></div></article>
-    </>}
-  </section>;
+  const navigate = useNavigate();
+  if (busy) return <section className="procure-v2"><PageState busy /></section>;
+  if (error) return <section className="procure-v2"><PageState error={error} /></section>;
+  const closed = new Set(["received", "rejected", "cancelled", "modtaget", "afvist", "annulleret"]);
+  const openOrders = state.orders.filter((item) => !closed.has(item.status));
+  const pendingApprovals = state.approvals.filter((item) => item.status === "pending");
+  const start = new Date(); start.setHours(0, 0, 0, 0); const end = new Date(start); end.setDate(end.getDate() + 7);
+  const deliveries = openOrders.filter((item) => item.wantedDate && new Date(`${item.wantedDate}T12:00:00`).getTime() >= start.getTime() && new Date(`${item.wantedDate}T12:00:00`).getTime() < end.getTime()).sort((left, right) => left.wantedDate.localeCompare(right.wantedDate)).slice(0, 5);
+  const needs = state.needs.filter((item) => !["ordered", "rejected", "bestilt", "afvist"].includes(item.status));
+  const processRows = [
+    ...pendingApprovals.map((item) => ({ id: `approval-${item.id}`, reference: item.poNumber || item.orderId || item.id, date: item.createdAt || item.requestedAt || "", supplier: supplierFor(state, item.supplierId)?.name || "—", buyer: item.requestedBy || "—", amount: item.totalOere, status: "Afventer godkendelse", tone: "warn", to: "/indkoeb/godkendelser" })),
+    ...needs.map((item) => ({ id: `need-${item.id}`, reference: item.id, date: item.wantedDate || "", supplier: "Ikke valgt", buyer: item.createdBy || "—", amount: null, status: item.status === "draft" ? "Kladde" : "Til behandling", tone: "info", to: `/indkoeb/bestillinger?behov=${encodeURIComponent(item.id)}` })),
+  ].sort((left, right) => String(left.date || "9999").localeCompare(String(right.date || "9999"))).slice(0, 5);
+  const statusText = (value) => ({ sent: "Under levering", "part-received": "Delvist modtaget", approved: "Klar til bestilling", draft: "Kladde", sendt: "Under levering", godkendt: "Klar til bestilling" }[value] || value || "Ikke angivet");
+  return <section className="procure-v2"><OperationalOverview
+    module="PROCURE" title="PROCURE – overblik" period="I dag og kommende 7 dage · Europe/Copenhagen" source="PROCURE-repository" testData={demo}
+    kpis={[
+      { label: "Åbne bestillinger", value: openOrders.length, note: "afsluttede og annullerede er udeladt", icon: "▤", tone: "warn", onClick: () => navigate("/indkoeb/bestillinger") },
+      { label: "Afventer godkendelse", value: pendingApprovals.length, note: "serverens godkendelseskø", icon: "◷", tone: "warn", onClick: () => navigate("/indkoeb/godkendelser") },
+      { label: "Leverancer denne uge", value: deliveries.length, note: "ønsket levering de næste 7 dage", icon: "▰", onClick: () => navigate("/indkoeb/modtagelser") },
+    ]}
+    action={{ label: "Ny bestilling", onClick: () => navigate("/indkoeb/bestillinger?ny=1") }}
+    tables={[
+      { id: "procure-deliveries", title: "Kommende leverancer", note: "Nærmeste ønskede leveringsdato først · højst 5", onAll: () => navigate("/indkoeb/modtagelser"), rows: deliveries, onRow: (row) => navigate(`/indkoeb/bestillinger/${row.id}`), columns: [
+        { key: "date", label: "Leveringsdato", render: (row) => row.wantedDate }, { key: "number", label: "Bestillingsnr.", render: (row) => <strong>{row.poNumber || row.id}</strong> }, { key: "supplier", label: "Leverandør", render: (row) => supplierFor(state, row.supplierId)?.name || row.supplierId }, { key: "place", label: "Leveringssted", render: (row) => row.deliveryLocation || "Ikke angivet" }, { key: "lines", label: "Antal linjer", render: (row) => row.lines?.length || 0 }, { key: "status", label: "Status", render: (row) => <OverviewStatus tone="warn">{statusText(row.status)}</OverviewStatus> }, { key: "action", label: "Handling", render: () => <span className="fc-overview-link">Se detaljer →</span> },
+      ], empty: "Der er ingen åbne bestillinger med ønsket levering de næste syv dage." },
+      { id: "procure-process", title: "Bestillinger til behandling", note: "Afventende godkendelser og åbne behov · højst 5", onAll: () => navigate("/indkoeb/bestillinger"), rows: processRows, onRow: (row) => navigate(row.to), columns: [
+        { key: "reference", label: "Bestillingsnr.", render: (row) => <strong>{row.reference}</strong> }, { key: "date", label: "Dato", render: (row) => row.date || "—" }, { key: "supplier", label: "Leverandør" }, { key: "buyer", label: "Bestiller" }, { key: "amount", label: "Beløb ekskl. moms", render: (row) => Number.isFinite(row.amount) ? kr(row.amount) : "Mangler grundlag" }, { key: "status", label: "Status", render: (row) => <OverviewStatus tone={row.tone}>{row.status}</OverviewStatus> }, { key: "owner", label: "Ansvarlig", render: () => tenant?.navn || "Indkøb" }, { key: "action", label: "Handling", render: () => <span className="fc-overview-link">Se bestilling →</span> },
+      ], empty: "Der er ingen bestillinger eller behov, som afventer behandling." },
+    ]}
+  /></section>;
 }
 
 function ProductVisual({ type }) { return <span className={`procure-product-visual ${type || "other"}`} aria-hidden="true"><i /></span>; }
