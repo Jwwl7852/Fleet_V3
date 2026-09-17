@@ -1,0 +1,70 @@
+{
+  "codeCommit": "4fcd7989e64ffaf1ee006ac4c645f42537c3ec1a",
+  "capturedAt": "2026-09-17T19:51:20.451Z",
+  "baseUrl": "http://127.0.0.1:5197",
+  "app": "Samlet Version 1-root-app med én AppShell",
+  "normalEmulatorLogin": true,
+  "externalServices": false,
+  "captures": [
+    {
+      "file": "varekatalog-alle-desktop-1440x900.png",
+      "role": "syntetisk administrator",
+      "tenant": "procure-auth-a",
+      "dataSource": "tenantlagrede syntetiske data i lokale emulatorer",
+      "route": "/ressourcer/varekatalog",
+      "viewport": "1440x900",
+      "zoom": "100 %",
+      "rows": 12,
+      "keyboardRows": 12,
+      "pageOverflow": false,
+      "localTableScroll": true,
+      "resultText": "Viser 12 af 12 varer",
+      "testMarker": true
+    },
+    {
+      "file": "varekatalog-el-filter-desktop-1440x900.png",
+      "role": "syntetisk administrator",
+      "tenant": "procure-auth-a",
+      "dataSource": "tenantlagrede syntetiske data i lokale emulatorer",
+      "route": "/ressourcer/varekatalog?kategori=El-materiel",
+      "viewport": "1440x900",
+      "zoom": "100 %",
+      "rows": 2,
+      "keyboardRows": 2,
+      "pageOverflow": false,
+      "localTableScroll": true,
+      "resultText": "Viser 2 af 12 varer",
+      "testMarker": true
+    },
+    {
+      "file": "varekatalog-alle-mobil-390x844.png",
+      "role": "syntetisk administrator",
+      "tenant": "procure-auth-a",
+      "dataSource": "tenantlagrede syntetiske data i lokale emulatorer",
+      "route": "/ressourcer/varekatalog",
+      "viewport": "390x844",
+      "zoom": "100 %",
+      "rows": 12,
+      "keyboardRows": 12,
+      "pageOverflow": false,
+      "localTableScroll": false,
+      "resultText": "Viser 12 af 12 varer",
+      "testMarker": true
+    },
+    {
+      "file": "varekatalog-lang-soegning-mobil-390x844.png",
+      "role": "syntetisk administrator",
+      "tenant": "procure-auth-a",
+      "dataSource": "tenantlagrede syntetiske data i lokale emulatorer",
+      "route": "/ressourcer/varekatalog?soeg=refleksmarkering",
+      "viewport": "390x844",
+      "zoom": "100 %",
+      "rows": 1,
+      "keyboardRows": 1,
+      "pageOverflow": false,
+      "localTableScroll": false,
+      "resultText": "Viser 1 af 12 varer",
+      "testMarker": true
+    }
+  ]
+}

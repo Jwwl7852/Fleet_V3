@@ -8,6 +8,7 @@ Dato: 17. september 2026
 - Branch: `codex/veyro-integration-v1`
 - Udgangspunkt: `be2399dcd0dd5d1ecd2b28876222321e4df7236f`
 - Produktcommit: `f93e0f1fe62f63de6723a242c7f58d8e3d4d03ca`
+- Supplerende syntetisk varefixture: `4fcd7989e64ffaf1ee006ac4c645f42537c3ec1a`
 - Version: VEYRO Version 1. Design V2 og PLANNING er ikke ændret.
 - `AGENTS.md` findes ikke i worktreeet eller de kendte overordnede projektmapper; der var derfor ingen projektlokal AGENTS-instruks at læse.
 
@@ -48,11 +49,28 @@ Resultat:
 - Lange ID'er og e-mailværdier blev kontrolleret i de synlige fixtures.
 - De seks eksisterende moduloverblik FLEET, FACILITY, PROCURE, WORKFORCE, UNITBOOKING og WAREHOUSE blev smoke-testet uden dokumentoverflow efter CSS-ændringerne.
 
+### Supplerende Varekatalog-prøve
+
+Den isolerede tenant blev suppleret med 12 tydeligt syntetiske varer, 3 syntetiske leverandører og 8 kategorier. Datasættet dækker ni enhedsværdier, priser fra 12,75 kr. til 1.299,95 kr. ekskl. moms samt et varenavn på over 80 tegn.
+
+Browserprøven viste:
+
+- Søgning efter `refleksmarkering`: 1 af 12 varer.
+- Kategorien `El-materiel`: 2 af 12 varer.
+- Leverandøren `Syntetisk Teknikpartner A/S`: 5 af 12 varer.
+- Favoritter: 4 af 12 varer.
+- Tidligere købt: 5 af 12 varer.
+- Klik og Enter på en varerække åbnede vareopsætningen med korrekt varenummer og enhed.
+- `Tilføj` lagde varen i kurven og viste én leverandør samt 1.299,95 kr.
+- Siden har ingen sideskift; alle filtrerede poster vises direkte. Derfor er pagination ikke relevant for denne side.
+
+Favoritknappen ændrede ikke tilstand i det normale emulatorforløb. Koden muterer kun favoritstatus i demo-state, så vedvarende favoritfunktion i den autentificerede app er et dokumenteret restpunkt og ikke markeret som bestået.
+
 ## Automatiske kontroller
 
 Kørt på produktcommitets kodegrundlag:
 
-- Relevante kontrakt- og designtests: 214/214 bestået i 46 suites.
+- Relevante kontrakt- og designtests: 215/215 bestået i 46 suites.
 - Root lint: bestået.
 - FLEET lint: bestået.
 - FACILITY lint: bestået.
@@ -74,6 +92,6 @@ Rules-/Functions-gaten blev ikke genkørt, fordi produktrettelsen ikke ændrer b
 
 ## Konkrete rester
 
-- Den aktuelle testtenant har ingen varer. Varekatalogets tomtilstand er browserkontrolleret, mens klik på en varerække ikke kunne browserprøves med denne fixture. Den eksisterende funktion og tests er bevaret.
-- Der blev ikke indlæst et særskilt datasæt med hundredvis af poster. Eksisterende sideskift og tests er bevaret, men en ekstrem belastningsprøve med meget mange poster er ikke en del af denne aflevering.
+- Favoritknappen ændrer ikke status i et normalt emulatorforløb, fordi den eksisterende handler kun muterer demo-state. Rækkeåbning og `Tilføj` er browserverificeret.
+- Varekataloget har ingen sideskift, så der er ikke en paginationfunktion at afprøve. De 12 varierede poster er tilstrækkelige til den aftalte layoutkontrol.
 - De tre før-billeder er historiske referencefiler fra det eksisterende artefaktmateriale. De er ikke genoptaget efter produktændringen og tæller ikke som aktuelt browserbevis.

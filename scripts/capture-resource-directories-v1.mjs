@@ -98,6 +98,7 @@ async function setViewport(width, height) {
 }
 
 const captures = [];
+const catalogCaptures = [];
 try {
   await call("Page.enable");
   await call("Runtime.enable");
@@ -124,6 +125,30 @@ try {
       });
     }
   }
+  const catalogOutput = join(OUT, "varekatalog-supplement");
+  mkdirSync(catalogOutput, { recursive: true });
+  const catalogScenarios = [
+    ["varekatalog-alle-desktop-1440x900.png", 1440, 900, "", 12],
+    ["varekatalog-el-filter-desktop-1440x900.png", 1440, 900, "?kategori=El-materiel", 2],
+    ["varekatalog-alle-mobil-390x844.png", 390, 844, "", 12],
+    ["varekatalog-lang-soegning-mobil-390x844.png", 390, 844, "?soeg=refleksmarkering", 1],
+  ];
+  for (const [file, width, height, query, expectedRows] of catalogScenarios) {
+    await setViewport(width, height);
+    await call("Page.navigate", { url: `${BASE}/ressourcer/varekatalog${query}` });
+    await waitFor("document.readyState === 'complete'", "Varekataloget blev ikke indlæst");
+    await waitFor("Boolean(document.querySelector('.procure-catalog-table'))", "Varekataloget viste ikke tabellen");
+    await waitFor(`document.querySelectorAll('.procure-catalog-table tbody tr').length === ${expectedRows}`, `Varekataloget viste ikke ${expectedRows} varer`);
+    await pause(250);
+    const metrics = await evaluate(`(()=>{const rows=[...document.querySelectorAll('.procure-catalog-table tbody tr')];const table=document.querySelector('.procure-catalog-table');return {route:location.pathname+location.search,viewport:${JSON.stringify(`${width}x${height}`)},zoom:'100 %',rows:rows.length,keyboardRows:rows.filter(row=>row.tabIndex===0).length,pageOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,localTableScroll:Boolean(table&&table.scrollWidth>table.clientWidth),resultText:document.querySelector('.procure-result-count')?.textContent?.replace(/\\s+/g,' ').trim()||'',testMarker:document.body.innerText.includes('TEST')}})()`);
+    const shot = await call("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
+    writeFileSync(join(catalogOutput, file), Buffer.from(shot.data, "base64"));
+    catalogCaptures.push({
+      file, role: "syntetisk administrator", tenant: "procure-auth-a",
+      dataSource: "tenantlagrede syntetiske data i lokale emulatorer",
+      ...metrics,
+    });
+  }
   writeFileSync(join(OUT, "capture-manifest.json"), `${JSON.stringify({
     codeCommit: CODE_COMMIT,
     capturedAt: new Date().toISOString(),
@@ -133,7 +158,16 @@ try {
     externalServices: false,
     captures,
   }, null, 2)}\n`);
-  console.log(JSON.stringify({ ok: true, output: OUT, count: captures.length }, null, 2));
+  writeFileSync(join(catalogOutput, "catalog-capture-manifest.json"), `${JSON.stringify({
+    codeCommit: CODE_COMMIT,
+    capturedAt: new Date().toISOString(),
+    baseUrl: BASE,
+    app: "Samlet Version 1-root-app med én AppShell",
+    normalEmulatorLogin: true,
+    externalServices: false,
+    captures: catalogCaptures,
+  }, null, 2)}\n`);
+  console.log(JSON.stringify({ ok: true, output: OUT, count: captures.length, catalogCount: catalogCaptures.length }, null, 2));
 } finally {
   try { socket.close(); } catch { /* allerede lukket */ }
   browser.kill();

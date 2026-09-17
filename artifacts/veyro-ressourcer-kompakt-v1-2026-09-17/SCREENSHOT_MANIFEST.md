@@ -1,6 +1,6 @@
 # Billedmanifest
 
-Alle aktuelle billeder viser produktcommit `f93e0f1fe62f63de6723a242c7f58d8e3d4d03ca` i den samlede Version 1-root-app, 100 % zoom, syntetisk administrator, tenant `procure-auth-a`, med tenantlagrede syntetiske data i lokale emulatorer. Eksterne tjenester var deaktiveret.
+Alle aktuelle billeder viser commit `4fcd7989e64ffaf1ee006ac4c645f42537c3ec1a` i den samlede Version 1-root-app, 100 % zoom, syntetisk administrator, tenant `procure-auth-a`, med tenantlagrede syntetiske data i lokale emulatorer. Eksterne tjenester var deaktiveret.
 
 | Side | Route | 1440×900 | 1280×800 | 390×844 |
 | --- | --- | --- | --- | --- |
@@ -14,6 +14,17 @@ Alle aktuelle billeder viser produktcommit `f93e0f1fe62f63de6723a242c7f58d8e3d4d
 | Certifikater | `/ressourcer/certifikater` | `08-certifikater-1440x900.png` | `08-certifikater-1280x800.png` | `08-certifikater-390x844.png` |
 
 Filerne ligger i `screenshots-after/`. `capture-manifest.json` angiver for hvert billede titelstørrelse, dokumentoverflow, lokal tabelrulning, antal klikbare/tastaturbetjente rækker og synlig testmarkør.
+
+## Supplerende Varekatalog-bevis
+
+| Fil | Tilstand | Viewport | Resultat |
+| --- | --- | --- | --- |
+| `varekatalog-supplement/varekatalog-alle-desktop-1440x900.png` | Alle 12 varer | 1440×900 | Lange navne, kategorier, leverandører, pakninger og priser |
+| `varekatalog-supplement/varekatalog-el-filter-desktop-1440x900.png` | Kategori: El-materiel | 1440×900 | 2 af 12 varer og synlige rækkehandlinger |
+| `varekatalog-supplement/varekatalog-alle-mobil-390x844.png` | Alle 12 varer | 390×844 | Mobil-layout og lokal tabelrulning |
+| `varekatalog-supplement/varekatalog-lang-soegning-mobil-390x844.png` | Søgning: refleksmarkering | 390×844 | 1 af 12 varer; langt varenavn brydes læsbart |
+
+`varekatalog-supplement/catalog-capture-manifest.json` indeholder de maskinlæsbare målinger.
 
 ## Historiske før-billeder
 

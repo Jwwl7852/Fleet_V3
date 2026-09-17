@@ -1,5 +1,5 @@
 {
-  "productCommit": "f93e0f1fe62f63de6723a242c7f58d8e3d4d03ca",
+  "productCommit": "4fcd7989e64ffaf1ee006ac4c645f42537c3ec1a",
   "baseUrl": "http://127.0.0.1:5197",
   "application": "integrated Version 1 root app",
   "authentication": "normal local emulator login",
@@ -36,8 +36,65 @@
       "result": "All six rendered; none had document-level horizontal overflow"
     }
   ],
+  "catalogSupplement": {
+    "fixture": {
+      "items": 12,
+      "suppliers": 3,
+      "categories": 8,
+      "distinctUnits": 9,
+      "priceRangeDkk": [12.75, 1299.95],
+      "longestName": "Syntetisk sikkerheds- og afspærringspakke med refleksmarkering til midlertidige arbejdsområder",
+      "storage": "tenantlagrede syntetiske data i lokal Realtime Database-emulator"
+    },
+    "checks": [
+      {
+        "name": "all items",
+        "result": "12 of 12 rows rendered; all 12 rows had tabIndex=0"
+      },
+      {
+        "name": "long-name search",
+        "input": "refleksmarkering",
+        "result": "1 of 12 rows; the long product name remained readable"
+      },
+      {
+        "name": "category filter",
+        "input": "El-materiel",
+        "result": "2 of 12 rows"
+      },
+      {
+        "name": "supplier filter",
+        "input": "Syntetisk Teknikpartner A/S",
+        "result": "5 of 12 rows"
+      },
+      {
+        "name": "favorites tab",
+        "result": "4 of 12 rows"
+      },
+      {
+        "name": "previously purchased tab",
+        "result": "5 of 12 rows"
+      },
+      {
+        "name": "row open",
+        "result": "Mouse click and Enter opened the item editor with SKU TEST-LANG-001 and unit sæt"
+      },
+      {
+        "name": "add row action",
+        "result": "The long-name item was added to the cart; cart showed one supplier and DKK 1,299.95"
+      },
+      {
+        "name": "pagination",
+        "result": "Not applicable: the catalog exposes no pagination controls and renders all filtered rows"
+      },
+      {
+        "name": "favorite row action",
+        "result": "Known gap: the button did not change state during a normal emulator-backed session because the existing handler only mutates demo state"
+      }
+    ],
+    "screenshots": "screenshots-after/varekatalog-supplement/catalog-capture-manifest.json"
+  },
   "limitations": [
-    "The current Varekatalog fixture is empty, so a product-row click was not browser-tested in this tenant.",
-    "No separate hundreds-of-records stress fixture was loaded; existing pagination behavior and tests were preserved."
+    "The favorite button does not persist or change state in a normal emulator-backed session; the existing handler only mutates demo state.",
+    "The catalog has no pagination controls, so pagination is not applicable to this layout review."
   ]
 }

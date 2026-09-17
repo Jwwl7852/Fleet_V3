@@ -1,6 +1,6 @@
 {
-  "codeCommit": "f93e0f1fe62f63de6723a242c7f58d8e3d4d03ca",
-  "capturedAt": "2026-09-17T19:24:35.617Z",
+  "codeCommit": "4fcd7989e64ffaf1ee006ac4c645f42537c3ec1a",
+  "capturedAt": "2026-09-17T19:51:20.449Z",
   "baseUrl": "http://127.0.0.1:5197",
   "app": "Samlet Version 1-root-app med én AppShell",
   "normalEmulatorLogin": true,
@@ -97,9 +97,9 @@
       "title": "Varekatalog",
       "titleSize": "20px",
       "pageOverflow": false,
-      "localTableScroll": false,
-      "clickableRows": 0,
-      "keyboardRows": 0,
+      "localTableScroll": true,
+      "clickableRows": 12,
+      "keyboardRows": 12,
       "testMarker": true
     },
     {
@@ -225,9 +225,9 @@
       "title": "Varekatalog",
       "titleSize": "20px",
       "pageOverflow": false,
-      "localTableScroll": false,
-      "clickableRows": 0,
-      "keyboardRows": 0,
+      "localTableScroll": true,
+      "clickableRows": 12,
+      "keyboardRows": 12,
       "testMarker": true
     },
     {
@@ -354,8 +354,8 @@
       "titleSize": "18px",
       "pageOverflow": false,
       "localTableScroll": false,
-      "clickableRows": 0,
-      "keyboardRows": 0,
+      "clickableRows": 12,
+      "keyboardRows": 12,
       "testMarker": true
     },
     {
