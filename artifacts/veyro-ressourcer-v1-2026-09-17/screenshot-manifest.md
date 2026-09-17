@@ -1,6 +1,6 @@
 # Screenshotmanifest – VEYRO Ressourcer V1
 
-Alle billeder er aktuelle originalfiler fra den integrerede root-app på `127.0.0.1:5197`, optaget 17. september 2026 med normal emulator-login. Rollen er **syntetisk administrator**, zoom er **100 %**, og data er **tenantlagrede syntetiske emulatorfixtures**. Filernes pixelmål er skærmens device-pixel-output; navnet angiver CSS-viewporten 1440×900.
+Alle billeder er originale filer fra den integrerede root-app på `127.0.0.1:5197`, optaget 17. september 2026 på Ressourcer-implementeringen `e9d932d` med normal emulator-login. Rollen er **syntetisk administrator**, zoom er **100 %**, og data er **tenantlagrede syntetiske emulatorfixtures**. Filernes pixelmål er skærmens device-pixel-output; navnet angiver CSS-viewporten 1440×900. Den endelige kode ændrer alene én hjælpetekst på Ressourcer-overblikket fra “køretøjs-” til “enhedsregister”; `02-ressourcer-overblik-1440x900.png` er derfor historisk for netop den tekst. De øvrige viste strukturer, ruter og data er uændrede.
 
 | Fil | Route | Viewport | Bevis |
 |---|---|---:|---|

@@ -1,0 +1,38 @@
+{
+  "date": "2026-09-17",
+  "branch": "codex/veyro-integration-v1",
+  "verifiedCodeCommit": "04434dd78afe069ff781290bb420c28b121a3b1b",
+  "baseline": {
+    "commit": "d1356cd71cc1606b49fb2e142e960bf01fe6e26a",
+    "environment": "isolated detached git worktree",
+    "rulesIndberetninger": {
+      "coldRun": { "passed": 34, "failed": 0 },
+      "warmRerun": { "passed": 28, "failed": 6 }
+    }
+  },
+  "fixed": {
+    "rulesIndberetningerSameEmulator": [
+      { "passed": 34, "failed": 0 },
+      { "passed": 34, "failed": 0 }
+    ],
+    "resourceAndNamingFocus": { "passed": 11, "failed": 0 },
+    "fullPlatformGate": { "suites": 905, "passed": 4656, "failed": 0 },
+    "lint": "passed",
+    "design": { "passed": 11, "failed": 0 },
+    "productionBuild": { "status": "passed", "modules": 775, "warning": "known large chunk warning" },
+    "functionsSyntax": "passed",
+    "whitespace": "passed with line-ending warnings only"
+  },
+  "runtime": {
+    "testNode": "24.19.0",
+    "emulatorJava": "Temurin JDK 11",
+    "firebaseCli": "13.35.1",
+    "data": "tenant-scoped synthetic emulator fixtures"
+  },
+  "environmentFindings": {
+    "sandboxNetty": "failed to create a child event loop / Unable to establish loopback connection / SocketException: Invalid argument: connect",
+    "outsideSandbox": "same process-local JDK and Firebase CLI completed focused and full gates",
+    "globalSettingsChanged": false,
+    "testsSkippedOrWeakened": false
+  }
+}
