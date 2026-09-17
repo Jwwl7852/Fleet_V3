@@ -111,6 +111,9 @@ export default function AppShell() {
   const hoved = findHovedmodul(pathname);
   const procureOwnsPageTitle = pathname === "/indkoeb" || pathname.startsWith("/indkoeb/")
     || pathname === "/ressourcer/varekatalog" || pathname === "/opsaetning/ressourcer/varer";
+  const ressourceOwnsPageTitle = pathname === "/ressourcer"
+    || pathname.startsWith("/ressourcer/")
+    || pathname === "/facility-v2/ejendomme";
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
   const visningsKontekst = tenantId || tenant?.id || "ingen-tenant";
@@ -543,7 +546,7 @@ export default function AppShell() {
             </div>
             <button type="button" className="fc-nulstil-visning" onClick={nulstilVisning}>Nulstil visning</button>
           </div>
-          {!procureOwnsPageTitle && <header className="fc-top">
+          {!procureOwnsPageTitle && !ressourceOwnsPageTitle && <header className="fc-top">
             <div className="fc-top-h">
               <h1>{modul.titel}</h1>
               <p>{modul.under}</p>

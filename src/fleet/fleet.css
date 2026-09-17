@@ -1560,6 +1560,9 @@ body:has(.fc-login-side){margin:0}
    dialogs korte, tabelagtige værdier skal fortsat stå på én linje. */
 .fc-dialog-drawer .fc-row{flex-wrap:wrap}
 .fc-dialog-drawer .fc-mini>b{white-space:normal}
+.fc-valgte-kategorier{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.fc-valgt-kategori{display:inline-flex;align-items:center;gap:7px;padding:5px 8px;border:1px solid var(--bc-line);border-radius:999px;background:var(--fc-bg);font-size:var(--fc-t-s)}
+.fc-valgt-kategori button{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:var(--bc-card);color:var(--bc-muted);cursor:pointer;font:inherit}
 
 /* Fanetallet står PÅ fanen — ligger der noget der kræver handling, skal man
    ikke først klikke ind for at opdage det. */

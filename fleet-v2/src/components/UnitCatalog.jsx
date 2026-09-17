@@ -75,9 +75,8 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
   return (
     <main className="workspace-page catalog-page" id="main-content">
       <header className="page-heading-row">
-        <div><h1>Enhedskartotek</h1><p>Administrér hele jeres flåde – køretøjer, maskiner, udstyr og mere.</p><span className="demo-inline">Fiktive testdata · {sharedStorage ? "fælles emulatorregister" : "lokal prototype"}</span></div>
+        <div><h1>Enhedskartotek</h1><span className="demo-inline">Fiktive testdata · {sharedStorage ? "fælles emulatorregister" : "lokal prototype"}</span></div>
         <div className="page-actions">
-          <button className="secondary-button" type="button" onClick={() => onNotice("Visningen gemmes først i en senere etape")}><Icon name="document" size={17} />Gem visning</button>
           <button className="secondary-button" type="button" onClick={() => exportCsv(filtered, relations.costs || [])}><Icon name="download" size={17} />Eksportér CSV</button>
           <button className="primary-button" type="button" onClick={() => setCreating(true)}><Icon name="plus" size={19} />Opret enhed</button>
         </div>

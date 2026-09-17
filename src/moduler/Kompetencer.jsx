@@ -35,7 +35,7 @@
 import { useState } from "react";
 import { num, dato, serviceTone } from "../fleet/format.js";
 import {
-  Kort, Tom, KpiKort, KpiRaekke, Tabel, Pille, Henter, Datatilstand, Gitter, MiniLinje, Knap,
+  Kort, Tabel, Pille, Henter, Datatilstand, MiniLinje, Knap, Dialog,
 } from "../fleet/ui.jsx";
 import { blokerer } from "../fleet/datatilstand.js";
 import { KOMPETENCE_LABEL, BLOKERENDE_KOMPETENCER, kanBlokere } from "../fleet/flaade.js";
@@ -58,7 +58,7 @@ const mineKompetencer = (kompetencer, personId) =>
   kompetencer.filter((k) => k.personId === personId);
 
 export default function Kompetencer() {
-  const { kpi: k, henter, tilstand, genindlaes } = useKpi();
+  const { henter, tilstand, genindlaes } = useKpi();
 
   /* ⚠ TO SEEDEDE NODER, OG SKÆRMEN VISTE DEMOFILEN FOR BEGGE. Den tæller
      UDLØBNE BEVISER — det tal der afgør om en chauffør kan disponeres — og
@@ -75,6 +75,9 @@ export default function Kompetencer() {
   });
 
   const [valgtId, setValgtId] = useState(null);
+  const [soeg, setSoeg] = useState("");
+  const [gyldighed, setGyldighed] = useState("");
+  const [sortering, setSortering] = useState("navn");
 
   if (henter || pers.henter || komp.henter) return <Henter hvad="kompetencer" />;
   /* En AFVIST læsning er ikke et tomt kompetencekartotek. */
@@ -89,15 +92,7 @@ export default function Kompetencer() {
   /* AFLEDT af listen skærmen allerede har — hører derfor ikke i kpi/.
      Samme sag som aktive klimaalarmer; et gemt afledt tal driver fra sit
      grundlag, og det er fejlen i bemanding.ledig. */
-  const udloebne = komp.data.filter((x) => x.udloeberMs <= NU);
-  const snart = komp.data.filter(
-    (x) => x.udloeberMs > NU && serviceTone(x.udloeberMs, NU).dage <= 30
-  );
-  /* ⚠ DET TAL DER BETYDER NOGET: hvor mange af de udløbne der BLOKERER. En
-     udløbet førstehjælp og et udløbet ADR-bevis er ikke samme problem, og en
-     samlet optælling ville skjule forskellen. */
-  const blokerende = udloebne.filter((x) => kanBlokere(x.type));
-
+  const q = soeg.trim().toLowerCase();
   const raekker = pers.data
     .filter((p) => p.status !== "fratraadt")
     .map((p) => {
@@ -109,30 +104,32 @@ export default function Kompetencer() {
         blokerede: mine.filter((x) => x.udloeberMs <= NU && kanBlokere(x.type)),
         snart: mine.filter((x) => x.udloeberMs > NU && serviceTone(x.udloeberMs, NU).dage <= 30),
       };
-    });
+    })
+    .filter((r) => !q || r.p.navn.toLowerCase().includes(q))
+    .filter((r) => !gyldighed
+      || (gyldighed === "blokeret" && r.blokerede.length)
+      || (gyldighed === "udloebet" && r.udloebne.length)
+      || (gyldighed === "snart" && r.snart.length)
+      || (gyldighed === "gyldig" && !r.udloebne.length && !r.snart.length))
+    .sort((a, b) => sortering === "gyldighed"
+      ? (b.blokerede.length - a.blokerede.length) || (b.udloebne.length - a.udloebne.length) || a.p.navn.localeCompare(b.p.navn, "da")
+      : sortering === "antal"
+        ? b.mine.length - a.mine.length || a.p.navn.localeCompare(b.p.navn, "da")
+        : a.p.navn.localeCompare(b.p.navn, "da"));
 
   const valgt = raekker.find((r) => r.p.id === valgtId) || null;
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      {k && (
-        <KpiRaekke>
-          <KpiKort label="Medarbejdere" vaerdi={num(raekker.length)} note="ikke fratrådte" />
-          <KpiKort label="Udløbet og blokerer" vaerdi={num(blokerende.length)}
-                   tone={blokerende.length ? "bad" : undefined}
-                   note="chaufføren kan ikke disponeres" />
-          <KpiKort label="Udløbet, advarer" vaerdi={num(udloebne.length - blokerende.length)}
-                   tone={udloebne.length - blokerende.length ? "warn" : undefined}
-                   note="kan overrules med begrundelse" />
-          <KpiKort label="Udløber inden 30 dage" vaerdi={num(snart.length)}
-                   tone={snart.length ? "warn" : undefined} note="forny i tide" />
-        </KpiRaekke>
-      )}
-
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
-      <Gitter kolonner="minmax(0,3fr) minmax(0,2fr)">
-        <Kort titel="Medarbejdere">
+      <Kort titel="Certifikater pr. medarbejder">
+          <div className="fc-filtre">
+            <div className="fc-felt"><label htmlFor="ce-soeg">Søg</label><input id="ce-soeg" type="search" value={soeg} onChange={(event) => setSoeg(event.target.value)} placeholder="Medarbejdernavn" /></div>
+            <div className="fc-felt"><label htmlFor="ce-gyldighed">Gyldighed</label><select id="ce-gyldighed" value={gyldighed} onChange={(event) => setGyldighed(event.target.value)}><option value="">Alle</option><option value="gyldig">Gyldig</option><option value="snart">Udløber snart</option><option value="udloebet">Udløbet</option><option value="blokeret">Blokeret</option></select></div>
+            <div className="fc-felt"><label htmlFor="ce-sortering">Sortér</label><select id="ce-sortering" value={sortering} onChange={(event) => setSortering(event.target.value)}><option value="navn">Navn A–Å</option><option value="gyldighed">Gyldighed</option><option value="antal">Flest certifikater</option></select></div>
+            <Knap onClick={() => { setSoeg(""); setGyldighed(""); setSortering("navn"); }}>Nulstil</Knap>
+          </div>
           <Tabel
             kolonner={[
               { key: "navn", label: "Medarbejder", render: (r) => r.p.navn },
@@ -157,12 +154,11 @@ export default function Kompetencer() {
             Function der skriver etapen; ligger den kun her, kan en direkte
             skrivning gå uden om den.
           </p>
-        </Kort>
+      </Kort>
 
-        {valgt
-          ? <Detaljer r={valgt} />
-          : <Kort titel="Detaljer"><Tom>Vælg en medarbejder.</Tom></Kort>}
-      </Gitter>
+      {valgt && <Dialog titel={valgt.p.navn} under="Certifikater og gyldighed" onLuk={() => setValgtId(null)} bred>
+        <Detaljer r={valgt} />
+      </Dialog>}
 
       <Udloebsliste raekker={raekker} />
     </div>

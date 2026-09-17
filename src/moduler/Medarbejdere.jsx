@@ -78,14 +78,14 @@ import { dato, num, serviceTone } from "../fleet/format.js";
 import { harPerm, PERM } from "../fleet/permissions.js";
 import {
   ALLE_FUNKTIONER, FUNKTION_LABEL, PERSONALE_STATUS, ANSAETTELSESFORM,
-  funktionerAf, harFunktion, kanDisponeres, ikonFor,
+  funktionerAf, funktionKategoriIderAf, harFunktion, kanDisponeres,
   valideMedarbejder, byggMedarbejder
 } from "../fleet/personale.js";
 import { KOMPETENCE_LABEL, kanBlokere } from "../fleet/flaade.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../fleet/demo-personale.js";
 import {
-  Kort, Tabel, Pille, Henter, Datatilstand, Tom, Gitter, MiniLinje, Knap,
-  Ikon, Felt, Feltraekke, Formular
+  Kort, Tabel, Pille, Henter, Datatilstand, MiniLinje, Knap,
+  Felt, Feltraekke, Formular, Dialog
 } from "../fleet/ui.jsx";
 import { gem, nyId } from "../fleet/skriv.js";
 import { AUDIT } from "../fleet/audit.js";
@@ -102,7 +102,8 @@ const isoFraMs = (ms) =>
 
 const tomMedarbejder = () => ({
   navn: "", status: "aktiv", ansaettelsesform: "fastansat",
-  funktioner: {}, stationeret: "", telefon: "", email: "",
+  funktioner: {}, funktionKategoriIder: {}, stationeret: "",
+  stationeringKategoriId: "", telefon: "", email: "",
   ansatIso: "", fratraadtIso: ""
 });
 
@@ -111,6 +112,8 @@ const fraPerson = (p) => ({
   navn: p.navn ?? "", status: p.status ?? "aktiv",
   ansaettelsesform: p.ansaettelsesform ?? "fastansat",
   funktioner: { ...(p.funktioner || {}) },
+  funktionKategoriIder: { ...(p.funktionKategoriIder || {}) },
+  stationeringKategoriId: p.stationeringKategoriId ?? "",
   stationeret: p.stationeret ?? "", telefon: p.telefon ?? "", email: p.email ?? "",
   ansatIso: isoFraMs(p.ansatMs), fratraadtIso: isoFraMs(p.fratraadtMs)
 });
@@ -126,9 +129,10 @@ const fraPerson = (p) => ({
  * Formularen sender derfor ALDRIG `uid`. Det sættes af den funktion der
  * opretter loginnet, under Opsætning → Brugere & roller.
  */
-function Medarbejderformular({ person, sti, paaGemt, paaLuk }) {
+function Medarbejderformular({ person, sti, paaGemt, paaLuk, funktionKategorier, afdelinger }) {
   const nyt = !person;
-  const [f, saetF] = useState(() => (person ? fraPerson(person) : tomMedarbejder()));
+  const start = person ? fraPerson(person) : tomMedarbejder();
+  const [f, saetF] = useState(start);
   const [roert, saetRoert] = useState({});
   const [visAlle, saetVisAlle] = useState(false);
   const [gemmer, saetGemmer] = useState(false);
@@ -140,13 +144,28 @@ function Medarbejderformular({ person, sti, paaGemt, paaLuk }) {
     saetSvar(null);
   };
 
-  const skiftFunktion = (fn) => {
-    saetF((x) => ({ ...x, funktioner: { ...x.funktioner, [fn]: !x.funktioner[fn] } }));
+  const tilfoejFunktion = (kategoriId) => {
+    if (!kategoriId) return;
+    saetF((x) => ({
+      ...x,
+      funktionKategoriIder: { ...x.funktionKategoriIder, [kategoriId]: true },
+    }));
+    saetRoert((x) => ({ ...x, funktioner: true }));
+    saetSvar(null);
+  };
+
+  const fjernFunktion = (kategoriId) => {
+    saetF((x) => {
+      const naeste = { ...x.funktionKategoriIder };
+      delete naeste[kategoriId];
+      return { ...x, funktionKategoriIder: naeste };
+    });
     saetRoert((x) => ({ ...x, funktioner: true }));
     saetSvar(null);
   };
 
   const fejl = valideMedarbejder(f);
+  if (nyt && !f.stationeringKategoriId) fejl.stationeret = "Vælg en afdeling fra Opsætning → Ressourcer → Medarbejdere.";
   const vis = (felt) => (visAlle || roert[felt] ? fejl[felt] : null);
   const kanGemme = Object.keys(fejl).length === 0;
   const erFratraadt = f.status === "fratraadt";
@@ -166,8 +185,12 @@ function Medarbejderformular({ person, sti, paaGemt, paaLuk }) {
     if (r.ok) paaGemt(id);
   };
 
+  const valgteFunktioner = funktionKategoriIderAf(f);
+  const funktionNavn = new Map(funktionKategorier.map((post) => [post.id, post.navn]));
+  const ugemte = JSON.stringify(f) !== JSON.stringify(start);
+
   return (
-    <Kort titel={nyt ? "Ny medarbejder" : `Redigér ${person.navn}`}>
+    <Dialog titel={nyt ? "Ny medarbejder" : `Redigér ${person.navn}`} onLuk={paaLuk} bred ugemte={ugemte}>
       <Formular onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
                 gemLabel={nyt ? "Opret medarbejder" : "Gem ændringer"}
                 onAnnuller={paaLuk} svar={svar}>
@@ -184,40 +207,49 @@ function Medarbejderformular({ person, sti, paaGemt, paaLuk }) {
                   .map(([v, l]) => ({ vaerdi: v, label: l }))} />
         </Feltraekke>
 
-        {/* ⚠ MINDST ÉN FUNKTION. En medarbejder uden funktion kan ikke
-            disponeres og tælles ikke i bemandingsplanen — han står i listen
-            som en person ingen kan bruge til noget. RTDB kan ikke kræve
-            "mindst ét barn", så det her er den eneste kontrol. */}
         <div className={`fc-felt${vis("funktioner") ? " fc-felt-fejl" : ""}`}>
-          <label>
-            Funktioner
+          <label htmlFor="me-funktion">
+            Funktioner fra Opsætning
             <span className="fc-felt-kraev" aria-hidden="true"> *</span>
           </label>
-          <div className="fc-afkryds">
-            {ALLE_FUNKTIONER.map((fn) => (
-              <label key={fn} className="fc-afkryds-punkt">
-                <input type="checkbox" checked={Boolean(f.funktioner[fn])}
-                       onChange={() => skiftFunktion(fn)} />
-                <span className="fc-med-ikon"><Ikon navn={ikonFor(fn)} /></span>
-                {FUNKTION_LABEL[fn]}
-              </label>
+          <select id="me-funktion" value="" onChange={(event) => tilfoejFunktion(event.target.value)}>
+            <option value="">Tilføj funktion …</option>
+            {funktionKategorier.filter((post) => post.aktiv !== false && !f.funktionKategoriIder?.[post.id]).map((post) => (
+              <option key={post.id} value={post.id}>{post.navn}</option>
+            ))}
+          </select>
+          <div className="fc-valgte-kategorier" aria-label="Valgte funktioner">
+            {valgteFunktioner.map((id) => (
+              <span key={id} className="fc-valgt-kategori">
+                {funktionNavn.get(id) || id}
+                <button type="button" onClick={() => fjernFunktion(id)} aria-label={`Fjern ${funktionNavn.get(id) || id}`}>×</button>
+              </span>
             ))}
           </div>
           <span className="fc-felt-hint">
-            Flere er tilladt — en mekaniker der også kører, har begge. Hvad han
-            må køre, står i <b>kompetencer</b>, hvor det kan udløbe.
+            Funktioner oprettes under Opsætning → Ressourcer → Medarbejdere. Flere er tilladt; kompetencer og adgangsroller er fortsat separate.
           </span>
+          {!funktionKategorier.length && <span className="fc-felt-fejltekst" role="alert">Opret mindst én funktion i Opsætning først.</span>}
           {vis("funktioner") && (
             <span className="fc-felt-fejltekst" role="alert">{vis("funktioner")}</span>
           )}
         </div>
 
         <Feltraekke>
-          {/* ⚠ IKKE EN ENUM — hverken her eller i reglerne. Stederne er
-              denne kundes, og et nyt depot må ikke kræve en udrulning. */}
-          <Felt id="me-sted" label="Stationeret" kraevet vaerdi={f.stationeret}
-                saet={saet("stationeret")} fejl={vis("stationeret")}
-                hint="Frit stednavn. Bruges til at vise hvor en funktion har folk stående." />
+          <Felt id="me-sted" label="Stationeret / afdeling" kraevet
+                vaerdi={f.stationeringKategoriId}
+                saet={(id) => {
+                  const afdeling = afdelinger.find((post) => post.id === id);
+                  saetF((x) => ({ ...x, stationeringKategoriId: id, stationeret: afdeling?.navn || x.stationeret }));
+                  saetRoert((x) => ({ ...x, stationeret: true }));
+                  saetSvar(null);
+                }}
+                fejl={vis("stationeret")}
+                valgmuligheder={[
+                  ...(!f.stationeringKategoriId && f.stationeret ? [{ vaerdi: "", label: `Tidligere fritekst: ${f.stationeret}` }] : [{ vaerdi: "", label: "Vælg afdeling" }]),
+                  ...afdelinger.filter((post) => post.aktiv !== false || post.id === f.stationeringKategoriId).map((post) => ({ vaerdi: post.id, label: post.navn })),
+                ]}
+                hint="Afdelinger vedligeholdes under Opsætning → Ressourcer → Medarbejdere." />
           <Felt id="me-tlf" label="Telefon" vaerdi={f.telefon} saet={saet("telefon")}
                 fejl={vis("telefon")} />
           <Felt id="me-mail" label="E-mail" type="email" vaerdi={f.email}
@@ -239,21 +271,7 @@ function Medarbejderformular({ person, sti, paaGemt, paaLuk }) {
         </Feltraekke>
       </Formular>
 
-      <p className="fc-hint" style={{ marginTop: 14 }}>
-        ⚠ <b>Personen er ikke et login.</b> Nøglen her er et <b>personId</b>,
-        ikke et uid: en chauffør har måske aldrig en konto, og en vikar har det
-        sjældent. Personen findes før sit login og efter det — kontoen lukkes
-        ved fratrædelse, men en reservation fra tre år siden skal stadig kunne
-        opløses til et navn.
-      </p>
-      <p className="fc-hint" style={{ marginTop: 8 }}>
-        Der er <b>ingen division</b> på en medarbejder (beslutning 19, og aksen er væk i 70). Hun er
-        defineret ved sine <b>kompetencer</b>, ikke ved en afdeling, og
-        reglerne afviser feltet. <b>CPR og privatadresse</b> hører i{" "}
-        <code>sensitive/personale</code> bag en egen læseregel — de kan ikke
-        skrives herfra.
-      </p>
-    </Kort>
+    </Dialog>
   );
 }
 
@@ -266,6 +284,8 @@ export default function Medarbejdere() {
   const [form, setForm] = useState(null);
   const [soeg, setSoeg] = useState("");
   const [funktion, setFunktion] = useState("");
+  const [afdeling, setAfdeling] = useState("");
+  const [sortering, setSortering] = useState("navn");
   const [visAlle, setVisAlle] = useState(false);
 
   /* Server-side filtreres på ét felt: status. Det er indekseret
@@ -278,9 +298,8 @@ export default function Medarbejdere() {
      det er ærligt: det ER en anden forespørgsel. Søgning og funktion filtreres
      derimod i klienten og koster ingenting.
 
-     Staben er ikke delt, og posterne har ingen division (beslutning 19, og aksen er væk i 70).
-     Aksen er fjernet helt i 70 — staben var et af de steder hvor den aldrig
-     passede. */
+     Afdeling er nu en stabil stationeringsreference fra det fælles
+     Ressourcer-register og filtreres efter hentning. */
   const {
     data: personale, henter: henterPersonale,
     tilstand: personaleTilstand, genindlaes: genindlaesPersonale, afkortet
@@ -311,16 +330,53 @@ export default function Medarbejdere() {
     demo: DEMO_KOMPETENCER
   });
 
-  if (henterPersonale || henterKompetencer) return <Henter hvad="medarbejdere" />;
+  const {
+    data: funktionKategorier, henter: henterFunktionKategorier,
+    tilstand: funktionKategoriTilstand, genindlaes: genindlaesFunktionKategorier,
+  } = useListe("ressourceKategorier/medarbejdere", {
+    ordnPaa: "sortering", vindue: "alle", graense: 500,
+    sorter: (a, b) => Number(a.sortering) - Number(b.sortering), demo: [],
+  });
+  const {
+    data: afdelinger, henter: henterAfdelinger,
+    tilstand: afdelingTilstand, genindlaes: genindlaesAfdelinger,
+  } = useListe("ressourceKategorier/medarbejderafdelinger", {
+    ordnPaa: "sortering", vindue: "alle", graense: 500,
+    sorter: (a, b) => Number(a.sortering) - Number(b.sortering), demo: [],
+  });
 
-  const genindlaesAlt = () => { genindlaesPersonale(); genindlaesKompetencer(); };
+  if (henterPersonale || henterKompetencer || henterFunktionKategorier || henterAfdelinger) return <Henter hvad="medarbejdere" />;
+
+  const genindlaesAlt = () => {
+    genindlaesPersonale(); genindlaesKompetencer();
+    genindlaesFunktionKategorier(); genindlaesAfdelinger();
+  };
   const maaSkrive = harPerm(bruger?.perms, PERM.personaleSkriv);
   const maaSeFoelsomt = harPerm(bruger?.perms, PERM.personaleSensitiveLaes);
 
   const q = soeg.trim().toLowerCase();
-  const viste = personale.filter(
-    (p) => (!funktion || harFunktion(p, funktion)) && passerSoegning(p, q)
-  );
+  const funktionNavn = new Map(funktionKategorier.map((post) => [post.id, post.navn]));
+  const afdelingNavn = new Map(afdelinger.map((post) => [post.id, post.navn]));
+  const funktionsnavneFor = (person) => {
+    const kategoriNavne = funktionKategoriIderAf(person).map((id) => funktionNavn.get(id) || id);
+    const legacyNavne = funktionerAf(person)
+      .filter((id) => !kategoriNavne.includes(FUNKTION_LABEL[id]))
+      .map((id) => FUNKTION_LABEL[id] || id);
+    return [...kategoriNavne, ...legacyNavne];
+  };
+  const viste = personale.filter((p) => {
+    const funktionMatcher = !funktion || (funktion.startsWith("kategori:")
+      ? Boolean(p.funktionKategoriIder?.[funktion.slice(10)])
+      : harFunktion(p, funktion));
+    const afdelingMatcher = !afdeling
+      || p.stationeringKategoriId === afdeling
+      || (!p.stationeringKategoriId && p.stationeret === afdelingNavn.get(afdeling));
+    return funktionMatcher && afdelingMatcher && passerSoegning(p, q);
+  }).sort((a, b) => {
+    if (sortering === "afdeling") return String(a.stationeret || "").localeCompare(String(b.stationeret || ""), "da") || a.navn.localeCompare(b.navn, "da");
+    if (sortering === "status") return String(a.status || "").localeCompare(String(b.status || ""), "da") || a.navn.localeCompare(b.navn, "da");
+    return a.navn.localeCompare(b.navn, "da");
+  });
 
   /* Valget følger med, når filteret ændrer sig — ellers viser panelet en
      person der ikke længere står i tabellen ved siden af. */
@@ -338,7 +394,7 @@ export default function Medarbejdere() {
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <Datatilstand tilstand={vaerste(personaleTilstand, kompetenceTilstand)}
+      <Datatilstand tilstand={vaerste(personaleTilstand, kompetenceTilstand, funktionKategoriTilstand, afdelingTilstand)}
                     genprov={genindlaesAlt} />
 
       {/* Formularen står OVER listen, så man ser den man netop har oprettet.
@@ -347,6 +403,8 @@ export default function Medarbejdere() {
         <Medarbejderformular
           key={form}
           person={form === "ny" ? null : personale.find((p) => p.id === form)}
+          funktionKategorier={funktionKategorier}
+          afdelinger={afdelinger}
           sti={(id) => path(`personale/${id}`)}
           paaGemt={(id) => {
             /* Listen hentes forfra: den kommer fra basen, ikke fra
@@ -359,7 +417,7 @@ export default function Medarbejdere() {
         />
       )}
 
-      <Gitter kolonner="minmax(0,2fr) minmax(0,1fr)">
+      <>
         <Kort
           titel="Medarbejdere"
           handling={
@@ -377,14 +435,6 @@ export default function Medarbejdere() {
             </Knap>
           }
         >
-          <p className="fc-hint" style={{ marginBottom: 12 }}>
-            Her oprettes <b>personen</b>. Et login oprettes under{" "}
-            <Link className="fc-a" to="/opsaetning/brugere">Opsætning → Brugere &amp; roller</Link>{" "}
-            — de to er ikke det samme, og en chauffør har måske aldrig et login.
-            Nøglen er et <b>personId</b>, som reservationer, fravær og kompetencer hænger på;
-            et <b>uid</b> er kontoen, og den kan lukkes uden at personen forsvinder.
-          </p>
-
           <div className="fc-faner" role="tablist" aria-label="Status">
             <button type="button" role="tab" className="fc-fane" aria-selected={!visAlle}
                     onClick={() => setVisAlle(false)}>
@@ -396,23 +446,40 @@ export default function Medarbejdere() {
             </button>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
+          <div className="fc-filtre">
             <div className="fc-felt" style={{ flex: "1 1 240px", marginBottom: 0 }}>
               <label htmlFor="mb-soeg">Søg</label>
               <input id="mb-soeg" type="search" value={soeg}
                      placeholder="Navn, e-mail, telefon eller sted"
                      onChange={(e) => setSoeg(e.target.value)} />
             </div>
-            <div className="fc-felt" style={{ flex: "0 1 240px", marginBottom: 0 }}>
+            <div className="fc-felt">
               <label htmlFor="mb-funktion">Funktion</label>
               <select id="mb-funktion" value={funktion}
                       onChange={(e) => setFunktion(e.target.value)}>
                 <option value="">Alle funktioner</option>
-                {ALLE_FUNKTIONER.map((f) => (
-                  <option key={f} value={f}>{FUNKTION_LABEL[f]}</option>
+                {funktionKategorier.filter((post) => post.aktiv !== false).map((post) => (
+                  <option key={post.id} value={`kategori:${post.id}`}>{post.navn}</option>
                 ))}
+                {ALLE_FUNKTIONER.map((f) => <option key={f} value={f}>{FUNKTION_LABEL[f]} (tidligere)</option>)}
               </select>
             </div>
+            <div className="fc-felt">
+              <label htmlFor="mb-afdeling">Afdeling</label>
+              <select id="mb-afdeling" value={afdeling} onChange={(event) => setAfdeling(event.target.value)}>
+                <option value="">Alle afdelinger</option>
+                {afdelinger.filter((post) => post.aktiv !== false).map((post) => <option key={post.id} value={post.id}>{post.navn}</option>)}
+              </select>
+            </div>
+            <div className="fc-felt">
+              <label htmlFor="mb-sortering">Sortér</label>
+              <select id="mb-sortering" value={sortering} onChange={(event) => setSortering(event.target.value)}>
+                <option value="navn">Navn A–Å</option>
+                <option value="afdeling">Afdeling</option>
+                <option value="status">Status</option>
+              </select>
+            </div>
+            <Knap onClick={() => { setSoeg(""); setFunktion(""); setAfdeling(""); setSortering("navn"); }}>Nulstil</Knap>
           </div>
 
           <Tabel
@@ -424,14 +491,15 @@ export default function Medarbejdere() {
                  rækkefølge, så to personer med samme to funktioner viser dem
                  i samme orden. */
               { key: "funktioner", label: "Funktioner", render: (r) => {
-                  const f = funktionerAf(r);
+                  const f = funktionsnavneFor(r);
                   if (!f.length) return <span className="fc-neutral">—</span>;
                   return f.map((k) => (
                     <span key={k} style={{ marginRight: 4 }}>
-                      <Pille tone="info">{FUNKTION_LABEL[k]}</Pille>
+                      <Pille tone="info">{k}</Pille>
                     </span>
                   ));
                 } },
+              { key: "stationeret", label: "Afdeling", render: (r) => afdelingNavn.get(r.stationeringKategoriId) || r.stationeret || "—" },
               { key: "status", label: "Status", render: statusPille },
               { key: "ansaettelsesform", label: "Ansættelse",
                 render: (r) => ANSAETTELSESFORM[r.ansaettelsesform] || "—" },
@@ -446,19 +514,13 @@ export default function Medarbejdere() {
             paaRaekke={(r) => setValgtId(r.id)}
             erValgt={(r) => r.id === valgtId}
             tom={
-              q || funktion
+              q || funktion || afdeling
                 ? "Ingen medarbejdere passer på søgningen."
                 : "Ingen medarbejdere oprettet endnu."
             }
           />
 
-          <p className="fc-hint" style={{ marginTop: 12 }}>
-            Viser {num(viste.length)} af {num(personale.length)} hentede{" "}
-            {visAlle ? "medarbejdere" : "aktive medarbejdere"}. Listen er <b>ikke</b> delt
-            på Gods/Bus: en medarbejder har ingen division, men er defineret ved sine
-            kompetencer, og hun virker i alle moduler tenanten har adgang til. Toggle'en
-            i toppen ændrer derfor ikke denne tabel.
-          </p>
+          <p className="fc-hint" style={{ marginTop: 12 }}>Viser {num(viste.length)} af {num(personale.length)} hentede {visAlle ? "medarbejdere" : "aktive medarbejdere"}.</p>
           {afkortet && (
             <p className="fc-hint" style={{ marginTop: 8 }}>
               Der er flere end de 300 hentede. Listen er afkortet — snævr søgningen ind for
@@ -467,17 +529,13 @@ export default function Medarbejdere() {
           )}
         </Kort>
 
-        <div className="fc-grid">
-          {!valgt ? (
-            <Kort titel="Medarbejder">
-              <Tom>Vælg et navn i listen for at se kontaktoplysninger og kompetencer.</Tom>
-            </Kort>
-          ) : (
-            <>
+        {valgt && (
+          <Dialog titel={valgt.navn} under="Medarbejderdetaljer" onLuk={() => setValgtId(null)} bred handling={statusPille(valgt)}>
+            <div className="fc-grid">
               <Kort titel={valgt.navn} handling={statusPille(valgt)}>
                 <MiniLinje
                   label="Funktioner"
-                  vaerdi={funktionerAf(valgt).map((f) => FUNKTION_LABEL[f]).join(", ") || "—"}
+                  vaerdi={funktionsnavneFor(valgt).join(", ") || "—"}
                 />
                 <MiniLinje
                   label="Ansættelsesform"
@@ -517,12 +575,8 @@ export default function Medarbejdere() {
                 </p>
 
                 <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-                  <Knap
-                    disabled
-                    title={maaSkrive
-                      ? "Redigering er ikke bygget endnu."
-                      : "Kræver personale.skriv, som kun admin har."}
-                  >
+                  <Knap disabled={!maaSkrive} onClick={() => { setForm(valgt.id); setValgtId(null); }}
+                    title={maaSkrive ? "Redigér medarbejderen." : "Kræver personale.skriv, som kun admin har."}>
                     Redigér
                   </Knap>
                   <Knap
@@ -597,20 +651,11 @@ export default function Medarbejdere() {
                   med <b>.validate: false</b>, så de kan ikke ende her ved et uheld.
                 </p>
               </Kort>
-            </>
-          )}
-        </div>
-      </Gitter>
+            </div>
+          </Dialog>
+        )}
+      </>
 
-      <p className="fc-hint">
-        {/* ⚠ TALTE DEMO-SÆTTETS LÆNGDE, ikke de hentede raekker. Se samme
-            note i flaade/Oversigt.jsx. */}
-        Rosteren her er et <b>udsnit</b> paa {num(personale.length)} personer, ikke hele
-        staben. Workforces planlagte og disponerede kommer fra <b>kpi/</b> og er langt større
-        tal — de to skal ikke gå op mod hinanden, og listen her er derfor ingen optælling af
-        staben. Kompetencerne er til gengæld de samme poster som Workforce viser: én kilde,
-        to visninger. <Link className="fc-a" to="/bemanding">Se bemandingsplanen</Link>.
-      </p>
     </div>
   );
 }

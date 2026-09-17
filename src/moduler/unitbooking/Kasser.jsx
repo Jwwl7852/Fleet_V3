@@ -18,18 +18,18 @@
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, dato, pct, iDagIso, isoTilMs, msTilIso, mindst } from "../../fleet/format.js";
+import { num, dato, iDagIso, isoTilMs, msTilIso } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
-  Henter, Datatilstand, Tom, Ikon, Sider, KpiKort, KpiRaekke,
+  Henter, Datatilstand, Tom, Sider,
 } from "../../fleet/ui.jsx";
 import {
   KASSE_STATUS, ALLE_KASSE_STATUS, SELVVALGT_KASSE_STATUS,
   kraeverPlads, valideKasse, pladsnavn, naesteReservation, undertyperFor,
-  mmFraCm, cmFraMm, kassebelaegning,
+  mmFraCm, cmFraMm,
 } from "../../fleet/unitbooking.js";
-import { maalFraMm, volumenIalt } from "../../fleet/volumen.js";
+import { maalFraMm } from "../../fleet/volumen.js";
 import { gem } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
 import { tilknytRessourceHardware } from "../../fleet/ressource-hardware.js";
@@ -331,13 +331,14 @@ export default function Kasser() {
   const [status, saetStatus] = useState("");
   const [type, saetType] = useState("");
   const [undertype, saetUndertype] = useState("");
+  const [sortering, saetSortering] = useState("id");
   const [side, saetSide] = useState(1);
 
   const maaSkrive = harPerm(bruger?.perms, PERM.kasserSkriv);
 
   /* Ingen division på en kasse — den hører til en hal. Eksplicit, så det ikke
      ser ud som om skærmen bare var heldig. */
-  const { data: kasser, afkortet: kasserAfkortet, tilstand, genindlaes, henter } = useListe("kasser", {
+  const { data: kasser, tilstand, genindlaes, henter } = useListe("kasser", {
     graense: 1000, demo: DEMO_KASSER,
     sorter: (a, b) => a.id.localeCompare(b.id, "da"),
   });
@@ -371,7 +372,12 @@ export default function Kasser() {
     (!type || k.type === type) &&
     (!undertype || k.undertype === undertype) &&
     (!q || k.id.toLowerCase().includes(q) ||
-      pladsnavn(pladsMap[k.pladsId]).toLowerCase().includes(q)));
+      pladsnavn(pladsMap[k.pladsId]).toLowerCase().includes(q)))
+    .sort((a, b) => sortering === "type"
+      ? String(typeMap[a.type]?.navn || a.type).localeCompare(String(typeMap[b.type]?.navn || b.type), "da") || a.id.localeCompare(b.id, "da")
+      : sortering === "status"
+        ? String(a.status).localeCompare(String(b.status), "da") || a.id.localeCompare(b.id, "da")
+        : a.id.localeCompare(b.id, "da"));
 
   /* Siden klippes til det der findes — ellers står man på side 4 af en liste
      der efter et filter kun har to. */
@@ -379,56 +385,12 @@ export default function Kasser() {
   const nuSide = Math.min(side, sider);
   const paaSiden = viste.slice((nuSide - 1) * PR_SIDE, nuSide * PR_SIDE);
 
-  const antal = (s) => kasser.filter((k) => k.status === s).length;
-  /* ⚠ AFLEDT, IKKE FRA kpi/. Tallene regnes af de kasser skærmen allerede
-     har — de er ikke et aggregat, og et gemt tal ville drive fra listen.
-     Se undtagelsen i CLAUDE.md. */
-  const paaLager = kasser.filter((k) => kraeverPlads(k.status)).length;
-  /* ⚠ UDLEDT, IKKE GEMT. "Reserveret" er ikke en kassestatus — se noten ved
-     KASSE_STATUS. Tallet regnes af de udlån skærmen allerede har. */
   const nu = Date.now();
-  const reserveret = kasser.filter(
-    (k) => k.status === "ledig" && naesteReservation(udlaan, k.id, nu)).length;
-  /* ⚠ OG DEM UDEN MÅL TÆLLER IKKE MED — de RAPPORTERES. Talte de som nul,
-     ville totalen se komplet ud mens en kasse manglede. Se volumenIalt(). */
-  const volumen = volumenIalt(kasser);
-  /* ⚠ PLANCHENS FJERDE NØGLETAL, OG DET VAR IKKE BYGGET. UNITBOOKING.md
-     begrundede det med at tallet "allerede står på Kasselisten" — altså her.
-     Det gjorde det ikke. Regnestykket ligger i `unitbooking.js`, så Udlån
-     kan vise NØJAGTIG det samme tal; to skærme med hver sin belægningsgrad
-     ville være beslutning 6 brudt. Se UNITBOOKING.md 6.10. */
-  const bel = kassebelaegning(kasser);
   /* Undertyperne paa den FILTREREDE type — ikke alle typers blandet sammen. */
   const filterUndertyper = undertyperFor(typer.find((t) => t.id === type));
-  const tal1 = (v) => v.toFixed(1).replace(".", ",");
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        <KpiKort label="Kasser i alt" vaerdi={mindst(kasser.length, kasserAfkortet)}
-                 ikon={<Ikon navn="kasse" />} tone="ikon-5" rund />
-        <KpiKort label="Ledige" vaerdi={num(antal("ledig"))}
-                 note={reserveret
-                   ? `heraf ${num(reserveret)} lovet væk i en periode`
-                   : "klar til udlån"} />
-        <KpiKort label="Udlånt" vaerdi={num(antal("udlaant"))} note="ude hos kunde" />
-        {/* ⚠ NOTEN ER IKKE PYNT. Nævneren er de BRUGBARE kasser, så procenten
-            STIGER hver gang en kasse går i stykker — og et tal der ser bedre
-            ud af at noget går i stykker, må ikke stå alene. Antallet ude af
-            drift hører til tallet, som flaget hører til dageUde(). */}
-        <KpiKort label="Belægningsgrad" vaerdi={pct(bel.pct)}
-                 note={bel.pct === null
-                   ? "ingen brugbare kasser at regne på"
-                   : `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare` +
-                     (bel.udeAfDrift ? ` · ${num(bel.udeAfDrift)} ude af drift` : "")} />
-        <KpiKort label="På lager" vaerdi={num(paaLager)}
-                 note={`heraf ${num(antal("udeAfDrift"))} ude af drift`} />
-        <KpiKort label="Samlet volumen" vaerdi={`${tal1(volumen.m3)} m³`}
-                 note={volumen.uden.length
-                   ? `${tal1(volumen.m2)} m² gulvplads · ${num(volumen.uden.length)} uden mål`
-                   : `${tal1(volumen.m2)} m² gulvplads`} />
-      </KpiRaekke>
-
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       {ny && (
@@ -502,6 +464,13 @@ export default function Kasser() {
             </select>
           </div>
           )}
+          <div className="fc-felt">
+            <label htmlFor="kf-sortering">Sortér</label>
+            <select id="kf-sortering" value={sortering} onChange={(event) => saetSortering(event.target.value)}>
+              <option value="id">Unit-id A–Å</option><option value="type">Type</option><option value="status">Status</option>
+            </select>
+          </div>
+          <Knap onClick={() => { saetSoeg(""); saetStatus(""); saetType(""); saetUndertype(""); saetSortering("id"); saetSide(1); }}>Nulstil</Knap>
         </div>
 
         {!typer.length || !pladser.length ? (

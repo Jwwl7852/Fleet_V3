@@ -564,6 +564,26 @@ describe("medarbejderens felter valideres på serveren", () => {
     })));
   });
 
+  it("binder funktioner og stationering til tenantens ressourcekategorier", async () => {
+    const db = medPerms("admin1", ALLE_PERMS);
+    const kategori = (navn) => ({
+      navn, aktiv: true, sortering: 100,
+      oprettetMs: 1, oprettetAf: "admin1", opdateretMs: 1, opdateretAf: "admin1",
+    });
+    await assertSucceeds(set(ref(db, sti("ressourceKategorier", "medarbejdere/fn-chauffoer")), kategori("Chauffør")));
+    await assertSucceeds(set(ref(db, sti("ressourceKategorier", "medarbejderafdelinger/afd-drift")), kategori("Drift")));
+    await assertSucceeds(set(ref(db, p("pe-kategorier")), person({
+      funktionKategoriIder: { "fn-chauffoer": true },
+      stationeringKategoriId: "afd-drift", stationeret: "Drift",
+    })));
+    await assertFails(set(ref(db, p("pe-ukendt-funktion")), person({
+      funktionKategoriIder: { "findes-ikke": true },
+    })));
+    await assertFails(set(ref(db, p("pe-ukendt-afdeling")), person({
+      stationeringKategoriId: "findes-ikke",
+    })));
+  });
+
   it("afviser et tomt navn", async () => {
     const db = medPerms("admin1", ALLE_PERMS);
     await assertFails(set(ref(db, p("pe-tom")), person({ navn: "" })));

@@ -1,5 +1,6 @@
 export const RESSOURCE_GRUPPER = Object.freeze([
-  "enheder", "ejendomme", "medarbejdere", "units", "varer", "warehouse", "certifikater",
+  "enheder", "ejendomme", "medarbejdere", "medarbejderafdelinger",
+  "units", "varer", "warehouse", "certifikater",
 ]);
 export const HARDWARE_ARTER = Object.freeze(["obd", "gps"]);
 

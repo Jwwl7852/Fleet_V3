@@ -101,3 +101,29 @@ test("ressourceregistre bruger samme linjebaserede og tastaturtilgængelige åbn
   assert.match(vehicles, /role="button" tabIndex="0" aria-label=\{`Åbn \$\{unit\.number\}`\}/);
   assert.match(vehicles, /event\.key === "Enter" \|\| event\.key === " "/);
 });
+
+test("Ressourcer følger Enheder-listens kompakte liste- og filterstruktur", () => {
+  const shell = read("src/fleet/AppShell.jsx");
+  const employees = read("src/moduler/Medarbejdere.jsx");
+  const units = read("src/moduler/unitbooking/Kasser.jsx");
+  const locations = read("src/moduler/warehouse/Lokationer.jsx");
+  const certificates = read("src/moduler/Kompetencer.jsx");
+  const properties = read("facility-v2/src/routes/PropertiesPage.jsx");
+  const vehicles = read("fleet-v2/src/components/UnitCatalog.jsx");
+
+  assert.match(shell, /ressourceOwnsPageTitle/);
+  assert.match(employees, /<Dialog titel=\{valgt\.navn\}/);
+  assert.match(employees, /ressourceKategorier\/medarbejderafdelinger/);
+  assert.match(employees, /Tilføj funktion/);
+  assert.doesNotMatch(employees, /type="checkbox"/);
+  for (const source of [employees, units, locations, certificates]) {
+    assert.match(source, /Sortér/);
+    assert.match(source, /Nulstil/);
+  }
+  assert.doesNotMatch(units, /<KpiRaekke>/);
+  assert.doesNotMatch(locations, /<KpiRaekke>/);
+  assert.doesNotMatch(certificates, /<KpiRaekke>/);
+  assert.match(properties, /directory-layout-single/);
+  assert.doesNotMatch(properties, /directory-summary/);
+  assert.doesNotMatch(vehicles, /Gem visning/);
+});

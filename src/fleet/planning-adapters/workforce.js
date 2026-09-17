@@ -1,7 +1,7 @@
 /* Ren envejsnormalisering fra Workforce-formede snapshots.
  * Fraværsårsag og fritekst kopieres bevidst aldrig.
  */
-import { funktionerAf } from "../personale.js";
+import { funktionerAf, funktionKategoriIderAf } from "../personale.js";
 import { KILDE, REFERENCEART } from "../planning-basic.js";
 
 export function fraWorkforceMedarbejder(person, {
@@ -10,14 +10,18 @@ export function fraWorkforceMedarbejder(person, {
   if (!person?.id) throw new Error("fraWorkforceMedarbejder: personen mangler personId.");
   const personKompetencer = kompetencer.filter((k) => k?.personId === person.id);
   const personFravaer = fravaer.filter((f) => f?.personId === person.id);
+  const effektivStationeringRef = stationeringRef || (person.stationeringKategoriId ? {
+    kilde: "ressourceKategorier/medarbejderafdelinger",
+    id: person.stationeringKategoriId,
+  } : null);
   return {
     reference: { kilde: KILDE.WORKFORCE, art: REFERENCEART.MEDARBEJDER, id: person.id },
     ejerKilde: KILDE.WORKFORCE,
     visningsnavn: person.navn || person.id,
     status: person.status || null,
-    funktioner: funktionerAf(person),
+    funktioner: [...new Set([...funktionerAf(person), ...funktionKategoriIderAf(person)])],
     stationering: person.stationeret || null,
-    ...(stationeringRef ? { stationeringRef } : {}),
+    ...(effektivStationeringRef ? { stationeringRef: effektivStationeringRef } : {}),
     kompetencer: [...new Set(personKompetencer.map((k) => k.type).filter(Boolean))],
     certifikater: personKompetencer
       .filter((k) => k.type && Number.isFinite(k.udloeberMs))

@@ -45,6 +45,22 @@ describe("Fleet- og Workforce-adaptere", () => {
     assert.equal("note" in ressource.tilgaengelighed.fravaer[0], false);
     assert.doesNotMatch(JSON.stringify(ressource), /må aldrig adapteres/);
   });
+
+  it("fører Ressourcer-funktioner og afdeling videre til PLANNING med stabile id'er", () => {
+    const ressource = fraWorkforceMedarbejder({
+      id: "person-ressource-1",
+      navn: "Syntetisk medarbejder",
+      funktioner: { chauffoer: true },
+      funktionKategoriIder: { "fn-service": true },
+      stationeringKategoriId: "afd-nord",
+      stationeret: "Afdeling Nord",
+    });
+    assert.deepEqual(ressource.funktioner, ["chauffoer", "fn-service"]);
+    assert.deepEqual(ressource.stationeringRef, {
+      kilde: "ressourceKategorier/medarbejderafdelinger",
+      id: "afd-nord",
+    });
+  });
 });
 
 describe("Bookingadapteren", () => {

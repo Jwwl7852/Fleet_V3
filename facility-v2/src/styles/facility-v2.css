@@ -187,6 +187,7 @@ tbody tr:hover { background: #f8fcfc; }
 /* Etape 2: kataloger, profiler og formularer */
 .directory-page, .profile-page { min-width: 0; width: 100%; max-width: 1800px; margin: 0 auto; }
 .directory-layout { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 14px; align-items: start; }
+.directory-layout-single { grid-template-columns: minmax(0, 1fr); }
 .directory-main, .directory-summary, .branch-panel, .installation-list-panel, .installation-detail-panel { min-width: 0; padding: 16px; }
 .table-scroll { max-width: 100%; }
 .filter-bar, .installation-filter-bar { display: grid; grid-template-columns: minmax(240px, 1.5fr) repeat(4, minmax(135px, .72fr)) auto; gap: 9px; margin-bottom: 13px; }
