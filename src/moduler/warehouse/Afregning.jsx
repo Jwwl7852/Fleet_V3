@@ -244,7 +244,7 @@ export default function Afregning() {
                 sats, og summen kan derfor ikke gøres op. Sæt prisen under{" "}
                 <Link className="fc-a" to="/opsaetning/priser">Standardpriser</Link>{" "}
                 — eller giv kunden sin egen under{" "}
-                <Link className="fc-a" to={`/opsaetning/aftalepriser/${kunde.id}`}>
+                <Link className="fc-a" to={`/opsaetning/priser/kunder/${kunde.id}`}>
                   Kundepriser
                 </Link>. En halv sum er værre end ingen: den ser ud som om den
                 er regnet ud.

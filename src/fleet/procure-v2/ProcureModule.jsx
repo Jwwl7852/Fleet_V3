@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { harPerm, PERM } from "../permissions.js";
+import { harModul } from "../moduler.js";
 import { useFleet } from "../FleetContext.jsx";
 import { useListe } from "../useListe.js";
 import { usePost } from "../usePost.js";
@@ -147,15 +148,20 @@ const normalizePurchases = (rows = []) => {
 
 export default function ProcureModule() {
   const location = useLocation();
-  const { bruger, demo, tenant } = useFleet();
-  const canRead = harPerm(bruger?.perms, PERM.indkoebLaes);
-  const canWrite = harPerm(bruger?.perms, PERM.indkoebSkriv);
+  const { bruger, demo, tenant, moduler } = useFleet();
+  const path = location.pathname.replace(/\/$/, "");
+  const resourceCatalog = path === "/ressourcer/varekatalog";
+  const canRead = harPerm(bruger?.perms, PERM.indkoebLaes)
+    && (!resourceCatalog || harModul(moduler, "indkoeb") || harModul(moduler, "warehouse"));
+  const canWrite = harPerm(bruger?.perms, PERM.indkoebSkriv)
+    || (resourceCatalog && harModul(moduler, "warehouse") && harPerm(bruger?.perms, PERM.varerSkriv));
   const canApprove = harPerm(bruger?.perms, PERM.indkoebGodkend);
   const canAdmin = harPerm(bruger?.perms, PERM.brugereSkriv);
   const needsSource = useListe("indkoebsbehov", { vindue: "alle", graense: 500, demo: DEMO_INDKOEBSBEHOV });
   const ordersSource = useListe("indkoebsordrer", { vindue: "alle", graense: 500, demo: DEMO_INDKOEBSORDRER });
   const suppliersSource = useListe("leverandoerer", { vindue: "alle", graense: 500, demo: DEMO_LEVERANDOERER });
   const catalogSource = useListe("forbrugsvarer", { vindue: "alle", graense: 500, demo: [] });
+  const resourceCategoriesSource = useListe("ressourceKategorier/varer", { vindue: "alle", graense: 500, demo: [] });
   const invoicesSource = useListe("fakturaer", { vindue: "alle", graense: 500, demo: DEMO_FAKTURAER });
   const approvalsSource = useListe("procureGodkendelsessager", { vindue: "alle", graense: 500, demo: [] });
   const inventoryMovementsSource = useListe("forbrugsvarebevaegelser", { vindue: "alle", graense: 2000, demo: [] });
@@ -178,35 +184,45 @@ export default function ProcureModule() {
     needs: needsSource.data.map(normalizeNeed), orders: ordersSource.data.map(normalizeOrder),
     suppliers: suppliersSource.data.map(normalizeSupplier), catalog: catalogSource.data.map(normalizeCatalogItem), approvals: approvalsSource.data.map(normalizeApprovalCase),
     receipts: receiptsFromOrders(ordersSource.data), invoices: invoicesSource.data.map(normalizeInvoice), rules: [],
-    qrLabels: [], inventoryMovements: inventoryMovementsSource.data, purchases: normalizePurchases(purchasesSource.data), setup,
-  }), [needsSource.data, ordersSource.data, suppliersSource.data, catalogSource.data, invoicesSource.data, approvalsSource.data, inventoryMovementsSource.data, purchasesSource.data, setup]);
+    qrLabels: [], inventoryMovements: inventoryMovementsSource.data, purchases: normalizePurchases(purchasesSource.data),
+    setup: {
+      ...setup,
+      varekategorier: {
+        ...(setup.varekategorier || {}),
+        ...Object.fromEntries(resourceCategoriesSource.data.map((row) => [row.id, {
+          id: row.id, label: row.navn, active: row.aktiv !== false,
+        }])),
+      },
+    },
+  }), [needsSource.data, ordersSource.data, suppliersSource.data, catalogSource.data, invoicesSource.data, approvalsSource.data, inventoryMovementsSource.data, purchasesSource.data, resourceCategoriesSource.data, setup]);
   const state = demo ? demoState : liveState;
   const setState = (producer) => { if (demo) setDemoState((current) => typeof producer === "function" ? producer(current) : producer); };
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [location.pathname]);
 
   if (!canRead) return <section className="procure-v2 procure-denied"><h1>PROCURE</h1><p>Du har ikke adgang til indkøb. Kontakt en administrator, hvis du mener, det er en fejl.</p></section>;
-  const busy = !demo && (needsSource.henter || ordersSource.henter || suppliersSource.henter || catalogSource.henter || invoicesSource.henter || approvalsSource.henter || inventoryMovementsSource.henter || purchasesSource.henter);
-  const error = !demo && (needsSource.fejl || ordersSource.fejl || suppliersSource.fejl || catalogSource.fejl || invoicesSource.fejl || approvalsSource.fejl || inventoryMovementsSource.fejl || purchasesSource.fejl);
+  const busy = !demo && (needsSource.henter || ordersSource.henter || suppliersSource.henter || catalogSource.henter || resourceCategoriesSource.henter || invoicesSource.henter || approvalsSource.henter || inventoryMovementsSource.henter || purchasesSource.henter);
+  const error = !demo && (needsSource.fejl || ordersSource.fejl || suppliersSource.fejl || catalogSource.fejl || resourceCategoriesSource.fejl || invoicesSource.fejl || approvalsSource.fejl || inventoryMovementsSource.fejl || purchasesSource.fejl);
   const tenantDetails = { ...(tenant || {}), ...(companySource.post || {}) };
   const common = { state, setState, demo, tenant: tenantDetails, user: bruger, canWrite, canApprove, canAdmin, busy: busy || companySource.henter, error: error || companySource.fejl };
-  const path = location.pathname.replace(/\/$/, "");
+  if (path === "/ressourcer/varekatalog") return <CatalogScreen {...common} />;
+  if (path === "/opsaetning/ressourcer/varer") return <ProcureSetupScreen {...common} />;
   if (path === "/indkoeb") return <OverviewScreen {...common} />;
   if (path === "/indkoeb/mobil/qr-maerkater") return <QrLabelScreen {...common} />;
   if (/^\/indkoeb\/mobil\/modtag(?:\/[^/]+)?$/.test(path)) return <MobileReceiptScreen {...common} />;
   if (/^\/indkoeb\/mobil(?:\/(?:kurv|mine|scan(?:\/[^/]+)?))?$/.test(path)) return <MobileOrderScreen {...common} />;
   if (path === "/indkoeb/behov") return <Navigate to={`/indkoeb/bestillinger${location.search}`} replace />;
-  if (path === "/indkoeb/katalog") return <CatalogScreen {...common} />;
+  if (path === "/indkoeb/katalog") return <Navigate to={`/ressourcer/varekatalog${location.search}`} replace />;
   if (path === "/indkoeb/godkendelser") return <ApprovalsScreen {...common} />;
   if (path === "/indkoeb/forbrug/varegrupper") return <GroupConsumptionScreen {...common} />;
   if (path === "/indkoeb/forbrug") return <ConsumptionScreen {...common} />;
   if (path === "/indkoeb/lager") return <InventoryScreen {...common} />;
-  if (path === "/indkoeb/opsaetning") return <ProcureSetupScreen {...common} />;
+  if (path === "/indkoeb/opsaetning") return <Navigate to={`/opsaetning/ressourcer/varer${location.search}`} replace />;
   if (/^\/indkoeb\/modtagelser(?:\/[^/]+)?$/.test(path)) return <ReceiptScreen {...common} />;
   if (/^\/indkoeb\/bestillinger\/[^/]+\/send$/.test(path)) return <SendOrderScreenV2 {...common} />;
   if (path === "/indkoeb/bestillinger/ny") return <NewPurchaseScreen {...common} />;
   if (path === "/indkoeb/bestillinger") return <ProcurementWorkspaceScreen {...common} />;
   if (/^\/indkoeb\/bestillinger\/[^/]+$/.test(path)) return <OrdersScreen {...common} />;
-  if (path === "/indkoeb/varer") return <Navigate to="/indkoeb/katalog" replace />;
+  if (path === "/indkoeb/varer") return <Navigate to="/ressourcer/varekatalog" replace />;
   if (path === "/indkoeb/statistik") return <Navigate to="/indkoeb/forbrug" replace />;
   if (path === "/indkoeb/arkiv") return <Navigate to="/indkoeb/bestillinger?status=afsluttet" replace />;
   if (path === "/indkoeb/varelager") return <Navigate to="/indkoeb/lager" replace />;

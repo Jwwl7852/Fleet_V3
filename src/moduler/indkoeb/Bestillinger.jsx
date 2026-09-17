@@ -524,7 +524,7 @@ export default function Bestillinger() {
 
       <p className="fc-hint">
         Beløbsgrænse og krav om fakturagodkendelse sættes i{" "}
-        <Link className="fc-a" to="/opsaetning/procure/godkendelsesregler">
+        <Link className="fc-a" to="/opsaetning/godkendelsesregler/procure">
           Opsætning → Procure → Godkendelsesregler
         </Link>. {regler.overBeloeb?.aktiv && Number.isInteger(regler.overBeloeb?.graenseOere)
           ? <>Indkøb til og med {kr(regler.overBeloeb.graenseOere)} godkendes automatisk.</>

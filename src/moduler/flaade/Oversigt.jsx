@@ -540,7 +540,7 @@ export default function FlaadeOversigt() {
               "Se køretøjer"-linje, men et link inde i et link er ugyldigt
               markup, og to veje til samme sted er én for meget. */}
           <KpiKort label="Aktive enheder" vaerdi={num(k.flaade.aktive)}
-                   ikon={<Ikon navn="lastbil" />} tone="ikon-5" rund til="/opsaetning/enheder" />
+                   ikon={<Ikon navn="lastbil" />} tone="ikon-5" rund til="/ressourcer/enheder" />
           <KpiKort label="Ude af drift" vaerdi={num(k.flaade.udeAfDrift)}
                    ikon={<Ikon navn="skruenoegle" />} tone="ikon-2" rund
                    note={`heraf ${num(k.flaade.paaVaerksted)} på værksted`}

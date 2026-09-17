@@ -319,7 +319,10 @@ export const OBLIGATORISKE_MODULER = ALLE_MODULER.filter((m) => MODUL[m].altid);
 
 /** Node → modul. Kun de noder et modul EJER alene. */
 export const NODE_MODUL = {
-  koeretoejer: "flaade",
+  /* Det konkrete enhedsregister er fælles for FLEET og PLANNING. Begge
+     moduler læser og skriver samme stabile poster; de klassificerede
+     satellitdata under sensitive/koeretoejer forbliver FLEET-ejede. */
+  koeretoejer: ["flaade", "booking"],
   fleetKategorier: "flaade",
   fleetServiceKrav: "flaade",
   fleetServiceForekomster: "flaade",
@@ -347,7 +350,9 @@ export const NODE_MODUL = {
   indkoebsordrer: "indkoeb",
   procureGodkendelsessager: "indkoeb",
   godkendelsesregler: "indkoeb",
-  forbrugsvarer: "indkoeb",
+  /* Fælles varedefinitioner. Beholdningsbevægelserne nedenfor er fortsat
+     PROCURE-ejede; WAREHOUSE får ikke adgang til at omskrive lagerhistorik. */
+  forbrugsvarer: ["indkoeb", "warehouse"],
   forbrugsvarebevaegelser: "indkoeb",
   /* ⚠ DEN GLOBALE VAREMASTER — Procure TARGET, trin 2 (produktejer-review
      2026-09-02). Se fleet/varer.js's hoved for hvorfor det er to noder. En

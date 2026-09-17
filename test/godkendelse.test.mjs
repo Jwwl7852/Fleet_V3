@@ -46,6 +46,8 @@ const udenKommentarer = (s) =>
 const SKAERM = udenKommentarer(readFileSync("src/moduler/indkoeb/Bestillinger.jsx", "utf8"));
 const REGELSKAERM = udenKommentarer(
   readFileSync("src/moduler/opsaetning/ProcureGodkendelsesregler.jsx", "utf8"));
+const FAKTURAREGELSKAERM = udenKommentarer(
+  readFileSync("src/moduler/opsaetning/FakturacenterOpsaetning.jsx", "utf8"));
 const KLIENT = udenKommentarer(readFileSync("src/fleet/godkendelse.js", "utf8"));
 const SERVER = udenKommentarer(readFileSync("functions/index.js", "utf8"));
 const REGLER = readFileSync("firebase.rules.json", "utf8");
@@ -473,13 +475,19 @@ describe("Opsætningsskærmen siger hvad den gør og ikke gør", () => {
    * OVRE. Det er samme fælde som beslutning 79 fandt i `division-fjernet`,
    * og som `PERM_GODKEND_MIDLERTIDIG` var i beslutning 82.
    */
-  test("⚠ FAKTURAREGLEN ER LEVENDE, OG GRÆNSEN FOR DEN STÅR", () => {
-    assert.ok(!/Reglen er ikke bygget endnu/.test(REGELSKAERM),
-      "kontakten står stadig som ubygget, men fakturastatus håndhæver den");
-    assert.match(REGELSKAERM, /saet\("fakturagodkendelse", "aktiv", v\)/,
-      "kontakten er ikke bundet til reglen");
-    assert.match(REGELSKAERM, /Der betales ikke fra systemet/,
-      "skærmen lover en betaling der ikke findes");
+  test("⚠ FAKTURAKONTROL ER LEVENDE OG ADSKILT FRA ORDREGODKENDELSE", () => {
+    assert.ok(!/Reglen er ikke bygget endnu/.test(FAKTURAREGELSKAERM),
+      "fakturakontrollen står stadig som ubygget");
+    assert.match(FAKTURAREGELSKAERM, /gemFakturacenterOpsaetning/,
+      "fakturakontrollen er ikke bundet til den serverhåndhævede opsætning");
+    assert.match(FAKTURAREGELSKAERM, /Nettogrænsen beregnes[\s\S]{0,100}ekskl\. moms/,
+      "nettogrænsens grundlag fremgår ikke");
+    assert.match(FAKTURAREGELSKAERM, /anden godkender/i,
+      "kravet om en anden godkender fremgår ikke");
+    assert.match(REGELSKAERM, /Denne fane ændrer kun godkendelse af indkøbsordrer/,
+      "PROCURE-skærmen afgrænser ikke ordregodkendelse fra fakturakontrol");
+    assert.doesNotMatch(FAKTURAREGELSKAERM, /betalt|bogført/i,
+      "fakturakontrollen må ikke fremstilles som betaling eller bogføring");
   });
 
   /* ⚠ TOM STRENG ER IKKE NUL. `Number("")` er 0, og en grænse på 0 kr. betyder

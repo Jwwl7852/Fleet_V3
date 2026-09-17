@@ -111,7 +111,7 @@ function GpsTab({ related, unit, onNavigate }) {
 }
 
 export function UnitProfile({ unitId, initialViewState, onViewStateChange, onNavigate, onBack = onNavigate, onNotice, vehicleLookup, imageProcessor }) {
-  const { units, relations, loading, saveUnit, tenantId, repositoryKind } = useFleetData();
+  const { units, relations, loading, saveUnit, tenantId, repositoryKind, resourceOptions } = useFleetData();
   const sharedStorage = repositoryKind === "shared-unit-register";
   const [tab, setTab] = useState(() => initialViewState?.tab || "overview");
   const [editing, setEditing] = useState(false);
@@ -155,7 +155,7 @@ export function UnitProfile({ unitId, initialViewState, onViewStateChange, onNav
         {tab === "economy" ? <EconomyTab related={related} unit={unit} /> : null}
         {tab === "gps" ? <GpsTab related={related} unit={unit} onNavigate={onNavigate} /> : null}
       </section>
-      {editing ? <UnitFormDialog unit={unit} units={units} tenantId={tenantId} storageKind={repositoryKind} onClose={() => setEditing(false)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
+      {editing ? <UnitFormDialog unit={unit} units={units} tenantId={tenantId} storageKind={repositoryKind} resourceOptions={resourceOptions} onClose={() => setEditing(false)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
       {showQr ? <UnitQrDialog unit={unit} onClose={() => setShowQr(false)} /> : null}
     </main>
   );

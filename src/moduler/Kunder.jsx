@@ -352,7 +352,7 @@ export default function Kunder() {
                 Linjen pegede på Bookingopsætning, og den henvisning var
                 forkert i samme øjeblik aftaleprisen fandtes. */}
             <p className="fc-hint" style={{ marginTop: 10 }}>
-              <Link className="fc-a" to={`/opsaetning/aftalepriser/${valgt.id}`}>
+              <Link className="fc-a" to={`/opsaetning/priser/kunder/${valgt.id}`}>
                 Se og sæt aftalepriser for {valgt.navn}
               </Link>{" "}
               — kundens egen pris eller rabat. Uden en afvigelse gælder{" "}

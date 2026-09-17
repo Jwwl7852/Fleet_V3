@@ -272,7 +272,7 @@ export default function IndkoebOversigt() {
         </p>
         <div className="fc-genveje">
           <Link className="fc-a" to="/indkoeb/leverandoerer">Leverandørkartotek</Link>
-          <Link className="fc-a" to="/indkoeb/katalog">Varer</Link>
+          <Link className="fc-a" to="/ressourcer/varekatalog">Varer</Link>
           <Link className="fc-a" to="/indkoeb/fakturaer">Match &amp; kontantkøb</Link>
           <Link className="fc-a" to="/oekonomi/fakturacenter?destination=procure">Fakturaer &amp; bilag</Link>
         </div>

@@ -121,12 +121,12 @@ export default function Overblik() {
       antal: num(tal.afventer.antal),
     },
     k && k.flaade.paaVaerksted > 0 && {
-      id: "vaerksted", til: "/opsaetning/enheder", tone: "info", ikon: "skruenoegle",
+      id: "vaerksted", til: "/ressourcer/enheder", tone: "info", ikon: "skruenoegle",
       tekst: "På værksted / hos leverandør", under: "Enheder ude af drift lige nu, til reparation",
       antal: num(k.flaade.paaVaerksted),
     },
     k && k.flaade.udeAfDrift > 0 && {
-      id: "ude", til: "/opsaetning/enheder", tone: "bad", ikon: "advarsel",
+      id: "ude", til: "/ressourcer/enheder", tone: "bad", ikon: "advarsel",
       tekst: "Ude af drift", under: "Kan ikke disponeres før status ændres",
       antal: num(k.flaade.udeAfDrift),
     },

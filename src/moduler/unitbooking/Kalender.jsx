@@ -498,7 +498,7 @@ export default function Kalender() {
         <p>Bookingstatus, enhedstilstand og fysisk placering vises som adskilte oplysninger.</p>
         <div className="fc-row">
           <Knap onClick={() => navigate("/unitbooking/scan")}>Scan og flyt</Knap>
-          <Knap onClick={() => navigate("/opsaetning/kasser")}>Enhedsregister</Knap>
+          <Knap onClick={() => navigate("/ressourcer/units")}>Units</Knap>
           <Knap variant="primaer" onClick={() => navigate("/unitbooking/import")}>Importér booking</Knap>
         </div>
       </div>

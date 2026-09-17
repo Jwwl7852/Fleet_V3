@@ -109,6 +109,9 @@ import {
   ROLLE_PERMS, permsForTenant,
   valideRolleperms, laaserUde, PERM, byggRolleClaims, permStrengFraClaims,
 } from "./delt/permissions.js";
+import {
+  hardwareErLedig, validerHardwareTilknytning,
+} from "./delt/ressource-regler.js";
 import { migrerClaimKonti } from "./delt/claims-migration.js";
 import { erEjerClaims, erTokenEfterRevocation } from "./delt/ejeradgang.js";
 import {
@@ -9657,8 +9660,9 @@ async function procureDoer(req, { perm, modul }) {
   if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
 
   const perms = permStrengFraClaims(auth.token);
-  if (perm && !perms.includes(`|${perm}|`)) {
-    throw new HttpsError("permission-denied", `Det kræver ${perm}.`);
+  const tilladtePerms = Array.isArray(perm) ? perm : (perm ? [perm] : []);
+  if (tilladtePerms.length && !tilladtePerms.some((navn) => perms.includes(`|${navn}|`))) {
+    throw new HttpsError("permission-denied", `Det kræver en af: ${tilladtePerms.join(", ")}.`);
   }
 
   const db = getDatabase();
@@ -9670,10 +9674,11 @@ async function procureDoer(req, { perm, modul }) {
   if (ab.exists() && ab.val() !== "aktiv") {
     throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
   }
-  if (modul) {
+  const tilladteModuler = Array.isArray(modul) ? modul : (modul ? [modul] : []);
+  if (tilladteModuler.length) {
     const moduler = await rod.child("moduler").once("value");
-    if (moduler.exists() && moduler.child(modul).val() !== true) {
-      throw new HttpsError("permission-denied", `Modulet ${modul} er ikke aktivt.`);
+    if (moduler.exists() && !tilladteModuler.some((navn) => moduler.child(navn).val() === true)) {
+      throw new HttpsError("permission-denied", `Et af modulerne ${tilladteModuler.join(", ")} skal være aktivt.`);
     }
   }
   return { db, rod, tenantId, uid: auth.uid, perms };
@@ -11944,7 +11949,7 @@ export const procureKoebBilagDownloadLink = onCall({ region: REGION }, async (re
    ══════════════════════════════════════════════════════════════════════════ */
 export const forbrugsvareskriv = onCall({ region: REGION }, async (req) => {
   const { rod, tenantId, uid } = await procureDoer(req, {
-    perm: "indkoeb.skriv", modul: "indkoeb",
+    perm: ["indkoeb.skriv", "varer.skriv"], modul: ["indkoeb", "warehouse"],
   });
 
   const d = req.data || {};
@@ -14498,6 +14503,118 @@ export const fleetServiceGennemfoer = onCall({ region: REGION }, async (req) => 
     throw new HttpsError(code, `Service kunne ikke registreres: ${outcome?.code || "ukendt fejl"}.`);
   }
   return { ok: true, gentaget: outcome.repeated };
+});
+
+/* Atomisk tilknytning af OBD/GPS. Hardwareposten er låsen: transaktionen
+ * kontrollerer og ændrer hardware, ressourcefelt og historik samlet, så to
+ * samtidige formularer ikke kan vinde med samme serienummer. */
+export const ressourcehardwaretilknyt = onCall({ region: REGION }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Ingen bruger.");
+  const tenantId = auth.token?.tenant;
+  if (!tenantId) throw new HttpsError("permission-denied", "Tokenet har ingen tenant.");
+
+  const data = req.data || {};
+  const art = kortStreng(data.art, 10);
+  const hardwareId = data.hardwareId == null || data.hardwareId === "" ? null : kortStreng(data.hardwareId, 120);
+  const ressourceType = kortStreng(data.ressourceType, 20);
+  const ressourceId = kortStreng(data.ressourceId, 160);
+  const valideringsfejl = hardwareId
+    ? validerHardwareTilknytning({ art, hardwareId, ressourceType, ressourceId })
+    : validerHardwareTilknytning({ art, hardwareId: "frigiv", ressourceType, ressourceId });
+  delete valideringsfejl.hardwareId;
+  if (Object.keys(valideringsfejl).length) {
+    throw new HttpsError("invalid-argument", Object.values(valideringsfejl)[0]);
+  }
+
+  const permissions = art === "obd"
+    ? [PERM.koeretoejerSkriv]
+    : [PERM.kasserSkriv, PERM.carriersSkriv];
+  const tilladteModuler = art === "obd" ? ["flaade", "booking"] : ["unitbooking", "warehouse"];
+  const perms = permStrengFraClaims(auth.token);
+  if (!permissions.some((permission) => perms.includes(`|${permission}|`))) {
+    throw new HttpsError("permission-denied", `Det kræver en af: ${permissions.join(", ")}.`);
+  }
+
+  const db = getDatabase();
+  const tenantRef = db.ref(`tenants/${tenantId}`);
+  const modulSnapshot = await tenantRef.child("moduler").once("value");
+  if (modulSnapshot.exists() && !tilladteModuler.some((navn) => modulSnapshot.child(navn).val() === true)) {
+    throw new HttpsError("permission-denied", "Ingen af de relevante moduler er aktive.");
+  }
+  const findes = await tenantRef.child("_findes").once("value");
+  if (!findes.exists()) throw new HttpsError("not-found", "Tenant findes ikke.");
+  const abonnement = await tenantRef.child("abonnement/status").once("value");
+  if (abonnement.exists() && abonnement.val() !== "aktiv") {
+    throw new HttpsError("permission-denied", "Abonnementet er ikke aktivt.");
+  }
+
+  const ressourceNode = art === "obd" ? "koeretoejer" : "kasser";
+  const ressourceFelt = art === "obd" ? "obdHardwareId" : "gpsHardwareId";
+  const tidspunktMs = Date.now();
+  const historikId = `h_${tidspunktMs}_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+  let afvisning = null;
+  // RTDB-emulatoren kan kalde transaktionsfunktionen første gang med null,
+  // selv om noden findes. Brug det allerede autoriserede snapshot som varm
+  // start én gang; derefter er serverens værdi fortsat eneste sandhedskilde.
+  const foer = await tenantRef.once("value");
+  let varm = foer.exists();
+  const resultat = await tenantRef.transaction((tenant) => {
+    afvisning = null;
+    if (!tenant && varm) tenant = structuredClone(foer.val());
+    varm = false;
+    if (!tenant || !tenant[ressourceNode]?.[ressourceId]) {
+      afvisning = "Ressourcen findes ikke."; return;
+    }
+    const ressource = tenant[ressourceNode][ressourceId];
+    const tidligereId = ressource[ressourceFelt] || null;
+    if (tidligereId === hardwareId) return tenant;
+
+    if (hardwareId) {
+      const hardware = tenant.ressourceHardware?.[art]?.[hardwareId];
+      if (!hardware) { afvisning = "Hardwaren findes ikke."; return; }
+      if (!hardwareErLedig(hardware, { ressourceType, ressourceId })) {
+        afvisning = "Hardwaren er allerede tilknyttet en anden ressource."; return;
+      }
+    }
+
+    if (tidligereId && tenant.ressourceHardware?.[art]?.[tidligereId]) {
+      const tidligere = tenant.ressourceHardware[art][tidligereId];
+      if (tidligere.tilknytning?.ressourceType === ressourceType
+          && tidligere.tilknytning?.ressourceId === ressourceId) {
+        delete tidligere.tilknytning;
+        tidligere.historik ||= {};
+        tidligere.historik[historikId] = {
+          handling: "frigivet", ressourceType, ressourceId,
+          tidspunktMs, uid: auth.uid,
+        };
+        tidligere.opdateretMs = tidspunktMs;
+        tidligere.opdateretAf = auth.uid;
+      }
+    }
+
+    if (hardwareId) {
+      const hardware = tenant.ressourceHardware[art][hardwareId];
+      hardware.tilknytning = { ressourceType, ressourceId, sidenMs: tidspunktMs };
+      hardware.historik ||= {};
+      hardware.historik[historikId] = {
+        handling: "tilknyttet", ressourceType, ressourceId,
+        tidspunktMs, uid: auth.uid,
+      };
+      hardware.opdateretMs = tidspunktMs;
+      hardware.opdateretAf = auth.uid;
+      ressource[ressourceFelt] = hardwareId;
+    } else {
+      delete ressource[ressourceFelt];
+    }
+    return tenant;
+  });
+
+  if (!resultat.committed) {
+    throw new HttpsError(afvisning?.includes("allerede") ? "already-exists" : "failed-precondition",
+      afvisning || "Tilknytningen kunne ikke gennemføres.");
+  }
+  return { ok: true, art, hardwareId, ressourceType, ressourceId, tidspunktMs };
 });
 
 export const fleetServiceKontrolPlanlagt = onSchedule({

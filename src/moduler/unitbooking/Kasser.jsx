@@ -32,6 +32,7 @@ import {
 import { maalFraMm, volumenIalt } from "../../fleet/volumen.js";
 import { gem } from "../../fleet/skriv.js";
 import { AUDIT } from "../../fleet/audit.js";
+import { tilknytRessourceHardware } from "../../fleet/ressource-hardware.js";
 import {
   DEMO_KASSER, DEMO_KASSETYPER, DEMO_KASSEUDLAAN,
 } from "../../fleet/demo-unitbooking.js";
@@ -53,9 +54,10 @@ const tomKasse = () => ({
   laengdeCm: "", breddeCm: "", hoejdeCm: "", maalBetydning: "udvendig",
   indvendigLaengdeCm: "", indvendigBreddeCm: "", indvendigHoejdeCm: "",
   note: "", udeAfDriftIso: "",
+  gpsHardwareId: "",
 });
 
-function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
+function Kasseformular({ kasse, typer, pladser, gpsHardware, sti, paaGemt, paaLuk }) {
   const nyt = !kasse;
   const [f, saetF] = useState(() => (kasse
     ? {
@@ -148,12 +150,27 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
          en blok paa en kasse der virker. Status er sandheden. */
       udeAfDriftFra: f.status === "udeAfDrift" ? udeAfDriftFra : null,
       note: f.note?.trim() || null,
+      /* Selve linkskiftet foretages af callable efter stamdataskrivningen.
+         Den eksisterende værdi bevares her, så en almindelig formularskrivning
+         aldrig river et fungerende hardwarelink ned. */
+      gpsHardwareId: kasse?.gpsHardwareId || null,
     };
     const r = await gem({
       sti: sti(`kasser/${id}`), data, foer: kasse || null,
       objekt: "kasser", objektId: id,
       handling: nyt ? AUDIT.opret : AUDIT.aendre,
     });
+    if (r.ok && (kasse?.gpsHardwareId || null) !== (f.gpsHardwareId || null)) {
+      const hardwareSvar = await tilknytRessourceHardware({
+        art: "gps", hardwareId: f.gpsHardwareId || null,
+        ressourceType: "unit", ressourceId: id,
+      });
+      if (!hardwareSvar.ok) {
+        saetGemmer(false);
+        saetSvar({ ok: false, besked: `Enhedens stamdata er gemt, men GPS-tilknytningen blev afvist: ${hardwareSvar.besked}` });
+        return;
+      }
+    }
     saetGemmer(false);
     saetSvar(r);
     if (r.ok) paaGemt();
@@ -206,6 +223,13 @@ function Kasseformular({ kasse, typer, pladser, sti, paaGemt, paaLuk }) {
                   hint="Kommer fra et udlån og ændres under Udlån — ikke her." />
           )}
         </Feltraekke>
+        <Felt id="k-gps" label="GPS-tracker" vaerdi={f.gpsHardwareId}
+              saet={saet("gpsHardwareId")}
+              valgmuligheder={[{ vaerdi: "", label: "Ingen GPS-tracker" },
+                ...gpsHardware.filter((post) => (post.status === "aktiv" || post.id === f.gpsHardwareId)
+                  && (!post.tilknytning?.ressourceId || (post.tilknytning.ressourceType === "unit" && post.tilknytning.ressourceId === kasse?.id)))
+                  .map((post) => ({ vaerdi: post.id, label: `${post.serienummer}${post.model ? ` · ${post.model}` : ""}` }))]}
+              hint="Kun ledig, aktiv hardware vises. Tilknytningen kontrolleres atomisk af serveren." />
 
         {/* ⚠ FELTET TEGNES KUN NÅR KASSEN ER UDE AF DRIFT. En ude-af-drift-dato
             på en kasse der virker, er et felt der altid står tomt — og et tomt
@@ -331,6 +355,10 @@ export default function Kasser() {
   const { data: udlaan } = useListe("kasseudlaan", {
     graense: 2000, demo: DEMO_KASSEUDLAAN,
   });
+  const { data: gpsHardware } = useListe("ressourceHardware/gps", {
+    vindue: "alle", graense: 500, demo: [],
+    sorter: (a, b) => String(a.serienummer).localeCompare(String(b.serienummer), "da"),
+  });
 
   if (henter) return <Henter hvad="kasserne" />;
 
@@ -404,12 +432,12 @@ export default function Kasser() {
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       {ny && (
-        <Kasseformular typer={typer} pladser={pladser} sti={path}
+        <Kasseformular typer={typer} pladser={pladser} gpsHardware={gpsHardware} sti={path}
                        paaLuk={() => saetNy(false)}
                        paaGemt={() => { saetNy(false); genindlaes(); }} />
       )}
       {redigerer && (
-        <Kasseformular kasse={redigerer} typer={typer} pladser={pladser} sti={path}
+        <Kasseformular kasse={redigerer} typer={typer} pladser={pladser} gpsHardware={gpsHardware} sti={path}
                        paaLuk={() => saetRedigerer(null)}
                        paaGemt={() => { saetRedigerer(null); genindlaes(); }} />
       )}
@@ -479,7 +507,7 @@ export default function Kasser() {
         {!typer.length || !pladser.length ? (
           <Tom>
             En kasse skal have en <b>type</b> og en <b>hjemplads</b>. Opret dem
-            under Reolpladser først — ellers ville kassen pege på noget der ikke
+            under Opsætning → Ressourcer → Units først — ellers ville kassen pege på noget der ikke
             findes.
           </Tom>
         ) : (

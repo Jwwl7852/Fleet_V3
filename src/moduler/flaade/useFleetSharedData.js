@@ -32,6 +32,12 @@ export function useFleetSharedData({ mayReadCategories, mayReadSuppliers, mayRea
     demo: FALLBACK_CATEGORIES,
     hent: mayReadCategories,
   });
+  const resourceCategories = useListe("ressourceKategorier/enheder", {
+    ordnPaa: "sortering", vindue: "alle", graense: 500, demo: [], hent: mayReadCategories,
+  });
+  const obdHardware = useListe("ressourceHardware/obd", {
+    ordnPaa: "serienummer", vindue: "alle", graense: 500, demo: [], hent: mayReadService,
+  });
   const units = useListe("koeretoejer", {
     ordnPaa: "kaldenavn",
     vindue: "alle",
@@ -70,6 +76,8 @@ export function useFleetSharedData({ mayReadCategories, mayReadSuppliers, mayRea
   });
   return {
     categories,
+    resourceCategories,
+    obdHardware,
     suppliers,
     service: {
       units,

@@ -182,7 +182,7 @@ describe("Skive 2A — strukturelle invarianter", () => {
        daglig arbejdsflade for en kunde der kun har fx Fleet eller Facility
        — se nav.js's kommentarer ved kunderOversigt og leverandoerer. */
     const faelles = NAV.filter((m) => m.gruppe === "faelles").map((m) => m.key);
-    assert.deepEqual(faelles, ["dashboard", "fakturacenter", "oekonomi"]);
+    assert.deepEqual(faelles, ["dashboard", "ressourcer", "fakturacenter", "oekonomi"]);
   });
 
   it("Driftsmoduler-gruppen står i rækkefølgen Planning, Fleet, Facility, Procure, Warehouse, Unitbooking, Workforce", () => {

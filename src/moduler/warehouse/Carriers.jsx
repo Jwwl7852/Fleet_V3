@@ -152,7 +152,7 @@ export default function Carriers() {
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       <Kort titel={`Beholdere (${num(viste.length)} af ${num(carriers.length)})`}
-            handling={<Link className="fc-a" to="/warehouse/lokationer">Se lokationerne</Link>}>
+            handling={<Link className="fc-a" to="/ressourcer/lagerlokationer">Se lokationerne</Link>}>
         {/* ⚠ TAVS AFKORTNING OPDAGES FØRST NÅR NOGEN SPØRGER hvorfor en
             beholder mangler — og her ville de fem tal ovenfor også være
             regnet af et udsnit. */}

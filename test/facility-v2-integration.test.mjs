@@ -32,7 +32,7 @@ describe("FACILITY v2 integrationsgrænse", () => {
 
   it("skelner katalogruter fra dynamiske profiler i AppShell", () => {
     assert.equal(findModul("/facility-v2").key, "facilityV2Overblik");
-    assert.equal(findModul("/facility-v2/ejendomme").key, "facilityV2Ejendomme");
+    assert.equal(findModul("/facility-v2/ejendomme").key, "ressourceEjendomme");
     assert.equal(findModul("/facility-v2/ejendomme/property-1").key, "facilityV2Ejendom");
     assert.equal(findModul("/facility-v2/opgaver/task-1").key, "facilityV2Opgave");
   });

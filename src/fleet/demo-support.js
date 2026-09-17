@@ -55,7 +55,7 @@ export const DEMO_SUPPORTSAGER = [
     ansvarlig: "Martin K.",
     fejlMs: dag(0, 9, 14),
     kontekst: {
-      kunde: "DEMO Transport ApS", side: "/opsaetning/enheder", modul: "Opsætning",
+      kunde: "DEMO Transport ApS", side: "/ressourcer/enheder", modul: "Ressourcer",
       browser: "Chrome 126", version: "FleetControl 3.0.0",
       brugerId: "uid-line", tidspunkt: "18-08-2026 09:14",
       fejlId: "FC-ERR-SAVE-VEH-001"
@@ -137,7 +137,7 @@ export const DEMO_SUPPORTSAGER = [
     ansvarlig: "Line A.",
     fejlMs: null,
     kontekst: {
-      kunde: "DEMO Transport ApS", side: "/opsaetning/enheder", modul: "Opsætning",
+      kunde: "DEMO Transport ApS", side: "/ressourcer/enheder", modul: "Ressourcer",
       browser: "Firefox 129", version: "FleetControl 3.0.0",
       brugerId: "uid-benjamin", tidspunkt: "12-08-2026 10:12", fejlId: null
     },

@@ -41,6 +41,7 @@ import DevTesterVaelger from "./moduler/DevTesterVaelger.jsx";
    folk i forvejen er usikre på om de tastede rigtigt.
    ══════════════════════════════════════════════════════════════════════════ */
 const Dashboard = lazy(() => import("./moduler/Dashboard.jsx"));
+const Ressourcer = lazy(() => import("./moduler/Ressourcer.jsx"));
 const BookingOversigt = lazy(() => import("./moduler/booking/Oversigt.jsx"));
 const NyForespoergsel = lazy(() => import("./moduler/booking/NyForespoergsel.jsx"));
 const Forslag = lazy(() => import("./moduler/booking/Forslag.jsx"));
@@ -71,8 +72,6 @@ const FacilityV2Module = lazy(() => import("./moduler/facility/FacilityV2Module.
 const ProcureModule = lazy(() => import("./moduler/indkoeb/ProcureModule.jsx"));
 const Fakturaer = lazy(() => import("./moduler/indkoeb/Fakturaer.jsx"));
 const Leverandoerer = lazy(() => import("./moduler/indkoeb/Leverandoerer.jsx"));
-const ProcureGodkendelsesregler = lazy(() => import("./moduler/opsaetning/ProcureGodkendelsesregler.jsx"));
-const FleetKategorier = lazy(() => import("./moduler/opsaetning/FleetKategorier.jsx"));
 const UnitbookingKasser = lazy(() => import("./moduler/unitbooking/Kasser.jsx"));
 const Reolpladser = lazy(() => import("./moduler/unitbooking/Reolpladser.jsx"));
 const Kasseudlaan = lazy(() => import("./moduler/unitbooking/Udlaan.jsx"));
@@ -93,16 +92,16 @@ const Wmsmodtagelse = lazy(() => import("./moduler/warehouse/Modtagelse.jsx"));
 const Wmsafregning = lazy(() => import("./moduler/warehouse/Afregning.jsx"));
 const Wmssporbarhed = lazy(() => import("./moduler/warehouse/Sporbarhed.jsx"));
 const Wmsvolumen = lazy(() => import("./moduler/warehouse/Volumen.jsx"));
-const Standardpriser = lazy(() => import("./moduler/kunder/Standardpriser.jsx"));
-const Kundepriser = lazy(() => import("./moduler/kunder/Kundepriser.jsx"));
 const Kunder = lazy(() => import("./moduler/Kunder.jsx"));
 const Oekonomi = lazy(() => import("./moduler/Oekonomi.jsx"));
 const Fakturacenter = lazy(() => import("./moduler/oekonomi/Fakturacenter.jsx"));
 const Fakturering = lazy(() => import("./moduler/Fakturering.jsx"));
 const Generelt = lazy(() => import("./moduler/opsaetning/Generelt.jsx"));
+const RessourceOpsaetning = lazy(() => import("./moduler/opsaetning/RessourceOpsaetning.jsx"));
+const PriserOpsaetning = lazy(() => import("./moduler/opsaetning/PriserOpsaetning.jsx"));
+const GodkendelsesreglerOpsaetning = lazy(() => import("./moduler/opsaetning/GodkendelsesreglerOpsaetning.jsx"));
 const Brugere = lazy(() => import("./moduler/opsaetning/Brugere.jsx"));
 const Integrationer = lazy(() => import("./moduler/opsaetning/Integrationer.jsx"));
-const FakturacenterOpsaetning = lazy(() => import("./moduler/opsaetning/FakturacenterOpsaetning.jsx"));
 const Hjaelp = lazy(() => import("./moduler/support/Hjaelp.jsx"));
 const Supportoverblik = lazy(() => import("./moduler/support/Overblik.jsx"));
 const Supportsag = lazy(() => import("./moduler/support/Sag.jsx"));
@@ -166,10 +165,13 @@ const DEMO_BRUGER = {
  * Den egentlige dataadgang håndhæves fortsat i Rules og Functions.
  */
 function ModulRute({ moduler, modul, label }) {
-  if (!harModul(moduler, modul)) {
+  const kraevedeModuler = Array.isArray(modul) ? modul : [modul];
+  const harEtModul = kraevedeModuler.some((navn) => harModul(moduler, navn));
+  const routeId = kraevedeModuler.join("-");
+  if (!harEtModul) {
     return (
-      <section className="fc-card" aria-labelledby={`${modul}-adgang-afvist`}>
-        <h1 id={`${modul}-adgang-afvist`}>Ingen adgang til {label}</h1>
+      <section className="fc-card" aria-labelledby={`${routeId}-adgang-afvist`}>
+        <h1 id={`${routeId}-adgang-afvist`}>Ingen adgang til {label}</h1>
         <p>Tenantens abonnement omfatter ikke {label}.</p>
         <p>Et direkte link indlæser ikke modulets data.</p>
       </section>
@@ -644,6 +646,25 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
 
+            <Route path="ressourcer" element={<Ressourcer />} />
+            <Route element={<ModulRute moduler={moduler} modul={["flaade", "booking"]} label="ENHEDER" />}>
+              <Route path="ressourcer/enheder" element={<FleetV2Module />} />
+              <Route path="ressourcer/enheder/:id" element={<FleetV2Module />} />
+            </Route>
+            <Route element={<ModulRute moduler={moduler} modul={["bemanding", "booking"]} label="MEDARBEJDERE" />}>
+              <Route path="ressourcer/medarbejdere" element={<Medarbejdere />} />
+            </Route>
+            <Route element={<ModulRute moduler={moduler} modul={["unitbooking", "warehouse"]} label="UNITS" />}>
+              <Route path="ressourcer/units" element={<UnitbookingKasser />} />
+              <Route path="ressourcer/lagerlokationer" element={<Wmslokationer />} />
+            </Route>
+            <Route element={<ModulRute moduler={moduler} modul={["indkoeb", "warehouse"]} label="VAREKATALOG" />}>
+              <Route path="ressourcer/varekatalog" element={<ProcureModule />} />
+            </Route>
+            <Route element={<ModulRute moduler={moduler} modul={["bemanding", "flaade"]} label="CERTIFIKATER" />}>
+              <Route path="ressourcer/certifikater" element={<Kompetencer />} />
+            </Route>
+
             <Route path="booking" element={<BookingOversigt />} />
             <Route path="booking/ny" element={<NyForespoergsel />} />
             <Route path="booking/forslag/:id" element={<Forslag />} />
@@ -723,7 +744,6 @@ export default function App() {
               <Route path="unitbooking/scan" element={<Unitbookingscanner />} />
               <Route path="unitbooking/scan/:unitId" element={<Unitbookingscanner />} />
               <Route path="unitbooking/udlaan" element={<Kasseudlaan />} />
-              <Route path="opsaetning/kasser" element={<UnitbookingKasser />} />
               <Route path="unitbooking/historik" element={<Unitbookinghistorik />} />
               <Route path="unitbooking/reolpladser" element={<Reolpladser />} />
             </Route>
@@ -732,7 +752,6 @@ export default function App() {
               <Route path="warehouse/varer" element={<Wmsvarer />} />
               <Route path="warehouse/units" element={<Wmsunits />} />
               <Route path="warehouse/scan" element={<Wmsunits />} />
-              <Route path="warehouse/lokationer" element={<Wmslokationer />} />
               <Route path="warehouse/bevaegelser" element={<Wmsbevaegelser />} />
               <Route path="warehouse/pluk" element={<Wmspluk />} />
               <Route path="warehouse/optaelling" element={<Wmsoptaelling />} />
@@ -754,27 +773,22 @@ export default function App() {
             <Route path="support/sag/:id" element={<Supportsag />} />
 
             <Route path="opsaetning" element={<Generelt />} />
-            {/* Enhedskartoteket. Komponenten bliver liggende i moduler/flaade/,
-                fordi modulnoeglen, noden og permissionen alle hedder flaade —
-                det er MENUPLADSEN der flyttede, ikke ejerskabet. */}
-            <Route path="opsaetning/enheder" element={<FleetV2Module />} />
-            <Route path="opsaetning/enheder/:id" element={<FleetV2Module />} />
-            <Route path="opsaetning/fleet-kategorier" element={<FleetKategorier />} />
-            {/* ⚠ STAMDATA. Komponenterne bliver liggende i moduler/ og
-                moduler/kunder/, fordi modulnoeglerne, noderne og
-                permissionerne er uaendrede — det er MENUPLADSEN der
-                flyttede, ikke ejerskabet. De gamle stier lever videre som
-                REDIRECTS. */}
-            <Route path="opsaetning/medarbejdere" element={<Medarbejdere />} />
             <Route path="opsaetning/kunder" element={<Kunder />} />
-            <Route path="opsaetning/priser" element={<Standardpriser />} />
-            <Route path="opsaetning/aftalepriser" element={<Kundepriser />} />
-            <Route path="opsaetning/aftalepriser/:kundeId" element={<Kundepriser />} />
+            <Route path="opsaetning/ressourcer" element={<RessourceOpsaetning />} />
+            <Route path="opsaetning/ressourcer/enheder" element={<RessourceOpsaetning />} />
+            <Route path="opsaetning/ressourcer/ejendomme" element={<RessourceOpsaetning />} />
+            <Route path="opsaetning/ressourcer/medarbejdere" element={<RessourceOpsaetning />} />
+            <Route path="opsaetning/ressourcer/units" element={<RessourceOpsaetning />} />
+            <Route path="opsaetning/ressourcer/varer" element={<RessourceOpsaetning />} />
+            <Route path="opsaetning/ressourcer/warehouse" element={<RessourceOpsaetning />} />
+            <Route path="opsaetning/ressourcer/certifikater" element={<RessourceOpsaetning />} />
+            <Route path="opsaetning/priser" element={<PriserOpsaetning />} />
+            <Route path="opsaetning/priser/kunder" element={<PriserOpsaetning />} />
+            <Route path="opsaetning/priser/kunder/:kundeId" element={<PriserOpsaetning />} />
             <Route path="opsaetning/brugere" element={<Brugere />} />
             <Route path="opsaetning/integrationer" element={<Integrationer />} />
-            <Route path="opsaetning/fakturacenter" element={<FakturacenterOpsaetning />} />
-            <Route path="opsaetning/godkendelsesregler" element={<FakturacenterOpsaetning />} />
-            <Route path="opsaetning/procure/godkendelsesregler" element={<ProcureGodkendelsesregler />} />
+            <Route path="opsaetning/godkendelsesregler" element={<GodkendelsesreglerOpsaetning />} />
+            <Route path="opsaetning/godkendelsesregler/procure" element={<GodkendelsesreglerOpsaetning />} />
 
             {/* v1.4-stier holdes i live, så gamle links og bogmærker virker */}
             {REDIRECTS.map((r) => (

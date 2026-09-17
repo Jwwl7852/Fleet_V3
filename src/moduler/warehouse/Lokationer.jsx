@@ -59,7 +59,7 @@ const PR_SIDE = 14;
 
 const tomPlads = () => ({
   hal: "", reol: "", fag: "", hylde: "", plads: "",
-  zone: "", type: "hylde", status: "aktiv", temperatur: "",
+  zone: "", type: "hylde", sikkerhedsklasse: "", status: "aktiv", temperatur: "",
 });
 
 function Lokationsformular({ plads, haller: kendteHaller, sti, paaGemt, paaLuk }) {
@@ -98,6 +98,7 @@ function Lokationsformular({ plads, haller: kendteHaller, sti, paaGemt, paaLuk }
         hylde: String(f.hylde).trim(), plads: String(f.plads).trim(),
         zone: f.zone?.trim() || null,
         type: f.type || null,
+        sikkerhedsklasse: f.sikkerhedsklasse?.trim() || null,
         status: f.status || null,
         temperatur: Number.isFinite(temp) ? temp : null,
       },
@@ -133,6 +134,9 @@ function Lokationsformular({ plads, haller: kendteHaller, sti, paaGemt, paaLuk }
                 valgmuligheder={ALLE_PLADS_TYPER.map((t) => ({
                   vaerdi: t, label: PLADS_TYPE[t].label,
                 }))} />
+          <Felt id="l-sikkerhed" label="Sikkerhedsklasse" vaerdi={f.sikkerhedsklasse}
+                saet={saet("sikkerhedsklasse")} fejl={vis("sikkerhedsklasse")}
+                hint="Kundedefineret, fx Adgangskontrolleret. Uafhængig af pladstypen." />
         </Feltraekke>
 
         <Feltraekke>
@@ -335,7 +339,9 @@ export default function Lokationer() {
                     p.type
                       ? PLADS_TYPE[p.type]?.label || p.type
                       : <span className="fc-neutral">—</span>
-                  ) },
+                ) },
+                { key: "sikkerhed", label: "Sikkerhedsklasse",
+                  render: (p) => p.sikkerhedsklasse || <span className="fc-neutral">—</span> },
                 /* ⚠ UDLEDT AF BEHOLDNINGEN. Se noten i hovedet. */
                 { key: "indhold", label: "Indhold", render: (p) => {
                     const b = paaPlads(p.id);

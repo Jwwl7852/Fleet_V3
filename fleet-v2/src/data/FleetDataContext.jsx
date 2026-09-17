@@ -260,6 +260,7 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
       saveRequirement: true, runAutomation: true, planService: true,
       saveHistory: true, saveSettings: true,
     },
+    resourceOptions: serviceBackend?.resourceOptions || { categories: [], obdHardware: [] },
   }), [authenticatedActor, dataset, error, repository.kind, repository.tenantId, saveUnit, submitReport, saveReportDraft, createManualCase, saveWorkshopOrder, closeCase, reopenCase, saveEvidence, applyInvoiceFixture, saveServiceRequirement, planService, saveHistoricalService, runServiceAutomation, saveServiceSettings, savePositionMeasurement, runPositionDemo, uploadDocuments, updateDocument, replaceDocumentFile, removeDocumentRelation, archiveDocument, saveLease, runLeaseAutomation, updateLeaseDelivery, saveLeaseMeterObservation, saveContractReview, saveManualCost, updateCase, createWorkshopTask, updateWorkshopTask, saveBooking, cancelBooking, serverControlledService, serverControlledUnits, serviceBackend, effectiveUnits, effectiveRelations]);
 
   return <FleetDataContext.Provider value={value}>{children}</FleetDataContext.Provider>;

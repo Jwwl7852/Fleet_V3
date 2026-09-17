@@ -83,6 +83,38 @@ export const NAV = [
     key: "dashboard", sti: "/", label: "Dashboard", titel: "Dashboard",
     under: "Operativt overblik og økonomi", gruppe: "faelles",
   },
+  {
+    key: "ressourcer", sti: "/ressourcer", label: "Ressourcer", titel: "Ressourcer",
+    under: "Fælles registre, der bruges på tværs af de aktive moduler.", gruppe: "faelles",
+    born: [
+      { key: "ressourceOverblik", sti: "/ressourcer", label: "Overblik",
+        titel: "Ressourcer", under: "Fælles, autoritative registre på tværs af VEYRO." },
+      { key: "ressourceEnheder", sti: "/ressourcer/enheder", label: "Enheder",
+        kraeverEtAfModuler: ["flaade", "booking"], kraeverPerm: "koeretoejer.laes",
+        titel: "Ressourcer – enheder", under: "Fælles enhedsregister for Fleet og Planning." },
+      { key: "ressourceEnhed", sti: "/ressourcer/enheder/:id", label: "Enhed", skjulINav: true,
+        kraeverEtAfModuler: ["flaade", "booking"], kraeverPerm: "koeretoejer.laes",
+        titel: "Ressourcer – enhedsprofil", under: "Profil og stamdata fra det fælles enhedsregister." },
+      { key: "ressourceEjendomme", sti: "/facility-v2/ejendomme", label: "Ejendomme",
+        kraeverModul: "facility", kraeverPerm: "facility.skriv",
+        titel: "Ressourcer – ejendomme", under: "Ejendomsregister anvendt af Facility." },
+      { key: "ressourceMedarbejdere", sti: "/ressourcer/medarbejdere", label: "Medarbejdere",
+        kraeverEtAfModuler: ["bemanding", "booking"], kraeverPerm: "personale.laes",
+        titel: "Ressourcer – medarbejdere", under: "Fælles medarbejderregister; logins administreres særskilt." },
+      { key: "ressourceUnits", sti: "/ressourcer/units", label: "Units",
+        kraeverEtAfModuler: ["unitbooking", "warehouse"],
+        titel: "Ressourcer – units", under: "Konkrete transportenheder med type, QR og placering." },
+      { key: "ressourceVarekatalog", sti: "/ressourcer/varekatalog", label: "Varekatalog",
+        kraeverEtAfModuler: ["indkoeb", "warehouse"], kraeverPerm: "indkoeb.laes",
+        titel: "Ressourcer – varekatalog", under: "Fælles indkøbskatalog; Warehouses kundegods er fortsat et separat register." },
+      { key: "ressourceLagerlokationer", sti: "/ressourcer/lagerlokationer", label: "Lagerlokationer",
+        kraeverEtAfModuler: ["unitbooking", "warehouse"],
+        titel: "Ressourcer – lagerlokationer", under: "Fælles lokationsregister for Unitbooking og Warehouse." },
+      { key: "ressourceCertifikater", sti: "/ressourcer/certifikater", label: "Certifikater",
+        kraeverEtAfModuler: ["bemanding", "flaade"], kraeverPerm: "personale.laes",
+        titel: "Ressourcer – certifikater", under: "Kompetencer og certifikater knyttet til medarbejdere og drift." },
+    ],
+  },
   /* ⚠ KUNDER ER FLYTTET TILBAGE UNDER ADMINISTRATION — V1-brugertest,
      31/8: "Kunder skal efter min mening ligge under Administration. Dette
      program er ikke et regnskabsprogram eller salgsprogram... det er
@@ -174,9 +206,9 @@ export const NAV = [
       { key: "planningV2FasteRuter", sti: "/planning-v2/faste-ruter", label: "Faste ruter",
         kraeverPerm: "booking.laes", titel: "PLANNING – faste ruter",
         under: "Versionsbundne lokale ruteskabeloner." },
-      { key: "planningV2Ressourcer", sti: "/planning-v2/ressourcer", label: "Ressourcer",
+      { key: "planningV2Ressourcer", sti: "/ressourcer/enheder", label: "Enheder",
         kraeverPerm: "booking.laes", titel: "PLANNING – ressourcer",
-        under: "Prototypevisning; endnu ikke tilsluttet FLEET eller WORKFORCE." },
+        under: "Samme fælles enhedsregister som Fleet." },
       { key: "planningV2Rapporter", sti: "/planning-v2/rapporter", label: "Rapporter",
         kraeverPerm: "booking.laes", titel: "PLANNING – rapporter",
         under: "Prototypevisning uden eksport eller fælles lagring." },
@@ -230,9 +262,12 @@ export const NAV = [
       { key: "fleetV2Overblik", sti: "/fleet-v2", label: "Overblik",
         kraeverPerm: "koeretoejer.laes", titel: "FLEET – overblik",
         under: "Samlet lokalt prototypeoverblik over flådens drift." },
-      { key: "fleetV2Enheder", sti: "/fleet-v2/enheder", label: "Tidligere Enheder", skjulINav: true,
+      { key: "fleetV2Enheder", sti: "/ressourcer/enheder", label: "Enheder",
         kraeverPerm: "koeretoejer.laes", titel: "FLEET – enheder",
         under: "Enheder, profiler og stamdata i tenantens fælles serverregister." },
+      { key: "fleetV2EnhederLegacy", sti: "/fleet-v2/enheder", label: "Tidligere Enheder", skjulINav: true,
+        kraeverPerm: "koeretoejer.laes", titel: "FLEET – enheder",
+        under: "Kompatibilitetsrute til det fælles enhedsregister." },
       { key: "fleetV2Indberetninger", sti: "/fleet-v2/indberetninger", label: "Indberetninger",
         kraeverPerm: "indberetninger.skrivAlle", titel: "FLEET – indberetninger",
         under: "Triage og sammenhængende lokale sagsforløb." },
@@ -418,7 +453,7 @@ export const NAV = [
         titel: "Procure – overblik", under: "Dagens behov, godkendelser, leveringer og afvigelser." },
       { key: "bestillinger", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/bestillinger", label: "Bestillinger",
         titel: "Procure – bestillinger", under: "Kladder, godkendelser, ordrer og afsluttede indkøb i ét overblik." },
-      { key: "indkoebKatalog", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/katalog", label: "Varekatalog",
+      { key: "indkoebKatalog", kraeverPerm: "indkoeb.laes", sti: "/ressourcer/varekatalog", label: "Varekatalog",
         titel: "Procure – varekatalog", under: "Varer, aftalepriser, favoritter og indkøbskurv." },
       { key: "indkoebGodkendelser", kraeverPerm: "indkoeb.laes", sti: "/indkoeb/godkendelser", label: "Godkendelser",
         titel: "Procure – godkendelser", under: "Indkøb som afventer en afgørelse efter den aktive regel." },
@@ -514,7 +549,7 @@ export const NAV = [
       { key: "warehouseSporbarhed", sti: "/warehouse/sporbarhed", label: "Sporbarhed",
         titel: "WAREHOUSE – sporbarhed",
         under: "Hvor er partiet nu, og hvor har det vaeret" },
-      { key: "warehouseLokationer", sti: "/warehouse/lokationer", label: "Lokationer",
+      { key: "warehouseLokationer", sti: "/ressourcer/lagerlokationer", label: "Lagerlokationer",
         titel: "WAREHOUSE – lokationer",
         under: "Zoner, hylder, belægning og status. Deles med Unitbooking." },
     ],
@@ -523,15 +558,12 @@ export const NAV = [
     key: "unitbooking", sti: "/unitbooking", label: "Unitbooking", titel: "Unitbooking",
     under: "Transportkasser, reolpladser og udlån", gruppe: "drift",
     born: [
-      /* ⚠ KASSELISTEN ER FLYTTET TIL OPSAETNING (planche 1, UNITBOOKING.md
-         6.1). Kalenderen er nu modulets FORSIDE og ligger paa /unitbooking,
+      /* ⚠ KASSELISTEN ER FLYTTET TIL RESSOURCER (fælles struktur 2026-09-17).
+         Kalenderen er nu modulets FORSIDE og ligger paa /unitbooking,
          hvor Kasser laa — samme snit som da Driftskalenderen overtog /flaade,
-         da Enheder gik til Opsaetning. /unitbooking/kalender lever videre som
+         da Enheder gik til Ressourcer. /unitbooking/kalender lever videre som
          redirect, saa et bogmaerke ikke doer af en menuomlaegning.
-         ⚠ Reolpladser BLIVER staaende her, og det er ikke en forglemmelse:
-         noden deles med Warehouse, og `kraeverModul` tager EEN streng. Under
-         Opsaetning med "unitbooking" ville hylderne forsvinde for en kunde
-         der kun har WMS — praecis den faelde `reolpladser.skriv` lukkede. */
+         Den gamle reolpladsrute er skjult, men bevares som kompatibilitetslink. */
       { key: "unitbookingKalender", sti: "/unitbooking", label: "Kalender",
         titel: "Unitbooking – kalender",
         under: "Kasser × dage, og listen over hvad der skal ud og hjem" },
@@ -546,15 +578,16 @@ export const NAV = [
       { key: "kasseudlaan", sti: "/unitbooking/udlaan", label: "Udlån",
         titel: "Unitbooking – udlån",
         under: "Søg ledige i periode, reservér, klargør, udlevér og modtag retur" },
-      { key: "unitbookingRegister", sti: "/opsaetning/kasser", label: "Enhedsregister",
+      { key: "unitbookingRegister", sti: "/ressourcer/units", label: "Units",
         titel: "Unitbooking – enhedsregister",
         under: "Det fælles register for transportkasser, mål, QR og placering" },
       { key: "unitbookingHistorik", sti: "/unitbooking/historik", label: "Historik",
         titel: "Unitbooking – historik",
         under: "Hvor har kassen været, og hvilke kasser var med på sagen" },
       { key: "reolpladser", sti: "/unitbooking/reolpladser", label: "Reolpladser",
+        skjulINav: true,
         titel: "Unitbooking – reolpladser & kassetyper",
-        under: "Hal, reol, fag, hylde og plads. Navnet udledes af felterne." },
+        under: "Kompatibilitetslink. Administrationen ligger under Opsætning → Ressourcer." },
     ],
   },
   {
@@ -563,8 +596,8 @@ export const NAV = [
     born: [
       { key: "workforceOverblik", sti: "/workforce-v2", label: "Overblik",
         titel: "Workforce – overblik", under: "Bemanding, fravær og timer" },
-      { key: "workforceMedarbejdere", sti: "/workforce-v2/medarbejdere", label: "Medarbejdere",
-        titel: "Workforce – medarbejdere", under: "Fælles medarbejderstamdata" },
+      { key: "workforceMedarbejdere", sti: "/ressourcer/medarbejdere", label: "Medarbejdere",
+        kraeverPerm: "personale.laes", titel: "Workforce – medarbejdere", under: "Fælles medarbejderstamdata" },
       { key: "workforceBemanding", sti: "/workforce-v2/bemanding", label: "Bemanding",
         titel: "Workforce – bemanding", under: "Vagter og offentliggjort plan" },
       { key: "workforceFravaer", sti: "/workforce-v2/fravaer", label: "Ferie & fravær",
@@ -591,68 +624,33 @@ export const NAV = [
     under: "Stamdata, brugere, roller og integrationer", gruppe: "admin",
     born: [
       { key: "generelt", sti: "/opsaetning", label: "Generelt",
-        titel: "Opsætning – generelt", under: "Virksomhed, afdelinger og stamdata" },
-      /* ⚠ ENHEDER HØRER I OPSÆTNING, MEN NODEN ER FLEETS.
-         `koeretoejer` er modulspærret på `flaade` i firebase.rules.json —
-         både .read og .write. Opsætning er `altid: true` og kan ikke
-         fravælges, så uden `kraeverModul` ville en kunde UDEN Fleet få et
-         menupunkt der åbner en afvist læsning i sin egen opsætning. En
-         permission-denied er reglerne der VIRKER; den skal bare ikke
-         fremprovokeres af en menu vi selv har tegnet.
+        titel: "Opsætning – generelt", under: "Kun generelle virksomheds- og afdelingsindstillinger." },
+      { key: "ressourceOpsaetning", sti: "/opsaetning/ressourcer", label: "Ressourcer",
+        titel: "Opsætning – ressourcer", under: "Kategorier, typer og indstillinger for de fælles registre." },
+      { key: "ressourceOpsaetningEnheder", sti: "/opsaetning/ressourcer/enheder", label: "Enheder", skjulINav: true,
+        kraeverEtAfModuler: ["flaade", "booking"], titel: "Opsætning – enheder",
+        under: "Enhedskategorier, OBD-register og enhedsindstillinger." },
+      { key: "ressourceOpsaetningEjendomme", sti: "/opsaetning/ressourcer/ejendomme", label: "Ejendomme", skjulINav: true,
+        kraeverModul: "facility", titel: "Opsætning – ejendomme", under: "Typer og indstillinger for ejendomme." },
+      { key: "ressourceOpsaetningMedarbejdere", sti: "/opsaetning/ressourcer/medarbejdere", label: "Medarbejdere", skjulINav: true,
+        kraeverEtAfModuler: ["bemanding", "booking"], titel: "Opsætning – medarbejdere", under: "Medarbejdertyper og indstillinger; ikke logins." },
+      { key: "ressourceOpsaetningUnits", sti: "/opsaetning/ressourcer/units", label: "Units", skjulINav: true,
+        kraeverEtAfModuler: ["unitbooking", "warehouse"], titel: "Opsætning – units", under: "Unittyper og indstillinger." },
+      { key: "ressourceOpsaetningVarer", sti: "/opsaetning/ressourcer/varer", label: "Varer", skjulINav: true,
+        kraeverEtAfModuler: ["indkoeb", "warehouse"], titel: "Opsætning – varer", under: "Varekategorier og fælles varedefinitioner." },
+      { key: "ressourceOpsaetningWarehouse", sti: "/opsaetning/ressourcer/warehouse", label: "Lagerlokationer", skjulINav: true,
+        kraeverEtAfModuler: ["unitbooking", "warehouse"], titel: "Opsætning – lagerlokationer", under: "Lokationstyper og struktur." },
+      { key: "ressourceOpsaetningCertifikater", sti: "/opsaetning/ressourcer/certifikater", label: "Certifikater", skjulINav: true,
+        kraeverEtAfModuler: ["bemanding", "flaade"], titel: "Opsætning – certifikater", under: "Certifikattyper og gyldighedsindstillinger." },
 
-         RUTEN findes uanset: taster han /opsaetning/enheder alligevel, får
-         han <Datatilstand> og ikke en hvid skærm. Menuen er en KOMMERCIEL
-         kontrol, reglerne er sikkerhedskontrollen — se moduler.js. */
-      { key: "enheder", sti: "/opsaetning/enheder", label: "Enheder",
-        kraeverModul: "flaade", kraeverPerm: "koeretoejer.laes",
-        titel: "Enheder", under: "Stamdata for flåden. Arten styrer feltskemaet." },
-      { key: "fleetKategorier", sti: "/opsaetning/fleet-kategorier", label: "FLEET-kategorier",
-        kraeverModul: "flaade", kraeverPerm: "koeretoejer.laes",
-        titel: "FLEET-kategorier", under: "Fælles kategorier til indberetninger og økonomi" },
-      /* ⚠ KASSELISTEN ER STAMDATA — samme snit som Enheder ovenfor. Planche 1
-         flytter den hertil, og typerne oprettes samme sted. En kasse oprettes
-         een gang og roeres sjaeldent; det operationelle er udlaanet. */
-      { key: "unitbookingKasser", sti: "/opsaetning/kasser", label: "Kasseliste",
-        kraeverModul: "unitbooking",
-        titel: "Kasseliste", under: "Transportkasser: type, undertype, mål, status og plads" },
-      /* ⚠ MEDARBEJDERE ER STAMDATA — DERFOR HER, IKKE I WORKFORCE.
-         Samme snit som Enheder ovenfor: en person oprettes én gang og røres
-         sjældent igen, mens bemandingsplanen bruges hver dag. Stod de side
-         om side, lå den daglige skærm nummer to i en menu hvor nummer ét
-         knap bruges.
-
-         ⚠ OG DET ER STADIG IKKE DET SAMME SOM BRUGERE & ROLLER, selv om de
-         nu er naboer. Her oprettes PERSONEN, dér et LOGIN. En chauffør har
-         måske aldrig et login, en vikar sjældent. `personId` er hvem det
-         handler om, `uid` er hvem der gjorde noget — se beslutning 18.
-         Naboskabet gør forvekslingen lettere, ikke sværere, så begge punkter
-         siger det i deres undertekst. */
-      { key: "medarbejdere", sti: "/opsaetning/medarbejdere", label: "Medarbejdere",
-        kraeverModul: "bemanding",
-        titel: "Medarbejdere",
-        under: "Personalets stamdata. Et LOGIN oprettes ved siden af under Brugere & roller — en chauffør har måske aldrig et." },
-
-      /* ⚠ KUNDEKARTOTEKET SELV ER FLYTTET UD (Skive 2A) — se Fælles > Kunder
-         øverst i denne fil. Standardpriser og Kundepriser er STAMDATA og
-         bliver stående her: de to skærme har ikke fået en ny placering i
-         denne skive (kræver en fane på kundens profil, matrix-# 48 — en
-         senere MERGE/FINISH-opgave), og bærer fortsat `kraeverModul:
-         "kunder"` af samme grund som før — Opsætning er `altid: true` og
-         kan ikke fravælges, så uden leddet ville en kunde der aldrig har
-         købt modulet, få et menupunkt i sin egen opsætning der åbner en
-         afvist læsning. */
-      { key: "standardpriser", kraeverPerm: "satser.laes", sti: "/opsaetning/priser", label: "Standardpriser",
+      { key: "standardpriser", kraeverPerm: "satser.laes", sti: "/opsaetning/priser", label: "Priser",
         kraeverModul: "kunder",
-        titel: "Standardpriser",
-        under: "Priser for alle platformens ydelser. Afvigelser saettes paa kunden." },
-      /* ⚠ TO LAG, IKKE TRE. Standardprisen gaelder alle; her saettes den
-         enkelte kundes afvigelse — enten en egen pris eller en rabat.
-         Prisgruppen baerer ikke laengere en pris. Se PRISER.md punkt 4.1. */
-      { key: "kundepriser", kraeverPerm: "satser.laes", sti: "/opsaetning/aftalepriser", label: "Kundepriser",
+        titel: "Priser", under: "Standardpriser og kundepriser som adskilte faner." },
+      { key: "kundepriser", kraeverPerm: "satser.laes", sti: "/opsaetning/priser/kunder", label: "Kundepriser",
         kraeverModul: "kunder",
-        titel: "Kundepriser",
+        skjulINav: true, titel: "Kundepriser",
         under: "Den enkelte kundes egen pris eller rabat. Standarden bliver staaende." },
-      { key: "kundepriserEn", kraeverPerm: "satser.laes", sti: "/opsaetning/aftalepriser/:kundeId", label: "Kundepriser",
+      { key: "kundepriserEn", kraeverPerm: "satser.laes", sti: "/opsaetning/priser/kunder/:kundeId", label: "Kundepriser",
         kraeverModul: "kunder", skjulINav: true, titel: "Kundepriser",
         under: "Den enkelte kundes egen pris eller rabat. Standarden bliver staaende." },
 
@@ -664,21 +662,10 @@ export const NAV = [
       { key: "fakturacenterOpsaetning", sti: "/opsaetning/godkendelsesregler",
         label: "Godkendelsesregler",
         titel: "Godkendelsesregler",
-        under: "Fælles fakturakontrol for FLEET, FACILITY og PROCURE." },
-      /* ⚠ PROCURE TARGET, TRIN 4 (produktejer-review 2026-09-02) — FLYTTET
-         HERTIL FRA Godkendelser.jsx. Dette er kun ADMINISTRATIONS-UI'et: hvem
-         der må godkende, og hvornår. Selve KØEN af ordrer der venter, og
-         handlingerne på dem, hører til det daglige arbejde og blev derfor
-         IKKE flyttet — de bor i Procures egen Bestillinger-fane. Reglens
-         håndhævelse (`godkendelsesregelskriv`, `kraeverGodkendelse()`,
-         `kanSkifteIndkoebsordre()`) er UÆNDRET; dette er informationsarkitektur,
-         ikke en ny godkendelsesmotor. `kraeverPerm` matcher stadig kun LÆSNINGEN
-         (`indkoeb.laes`, samme regel som `godkendelsesregler`-noden selv
-         kræver) — hvem der må ÆNDRE reglerne (`brugere.skriv`) håndhæves i
-         skærmen, som Godkendelser.jsx altid har gjort det. */
+        under: "Ekstra fakturakontrol og ordregrænser som to adskilte regelsæt." },
       { key: "procureGodkendelsesregler", kraeverPerm: "indkoeb.laes",
-        sti: "/opsaetning/procure/godkendelsesregler", kraeverModul: "indkoeb",
-        label: "PROCURE-ordregodkendelse", titel: "PROCURE – ordregodkendelse",
+        sti: "/opsaetning/godkendelsesregler/procure", kraeverModul: "indkoeb", skjulINav: true,
+        label: "Ordregodkendelse", titel: "PROCURE – ordregodkendelse",
         under: "Beløbsgrænse og godkendelse af indkøbsordrer. Sættes af en administrator." },
     ],
   },
@@ -786,11 +773,22 @@ export const REDIRECTS = [
      kalenderen. De to kan ikke skelnes — stien er den samme. Samme
      omkostning som da Driftskalenderen overtog /flaade fra Enheder. */
   { fra: "/unitbooking/kalender", til: "/unitbooking" },
-  { fra: "/bemanding/medarbejdere", til: "/opsaetning/medarbejdere" },
+  { fra: "/opsaetning/enheder", til: "/ressourcer/enheder" },
+  { fra: "/opsaetning/enheder/:id", til: "/ressourcer/enheder/:id" },
+  { fra: "/opsaetning/fleet-kategorier", til: "/opsaetning/ressourcer/enheder" },
+  { fra: "/opsaetning/kasser", til: "/ressourcer/units" },
+  { fra: "/opsaetning/medarbejdere", til: "/ressourcer/medarbejdere" },
+  { fra: "/bemanding/medarbejdere", til: "/ressourcer/medarbejdere" },
+  { fra: "/workforce-v2/medarbejdere", til: "/ressourcer/medarbejdere" },
+  { fra: "/warehouse/lokationer", til: "/ressourcer/lagerlokationer" },
+  { fra: "/opsaetning/aftalepriser", til: "/opsaetning/priser/kunder" },
+  { fra: "/opsaetning/aftalepriser/:kundeId", til: "/opsaetning/priser/kunder/:kundeId" },
+  { fra: "/opsaetning/fakturacenter", til: "/opsaetning/godkendelsesregler" },
+  { fra: "/opsaetning/procure/godkendelsesregler", til: "/opsaetning/godkendelsesregler/procure" },
   { fra: "/kunder", til: "/opsaetning/kunder" },
   { fra: "/kunder/priser", til: "/opsaetning/priser" },
-  { fra: "/kunder/aftalepriser", til: "/opsaetning/aftalepriser" },
-  { fra: "/kunder/aftalepriser/:kundeId", til: "/opsaetning/aftalepriser/:kundeId" },
+  { fra: "/kunder/aftalepriser", til: "/opsaetning/priser/kunder" },
+  { fra: "/kunder/aftalepriser/:kundeId", til: "/opsaetning/priser/kunder/:kundeId" },
 ];
 
 /** Slår modulet op ud fra pathname. Længste match vinder. */

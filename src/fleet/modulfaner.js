@@ -13,14 +13,14 @@
  * ⚠ ADMINISTRATIVE SKÆRME FLYTTES IKKE HERIND. Opsætning, leverandørmaster,
  * kunder, kategorier osv. bliver i den globale Administration/Opsætning —
  * kun "Enheder" står med her, fordi produktejeren eksplicit bad om den i
- * Fleets egen fanebjælke (samme rute, `/opsaetning/enheder`, uændret).
+ * Fleets egen fanebjælke (samme fælles rute, `/ressourcer/enheder`).
  */
 export const FLEET_FANER = [
   { sti: "/flaade", label: "Overblik" },
   { sti: "/flaade/driftskalender", label: "Driftskalender" },
   { sti: "/flaade/indberetninger", label: "Indberetninger" },
   { sti: "/flaade/servicebog", label: "Servicebog" },
-  { sti: "/opsaetning/enheder", label: "Enheder" },
+  { sti: "/ressourcer/enheder", label: "Enheder" },
   { sti: "/flaade/statistik", label: "Statistik" },
   { sti: "/flaade/kontakter", label: "Kontakter" },
 ];
@@ -71,7 +71,7 @@ export const FACILITY_FANER = [
 export const PROCURE_FANER = [
   { sti: "/indkoeb", label: "Overblik" },
   { sti: "/indkoeb/bestillinger", label: "Bestillinger" },
-  { sti: "/indkoeb/katalog", label: "Varekatalog" },
+  { sti: "/ressourcer/varekatalog", label: "Varekatalog" },
   { sti: "/indkoeb/godkendelser", label: "Godkendelser" },
   { sti: "/indkoeb/modtagelser", label: "Modtagelser" },
   { sti: "/indkoeb/forbrug", label: "Forbrug" },

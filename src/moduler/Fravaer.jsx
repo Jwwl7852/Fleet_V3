@@ -559,7 +559,7 @@ export default function Fravaer() {
         Fraværet hænger på et <b>personId</b> — ikke på et uid. En chauffør har måske
         aldrig et login, og kontoen kan lukkes ved fratrædelse uden at et fravær fra i
         fjor forsvinder. Personerne kommer fra{" "}
-        <Link className="fc-a" to="/opsaetning/medarbejdere">Medarbejdere</Link>, som er
+        <Link className="fc-a" to="/ressourcer/medarbejdere">Medarbejdere</Link>, som er
         den ene kilde til staben. Der er endnu intet fraværsfelt i <b>kpi/</b>, så
         tallene ovenfor er "af N hentede" og ikke nøgletal.
       </p>

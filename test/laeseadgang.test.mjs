@@ -334,15 +334,19 @@ describe("Hvor mange noder står åbne", () => {
        historik; klienten kan læse den med signeret adgang, men aldrig skrive.
        39 → 41: UNIT-importens hash- og operationsregistre er serverinterne og
        helt lukkede for direkte klientadgang. 41 → 43: Fakturacenterets
-       kontrolopsætning og idempotensledger er ligeledes serverlukkede. */
+       kontrolopsætning og idempotensledger er ligeledes serverlukkede.
+       43 → 45: `ressourceKategorier` og `ressourceHardware` er autoritative,
+       serverinterne registre; klienten bruger de permission- og tenant-gatede
+       callables og har ingen direkte læseadgang. */
     const uden = NODER.filter((n) => !n.perms.length);
-    assert.ok(uden.length <= 43,
-      `${uden.length} noder kræver ingen læse-permission — det var 43 efter `
+    assert.ok(uden.length <= 45,
+      `${uden.length} noder kræver ingen læse-permission — det var 45 efter `
       + `beslutning 104, 29 efter, 30 fra Skive 2B, 31 med den lukkede `
       + `PROCURE QR-node, 34 med de serverstyrede PROCURE-noder, 38 med `
       + `WORKFORCEs serverprojektion og interne noder, 39 med WAREHOUSEs `
       + `serverstyrede unitbevægelseshistorik og 41 med UNIT-importens to `
-      + `serverinterne registre og 43 med Fakturacenterets to serverlukkede noder. Er en `
+      + `serverinterne registre, 43 med Fakturacenterets to serverlukkede noder `
+      + `og 45 med de to serverinterne ressourceregistre. Er en `
       + `node blevet åbnet igen?\n  `
       + uden.map((n) => n.sti).join("\n  "));
   });

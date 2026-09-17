@@ -10,10 +10,8 @@
  * på dem — blev bevidst IKKE flyttet med; den bor i Procure → Bestillinger,
  * fordi det er det daglige arbejde, ikke administration af det.
  *
- * ⚠ TO REGLER, HVER MED SIN KONTAKT, OG BEGGE KAN SLÅS FRA. Kunden bad
- * udtrykkeligt om det: en lille virksomhed hvor samme person bestiller og
- * godkender, får intet ud af et ekstra trin. At kunne slå reglen fra er en
- * FUNKTION og ikke et hul.
+ * Denne skærm ændrer kun ordregodkendelse. Fakturakontrol administreres på
+ * den særskilte fane og det eksisterende legacy-felt bevares ved skrivning.
  *
  * ⚠ MEN DEN SÆTTES AF EN ADMINISTRATOR, IKKE AF DEN DER BESTILLER.
  * `godkendelsesregelskriv` kræver `brugere.skriv` — den der rammer loftet,
@@ -58,10 +56,6 @@ export default function ProcureGodkendelsesregler() {
       graenseOere: regler.overBeloeb?.graenseOere ?? null,
       godkenderUid: regler.overBeloeb?.godkenderUid || "",
     },
-    fakturagodkendelse: {
-      aktiv: Boolean(regler.fakturagodkendelse?.aktiv),
-      godkenderUid: regler.fakturagodkendelse?.godkenderUid || "",
-    },
   };
   const saet = (gren, felt, vaerdi) => setUdkast({
     ...nuvaerende, [gren]: { ...nuvaerende[gren], [felt]: vaerdi },
@@ -69,7 +63,10 @@ export default function ProcureGodkendelsesregler() {
 
   const gemRegler = async () => {
     setArbejder(true);
-    const r = await gemGodkendelsesregler(udkast);
+    const r = await gemGodkendelsesregler({
+      overBeloeb: udkast.overBeloeb,
+      fakturagodkendelse: regler.fakturagodkendelse || STANDARD_GODKENDELSESREGLER.fakturagodkendelse,
+    });
     setSvar(r);
     setArbejder(false);
     if (r.ok) { setUdkast(null); regelPost.genindlaes(); }
@@ -112,32 +109,6 @@ export default function ProcureGodkendelsesregler() {
           </p>
         </Kort>
 
-        <Kort titel="Kræv fakturagodkendelse"
-              handling={<Kontakt aktiv={nuvaerende.fakturagodkendelse.aktiv}
-                                 disabled={!maaSaetteRegler}
-                                 label="Kræv fakturagodkendelse"
-                                 saet={(v) => saet("fakturagodkendelse", "aktiv", v)} />}>
-          <p className="fc-hint" style={{ marginTop: 0 }}>
-            Kræver godkendelse af fakturaer før betaling.
-          </p>
-          <Felt id="fgodkender" label="Godkender" valgmuligheder={brugervalg}
-                disabled={!maaSaetteRegler || !nuvaerende.fakturagodkendelse.aktiv}
-                vaerdi={nuvaerende.fakturagodkendelse.godkenderUid}
-                saet={(v) => saet("fakturagodkendelse", "godkenderUid", v)} />
-          <p className="fc-hint">
-            {nuvaerende.fakturagodkendelse.aktiv
-              ? <>Kun den valgte kan godkende en faktura. Selve godkendelsen
-                 sker på <Link className="fc-a" to="/oekonomi/fakturacenter?destination=procure">
-                 Fakturaer &amp; bilag</Link>.</>
-              : <>Reglen er slået fra — alle med <code>{PERM.indkoebGodkend}</code>{" "}
-                 kan godkende en faktura.</>}
-          </p>
-          <p className="fc-hint">
-            <b>Der betales ikke fra systemet.</b> Reglen afgør hvem der må
-            sige god for regningen — ikke hvornår pengene sendes.
-          </p>
-        </Kort>
-
         <Kort titel="Kan slås fra">
           <p className="fc-hint" style={{ marginTop: 0 }}>
             Godkendelsen kan slås fra, hvis virksomheden er lille, eller hvis
@@ -162,6 +133,20 @@ export default function ProcureGodkendelsesregler() {
               Gem reglerne
             </Knap>
           )}
+        </Kort>
+
+        <Kort titel="Fakturakontrol er et separat regelsæt">
+          <p className="fc-hint" style={{ marginTop: 0 }}>
+            Denne fane ændrer kun godkendelse af indkøbsordrer. Nettogrænse
+            og kravet om en anden godkender administreres under{" "}
+            <Link className="fc-a" to="/opsaetning/godkendelsesregler">
+              Ekstra fakturakontrol
+            </Link>.
+          </p>
+          <p className="fc-hint" style={{ marginBottom: 0 }}>
+            En ordreændring overskriver ikke fakturareglerne. VEYRO betaler
+            eller bogfører ikke en faktura fra denne skærm.
+          </p>
         </Kort>
       </div>
 

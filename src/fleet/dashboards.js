@@ -283,7 +283,7 @@ export const HANDLINGER = [
   { key: "udeAfDrift", felt: "flaade.udeAfDrift", modul: "flaade",
     tekst: "enheder står uden for drift", hvorfor: "Påvirker drift og planlagte leverancer",
     ikon: "lastbil",
-    prioritet: "hoej", sti: "/opsaetning/enheder", graense: 1 },
+    prioritet: "hoej", sti: "/ressourcer/enheder", graense: 1 },
   { key: "klimaalarm", felt: "facility.klimaalarmerIDag", modul: "facility",
     tekst: "klimaalarmer er aktive", hvorfor: "Kræver hurtig handling",
     ikon: "termometer",

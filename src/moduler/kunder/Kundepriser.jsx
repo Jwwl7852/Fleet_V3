@@ -242,7 +242,7 @@ export default function Kundepriser() {
         <select id="kp-kunde" value={kundeId || ""}
                 onChange={(e) => {
                   saetRedigerer(null); saetAaben(null);
-                  navigate(e.target.value ? `/opsaetning/aftalepriser/${e.target.value}` : "/opsaetning/aftalepriser");
+                  navigate(e.target.value ? `/opsaetning/priser/kunder/${e.target.value}` : "/opsaetning/priser/kunder");
                 }}>
           <option value="">Vælg en kunde …</option>
           {kunder.map((k) => (

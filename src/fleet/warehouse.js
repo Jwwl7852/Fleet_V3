@@ -201,6 +201,11 @@ export function valideLagerfelter(post = {}) {
   if (post.type != null && post.type !== "" && !ALLE_PLADS_TYPER.includes(post.type)) {
     f.type = "Ukendt pladstype.";
   }
+  if (post.sikkerhedsklasse != null && post.sikkerhedsklasse !== "") {
+    if (typeof post.sikkerhedsklasse !== "string" || post.sikkerhedsklasse.length > 60) {
+      f.sikkerhedsklasse = "Højst 60 tegn.";
+    }
+  }
   if (post.status != null && post.status !== "" && !ALLE_PLADS_STATUS.includes(post.status)) {
     f.status = "Ukendt status.";
   }

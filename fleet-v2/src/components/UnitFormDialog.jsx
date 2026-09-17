@@ -10,6 +10,7 @@ const emptyValues = {
   number: "", type: "vehicle", make: "", model: "", variant: "", registration: "", serialNumber: "",
   department: "", year: "", firstRegistrationDate: "", fuel: "", color: "", curbWeightKg: "", grossWeightKg: "",
   meterType: "km", meter: "0", status: "operation", notes: "", dimensionsEnabled: false,
+  categoryId: "", obdHardwareId: "",
   lengthCm: "", widthCm: "", heightCm: "",
   interiorDimensionsEnabled: false, interiorLengthCm: "", interiorWidthCm: "", interiorHeightCm: "",
   towHook: false, trailerCoupling: false, crane: false, lift: false,
@@ -32,6 +33,7 @@ const valuesFromUnit = (unit) => unit ? {
   interiorHeightCm: unit.interiorDimensions?.heightCm == null ? "" : String(unit.interiorDimensions.heightCm).replace(".", ","),
   towHook: Boolean(unit.equipment?.towHook), trailerCoupling: Boolean(unit.equipment?.trailerCoupling),
   crane: Boolean(unit.equipment?.crane), lift: Boolean(unit.equipment?.lift),
+  categoryId: unit.categoryId || "", obdHardwareId: unit.obdHardwareId || "",
 } : emptyValues;
 
 const FUEL_OPTIONS = [
@@ -89,7 +91,7 @@ function LookupReview({ result, selected, onToggle, onApply, onDismiss }) {
   </section>;
 }
 
-export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb-prototype", onClose, onSave, vehicleLookup = disconnectedVehicleLookup, imageProcessor = prepareUnitImage }) {
+export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb-prototype", resourceOptions = {}, onClose, onSave, vehicleLookup = disconnectedVehicleLookup, imageProcessor = prepareUnitImage }) {
   const sharedStorage = storageKind === "shared-unit-register";
   const openedUnitRef = useRef(unit ? structuredClone(unit) : null);
   const [values, setValues] = useState(() => valuesFromUnit(openedUnitRef.current));
@@ -104,6 +106,9 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
   const registrationRef = useRef(values.registration);
   const valuesRef = useRef(values);
   const errors = useMemo(() => validateUnit(values, units, unit?.id), [unit?.id, units, values]);
+  const categoryOptions = (resourceOptions.categories || []).filter((item) => item.aktiv !== false || item.id === values.categoryId);
+  const hardwareOptions = (resourceOptions.obdHardware || []).filter((item) => (item.status === "aktiv" || item.id === values.obdHardwareId)
+    && (!item.tilknytning?.ressourceId || (item.tilknytning.ressourceType === "enhed" && item.tilknytning.ressourceId === unit?.id)));
   const dirty = JSON.stringify(values) !== JSON.stringify(valuesFromUnit(openedUnitRef.current))
     || image !== (openedUnitRef.current?.image || null);
   const { dialogRef, requestClose, onBackdropMouseDown } = useModalDialog({ onClose, dirty, busy: saving });
@@ -181,6 +186,7 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
     try {
       await onSave({
         ...(unit || {}), id, tenantId, number: values.number.trim(), type: values.type, make: values.make.trim(), model: values.model.trim(),
+        categoryId: values.categoryId || null, obdHardwareId: values.obdHardwareId || null,
         registration: normalizeDanishRegistration(values.registration) || null, serialNumber: values.serialNumber.trim() || null,
         department: values.department.trim(), year: values.year ? Number(values.year) : null, meterType: values.meterType,
         meter: Number(values.meter), status: values.status, notes: values.notes.trim(), noteCount: unit?.noteCount || 0, image, dimensions,
@@ -201,6 +207,8 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
         <div className="unit-form-grid">
           <Field label="Enhedsnummer *" error={submitted ? errors.number : null} hint={unit ? "Visningsfelt – det stabile interne ID ændres ikke." : "Fx NB-019."}><input autoFocus value={values.number} onChange={set("number")} /></Field>
           <Field label="Enhedstype *" error={submitted ? errors.type : null}><select value={values.type} onChange={set("type")}>{Object.entries(UNIT_TYPES).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></Field>
+          {sharedStorage ? <Field label="Kundekategori" hint="Vedligeholdes under Opsætning → Ressourcer → Enheder."><select value={values.categoryId} onChange={set("categoryId")}><option value="">Ingen kategori</option>{categoryOptions.map((item) => <option key={item.id} value={item.id}>{item.navn}{item.aktiv === false ? " (inaktiv)" : ""}</option>)}</select></Field> : null}
+          {sharedStorage ? <Field label="OBD-enhed" hint="Kun ledig, aktiv hardware vises. Tilknytningen kontrolleres atomisk af serveren."><select value={values.obdHardwareId} onChange={set("obdHardwareId")}><option value="">Ingen OBD-enhed</option>{hardwareOptions.map((item) => <option key={item.id} value={item.id}>{item.serienummer}{item.model ? ` · ${item.model}` : ""}</option>)}</select></Field> : null}
           <Field label="Registreringsnummer" wide hint="Danmark · mellemrum og bindestreger normaliseres. Feltet er valgfrit."><div className="registration-lookup"><input aria-label="Registreringsnummer" value={values.registration} onChange={setRegistration} onBlur={() => setValues((current) => ({ ...current, registration: normalizeDanishRegistration(current.registration) }))} /><button className="secondary-button" type="button" onClick={lookup} disabled={lookupState.status === "loading"}>{lookupState.status === "loading" ? <span className="mini-spinner" /> : <Icon name="search" size={16} />}Hent køretøjsdata</button></div></Field>
           <div className={`lookup-status is-${lookupState.status}`} role="status"><Icon name={lookupState.status === "error" ? "warning" : "info"} size={15} /><span>{lookupState.message || "Nummerpladeopslag er ikke tilsluttet. Manuel oprettelse fungerer uafhængigt."}</span></div>
           {lookupResult ? <LookupReview result={lookupResult} selected={lookupSelection} onToggle={(key) => setLookupSelection((current) => ({ ...current, [key]: !current[key] }))} onApply={applyLookup} onDismiss={() => setLookupResult(null)} /> : null}

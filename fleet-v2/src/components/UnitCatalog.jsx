@@ -34,7 +34,7 @@ function exportCsv(units, costs) {
 }
 
 export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateChange, onNavigate, onNotice, vehicleLookup, imageProcessor }) {
-  const { units, relations, loading, error, saveUnit, tenantId, repositoryKind } = useFleetData();
+  const { units, relations, loading, error, saveUnit, tenantId, repositoryKind, resourceOptions } = useFleetData();
   const sharedStorage = repositoryKind === "shared-unit-register";
   const [filters, setFilters] = useState(() => ({
     ...initialFilters,
@@ -123,8 +123,8 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
 
       <footer className="catalog-pagination"><span>Vis <strong>{PAGE_SIZE} pr. side</strong></span><span>{filtered.length ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filtered.length)} af ${filtered.length}` : "0 enheder"}</span><div><button type="button" disabled={page === 1} onClick={() => setPage((value) => value - 1)} aria-label="Forrige side">‹</button>{Array.from({ length: pageCount }, (_, index) => <button className={page === index + 1 ? "is-active" : ""} type="button" key={index + 1} onClick={() => setPage(index + 1)}>{index + 1}</button>)}<button type="button" disabled={page === pageCount} onClick={() => setPage((value) => value + 1)} aria-label="Næste side">›</button></div></footer>
 
-      {creating ? <UnitFormDialog units={units} tenantId={tenantId} storageKind={repositoryKind} onClose={() => setCreating(false)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
-      {editing ? <UnitFormDialog unit={editing} units={units} tenantId={tenantId} storageKind={repositoryKind} onClose={() => setEditing(null)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
+      {creating ? <UnitFormDialog units={units} tenantId={tenantId} storageKind={repositoryKind} resourceOptions={resourceOptions} onClose={() => setCreating(false)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
+      {editing ? <UnitFormDialog unit={editing} units={units} tenantId={tenantId} storageKind={repositoryKind} resourceOptions={resourceOptions} onClose={() => setEditing(null)} onSave={save} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} /> : null}
     </main>
   );
 }

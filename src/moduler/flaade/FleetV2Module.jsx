@@ -20,6 +20,7 @@ import {
   mapFleetUnitToShared,
 } from "../../fleet/fleet-service-client.js";
 import { gemTransaktion } from "../../fleet/skriv.js";
+import { tilknytRessourceHardware } from "../../fleet/ressource-hardware.js";
 import { AUDIT } from "../../fleet/audit.js";
 import {
   FLEET_V2_INTEGRATION_DATABASE,
@@ -35,12 +36,14 @@ export default function FleetV2Module() {
   const afventetScroll = useRef(null);
   const aktuelSti = `${location.pathname}${location.search}${location.hash}`;
   const requiredPermission = fleetV2PermissionForPath(location.pathname);
-  const hasModule = harModul(moduler, "flaade");
+  const resourceRoute = location.pathname.startsWith("/ressourcer/enheder");
+  const hasModule = harModul(moduler, "flaade")
+    || (resourceRoute && harModul(moduler, "booking"));
   const hasPermission = harPerm(bruger?.perms, requiredPermission);
   const mayReadSuppliers = harPerm(bruger?.perms, PERM.leverandoererLaes);
   const mayCreateSuppliers = harPerm(bruger?.perms, PERM.leverandoererSkriv);
   const mayManageService = harPerm(bruger?.perms, PERM.koeretoejerSkriv);
-  const { categories, suppliers, service } = useFleetSharedData({
+  const { categories, suppliers, resourceCategories, obdHardware, service } = useFleetSharedData({
     mayReadCategories: hasPermission,
     mayReadSuppliers,
     mayReadService: hasPermission,
@@ -57,8 +60,17 @@ export default function FleetV2Module() {
     () => categories.henter ? undefined : JSON.parse(categoryPayload),
     [categoryPayload, categories.henter],
   );
-  const basePath = location.pathname.startsWith("/opsaetning/enheder")
-    ? "/opsaetning" : FLEET_V2_ROUTE_PREFIX;
+  const resourceCategoryPayload = JSON.stringify(resourceCategories.data);
+  const sharedResourceCategories = useMemo(
+    () => resourceCategories.henter ? [] : JSON.parse(resourceCategoryPayload),
+    [resourceCategoryPayload, resourceCategories.henter],
+  );
+  const obdHardwarePayload = JSON.stringify(obdHardware.data);
+  const sharedObdHardware = useMemo(
+    () => obdHardware.henter ? [] : JSON.parse(obdHardwarePayload),
+    [obdHardwarePayload, obdHardware.henter],
+  );
+  const basePath = resourceRoute ? "/ressourcer" : FLEET_V2_ROUTE_PREFIX;
   useEffect(() => {
     if (afventetScroll.current == null) return undefined;
     const scrollY = afventetScroll.current;
@@ -102,6 +114,7 @@ export default function FleetV2Module() {
     return {
       kind: "server",
       units,
+      resourceOptions: { categories: sharedResourceCategories, obdHardware: sharedObdHardware },
       relations: {
         serviceRequirements: requirements,
         serviceOccurrences: occurrences,
@@ -129,8 +142,21 @@ export default function FleetV2Module() {
           handling: openedUnit ? AUDIT.aendre : AUDIT.opret,
         });
         if (!result.ok) throw new Error(result.besked || "Enheden kunne ikke gemmes i det fælles register.");
+        const tidligereHardwareId = openedUnit?.obdHardwareId || null;
+        const valgtHardwareId = input.obdHardwareId || null;
+        if (tidligereHardwareId !== valgtHardwareId) {
+          const hardwareResultat = await tilknytRessourceHardware({
+            art: "obd", hardwareId: valgtHardwareId,
+            ressourceType: "enhed", ressourceId: input.id,
+          });
+          if (!hardwareResultat.ok) {
+            throw new Error(`Enhedens stamdata er gemt, men OBD-tilknytningen blev afvist: ${hardwareResultat.besked}`);
+          }
+        }
         reload();
-        return mapSharedUnitToFleet({ id: input.id, tenantId, ...result.data });
+        resourceCategories.genindlaes();
+        obdHardware.genindlaes();
+        return mapSharedUnitToFleet({ id: input.id, tenantId, ...result.data, obdHardwareId: valgtHardwareId });
       },
       async saveRequirement(input) {
         const current = requirements.find((item) => item.id === input.id) || null;
@@ -152,7 +178,8 @@ export default function FleetV2Module() {
     serviceReportsPayload, serviceCasesPayload, serviceHistoryPayload,
     service.units.genindlaes, service.requirements.genindlaes, service.occurrences.genindlaes,
     service.reports.genindlaes, service.cases.genindlaes, service.history.genindlaes,
-    mayManageService, path, tenantId]);
+    mayManageService, path, tenantId, sharedResourceCategories, sharedObdHardware,
+    resourceCategories.genindlaes, obdHardware.genindlaes]);
 
   if (!hasModule || !hasPermission) {
     return (
@@ -161,7 +188,9 @@ export default function FleetV2Module() {
         <p>
           {hasModule
             ? `Ruten kræver permissionen ${requiredPermission}.`
-            : "Tenantens abonnement omfatter ikke FLEET."}
+            : resourceRoute
+              ? "Tenantens abonnement omfatter hverken FLEET eller PLANNING."
+              : "Tenantens abonnement omfatter ikke FLEET."}
         </p>
         <p>Et direkte link giver ikke adgang til modulets lokale prototypedata.</p>
       </section>
@@ -187,7 +216,7 @@ export default function FleetV2Module() {
         const retur = afgoerRetur({
           tilstand: location.state,
           fallback,
-          tilladteRodstier: [FLEET_V2_ROUTE_PREFIX, "/opsaetning"],
+          tilladteRodstier: [FLEET_V2_ROUTE_PREFIX, "/ressourcer"],
         });
         if (retur.handling === "historik") {
           afventetScroll.current = retur.scrollY;
@@ -196,10 +225,16 @@ export default function FleetV2Module() {
           navigate(retur.sti, { replace: true });
         }
       }}
-      onNavigate={(target, options = {}) => navigate(target, {
-        ...options,
-        state: { ...(options.state || {}), ...opretReturtilstand(aktuelSti, window.scrollY) },
-      })}
+      onNavigate={(target, options = {}) => {
+        const resourceTarget = resourceRoute && target.startsWith("/ressourcer/")
+          && !target.startsWith("/ressourcer/enheder")
+          ? target.replace("/ressourcer", FLEET_V2_ROUTE_PREFIX)
+          : target;
+        navigate(resourceTarget, {
+          ...options,
+          state: { ...(options.state || {}), ...opretReturtilstand(aktuelSti, window.scrollY) },
+        });
+      }}
       pathname={`${location.pathname}${location.search}`}
       repository={repository}
       serviceBackend={serviceBackend}

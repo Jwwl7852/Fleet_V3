@@ -79,6 +79,7 @@ function MiljoeBjaelke() {
 
 const ICO = {
   dashboard: "M3 11 12 3l9 8M5 10v10h14V10",
+  ressourcer: "M4 7h16v13H4zM8 7V4h8v3M8 12h8M8 16h5",
   booking: "M7 3v4m10-4v4M3 9h18M5 5h14v16H5z",
   bemanding: "M16 20v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8",
   flaade: "M3 16V7h11v9M14 10h4l3 3v3h-7M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4m11 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4",
@@ -108,7 +109,8 @@ export default function AppShell() {
   const { pathname } = location;
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
-  const procureOwnsPageTitle = pathname === "/indkoeb" || pathname.startsWith("/indkoeb/");
+  const procureOwnsPageTitle = pathname === "/indkoeb" || pathname.startsWith("/indkoeb/")
+    || pathname === "/ressourcer/varekatalog" || pathname === "/opsaetning/ressourcer/varer";
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
   const visningsKontekst = tenantId || tenant?.id || "ingen-tenant";
@@ -253,6 +255,7 @@ export default function AppShell() {
   const synligeBorn = (m) => (m.born || [])
     .filter((b) => !b.skjulINav)
     .filter((b) => !b.kraeverModul || harModul(moduler, b.kraeverModul))
+    .filter((b) => !b.kraeverEtAfModuler || b.kraeverEtAfModuler.some((navn) => harModul(moduler, navn)))
     .filter((b) => !b.kraeverPerm || harPerm(bruger?.perms, b.kraeverPerm));
 
   /* ⚠ SKIVE 2A: ET TOPNIVEAUPUNKT KAN NU OGSÅ VÆRE SPÆRRET, IKKE KUN ET
@@ -274,6 +277,7 @@ export default function AppShell() {
      et der ikke gjorde. Se navvisning.js's hoved. */
   const synligeToppunkter = NAV
     .filter((m) => { const n = modulNavnFor(m); return !n || harModul(moduler, n); })
+    .filter((m) => !m.kraeverEtAfModuler || m.kraeverEtAfModuler.some((navn) => harModul(moduler, navn)))
     .filter((m) => !m.kraeverPerm || harPerm(bruger?.perms, m.kraeverPerm))
     .filter((m) => !m.born?.length || synligeBorn(m).length)
     .filter((m) => !erSkjultVedNavvisning(m.key, navvisning));

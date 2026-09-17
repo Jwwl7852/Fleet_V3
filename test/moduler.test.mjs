@@ -77,6 +77,7 @@ describe("modulkataloget svarer til menuen", () => {
      læses af elleve skærme uden for Procure, og adgangen afgøres udelukkende
      af permissionen, ikke af et modul. */
   const UDEN_MODUL_MED_GRUND = new Set(["fakturacenter", "leverandoerer"]);
+  const FAELLES_HOVEDPUNKTER = new Set(["ressourcer"]);
 
   it("hvert HOVEDpunkt har et modul", () => {
     /* Et menupunkt uden modul kan ikke sælges — og kan heller ikke skjules
@@ -86,9 +87,19 @@ describe("modulkataloget svarer til menuen", () => {
        egen prøve længere nede. */
     const modulNav = new Set(ALLE_MODULER.map((m) => MODUL[m].navKey));
     for (const m of NAV) {
-      if (UDEN_MODUL_MED_GRUND.has(m.key)) continue;
+      if (UDEN_MODUL_MED_GRUND.has(m.key) || FAELLES_HOVEDPUNKTER.has(m.key)) continue;
       assert.ok(modulNav.has(m.key) || ALLE_MODULER.includes(m.key),
         `menupunktet "${m.key}" har intet modul`);
+    }
+  });
+
+  it("⚠ FÆLLES HOVEDPUNKTER ER TVÆRMODULÆRE, IKKE SKJULTE MODULER", () => {
+    for (const k of FAELLES_HOVEDPUNKTER) {
+      const punkt = NAV.find((m) => m.key === k);
+      assert.ok(punkt, `FAELLES_HOVEDPUNKTER peger på "${k}", som ikke findes i NAV`);
+      assert.equal(punkt.gruppe, "faelles", `"${k}" ligger ikke i den fælles gruppe`);
+      assert.ok((punkt.born || []).some((barn) => barn.kraeverModul || barn.kraeverEtAfModuler),
+        `"${k}" afgrænser ikke sine modulafhængige registre`);
     }
   });
 
@@ -317,14 +328,18 @@ describe("et underpunkt der låner en anden modulnode", () => {
     }
   });
 
-  it("⚠ ENHEDER KRÆVER FLEET, SELV OM DET LIGGER UNDER OPSÆTNING", () => {
-    /* Det konkrete tilfælde skrevet ud. Flytter nogen punktet tilbage — eller
-       fjerner leddet under en oprydning — falder prøven her og ikke først hos
-       den kunde der ikke har Fleet. */
-    const enheder = alleBoern.find((b) => b.key === "enheder");
-    assert.ok(enheder, "nav-punktet \"enheder\" findes ikke længere");
-    assert.equal(enheder.kraeverModul, "flaade");
-    assert.equal(enheder.sti, "/opsaetning/enheder");
+  it("⚠ FÆLLES ENHEDER KRÆVER FLEET ELLER PLANNING", () => {
+    /* Registeret er fælles for Fleet og Planning. Både den konkrete
+       ressourceindgang og dens opsætning skal derfor kunne vises med et af
+       modulerne, men aldrig for en tenant uden begge. */
+    const enheder = alleBoern.find((b) => b.key === "ressourceEnheder");
+    const opsaetning = alleBoern.find((b) => b.key === "ressourceOpsaetningEnheder");
+    assert.ok(enheder, "nav-punktet \"ressourceEnheder\" findes ikke");
+    assert.ok(opsaetning, "nav-punktet \"ressourceOpsaetningEnheder\" findes ikke");
+    assert.deepEqual(enheder.kraeverEtAfModuler, ["flaade", "booking"]);
+    assert.deepEqual(opsaetning.kraeverEtAfModuler, ["flaade", "booking"]);
+    assert.equal(enheder.sti, "/ressourcer/enheder");
+    assert.equal(opsaetning.sti, "/opsaetning/ressourcer/enheder");
   });
 
   it("et punkt under sit EGET modul kræver ikke et led", () => {

@@ -94,6 +94,8 @@ export function mapSharedUnitToFleet(unit = {}) {
     updatedAt: profile.updatedAt || null,
     energy: profile.vehicleDetails?.fuel || unit.drivmiddel || unit.energikilde || null,
     sharedArt: unit.art || null,
+    categoryId: unit.kategoriId || null,
+    obdHardwareId: unit.obdHardwareId || null,
     source: "shared-unit-register",
   };
 }
@@ -189,6 +191,8 @@ export function mapFleetUnitToShared(unit = {}, current = {}, { openedUnit = nul
     hjemsted: unit.department,
     fleetProfil: profile,
   };
+  if (unit.categoryId) next.kategoriId = unit.categoryId;
+  else delete next.kategoriId;
   if (unit.registration) next.registrering = unit.registration;
   else delete next.registrering;
   if (meterType === "hours") {

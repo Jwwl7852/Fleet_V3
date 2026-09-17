@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import PlanningDemo from "../../fleet/planning-ui/PlanningDemo.jsx";
 import "../../fleet/planning-ui/planning-demo.css";
 import { useFleet } from "../../fleet/FleetContext.jsx";
@@ -39,6 +39,10 @@ export default function PlanningV2Module() {
     tenantId,
     userId,
   }), [tenantId, userId]);
+
+  if (location.pathname.replace(/\/+$/, "") === "/planning-v2/ressourcer") {
+    return <Navigate to="/ressourcer/enheder?fra=planning" replace />;
+  }
 
   if (!hasModule || !hasPermission) {
     return (

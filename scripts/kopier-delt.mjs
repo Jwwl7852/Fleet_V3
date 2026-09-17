@@ -135,6 +135,7 @@ export const DELTE_FILER = [
      OMRAADER-liste i stedet for en afhaengighed af nav.js), saa den staar
      her uden foelgeskab. */
   "navvisning.js",
+  "ressource-regler.js",
   "flaade.js", "personale.js", "reservations.js", "koerehviletid.js",
   "format.js", "etaper.js", "disponering.js",
   /* ⚠ rutestatus.js — beslutning 103. `statusmelding` afviser med den SAMME

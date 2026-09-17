@@ -119,7 +119,7 @@ export default function WarehouseOverblik() {
             noegle={(r) => `${r.lager}-${r.zone}`}
             tom="Opret en lagerlokation for at se belægningen."
           />
-          <div className="warehouse-card-action">{linkKnap("/warehouse/lokationer", "Administrér lokationer")}</div>
+          <div className="warehouse-card-action">{linkKnap("/ressourcer/lagerlokationer", "Administrér lokationer")}</div>
         </Kort>
       </div>
 

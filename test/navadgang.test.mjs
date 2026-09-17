@@ -155,7 +155,6 @@ const UDEN_KRAEVERPERM = {
   flaadeOverblik: "samme kartoteksopslag som Værkstedskalenderen/Arbejdskøen — "
     + "`koeretoejer.laes` og `leverandoerer.laes`, som alle seks roller har.",
   flaadeKontakter: "`personale.laes` og `leverandoerer.laes` — alle seks roller har dem.",
-  medarbejdere: "`personale.laes`, som alle seks roller har.",
   kunderOversigt: "`kunder.laes`, som alle seks roller har.",
 };
 
@@ -186,7 +185,7 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(prototype, /eksterneKald:\s*false/);
         continue;
       }
-      if (p.key.startsWith("fleetV2") || p.key === "enheder") {
+      if (p.key.startsWith("fleetV2") || ["enheder", "ressourceEnheder", "ressourceEnhed"].includes(p.key)) {
         /* FLEET v2 læser med vilje ikke en Firebase-node i milepæl A. Dets
            lokale IndexedDB-ruter skal derfor bevise permission-gaten i den
            fælles adapter i stedet for at foregive serverhåndhævelse. */
@@ -199,7 +198,7 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(gate, new RegExp(`PERM\\.${permKey}`));
         continue;
       }
-      if (p.key === "facility" || p.key.startsWith("facilityV2")) {
+      if (p.key === "facility" || p.key === "ressourceEjendomme" || p.key.startsWith("facilityV2")) {
         /* FACILITY v2 har samme milepæl-A-grænse som FLEET v2: data ligger
            lokalt, mens den fælles adapter håndhæver platformens eksisterende
            module subscription og facility.skriv ved både menu og direkte URL. */
@@ -223,7 +222,7 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(gate, /PERM\.bookingLaes/);
         continue;
       }
-      if (["indkoebOversigt", "indkoebBehov", "indkoebKatalog",
+      if (["indkoebOversigt", "indkoebBehov", "indkoebKatalog", "ressourceVarekatalog",
         "indkoebGodkendelser", "bestillinger", "indkoebModtagelser",
         "indkoebForbrug", "indkoebLager", "indkoebMobil", "indkoebAnalyseVaregrupper", "varelager"].includes(p.key)) {
         /* PROCURE v2 samler de syv routes i én integreret router. Wrapperen
@@ -247,6 +246,25 @@ describe("kraeverPerm peger på noget der findes", () => {
         assert.match(module, /canAdmin\s*=\s*harPerm\(bruger\?\.perms, PERM\.brugereSkriv\)/);
         assert.match(functions, /procureStamdataGem[\s\S]*?perm:\s*"brugere\.skriv"/);
         assert.match(functions, /procureBudgetGem[\s\S]*?perm:\s*"brugere\.skriv"/);
+        continue;
+      }
+      if (["standardpriser", "kundepriser", "kundepriserEn"].includes(p.key)) {
+        /* Prisindgangen er nu en route-aware fane-wrapper. Begge faner
+           bevarer de eksisterende, permissionsspærrede satsekilder. */
+        const wrapper = readFileSync("src/moduler/opsaetning/PriserOpsaetning.jsx", "utf8");
+        const standard = readFileSync("src/moduler/kunder/Standardpriser.jsx", "utf8");
+        const kunder = readFileSync("src/moduler/kunder/Kundepriser.jsx", "utf8");
+        assert.match(wrapper, /Standardpriser/);
+        assert.match(wrapper, /Kundepriser/);
+        assert.match(`${standard}\n${kunder}`, /use(?:Liste|Post)\([^)]*[`"]satser/);
+        continue;
+      }
+      if (["fakturacenterOpsaetning", "procureGodkendelsesregler"].includes(p.key)) {
+        /* Godkendelsesreglerne deler én indgang, men faktura- og
+           ordreglerne er fortsat to særskilte komponenter og kontrakter. */
+        const wrapper = readFileSync("src/moduler/opsaetning/GodkendelsesreglerOpsaetning.jsx", "utf8");
+        assert.match(wrapper, /FakturacenterOpsaetning/);
+        assert.match(wrapper, /ProcureGodkendelsesregler/);
         continue;
       }
       if (["unitbookingImport", "unitbookingScan"].includes(p.key)) {

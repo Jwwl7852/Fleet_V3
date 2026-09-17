@@ -162,7 +162,7 @@ export default function Reolpladser() {
     graense: 500, demo: DEMO_REOLPLADSER,
     sorter: (a, b) => pladsnavn(a).localeCompare(pladsnavn(b), "da"),
   });
-  const { data: typer } = useListe("kassetyper", {
+  const { data: typer, genindlaes: genindlaesTyper } = useListe("kassetyper", {
     graense: 100, demo: DEMO_KASSETYPER,
     sorter: (a, b) => (a.navn || "").localeCompare(b.navn || "", "da"),
   });
@@ -241,7 +241,7 @@ export default function Reolpladser() {
         >
           {nyType && (
             <Typeformular sti={path} paaLuk={() => saetNyType(false)}
-                          paaGemt={() => { saetNyType(false); genindlaes(); }} />
+                          paaGemt={() => { saetNyType(false); genindlaesTyper(); }} />
           )}
           {!typer.length ? (
             <Tom>
