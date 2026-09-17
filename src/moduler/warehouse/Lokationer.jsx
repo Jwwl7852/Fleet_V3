@@ -41,6 +41,7 @@ import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
   Henter, Datatilstand, Tom, Sider,
 } from "../../fleet/ui.jsx";
+import { RessourceRegister, RessourceResultat, RessourceSide } from "../RessourceLayout.jsx";
 import { pladsnavn, haller, valideReolplads } from "../../fleet/unitbooking.js";
 import {
   PLADS_TYPE, ALLE_PLADS_TYPER, PLADS_STATUS, ALLE_PLADS_STATUS,
@@ -248,7 +249,17 @@ export default function Lokationer() {
   const paaSiden = viste.slice((nuSide - 1) * PR_SIDE, nuSide * PR_SIDE);
 
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
+    <RessourceSide
+      titel="Lagerlokationer"
+      handling={
+        <Knap variant="primaer" disabled={!maaSkrive}
+              onClick={() => saetNy(true)}
+              title={maaSkrive ? "Opret en lokation."
+                : `Kræver ${PERM.reolpladserSkriv} — reglerne afviser.`}>
+          Opret lokation
+        </Knap>
+      }
+    >
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       {ny && (
@@ -262,17 +273,7 @@ export default function Lokationer() {
                            paaGemt={() => { saetRedigerer(null); genindlaes(); }} />
       )}
 
-      <Kort
-        titel={`Lokationer (${num(viste.length)} af ${num(pladser.length)})`}
-        handling={
-          <Knap variant="primaer" disabled={!maaSkrive}
-                onClick={() => saetNy(true)}
-                title={maaSkrive ? "Opret en lokation."
-                  : `Kræver ${PERM.reolpladserSkriv} — reglerne afviser.`}>
-            Ny lokation
-          </Knap>
-        }
-      >
+      <RessourceRegister>
         <div className="fc-filtre">
           <div className="fc-felt">
             <label htmlFor="lf-soeg">Søg</label>
@@ -374,17 +375,12 @@ export default function Lokationer() {
               paaRaekke={maaSkrive ? saetRedigerer : undefined}
               tom="Ingen lokationer matcher filteret."
             />
+            <RessourceResultat>Viser {num(viste.length)} af {num(pladser.length)} lagerlokationer.</RessourceResultat>
             <Sider side={nuSide} antal={viste.length} prSide={PR_SIDE} saet={saetSide} />
           </>
         )}
 
-        <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>Lokationerne deles med Unitbooking.</b> De pladser der bærer
-          transportkasser, står også her — uden zone og temperatur, fordi de
-          felter er valgfrie. Det er med vilje: én reolstruktur i huset, så
-          "Hal 1 · Reol 2" ikke findes to steder der kan blive uenige.
-        </p>
-      </Kort>
-    </div>
+      </RessourceRegister>
+    </RessourceSide>
   );
 }

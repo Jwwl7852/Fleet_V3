@@ -358,6 +358,31 @@ button { color: inherit; }
 .unit-table tbody tr { cursor: pointer; transition: background .12s ease; }
 .unit-table tbody tr:hover, .unit-table tbody tr:focus { background: var(--veyro-teal-light); outline: 0; }
 .unit-table tbody tr:last-child td { border-bottom: 0; }
+
+/* Det fælles Ressourcer-udtryk er bevidst afgrænset til katalogruten. */
+.fleet-v2-embedded .resource-directory-page{gap:10px;grid-template-rows:auto auto minmax(0,1fr) auto;padding:8px 0 0}
+.fleet-v2-embedded .resource-directory-page .page-heading-row{min-height:36px;align-items:center}
+.fleet-v2-embedded .resource-directory-page .page-heading-row h1{font-size:20px;letter-spacing:-.015em}
+.fleet-v2-embedded .resource-directory-page .page-actions :is(button,a){min-height:36px}
+.fleet-v2-embedded .resource-directory-page .catalog-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0}
+.fleet-v2-embedded .resource-directory-page .catalog-search{flex:1 1 240px}
+.fleet-v2-embedded .resource-directory-page .catalog-toolbar>label:not(.catalog-search){flex:0 1 140px}
+.fleet-v2-embedded .resource-directory-page .catalog-toolbar .sort-select{flex-basis:190px}
+.fleet-v2-embedded .resource-directory-page .catalog-toolbar :is(select,.catalog-search,.reset-button){height:36px;min-height:36px}
+.fleet-v2-embedded .resource-directory-page .unit-table-shell{border-radius:8px;box-shadow:none}
+.fleet-v2-embedded .resource-directory-page .unit-table{font-size:14px}
+.fleet-v2-embedded .resource-directory-page .unit-table th{height:38px;font-size:12px}
+.fleet-v2-embedded .resource-directory-page .unit-table td{height:40px;padding-block:4px}
+@media(max-width:600px){
+  .fleet-v2-embedded .resource-directory-page{padding-top:0}
+  .fleet-v2-embedded .resource-directory-page .page-heading-row{align-items:stretch}
+  .fleet-v2-embedded .resource-directory-page .page-heading-row h1{font-size:18px}
+  .fleet-v2-embedded .resource-directory-page .page-actions{display:grid;grid-template-columns:1fr}
+  .fleet-v2-embedded .resource-directory-page .page-actions>*{width:100%}
+  .fleet-v2-embedded .resource-directory-page .catalog-toolbar{display:grid;grid-template-columns:1fr}
+  .fleet-v2-embedded .resource-directory-page .catalog-toolbar>*{grid-column:1!important;width:100%}
+  .fleet-v2-embedded .resource-directory-page .unit-table-shell{height:auto;max-height:520px;overflow:auto}
+}
 .unit-cell { display: flex; align-items: center; gap: 9px; }
 .unit-cell > span:last-child { display: flex; flex-direction: column; gap: 2px; }
 .unit-cell strong { font-size: 11.5px; }

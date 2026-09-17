@@ -58,10 +58,10 @@ export function PropertiesPage() {
   };
   const reset = () => setParams({});
 
-  return <div className="directory-page">
+  return <div className="directory-page resource-directory-page">
     <div className="page-heading">
-      <div><span className="eyebrow">FACILITY</span><h1>Ejendomme</h1></div>
-      <button className="primary-button" type="button" onClick={() => setShowCreate(true)}>+ Tilføj ejendom</button>
+      <div><h1>Ejendomme</h1></div>
+      <button className="primary-button" type="button" onClick={() => setShowCreate(true)}>+ Opret ejendom</button>
     </div>
     <section className="directory-layout directory-layout-single">
       <article className="card directory-main">
@@ -73,7 +73,6 @@ export function PropertiesPage() {
           <select aria-label="Arkivering" value={archive} onChange={(event) => set('archive', event.target.value)}><option value="active">Aktive poster</option><option value="archived">Arkiverede poster</option><option value="all">Alle poster</option></select>
           <button className="secondary-button" type="button" onClick={reset}>Nulstil filtre</button>
         </div>
-        <div className="result-count">Viser <strong>{rows.length}</strong> af {dataset.properties.length} ejendomme</div>
         {rows.length ? <div className="table-scroll"><table className="directory-table">
           <thead><tr><th><button onClick={() => changeSort('number')}>Ejendomsnr.</button></th><th><button onClick={() => changeSort('name')}>Navn</button></th><th><button onClick={() => changeSort('address')}>Adresse og by</button></th><th><button onClick={() => changeSort('type')}>Type</button></th><th><button onClick={() => changeSort('status')}>Administrativ status</button></th><th>Installationer</th><th>Åbne sager</th><th /></tr></thead>
           <tbody>{rows.map((property) => {
@@ -83,6 +82,7 @@ export function PropertiesPage() {
             </tr>;
           })}</tbody>
         </table></div> : <div className="empty-state"><strong>Ingen ejendomme matcher filtrene</strong><span>Nulstil filtrene eller medtag arkiverede poster.</span></div>}
+        <div className="result-count">Viser <strong>{rows.length}</strong> af {dataset.properties.length} ejendomme</div>
       </article>
     </section>
     {showCreate && <PropertyForm onClose={() => setShowCreate(false)} onSaved={(property) => navigate(`/facility/ejendomme/${property.id}`, { state: { from: `${location.pathname}${location.search}` } })} />}

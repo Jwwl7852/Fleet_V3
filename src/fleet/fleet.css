@@ -2339,3 +2339,35 @@ button.fc-overview-kpi{cursor:pointer}
   .fc-overview-table-card>header{align-items:flex-start}
   .fc-overview-table-card table{min-width:720px}
 }
+
+/* Fælles, kompakt katalogramme for Ressourcer i Version 1. Den ændrer kun
+   ressourcearbejdsfladerne og påvirker derfor ikke modulernes overblik. */
+.fc-ressource-side{display:grid;gap:12px;min-width:0;color:var(--bc-text)}
+.fc-ressource-hoved{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:0 2px}
+.fc-ressource-hoved h1{margin:0;font-size:20px;line-height:1.2;letter-spacing:-.015em}
+.fc-ressource-handlinger{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.fc-ressource-handlinger .fc-btn{min-height:36px}
+.fc-ressource-register{min-width:0;border-radius:8px;box-shadow:none}
+.fc-ressource-register .fc-card-b{padding:12px}
+.fc-ressource-side .fc-filtre{align-items:end;gap:8px;margin:0 0 10px}
+.fc-ressource-side .fc-filtre .fc-felt{margin:0}
+.fc-ressource-side .fc-filtre :is(input,select,.fc-btn){min-height:36px}
+.fc-ressource-side .fc-scroll{max-width:100%;overflow-x:auto}
+.fc-ressource-side .fc-table{font-size:14px}
+.fc-ressource-side .fc-table th{padding:7px 10px}
+.fc-ressource-side .fc-table td{height:40px;padding:7px 10px}
+.fc-ressource-resultat{padding:9px 2px 0;color:var(--bc-muted);font-size:var(--fc-t-xs)}
+.fc-ressource-metrik{min-height:36px;display:grid;grid-template-columns:auto auto minmax(130px,1fr);align-items:center;gap:7px;border:1px solid var(--bc-line);border-radius:8px;background:var(--bc-card);padding:5px 9px;color:var(--bc-muted);font-size:var(--fc-t-tight)}
+.fc-ressource-metrik strong{color:var(--bc-text);font-size:var(--fc-t-m)}
+.fc-ressource-metrik small{color:var(--bc-muted);font-size:var(--fc-t-tight);white-space:normal}
+@media(max-width:720px){
+  .fc-ressource-side{gap:10px}
+  .fc-ressource-hoved{align-items:stretch;flex-direction:column}
+  .fc-ressource-hoved h1{font-size:18px}
+  .fc-ressource-handlinger,.fc-ressource-handlinger .fc-btn{width:100%}
+  .fc-ressource-register .fc-card-b{padding:10px}
+  .fc-ressource-side .fc-filtre{grid-template-columns:1fr}
+  .fc-ressource-side .fc-filtre>*{min-width:0;width:100%}
+  .fc-ressource-metrik{grid-template-columns:auto auto;justify-content:start}
+  .fc-ressource-metrik small{grid-column:1/-1}
+}

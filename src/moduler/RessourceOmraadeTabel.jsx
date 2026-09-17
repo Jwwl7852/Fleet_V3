@@ -8,7 +8,7 @@ import { Ikon, Pille, Tabel } from "../fleet/ui.jsx";
  * at mus, Enter og mellemrum åbner samme mål, mens eventuelle indre knapper
  * fortsat kan have deres egen handling gennem Tabel-komponenten.
  */
-export default function RessourceOmraadeTabel({ poster, kildeLabel = "Autoritativ kilde" }) {
+export default function RessourceOmraadeTabel({ poster, kildeLabel = "Indstillingstype", visKilde = true }) {
   const navigate = useNavigate();
 
   return (
@@ -25,11 +25,11 @@ export default function RessourceOmraadeTabel({ poster, kildeLabel = "Autoritati
           ),
         },
         { key: "tekst", label: "Indhold" },
-        {
+        ...(visKilde ? [{
           key: "kilde",
           label: kildeLabel,
           render: (post) => <Pille tone="info">{post.kilde}</Pille>,
-        },
+        }] : []),
         {
           key: "aabn",
           label: "",

@@ -73,9 +73,9 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
   if (error) return <main className="workspace-page empty-state" id="main-content"><Icon name="warning" size={32} /><h1>Lokale data kunne ikke åbnes</h1><p>{error.message}</p></main>;
 
   return (
-    <main className="workspace-page catalog-page" id="main-content">
+    <main className="workspace-page catalog-page resource-directory-page" id="main-content">
       <header className="page-heading-row">
-        <div><h1>Enhedskartotek</h1><span className="demo-inline">Fiktive testdata · {sharedStorage ? "fælles emulatorregister" : "lokal prototype"}</span></div>
+        <div><h1>Enheder</h1><span className="demo-inline">Fiktive testdata · {sharedStorage ? "fælles emulatorregister" : "lokal prototype"}</span></div>
         <div className="page-actions">
           <button className="secondary-button" type="button" onClick={() => exportCsv(filtered, relations.costs || [])}><Icon name="download" size={17} />Eksportér CSV</button>
           <button className="primary-button" type="button" onClick={() => setCreating(true)}><Icon name="plus" size={19} />Opret enhed</button>
@@ -87,9 +87,7 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
         <label><span className="sr-only">Afdeling</span><select aria-label="Afdeling" value={filters.department} onChange={setFilter("department")}><option value="">Alle afdelinger</option>{departments.map((value) => <option key={value}>{value}</option>)}</select></label>
         <label><span className="sr-only">Type</span><select aria-label="Type" value={filters.type} onChange={setFilter("type")}><option value="">Alle typer</option>{Object.entries(UNIT_TYPES).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label>
         <label><span className="sr-only">Status</span><select aria-label="Status" value={filters.status} onChange={setFilter("status")}><option value="">Alle statusser</option>{Object.entries(UNIT_STATUSES).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label>
-        <button className="filter-button" type="button" onClick={() => onNotice("Flere filtre: Ikke implementeret i denne etape")}><Icon name="filter" size={16} />Flere filtre</button>
         <button className="reset-button" type="button" onClick={() => setFilters(initialFilters)}>Nulstil</button>
-        <span className="result-count">Viser {filtered.length} af {units.length} enheder</span>
         <label className="sort-select"><span className="sr-only">Sortering</span><select aria-label="Sortering" value={filters.sort} onChange={setFilter("sort")}><option value="number">Sortér: Enhedsnummer</option><option value="model">Sortér: Mærke/model</option><option value="meter-desc">Sortér: Højeste målerstand</option><option value="service">Sortér: Næste service</option></select></label>
         <div className="view-switch" aria-label="Visning"><button aria-label="Tabelvisning" aria-pressed={view === "table"} type="button" onClick={() => setView("table")}><Icon name="table" size={18} /></button><button aria-label="Kortvisning" aria-pressed={view === "cards"} type="button" onClick={() => setView("cards")}><Icon name="grid" size={18} /></button></div>
       </section>

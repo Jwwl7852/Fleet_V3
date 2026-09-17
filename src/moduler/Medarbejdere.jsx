@@ -90,6 +90,7 @@ import {
 import { gem, nyId } from "../fleet/skriv.js";
 import { AUDIT } from "../fleet/audit.js";
 import { vaerste } from "../fleet/datatilstand.js";
+import { RessourceRegister, RessourceResultat, RessourceSide } from "./RessourceLayout.jsx";
 
 const passerSoegning = (p, q) =>
   !q || [p.navn, p.email, p.telefon, p.stationeret]
@@ -393,7 +394,21 @@ export default function Medarbejdere() {
   };
 
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
+    <RessourceSide
+      titel="Medarbejdere"
+      handling={
+        <Knap
+          variant="primaer"
+          disabled={!maaSkrive}
+          onClick={() => { setForm("ny"); setValgtId(null); }}
+          title={maaSkrive
+            ? "Opret en medarbejder."
+            : "Kræver personale.skriv, som kun admin har — serveren afviser."}
+        >
+          Opret medarbejder
+        </Knap>
+      }
+    >
       <Datatilstand tilstand={vaerste(personaleTilstand, kompetenceTilstand, funktionKategoriTilstand, afdelingTilstand)}
                     genprov={genindlaesAlt} />
 
@@ -418,23 +433,7 @@ export default function Medarbejdere() {
       )}
 
       <>
-        <Kort
-          titel="Medarbejdere"
-          handling={
-            <Knap
-              variant="primaer"
-              disabled={!maaSkrive}
-              onClick={() => { setForm("ny"); setValgtId(null); }}
-              title={
-                maaSkrive
-                  ? "Opret en medarbejder."
-                  : "Kræver personale.skriv, som kun admin har — serveren afviser."
-              }
-            >
-              Ny medarbejder
-            </Knap>
-          }
-        >
+        <RessourceRegister>
           <div className="fc-faner" role="tablist" aria-label="Status">
             <button type="button" role="tab" className="fc-fane" aria-selected={!visAlle}
                     onClick={() => setVisAlle(false)}>
@@ -520,14 +519,14 @@ export default function Medarbejdere() {
             }
           />
 
-          <p className="fc-hint" style={{ marginTop: 12 }}>Viser {num(viste.length)} af {num(personale.length)} hentede {visAlle ? "medarbejdere" : "aktive medarbejdere"}.</p>
+          <RessourceResultat>Viser {num(viste.length)} af {num(personale.length)} hentede {visAlle ? "medarbejdere" : "aktive medarbejdere"}.</RessourceResultat>
           {afkortet && (
             <p className="fc-hint" style={{ marginTop: 8 }}>
               Der er flere end de 300 hentede. Listen er afkortet — snævr søgningen ind for
               at se resten.
             </p>
           )}
-        </Kort>
+        </RessourceRegister>
 
         {valgt && (
           <Dialog titel={valgt.navn} under="Medarbejderdetaljer" onLuk={() => setValgtId(null)} bred handling={statusPille(valgt)}>
@@ -570,8 +569,8 @@ export default function Medarbejdere() {
 
                 <p className="fc-hint" style={{ marginTop: 12 }}>
                   {valgt.uid
-                    ? "Personen har en konto. Lukkes kontoen, bliver posten stående — reservationer og indberetninger peger på personId'et, ikke på uid'et."
-                    : "Personen har ingen konto, og det er ikke en mangel. Reservationer, fravær og kompetencer hænger på personId'et og virker uden login."}
+                    ? "Personen har en konto. Login og roller administreres under Opsætning."
+                    : "Personen har intet login. Det er ikke nødvendigt for planlægning og registrering."}
                 </p>
 
                 <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
@@ -589,12 +588,8 @@ export default function Medarbejdere() {
                   </Knap>
                 </div>
                 <p className="fc-hint" style={{ marginTop: 10 }}>
-                  Der er ingen Slet-knap. En medarbejder kan ikke fjernes — reglerne afviser
-                  det med <b>newData.exists()</b>, fordi der hænger reservationer og
-                  indberetninger på personId'et. Man sætter status til <b>Fratrådt</b>, og
-                  posten bliver stående.
-                  {!maaSkrive && " Din rolle kan i øvrigt ikke skrive personale; knapperne " +
-                    "står der, fordi serveren afviser og fejlen skal kunne forklares."}
+                  Medarbejdere slettes ikke. Registrér i stedet fratrædelse, så historikken bevares.
+                  {!maaSkrive && " Din rolle kan ikke ændre medarbejderdata."}
                 </p>
               </Kort>
 
@@ -618,18 +613,12 @@ export default function Medarbejdere() {
                   tom="Ingen kompetencer registreret på denne medarbejder."
                 />
                 <p className="fc-hint" style={{ marginTop: 10 }}>
-                  Tærsklerne kommer fra <b>serviceTone()</b> — samme tre trin som Fleet og
-                  Facility. En <b>udløbet</b> kompetence skal <b>blokere</b> disponeringen,
-                  ikke advare.{" "}
+                  Udløbne lovpligtige certifikater kan blokere disponering.{" "}
                   {valgtesKompetencer.some((k) => !kanBlokere(k.type)) && (
                     <>
-                      Bemærk at ikke alle typer kan blokere: førstehjælp, kran og EU-bevis
-                      registreres, men kan ikke udledes af en enhed og indgår derfor ikke i{" "}
-                      <b>kraevedeKompetencer()</b>.{" "}
+                      Andre kompetencer vises som en advarsel og kan behandles med en begrundelse.{" "}
                     </>
                   )}
-                  Håndhævelsen hører i den Cloud Function der skriver etapen — ligger den i
-                  en skærm, kan en direkte skrivning gå uden om den.
                 </p>
               </Kort>
 
@@ -637,18 +626,12 @@ export default function Medarbejdere() {
                   andet sted, og de kan ikke skrives i general-noden. */}
               <Kort titel="Følsomme oplysninger">
                 <p className="fc-hint">
-                  CPR, privatadresse, pårørende og baggrundskontrol ligger i{" "}
-                  <b>sensitive/personale/{valgt.id}</b> — en søskendenode, ikke et barn,
-                  fordi en <b>.read</b> kaskaderer og ikke kan indsnævres. De kræver{" "}
-                  <b>personale.sensitiveLaes</b>, som ingen af standardrollerne har ud over
-                  admin.
+                  CPR, privatadresse, pårørende og baggrundskontrol kræver særskilt adgang.
                 </p>
                 <p className="fc-hint" style={{ marginTop: 8 }}>
                   {maaSeFoelsomt
-                    ? "Din rolle har adgang. Felterne hentes ikke på denne skærm — de kræver et ekstra opslag, og de hører ikke i en liste."
-                    : "Din rolle har ikke adgang, og serveren afviser opslaget."}{" "}
-                  Reglerne afviser desuden <b>cpr</b> og <b>privatAdresse</b> i general-noden
-                  med <b>.validate: false</b>, så de kan ikke ende her ved et uheld.
+                    ? "Din rolle har adgang. Oplysningerne vises ikke i den almindelige medarbejderliste."
+                    : "Din rolle har ikke adgang til følsomme oplysninger."}
                 </p>
               </Kort>
             </div>
@@ -656,6 +639,6 @@ export default function Medarbejdere() {
         )}
       </>
 
-    </div>
+    </RessourceSide>
   );
 }

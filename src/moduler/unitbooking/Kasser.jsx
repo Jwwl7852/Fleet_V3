@@ -22,8 +22,11 @@ import { num, dato, pct, iDagIso, isoTilMs, msTilIso } from "../../fleet/format.
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
-  Henter, Datatilstand, Tom, Sider, KpiKort, KpiRaekke,
+  Henter, Datatilstand, Tom, Sider,
 } from "../../fleet/ui.jsx";
+import {
+  RessourceMetrik, RessourceRegister, RessourceResultat, RessourceSide,
+} from "../RessourceLayout.jsx";
 import {
   KASSE_STATUS, ALLE_KASSE_STATUS, SELVVALGT_KASSE_STATUS,
   kraeverPlads, valideKasse, pladsnavn, naesteReservation, undertyperFor,
@@ -180,9 +183,9 @@ function Kasseformular({ kasse, typer, pladser, gpsHardware, sti, paaGemt, paaLu
   const pladsvalg = pladser.map((p) => ({ vaerdi: p.id, label: pladsnavn(p) }));
 
   return (
-    <Kort titel={nyt ? "Ny kasse" : `Redigér ${kasse.id}`}>
+    <Kort titel={nyt ? "Ny unit" : `Redigér ${kasse.id}`}>
       <Formular onGem={gemNu} gemmer={gemmer} kanGemme={kanGemme}
-                gemLabel={nyt ? "Opret kasse" : "Gem ændringer"}
+                gemLabel={nyt ? "Opret unit" : "Gem ændringer"}
                 onAnnuller={paaLuk} svar={svar}>
         <Feltraekke>
           {/* ⚠ ID'ET ER KASSENS PÅSKRIFT og kan ikke ændres bagefter: der
@@ -395,16 +398,19 @@ export default function Kasser() {
   const filterUndertyper = undertyperFor(typer.find((t) => t.id === type));
 
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
-      <KpiRaekke>
-        <KpiKort
-          label="Belægningsgrad"
-          vaerdi={pct(bel.pct)}
-          note={bel.pct === null
-            ? `Ingen brugbare units · ${num(bel.udeAfDrift)} ude af drift`
-            : `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare · ${num(bel.udeAfDrift)} ude af drift`}
-        />
-      </KpiRaekke>
+    <RessourceSide
+      titel="Units"
+      handling={
+        <Knap variant="primaer" disabled={!maaSkrive || !typer.length || !pladser.length}
+              onClick={() => saetNy(true)}
+              title={!maaSkrive ? "Du har ikke rettighed til at oprette units."
+                : !typer.length ? "Opret en kassetype først."
+                : !pladser.length ? "Opret en reolplads først."
+                : "Opret en unit."}>
+          Opret unit
+        </Knap>
+      }
+    >
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       {ny && (
@@ -418,24 +424,12 @@ export default function Kasser() {
                        paaGemt={() => { saetRedigerer(null); genindlaes(); }} />
       )}
 
-      <Kort
-        titel={`Kasser (${num(viste.length)} af ${num(kasser.length)})`}
-        handling={
-          <Knap variant="primaer" disabled={!maaSkrive || !typer.length || !pladser.length}
-                onClick={() => saetNy(true)}
-                title={!maaSkrive ? "Du har ikke rettighed til at oprette enheder."
-                  : !typer.length ? "Opret en kassetype først."
-                  : !pladser.length ? "Opret en reolplads først."
-                  : "Opret en kasse."}>
-            Ny kasse
-          </Knap>
-        }
-      >
+      <RessourceRegister>
         <div className="fc-filtre">
           <div className="fc-felt">
             <label htmlFor="kf-soeg">Søg</label>
             <input id="kf-soeg" type="search" value={soeg}
-                   placeholder="Kasse-id eller plads"
+                   placeholder="Unit-id eller plads"
                    onChange={(e) => { saetSoeg(e.target.value); saetSide(1); }} />
           </div>
           <div className="fc-felt">
@@ -485,19 +479,25 @@ export default function Kasser() {
             </select>
           </div>
           <Knap onClick={() => { saetSoeg(""); saetStatus(""); saetType(""); saetUndertype(""); saetSortering("id"); saetSide(1); }}>Nulstil</Knap>
+          <RessourceMetrik
+            label="Belægning"
+            vaerdi={pct(bel.pct)}
+            note={bel.pct === null
+              ? `Ingen brugbare units · ${num(bel.udeAfDrift)} ude af drift`
+              : `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare · ${num(bel.udeAfDrift)} ude af drift`}
+          />
         </div>
 
         {!typer.length || !pladser.length ? (
           <Tom>
-            En kasse skal have en <b>type</b> og en <b>hjemplads</b>. Opret dem
-            under Opsætning → Ressourcer → Units først — ellers ville kassen pege på noget der ikke
-            findes.
+            En unit skal have en <b>type</b> og en <b>hjemplads</b>. Opret dem
+            under Opsætning → Ressourcer → Units først.
           </Tom>
         ) : (
           <>
             <Tabel
               kolonner={[
-                { key: "id", label: "Kasse", render: (k) => <b>{k.id}</b> },
+                { key: "id", label: "Unit", render: (k) => <b>{k.id}</b> },
                 { key: "type", label: "Type",
                   render: (k) => typeMap[k.type]?.navn || k.type },
                 /* ⚠ EGEN KOLONNE, IKKE SAT SAMMEN MED TYPEN. Planchen har dem
@@ -557,18 +557,18 @@ export default function Kasser() {
               ]}
               raekker={paaSiden}
               paaRaekke={maaSkrive ? saetRedigerer : undefined}
-              tom="Ingen kasser matcher filteret."
+              tom="Ingen units matcher filteret."
             />
+            <RessourceResultat>Viser {num(viste.length)} af {num(kasser.length)} units.</RessourceResultat>
             <Sider side={nuSide} antal={viste.length} prSide={PR_SIDE} saet={saetSide} />
           </>
         )}
 
         <p className="fc-hint" style={{ marginTop: 10 }}>
-          ⚠ <b>En kasse slettes aldrig.</b> Der hænger udlån på id'et. En kasse
-          der går i stykker, får status <b>ude af drift</b> og bliver stående —
-          samme regel som en solgt bil.
+          ⚠ <b>En unit slettes aldrig.</b> Udlån og historik bevares på id'et.
+          En unit der går i stykker, får status <b>ude af drift</b>.
         </p>
-      </Kort>
-    </div>
+      </RessourceRegister>
+    </RessourceSide>
   );
 }

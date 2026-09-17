@@ -204,6 +204,25 @@ tbody tr:hover { background: #f8fcfc; }
 .directory-table tr.is-archived { opacity: .72; }
 .directory-table tbody tr[role="link"] { cursor: pointer; transition: background .14s ease, box-shadow .14s ease; }
 .directory-table tbody tr[role="link"]:hover, .directory-table tbody tr[role="link"]:focus-visible { background: var(--veyro-teal-light); box-shadow: inset 3px 0 var(--veyro-teal); outline: 0; }
+
+/* Kompakt Ressourcer-visning; øvrige FACILITY-sider beholder deres layout. */
+.resource-directory-page .page-heading{align-items:center;min-height:36px;margin-bottom:10px}
+.resource-directory-page .page-heading h1{margin:0;font-size:20px;letter-spacing:-.015em}
+.resource-directory-page .page-heading .primary-button{min-height:36px}
+.resource-directory-page .directory-layout{gap:10px}
+.resource-directory-page .directory-main{padding:12px;box-shadow:none}
+.resource-directory-page .filter-bar{gap:8px;margin-bottom:10px}
+.resource-directory-page .filter-bar :is(select,.filter-search,.secondary-button){min-height:36px}
+.resource-directory-page .directory-table{font-size:14px}
+.resource-directory-page .directory-table th{height:38px;padding-block:7px}
+.resource-directory-page .directory-table td{height:40px;padding-block:7px}
+.resource-directory-page .result-count{margin:9px 2px 0;font-size:12px}
+@media(max-width:620px){
+  .resource-directory-page .page-heading{align-items:flex-start;min-height:0}
+  .resource-directory-page .page-heading h1{font-size:18px}
+  .resource-directory-page .directory-main{padding:10px}
+  .resource-directory-page .table-scroll{max-width:100%;overflow-x:auto}
+}
 .table-select { padding: 0; border: 0; background: transparent; color: var(--veyro-teal); font-weight: 750; cursor: pointer; }
 .row-link { display: inline-flex; align-items: center; gap: 2px; color: var(--veyro-teal); font-weight: 750; }
 .archive-badge { display: inline-flex; margin-left: 6px; padding: 2px 6px; border-radius: 999px; color: #7a5260; background: #f5e9ed; font-size: 8px; }

@@ -41,8 +41,8 @@ import { blokerer } from "../fleet/datatilstand.js";
 import { KOMPETENCE_LABEL, BLOKERENDE_KOMPETENCER, kanBlokere } from "../fleet/flaade.js";
 import { tjekKompetencer, PERSONALE_STATUS, kanDisponeres } from "../fleet/personale.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../fleet/demo-personale.js";
-import { useKpi } from "../fleet/useKpi.js";
 import { useListe } from "../fleet/useListe.js";
+import { RessourceRegister, RessourceResultat, RessourceSide } from "./RessourceLayout.jsx";
 
 const NU = Date.now();
 
@@ -58,8 +58,6 @@ const mineKompetencer = (kompetencer, personId) =>
   kompetencer.filter((k) => k.personId === personId);
 
 export default function Kompetencer() {
-  const { henter, tilstand, genindlaes } = useKpi();
-
   /* ⚠ TO SEEDEDE NODER, OG SKÆRMEN VISTE DEMOFILEN FOR BEGGE. Den tæller
      UDLØBNE BEVISER — det tal der afgør om en chauffør kan disponeres — og
      det stod med mockuppens tal i hver eneste tenant.
@@ -79,16 +77,11 @@ export default function Kompetencer() {
   const [gyldighed, setGyldighed] = useState("");
   const [sortering, setSortering] = useState("navn");
 
-  if (henter || pers.henter || komp.henter) return <Henter hvad="kompetencer" />;
+  if (pers.henter || komp.henter) return <Henter hvad="kompetencer" />;
   /* En AFVIST læsning er ikke et tomt kompetencekartotek. */
   if (blokerer(komp.tilstand)) {
     return <Datatilstand tilstand={komp.tilstand} genprov={komp.genindlaes} />;
   }
-  /* ⚠ INGEN BLOKERING PÅ MANGLENDE NØGLETAL. En ny kunde har ingen
-     aggregerede tal, og skal alligevel kunne bruge skærmen — knappen der
-     opretter hans første post sidder på en af dem. Se blokerer(). */
-  if (blokerer(tilstand)) return <Datatilstand tilstand={tilstand} genprov={genindlaes} />;
-
   /* AFLEDT af listen skærmen allerede har — hører derfor ikke i kpi/.
      Samme sag som aktive klimaalarmer; et gemt afledt tal driver fra sit
      grundlag, og det er fejlen i bemanding.ledig. */
@@ -120,10 +113,8 @@ export default function Kompetencer() {
   const valgt = raekker.find((r) => r.p.id === valgtId) || null;
 
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
-      <Datatilstand tilstand={tilstand} genprov={genindlaes} />
-
-      <Kort titel="Certifikater pr. medarbejder">
+    <RessourceSide titel="Certifikater">
+      <RessourceRegister>
           <div className="fc-filtre">
             <div className="fc-felt"><label htmlFor="ce-soeg">Søg</label><input id="ce-soeg" type="search" value={soeg} onChange={(event) => setSoeg(event.target.value)} placeholder="Medarbejdernavn" /></div>
             <div className="fc-felt"><label htmlFor="ce-gyldighed">Gyldighed</label><select id="ce-gyldighed" value={gyldighed} onChange={(event) => setGyldighed(event.target.value)}><option value="">Alle</option><option value="gyldig">Gyldig</option><option value="snart">Udløber snart</option><option value="udloebet">Udløbet</option><option value="blokeret">Blokeret</option></select></div>
@@ -148,20 +139,15 @@ export default function Kompetencer() {
             erValgt={(r) => r.p.id === valgtId}
             tom="Ingen medarbejdere."
           />
-          <p className="fc-hint" style={{ marginTop: 8 }}>
-            En udløbet kompetence der <strong>blokerer</strong>, standser
-            disponeringen — den advarer ikke. Håndhævelsen hører i den Cloud
-            Function der skriver etapen; ligger den kun her, kan en direkte
-            skrivning gå uden om den.
-          </p>
-      </Kort>
+          <RessourceResultat>Viser {num(raekker.length)} medarbejdere.</RessourceResultat>
+      </RessourceRegister>
 
       {valgt && <Dialog titel={valgt.p.navn} under="Certifikater og gyldighed" onLuk={() => setValgtId(null)} bred>
         <Detaljer r={valgt} />
       </Dialog>}
 
       <Udloebsliste raekker={raekker} />
-    </div>
+    </RessourceSide>
   );
 }
 

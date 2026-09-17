@@ -1,52 +1,44 @@
-import { Link } from "react-router-dom";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { harModul } from "../fleet/moduler.js";
 import { harPerm } from "../fleet/permissions.js";
-import { Kort } from "../fleet/ui.jsx";
 import RessourceOmraadeTabel from "./RessourceOmraadeTabel.jsx";
+import { RessourceRegister, RessourceSide } from "./RessourceLayout.jsx";
 
 const RESSOURCER = [
   {
     key: "enheder", label: "Enheder", ikon: "lastbil", til: "/ressourcer/enheder",
     moduler: ["flaade", "booking"], perm: "koeretoejer.laes",
-    tekst: "Det fælles enheds- og maskinregister, som FLEET og PLANNING læser fra.",
-    kilde: "koeretoejer",
+    tekst: "Køretøjer, maskiner og udstyr til drift og planlægning.",
   },
   {
     key: "ejendomme", label: "Ejendomme", ikon: "bygning", til: "/facility-v2/ejendomme",
     moduler: ["facility"], perm: "facility.skriv",
-    tekst: "Ejendomme og anlæg, som FACILITY bruger i den daglige drift.",
-    kilde: "FACILITY-register",
+    tekst: "Ejendomme og anlæg med installationer og åbne opgaver.",
   },
   {
     key: "medarbejdere", label: "Medarbejdere", ikon: "personer", til: "/ressourcer/medarbejdere",
     moduler: ["bemanding", "booking"], perm: "personale.laes",
-    tekst: "Fælles medarbejderstamdata. Login, roller og følsomme personaledata ligger fortsat separat.",
-    kilde: "personale",
+    tekst: "Medarbejdere, funktioner, afdelinger og kontaktoplysninger.",
   },
   {
     key: "units", label: "Units", ikon: "kasse", til: "/ressourcer/units",
     moduler: ["unitbooking", "warehouse"],
-    tekst: "Konkrete bookbare units med stabile ID'er, mål, status og placering.",
-    kilde: "kasser",
+    tekst: "Bookbare units med type, status, mål og placering.",
   },
   {
     key: "varekatalog", label: "Varekatalog", ikon: "vogn", til: "/ressourcer/varekatalog",
     moduler: ["indkoeb", "warehouse"], perm: "indkoeb.laes",
-    tekst: "Fælles varedefinitioner til PROCURE og relevante WAREHOUSE-forløb. Warehouses kundegods forbliver en særskilt fysisk datatype.",
-    kilde: "forbrugsvarer",
+    tekst: "Varer, leverandører, pakninger og aftalepriser.",
   },
   {
     key: "lagerlokationer", label: "Lagerlokationer", ikon: "stednaal", til: "/ressourcer/lagerlokationer",
     moduler: ["warehouse", "unitbooking"],
-    tekst: "Det fælles lokationsregister med QR-opslag og indhold efter gældende adgang.",
-    kilde: "reolpladser",
+    tekst: "Lagerpladser, zoner og aktuelt indhold.",
   },
   {
     key: "certifikater", label: "Certifikater", ikon: "skjold", til: "/ressourcer/certifikater",
     moduler: ["bemanding", "flaade"],
-    tekst: "Kompetencer, certifikater og udløb uden adgang til løn eller øvrige beskyttede personaledata.",
-    kilde: "kompetencer",
+    tekst: "Medarbejdercertifikater, gyldighed og kommende udløb.",
   },
 ];
 
@@ -61,17 +53,10 @@ export default function Ressourcer() {
   const { bruger, moduler } = useFleet();
   const poster = synligeRessourcer({ moduler, perms: bruger?.perms });
   return (
-    <div className="fc-grid" style={{ gap: 16 }}>
-      <Kort titel="Ressourcer">
-        <p className="fc-hint" style={{ marginTop: 0 }}>
-          Her vedligeholdes virksomhedens konkrete ressourcer. Kategorier,
-          hardware og administrative valgmuligheder ligger under{" "}
-          <Link className="fc-a" to="/opsaetning/ressourcer">Opsætning → Ressourcer</Link>.
-        </p>
-      </Kort>
-      <Kort titel="Registre">
-        <RessourceOmraadeTabel poster={poster} />
-      </Kort>
-    </div>
+    <RessourceSide titel="Ressourcer">
+      <RessourceRegister>
+        <RessourceOmraadeTabel poster={poster} visKilde={false} />
+      </RessourceRegister>
+    </RessourceSide>
   );
 }
