@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { harModul } from "../fleet/moduler.js";
 import { harPerm } from "../fleet/permissions.js";
-import { Gitter, Ikon, Kort, Pille } from "../fleet/ui.jsx";
+import { Kort } from "../fleet/ui.jsx";
+import RessourceOmraadeTabel from "./RessourceOmraadeTabel.jsx";
 
 const RESSOURCER = [
   {
@@ -68,18 +69,9 @@ export default function Ressourcer() {
           <Link className="fc-a" to="/opsaetning/ressourcer">Opsætning → Ressourcer</Link>.
         </p>
       </Kort>
-      <Gitter kolonner="repeat(auto-fit, minmax(270px, 1fr))">
-        {poster.map((post) => (
-          <Kort key={post.key} titel={(
-            <span className="fc-med-ikon"><Ikon navn={post.ikon} />{post.label}</span>
-          )} handling={<Link className="fc-a" to={post.til}>Åbn →</Link>}>
-            <p>{post.tekst}</p>
-            <p className="fc-hint" style={{ marginBottom: 0 }}>
-              Autoritativ kilde: <Pille tone="info">{post.kilde}</Pille>
-            </p>
-          </Kort>
-        ))}
-      </Gitter>
+      <Kort titel="Registre">
+        <RessourceOmraadeTabel poster={poster} />
+      </Kort>
     </div>
   );
 }

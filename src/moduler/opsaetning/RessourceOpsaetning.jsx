@@ -2,20 +2,21 @@ import { Link, useLocation } from "react-router-dom";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { harModul } from "../../fleet/moduler.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
-import { Gitter, Ikon, Kort, ModulNav, Pille } from "../../fleet/ui.jsx";
+import { Kort, ModulNav, Pille } from "../../fleet/ui.jsx";
+import RessourceOmraadeTabel from "../RessourceOmraadeTabel.jsx";
 import FleetKategorier from "./FleetKategorier.jsx";
 import Reolpladser from "../unitbooking/Reolpladser.jsx";
 import Wmslokationer from "../warehouse/Lokationer.jsx";
 import RessourceKatalogOpsaetning from "./RessourceKatalogOpsaetning.jsx";
 
 const GRUPPER = [
-  { key: "enheder", label: "Enheder", ikon: "lastbil", moduler: ["flaade", "booking"], tekst: "Enhedskategorier, FLEET-driftskategorier og OBD-hardware." },
-  { key: "ejendomme", label: "Ejendomme", ikon: "bygning", moduler: ["facility"], tekst: "Ejendomskategorier og relevante FACILITY-valgmuligheder." },
-  { key: "medarbejdere", label: "Medarbejdere", ikon: "personer", moduler: ["bemanding", "booking"], tekst: "Medarbejderkategorier uden login-, rolle- eller lønadgang." },
-  { key: "units", label: "Units", ikon: "kasse", moduler: ["unitbooking", "warehouse"], tekst: "Eksisterende unittyper og GPS-trackere. Ekstern GPS-forbindelse er ikke aktiveret." },
-  { key: "varer", label: "Varer/materialer", ikon: "vogn", moduler: ["indkoeb", "warehouse"], tekst: "Kundedefinerede varekategorier til det fælles varekatalog." },
-  { key: "warehouse", label: "Warehouse", ikon: "stednaal", moduler: ["warehouse", "unitbooking"], tekst: "Lagre, lokationer, lokationstype og sikkerhedsklasse." },
-  { key: "certifikater", label: "Certifikater", ikon: "skjold", moduler: ["bemanding", "flaade"], tekst: "Certifikattyper og varsling." },
+  { key: "enheder", label: "Enheder", ikon: "lastbil", moduler: ["flaade", "booking"], tekst: "Enhedskategorier, FLEET-driftskategorier og OBD-hardware.", kilde: "Kategorier og hardware" },
+  { key: "ejendomme", label: "Ejendomme", ikon: "bygning", moduler: ["facility"], tekst: "Ejendomskategorier og relevante FACILITY-valgmuligheder.", kilde: "Kategorier" },
+  { key: "medarbejdere", label: "Medarbejdere", ikon: "personer", moduler: ["bemanding", "booking"], tekst: "Medarbejderkategorier uden login-, rolle- eller lønadgang.", kilde: "Kategorier" },
+  { key: "units", label: "Units", ikon: "kasse", moduler: ["unitbooking", "warehouse"], tekst: "Eksisterende unittyper og GPS-trackere. Ekstern GPS-forbindelse er ikke aktiveret.", kilde: "Typer og hardware" },
+  { key: "varer", label: "Varer/materialer", ikon: "vogn", moduler: ["indkoeb", "warehouse"], tekst: "Kundedefinerede varekategorier til det fælles varekatalog.", kilde: "Kategorier" },
+  { key: "warehouse", label: "Warehouse", ikon: "stednaal", moduler: ["warehouse", "unitbooking"], tekst: "Lagre, lokationer, lokationstype og sikkerhedsklasse.", kilde: "Klassifikationer" },
+  { key: "certifikater", label: "Certifikater", ikon: "skjold", moduler: ["bemanding", "flaade"], tekst: "Certifikattyper og varsling.", kilde: "Kategorier og varsling" },
 ];
 
 function Oversigt({ grupper }) {
@@ -30,15 +31,15 @@ function Oversigt({ grupper }) {
           OBD/GPS registreres kun internt; leverandørtjenester aktiveres ikke.
         </p>
       </Kort>
-      <Gitter kolonner="repeat(auto-fit, minmax(270px, 1fr))">
-        {grupper.map((gruppe) => (
-          <Kort key={gruppe.key} titel={(
-            <span className="fc-med-ikon"><Ikon navn={gruppe.ikon} />{gruppe.label}</span>
-          )} handling={<Link className="fc-a" to={`/opsaetning/ressourcer/${gruppe.key}`}>Administrér →</Link>}>
-            <p>{gruppe.tekst}</p>
-          </Kort>
-        ))}
-      </Gitter>
+      <Kort titel="Ressourceopsætning">
+        <RessourceOmraadeTabel
+          poster={grupper.map((gruppe) => ({
+            ...gruppe,
+            til: `/opsaetning/ressourcer/${gruppe.key}`,
+          }))}
+          kildeLabel="Indstillingstype"
+        />
+      </Kort>
   </>;
 }
 

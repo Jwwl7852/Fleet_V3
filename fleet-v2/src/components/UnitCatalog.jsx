@@ -102,7 +102,7 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
           <table className="unit-table">
             <thead><tr><th>Enhed</th><th>Registrering</th><th>Type</th><th>Afdeling</th><th>Målerstand</th><th>Status</th><th>Næste service</th><th>Omkostning<br /><small>(3 mdr.)</small></th><th>Noter</th><th><span className="sr-only">Handling</span></th></tr></thead>
             <tbody>{visible.map((unit) => (
-              <tr key={unit.id} tabIndex="0" onClick={() => openUnit(unit)} onKeyDown={(event) => { if (event.key === "Enter") openUnit(unit); }}>
+              <tr key={unit.id} role="button" tabIndex="0" aria-label={`Åbn ${unit.number}`} onClick={() => openUnit(unit)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openUnit(unit); } }}>
                 <td><span className="unit-cell"><UnitThumbnail unit={unit} /><span><strong>{unit.number}</strong><small>{modelLabel(unit)}</small></span></span></td>
                 <td>{unit.registration || <span className="not-provided">Ikke oplyst</span>}</td>
                 <td><span className="type-cell"><Icon name="unit" size={16} />{typeLabel(unit)}</span></td>

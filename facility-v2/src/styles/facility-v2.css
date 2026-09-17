@@ -201,6 +201,8 @@ tbody tr:hover { background: #f8fcfc; }
 .directory-table td small { display: block; color: var(--veyro-text-secondary); font-size: 9px; }
 .directory-table tr.is-selected { background: #eaf8f9; }
 .directory-table tr.is-archived { opacity: .72; }
+.directory-table tbody tr[role="link"] { cursor: pointer; transition: background .14s ease, box-shadow .14s ease; }
+.directory-table tbody tr[role="link"]:hover, .directory-table tbody tr[role="link"]:focus-visible { background: var(--veyro-teal-light); box-shadow: inset 3px 0 var(--veyro-teal); outline: 0; }
 .table-select { padding: 0; border: 0; background: transparent; color: var(--veyro-teal); font-weight: 750; cursor: pointer; }
 .row-link { display: inline-flex; align-items: center; gap: 2px; color: var(--veyro-teal); font-weight: 750; }
 .archive-badge { display: inline-flex; margin-left: 6px; padding: 2px 6px; border-radius: 999px; color: #7a5260; background: #f5e9ed; font-size: 8px; }

@@ -573,6 +573,7 @@ export default function Kasser() {
                   ) },
               ]}
               raekker={paaSiden}
+              paaRaekke={maaSkrive ? saetRedigerer : undefined}
               tom="Ingen kasser matcher filteret."
             />
             <Sider side={nuSide} antal={viste.length} prSide={PR_SIDE} saet={saetSide} />

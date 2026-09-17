@@ -75,3 +75,29 @@ test("datalaget indeholder de fælles og atomiske adgangsgrænser", () => {
   assert.match(functions, /Hardwaren er allerede tilknyttet en anden ressource/);
   assert.match(functions, /perm: \["indkoeb\.skriv", "varer\.skriv"\], modul: \["indkoeb", "warehouse"\]/);
 });
+
+test("ressourceregistre bruger samme linjebaserede og tastaturtilgængelige åbningsmønster", () => {
+  const overview = read("src/moduler/Ressourcer.jsx");
+  const setupOverview = read("src/moduler/opsaetning/RessourceOpsaetning.jsx");
+  const sharedList = read("src/moduler/RessourceOmraadeTabel.jsx");
+  const setupCatalog = read("src/moduler/opsaetning/RessourceKatalogOpsaetning.jsx");
+  const employees = read("src/moduler/Medarbejdere.jsx");
+  const units = read("src/moduler/unitbooking/Kasser.jsx");
+  const locations = read("src/moduler/warehouse/Lokationer.jsx");
+  const products = read("src/fleet/procure-v2/ProcureScreens.jsx");
+  const properties = read("facility-v2/src/routes/PropertiesPage.jsx");
+  const vehicles = read("fleet-v2/src/components/UnitCatalog.jsx");
+
+  assert.match(overview, /<RessourceOmraadeTabel poster=\{poster\}/);
+  assert.match(setupOverview, /<RessourceOmraadeTabel/);
+  assert.match(sharedList, /paaRaekke=\{\(post\) => navigate\(post\.til\)\}/);
+  assert.match(setupCatalog, /paaRaekke=\{setKategori\}/);
+  assert.match(setupCatalog, /paaRaekke=\{setEnhed\}/);
+  assert.match(employees, /paaRaekke=\{\(r\) => setValgtId\(r\.id\)\}/);
+  assert.match(units, /paaRaekke=\{maaSkrive \? saetRedigerer : undefined\}/);
+  assert.match(locations, /paaRaekke=\{maaSkrive \? saetRedigerer : undefined\}/);
+  assert.match(products, /aria-label=\{`Åbn vareopsætning for \$\{item\.name\}`\}/);
+  assert.match(properties, /aria-label=\{`Åbn \$\{property\.number\} \$\{property\.name\}`\}/);
+  assert.match(vehicles, /role="button" tabIndex="0" aria-label=\{`Åbn \$\{unit\.number\}`\}/);
+  assert.match(vehicles, /event\.key === "Enter" \|\| event\.key === " "/);
+});

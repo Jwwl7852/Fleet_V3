@@ -387,6 +387,7 @@ export default function Lokationer() {
                   ) },
               ]}
               raekker={paaSiden}
+              paaRaekke={maaSkrive ? saetRedigerer : undefined}
               tom="Ingen lokationer matcher filteret."
             />
             <Sider side={nuSide} antal={viste.length} prSide={PR_SIDE} saet={saetSide} />

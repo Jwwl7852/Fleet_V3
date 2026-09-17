@@ -418,13 +418,7 @@ export default function Medarbejdere() {
           <Tabel
             kolonner={[
               { key: "navn", label: "Navn", render: (r) => (
-                  <button type="button" className="fc-a"
-                          style={{ background: "none", border: 0, padding: 0, cursor: "pointer",
-                                   font: "inherit", fontWeight: 650, textAlign: "left" }}
-                          aria-pressed={r.id === valgtId}
-                          onClick={() => setValgtId(r.id === valgtId ? null : r.id)}>
-                    {r.navn}
-                  </button>
+                  <b>{r.navn}</b>
                 ) },
               /* funktioner er et map — funktionerAf() giver dem i katalogets
                  rækkefølge, så to personer med samme to funktioner viser dem
@@ -449,6 +443,8 @@ export default function Medarbejdere() {
                 ) },
             ]}
             raekker={viste}
+            paaRaekke={(r) => setValgtId(r.id)}
+            erValgt={(r) => r.id === valgtId}
             tom={
               q || funktion
                 ? "Ingen medarbejdere passer på søgningen."
