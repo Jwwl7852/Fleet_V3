@@ -1,0 +1,46 @@
+{
+  "codeCommit": "f51173ae4fd75830e3fd68a7aafb9701e7f62fa2",
+  "capturedOn": "2026-09-17",
+  "planningUnchanged": true,
+  "desktop1440x900": [
+    { "route": "/fleet-v2", "kpis": ["0", "11", "0"], "rows": [0, 5], "pageOverflow": false },
+    { "route": "/facility-v2", "kpis": ["4", "4", "3"], "rows": [3, 4], "pageOverflow": false },
+    { "route": "/indkoeb", "kpis": ["4", "1", "2"], "rows": [2, 5], "pageOverflow": false },
+    { "route": "/workforce-v2", "kpis": ["1", "0", "7,38 t"], "rows": [1, 2], "pageOverflow": false },
+    { "route": "/unitbooking", "kpis": ["3", "7", "0"], "rows": [5, 0], "pageOverflow": false },
+    { "route": "/warehouse", "kpis": ["7", "Mangler dato", "0"], "rows": [1, 5], "pageOverflow": false }
+  ],
+  "responsive": {
+    "1280x800": { "routesChecked": 6, "pageOverflowFailures": 0, "kpiColumns": 3 },
+    "390x844": { "measuredViewport": [389, 843], "routesChecked": 6, "pageOverflowFailures": 0, "kpiColumns": 1, "tablesUseLocalScroll": true }
+  },
+  "actions": [
+    { "from": "/fleet-v2", "action": "Opret sag", "to": "/fleet-v2/indberetninger/ny" },
+    { "from": "/facility-v2", "action": "Opret opgave", "to": "/facility-v2/arbejdsko" },
+    { "from": "/indkoeb", "action": "Ny bestilling", "to": "/indkoeb/bestillinger?ny=1" },
+    { "from": "/workforce-v2", "action": "Registrér fravær", "to": "/workforce-v2/fravaer" },
+    { "from": "/unitbooking", "action": "Opret booking", "to": "/unitbooking/import" },
+    { "from": "/fleet-v2", "action": "første række + Enter", "to": "/fleet-v2/sager/case-demo-008", "tabIndex": 0 }
+  ],
+  "authenticatedIntegrated": {
+    "baseUrl": "http://127.0.0.1:5197",
+    "role": "syntetisk administrator",
+    "tenant": "procure-auth-a",
+    "dataSource": "lokale emulatorer; global TEST-markering",
+    "normalLogin": true,
+    "results": [
+      { "route": "/fleet-v2", "loaded": true, "kpis": ["1", "8", "0"], "pageOverflow": false },
+      { "route": "/facility-v2", "loaded": true, "kpis": ["4", "4", "3"], "pageOverflow": false },
+      { "route": "/indkoeb", "loaded": true, "kpis": ["0", "0", "0"], "pageOverflow": false },
+      { "route": "/workforce-v2", "loaded": false, "error": "WORKFORCE-data kunne ikke hentes. Tenant findes ikke.", "hiddenDemoFallback": false },
+      { "route": "/unitbooking", "loaded": true, "kpis": ["0", "0", "0"], "pageOverflow": false },
+      { "route": "/warehouse", "loaded": true, "kpis": ["0", "0", "0"], "pageOverflow": false }
+    ]
+  },
+  "isolatedDemo": {
+    "baseUrlDuringTest": "http://127.0.0.1:5199",
+    "dataSource": "lokale syntetiske fixtures, tydeligt mærket",
+    "externalServices": "ikke tilsluttet",
+    "purpose": "UI- og kontraktbevis; ikke serverbevis"
+  }
+}

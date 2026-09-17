@@ -1,0 +1,81 @@
+{
+  "codeCommit": "f51173ae4fd75830e3fd68a7aafb9701e7f62fa2",
+  "capturedAt": "2026-09-17T15:40:51.500Z",
+  "baseUrl": "http://127.0.0.1:5199",
+  "environment": "Isoleret Version 1-demo uden Firebase-forbindelse",
+  "zoom": "100 % arbejdsområde / browser 100 %",
+  "captures": [
+    {
+      "file": "1440x900-fleet.png",
+      "route": "/fleet-v2",
+      "viewport": "1440x900",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "390x844-fleet.png",
+      "route": "/fleet-v2",
+      "viewport": "390x844",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "1440x900-facility.png",
+      "route": "/facility-v2",
+      "viewport": "1440x900",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "390x844-facility.png",
+      "route": "/facility-v2",
+      "viewport": "390x844",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "1440x900-procure.png",
+      "route": "/indkoeb",
+      "viewport": "1440x900",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "390x844-procure.png",
+      "route": "/indkoeb",
+      "viewport": "390x844",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "1440x900-workforce.png",
+      "route": "/workforce-v2",
+      "viewport": "1440x900",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "390x844-workforce.png",
+      "route": "/workforce-v2",
+      "viewport": "390x844",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "1440x900-unitbooking.png",
+      "route": "/unitbooking",
+      "viewport": "1440x900",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "390x844-unitbooking.png",
+      "route": "/unitbooking",
+      "viewport": "390x844",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "1440x900-warehouse.png",
+      "route": "/warehouse",
+      "viewport": "1440x900",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    },
+    {
+      "file": "390x844-warehouse.png",
+      "route": "/warehouse",
+      "viewport": "390x844",
+      "dataSource": "Tydeligt mærkede lokale syntetiske fixtures"
+    }
+  ]
+}
