@@ -38,6 +38,10 @@ export function workforcePatch({ uid, now = Date.now() }) {
     [`tenants/${TENANT_ID}/abonnement/status`]: "aktiv",
     [`tenants/${TENANT_ID}/moduler/bemanding`]: true,
     [`tenants/${TENANT_ID}/moduler/unitbooking`]: true,
+    [`tenants/${TENANT_ID}/moduler/flaade`]: true,
+    [`tenants/${TENANT_ID}/moduler/facility`]: true,
+    [`tenants/${TENANT_ID}/moduler/indkoeb`]: true,
+    [`tenants/${TENANT_ID}/moduler/warehouse`]: true,
     [`tenants/${TENANT_ID}/brugere/${uid}`]: {
       email: REVIEW_EMAIL,
       navn: "Syntetisk administrator",

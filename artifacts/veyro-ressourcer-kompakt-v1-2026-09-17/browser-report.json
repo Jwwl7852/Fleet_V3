@@ -1,0 +1,43 @@
+{
+  "productCommit": "f93e0f1fe62f63de6723a242c7f58d8e3d4d03ca",
+  "baseUrl": "http://127.0.0.1:5197",
+  "application": "integrated Version 1 root app",
+  "authentication": "normal local emulator login",
+  "role": "syntetisk administrator",
+  "tenant": "procure-auth-a",
+  "dataSource": "tenantlagrede syntetiske data i lokale Auth- og Realtime Database-emulatorer",
+  "externalServices": false,
+  "responsiveMatrix": {
+    "routes": 8,
+    "viewports": ["1440x900", "1280x800", "390x844"],
+    "zoom": "100%",
+    "cases": 24,
+    "documentHorizontalOverflowFailures": 0
+  },
+  "actions": [
+    {
+      "name": "keyboard overview navigation",
+      "steps": ["Open /ressourcer", "Focus Enheder row", "Press Enter"],
+      "result": "Navigated to /ressourcer/enheder"
+    },
+    {
+      "name": "keyboard unit row",
+      "steps": ["Open /ressourcer/units", "Focus first unit row", "Press Enter"],
+      "result": "Opened the unit profile with heading 101"
+    },
+    {
+      "name": "active navigation",
+      "steps": ["Open /ressourcer", "Inspect active page markers"],
+      "result": "Exactly one page marker had aria-current=page: Overblik"
+    },
+    {
+      "name": "module overview smoke",
+      "steps": ["Open FLEET, FACILITY, PROCURE, WORKFORCE, UNITBOOKING and WAREHOUSE overview routes", "Inspect headings and document overflow"],
+      "result": "All six rendered; none had document-level horizontal overflow"
+    }
+  ],
+  "limitations": [
+    "The current Varekatalog fixture is empty, so a product-row click was not browser-tested in this tenant.",
+    "No separate hundreds-of-records stress fixture was loaded; existing pagination behavior and tests were preserved."
+  ]
+}
