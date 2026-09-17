@@ -18,15 +18,16 @@
 import { useState } from "react";
 import { useListe } from "../../fleet/useListe.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
-import { num, dato, iDagIso, isoTilMs, msTilIso } from "../../fleet/format.js";
+import { num, dato, pct, iDagIso, isoTilMs, msTilIso } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
-  Henter, Datatilstand, Tom, Sider,
+  Henter, Datatilstand, Tom, Sider, KpiKort, KpiRaekke,
 } from "../../fleet/ui.jsx";
 import {
   KASSE_STATUS, ALLE_KASSE_STATUS, SELVVALGT_KASSE_STATUS,
   kraeverPlads, valideKasse, pladsnavn, naesteReservation, undertyperFor,
+  kassebelaegning,
   mmFraCm, cmFraMm,
 } from "../../fleet/unitbooking.js";
 import { maalFraMm } from "../../fleet/volumen.js";
@@ -386,11 +387,24 @@ export default function Kasser() {
   const paaSiden = viste.slice((nuSide - 1) * PR_SIDE, nuSide * PR_SIDE);
 
   const nu = Date.now();
+  /* Samme autoritative belægningsberegning som Udlån. Nævneren er kun
+     brugbare units; derfor vises antallet ude af drift altid ved procenten,
+     så et nedbrud ikke kan få belægningen til at se kunstigt bedre ud. */
+  const bel = kassebelaegning(kasser);
   /* Undertyperne paa den FILTREREDE type — ikke alle typers blandet sammen. */
   const filterUndertyper = undertyperFor(typer.find((t) => t.id === type));
 
   return (
     <div className="fc-grid" style={{ gap: 16 }}>
+      <KpiRaekke>
+        <KpiKort
+          label="Belægningsgrad"
+          vaerdi={pct(bel.pct)}
+          note={bel.pct === null
+            ? `Ingen brugbare units · ${num(bel.udeAfDrift)} ude af drift`
+            : `${num(bel.iBrug)} af ${num(bel.kanBruges)} brugbare · ${num(bel.udeAfDrift)} ude af drift`}
+        />
+      </KpiRaekke>
       <Datatilstand tilstand={tilstand} genprov={genindlaes} />
 
       {ny && (
