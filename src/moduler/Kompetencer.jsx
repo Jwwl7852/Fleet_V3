@@ -42,7 +42,7 @@ import { KOMPETENCE_LABEL, BLOKERENDE_KOMPETENCER, kanBlokere } from "../fleet/f
 import { tjekKompetencer, PERSONALE_STATUS, kanDisponeres } from "../fleet/personale.js";
 import { DEMO_PERSONALE, DEMO_KOMPETENCER } from "../fleet/demo-personale.js";
 import { useListe } from "../fleet/useListe.js";
-import { RessourceRegister, RessourceResultat, RessourceSide } from "./RessourceLayout.jsx";
+import { RessourceAabn, RessourceRegister, RessourceResultat, RessourceSide } from "./RessourceLayout.jsx";
 
 const NU = Date.now();
 
@@ -132,6 +132,9 @@ export default function Kompetencer() {
                 ) },
               { key: "antal", label: "Kompetencer", num: true, render: (r) => num(r.mine.length) },
               { key: "tilstand", label: "Gyldighed", render: (r) => <Tilstand r={r} /> },
+              { key: "handling", label: "", render: (r) => (
+                <RessourceAabn label={`${r.p.navn}s certifikater`} paaAabn={() => setValgtId(r.p.id)} />
+              ) },
             ]}
             raekker={raekker}
             noegle={(r) => r.p.id}

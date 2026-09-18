@@ -200,10 +200,34 @@ function CatalogItemEditor({ item, state, demo, canWrite, onSaved, onClose }) {
   </Modal>;
 }
 
+function CatalogItemDetails({ item, state, canWrite, onClose, onEdit }) {
+  const supplier = supplierFor(state, item.supplierId);
+  const department = Object.values(state.setup?.afdelinger || {}).find((row) => row.id === item.defaultDepartmentId);
+  return <Modal
+    title={item.name}
+    subtitle={`Varenr. ${item.sku}`}
+    onClose={onClose}
+    footer={<><button className="procure-button secondary" type="button" onClick={onClose}>Luk</button>{canWrite && <button className="procure-button" type="button" onClick={onEdit}>Redigér</button>}</>}
+  >
+    <dl className="procure-resource-details">
+      <dt>Kategori</dt><dd>{item.category || "—"}</dd>
+      <dt>Leverandør</dt><dd>{supplier?.name || "Ingen fast leverandør"}</dd>
+      <dt>Pakning</dt><dd>{item.packageSize || `${item.unitsPerOrder || 1} ${item.baseUnit || item.unit} pr. ${item.orderUnit || item.unit}`}</dd>
+      <dt>Pris ekskl. moms</dt><dd>{kr(item.unitPriceOere)} pr. {item.unit}</dd>
+      <dt>Bestillingsenhed</dt><dd>{item.orderUnit || item.unit || "—"}</dd>
+      <dt>Lagerenhed</dt><dd>{item.baseUnit || item.unit || "—"}</dd>
+      <dt>Standardafdeling</dt><dd>{department?.label || "—"}</dd>
+      <dt>Lagerføres</dt><dd>{item.stocked ? "Ja" : "Nej"}</dd>
+      <dt>Status</dt><dd><Status tone={item.active === false ? "warn" : "ok"}>● {item.active === false ? "Inaktiv" : "Aktiv"}</Status></dd>
+    </dl>
+  </Modal>;
+}
+
 export function ResourceCatalogScreen({ state, setState, demo, canWrite, busy, error }) {
   const [params, setParams] = useSearchParams();
   const [message, setMessage] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
   const search = params.get("soeg") || "";
   const category = params.get("kategori") || "";
   const supplier = params.get("leverandoer") || "";
@@ -240,17 +264,18 @@ export function ResourceCatalogScreen({ state, setState, demo, canWrite, busy, e
       </div>
       <PageState empty={!products.length} emptyText="Ingen varer matcher de valgte filtre." />
       {products.length ? <>
-        <div className="procure-table-wrap procure-catalog-table"><table><thead><tr><th>Vare</th><th>Kategori</th><th>Leverandør</th><th>Pakning</th><th>Pris ekskl. moms</th><th>Status</th><th>Handling</th></tr></thead><tbody>{products.map((item) => {
+        <div className="procure-table-wrap procure-catalog-table"><table><thead><tr><th>Vare</th><th>Kategori</th><th>Leverandør</th><th>Pakning</th><th>Pris ekskl. moms</th><th>Status</th><th><span className="sr-only">Handling</span></th></tr></thead><tbody>{products.map((item) => {
           const supplierName = supplierFor(state, item.supplierId)?.name || "—";
-          return <tr key={item.id} role="button" tabIndex="0" aria-label={`Åbn vareopsætning for ${item.name}`} onClick={() => setEditing(item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setEditing(item); } }}>
+          return <tr key={item.id} role="button" tabIndex="0" aria-label={`Åbn ${item.name}`} onClick={() => setViewing(item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setViewing(item); } }}>
             <td><span className="procure-catalog-item"><ProductVisual type={item.visual} /><span><b className="procure-catalog-ellipsis" title={item.name}>{item.name}</b><small>Varenr. {item.sku}</small></span></span></td>
             <td>{item.category || "—"}</td><td><span className="procure-catalog-ellipsis" title={supplierName}>{supplierName}</span></td><td>{item.packageSize || "—"}</td><td><b>{kr(item.unitPriceOere)}</b><small>pr. {item.unit}</small></td><td><Status tone={item.active === false ? "warn" : "ok"}>● {item.active === false ? "Inaktiv" : "Aktiv"}</Status></td>
-            <td><button className="procure-button secondary small" type="button" disabled={!canWrite} onClick={(event) => { event.stopPropagation(); setEditing(item); }}>Redigér</button></td>
+            <td><button className="fc-ressource-aabn" type="button" aria-label={`Åbn ${item.name}`} onClick={(event) => { event.stopPropagation(); setViewing(item); }}>Åbn <span aria-hidden="true">›</span></button></td>
           </tr>;
         })}</tbody></table></div>
         <div className="procure-result-count">Viser {products.length} af {state.catalog.length} varer</div>
       </> : null}
     </section>}
+    {viewing && <CatalogItemDetails item={viewing} state={state} canWrite={canWrite} onClose={() => setViewing(null)} onEdit={() => { setEditing(viewing); setViewing(null); }} />}
     {editing !== null && <CatalogItemEditor item={editing?.id ? editing : null} state={state} demo={demo} canWrite={canWrite} onClose={closeEditor} onSaved={itemSaved} />}
   </section>;
 }

@@ -10,14 +10,13 @@ const CODE_COMMIT = process.env.VEYRO_RESOURCE_COMMIT || "working-tree";
 const EMAIL = process.env.VITE_DEV_EJER_MAIL || "";
 const PASSWORD = process.env.VITE_DEV_BRUGER_KODE || "";
 const routes = [
-  ["01-overblik", "/ressourcer", ".fc-ressource-side"],
-  ["02-enheder", "/ressourcer/enheder", ".resource-directory-page"],
-  ["03-ejendomme", "/facility-v2/ejendomme", ".resource-directory-page"],
-  ["04-medarbejdere", "/ressourcer/medarbejdere", ".fc-ressource-side"],
-  ["05-units", "/ressourcer/units", ".fc-ressource-side"],
-  ["06-varekatalog", "/ressourcer/varekatalog", ".procure-v2.resource-directory-page"],
-  ["07-lagerlokationer", "/ressourcer/lagerlokationer", ".fc-ressource-side"],
-  ["08-certifikater", "/ressourcer/certifikater", ".fc-ressource-side"],
+  ["01-enheder", "/ressourcer/enheder", ".resource-directory-page"],
+  ["02-ejendomme", "/facility-v2/ejendomme", ".resource-directory-page"],
+  ["03-medarbejdere", "/ressourcer/medarbejdere", ".fc-ressource-side"],
+  ["04-units", "/ressourcer/units", ".fc-ressource-side"],
+  ["05-varekatalog", "/ressourcer/varekatalog", ".procure-v2.resource-directory-page"],
+  ["06-lagerlokationer", "/ressourcer/lagerlokationer", ".fc-ressource-side"],
+  ["07-certifikater", "/ressourcer/certifikater", ".fc-ressource-side"],
 ];
 const viewports = [[1440, 900], [1280, 800], [390, 844]];
 

@@ -2406,6 +2406,10 @@ button.fc-overview-kpi{cursor:pointer}
 .fc-ressource-side .fc-table tbody tr.fc-valgt{background:var(--fc-accent-soft)}
 .fc-ressource-side .fc-table td{box-sizing:border-box;height:var(--fc-resource-table-row-height);padding:4px var(--fc-resource-cell-inline);border-color:var(--fc-resource-panel-border);font-size:14px;line-height:20.3px}
 .fc-ressource-side .fc-pill{min-height:24px;padding:2px 8px;border-radius:12px;font-size:10px;line-height:14.5px}
+.fc-ressource-aabn{display:inline-flex;align-items:center;justify-content:flex-end;gap:5px;min-width:72px;min-height:36px;padding:0 8px;border:0;border-radius:7px;background:transparent;color:var(--bc-accent);font:inherit;font-size:14px;font-weight:750;white-space:nowrap;cursor:pointer}
+.fc-ressource-aabn:hover{background:var(--fc-accent-soft)}
+.fc-ressource-aabn:focus-visible{outline:2px solid var(--fc-info);outline-offset:1px}
+.fc-ressource-side .fc-table :is(th,td):last-child{text-align:right}
 .fc-ressource-resultat{box-sizing:border-box;height:32px;padding:9px 2px 0;color:var(--bc-muted);font-size:var(--fc-resource-result-size);line-height:14.5px}
 .fc-ressource-side .fc-pager{min-height:32px}
 .fc-ressource-metrik{min-height:36px;display:grid;grid-template-columns:auto auto minmax(130px,1fr);align-items:center;gap:7px;border:1px solid var(--bc-line);border-radius:8px;background:var(--bc-card);padding:5px 9px;color:var(--bc-muted);font-size:var(--fc-t-tight)}

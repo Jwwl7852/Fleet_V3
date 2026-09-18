@@ -39,9 +39,9 @@ import { num } from "../../fleet/format.js";
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
-  Henter, Datatilstand, Tom, Sider,
+  Henter, Datatilstand, Tom, Sider, Dialog, MiniLinje,
 } from "../../fleet/ui.jsx";
-import { RessourceRegister, RessourceResultat, RessourceSide } from "../RessourceLayout.jsx";
+import { RessourceAabn, RessourceRegister, RessourceResultat, RessourceSide } from "../RessourceLayout.jsx";
 import { pladsnavn, haller, valideReolplads } from "../../fleet/unitbooking.js";
 import {
   PLADS_TYPE, ALLE_PLADS_TYPER, PLADS_STATUS, ALLE_PLADS_STATUS,
@@ -185,6 +185,7 @@ export default function Lokationer() {
   const { path, bruger, moduler } = useFleet();
   const [ny, saetNy] = useState(false);
   const [redigerer, saetRedigerer] = useState(null);
+  const [valgt, saetValgt] = useState(null);
   const [soeg, saetSoeg] = useState("");
   const [zone, saetZone] = useState("");
   const [status, saetStatus] = useState("");
@@ -364,15 +365,13 @@ export default function Lokationer() {
                     <Pille tone={PLADS_STATUS[p.status || "aktiv"]?.pill || "ok"}>
                       {PLADS_STATUS[p.status || "aktiv"]?.label || p.status}
                     </Pille>
-                  ) },
+                ) },
                 { key: "handling", label: "", render: (p) => (
-                    <Knap disabled={!maaSkrive} onClick={() => saetRedigerer(p)}>
-                      Redigér
-                    </Knap>
+                    <RessourceAabn label={pladsnavn(p)} paaAabn={() => saetValgt(p)} />
                   ) },
               ]}
               raekker={paaSiden}
-              paaRaekke={maaSkrive ? saetRedigerer : undefined}
+              paaRaekke={saetValgt}
               tom="Ingen lokationer matcher filteret."
             />
             <RessourceResultat>Viser {num(viste.length)} af {num(pladser.length)} lagerlokationer.</RessourceResultat>
@@ -381,6 +380,28 @@ export default function Lokationer() {
         )}
 
       </RessourceRegister>
+
+      {valgt && (
+        <Dialog
+          titel={pladsnavn(valgt)}
+          under={valgt.zone || "Lagerlokation"}
+          onLuk={() => saetValgt(null)}
+          handling={maaSkrive ? (
+            <Knap variant="primaer" onClick={() => { saetRedigerer(valgt); saetValgt(null); }}>
+              Redigér
+            </Knap>
+          ) : null}
+        >
+          <MiniLinje label="Lager / hal" vaerdi={valgt.hal || "—"} />
+          <MiniLinje label="Zone" vaerdi={valgt.zone || "—"} />
+          <MiniLinje label="Type" vaerdi={PLADS_TYPE[valgt.type]?.label || valgt.type || "—"} />
+          <MiniLinje label="Sikkerhedsklasse" vaerdi={valgt.sikkerhedsklasse || "—"} />
+          <MiniLinje label="Temperatur" vaerdi={Number.isFinite(valgt.temperatur) ? `${valgt.temperatur} °C` : "—"} />
+          <MiniLinje label="Varelinjer" vaerdi={num(paaPlads(valgt.id).length)} />
+          <MiniLinje label="Kasser/carriers" vaerdi={num(beholdere(valgt.id))} />
+          <MiniLinje label="Status" vaerdi={<Pille tone={PLADS_STATUS[valgt.status || "aktiv"]?.pill || "ok"}>{PLADS_STATUS[valgt.status || "aktiv"]?.label || valgt.status}</Pille>} />
+        </Dialog>
+      )}
     </RessourceSide>
   );
 }

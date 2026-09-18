@@ -167,6 +167,7 @@
 .procure-v2.resource-catalog-directory .procure-catalog-table tbody tr{background:var(--veyro-white)}
 .procure-v2.resource-catalog-directory .procure-catalog-table th{background:var(--veyro-workspace);border-color:var(--veyro-border)}
 .procure-v2.resource-catalog-directory .procure-catalog-table td{border-color:var(--veyro-border)}
+.procure-v2.resource-catalog-directory .procure-catalog-table :is(th,td){border-right:0;border-left:0}
 .procure-v2.resource-catalog-directory .procure-catalog-table tbody tr:hover,
 .procure-v2.resource-catalog-directory .procure-catalog-table tbody tr:focus-visible{background:var(--veyro-teal-light)}
 .procure-v2.resource-catalog-directory .procure-catalog-table td:last-child,
@@ -219,6 +220,10 @@
   font-size:var(--fc-resource-result-size);
   line-height:14.5px;
 }
+.procure-resource-details{display:grid;grid-template-columns:minmax(150px,.42fr) minmax(0,1fr);margin:0}
+.procure-resource-details :is(dt,dd){margin:0;padding:10px 4px;border-bottom:1px solid var(--veyro-border)}
+.procure-resource-details dt{color:var(--veyro-muted-accessible);font-weight:700}
+.procure-resource-details dd{overflow-wrap:anywhere}
 @media(max-width:620px){
   .procure-v2.resource-directory-page{padding-top:0}
   .procure-v2.resource-directory-page .procure-pagehead{align-items:stretch}

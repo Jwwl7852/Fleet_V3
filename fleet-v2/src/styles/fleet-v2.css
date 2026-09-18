@@ -377,6 +377,7 @@ button { color: inherit; }
 .fleet-v2-embedded .resource-directory-page .unit-table tbody tr{background:var(--veyro-white)}
 .fleet-v2-embedded .resource-directory-page .unit-table tbody tr:hover,.fleet-v2-embedded .resource-directory-page .unit-table tbody tr:focus{background:var(--veyro-teal-light)}
 .fleet-v2-embedded .resource-directory-page .unit-table td{box-sizing:border-box;height:var(--fc-resource-table-row-height);padding:4px var(--fc-resource-cell-inline);border-color:var(--veyro-border);font-size:14px;line-height:20.3px}
+.fleet-v2-embedded .resource-directory-page .unit-table :is(th,td):last-child{text-align:right}
 .fleet-v2-embedded .resource-directory-page .catalog-pagination{min-height:32px;margin-top:10px}
 @media(max-width:600px){
   .fleet-v2-embedded .resource-directory-page{padding-top:0}

@@ -180,7 +180,7 @@ export function FleetV2App({
   const huskProfilvisning = useCallback((unitId, visning) => { profilvisninger.current.set(unitId, visning); }, []);
 
   let content;
-  if (route.kind === "catalog") content = <UnitCatalog initialStatus={statusFilter} initialViewState={katalogvisning.current} onViewStateChange={huskKatalogvisning} onNavigate={navigate} onNotice={setNotice} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} />;
+  if (route.kind === "catalog") content = <UnitCatalog initialStatus={statusFilter} initialViewState={katalogvisning.current} onViewStateChange={huskKatalogvisning} onNavigate={navigate} onNotice={setNotice} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} resourceMode={basePath === "/ressourcer"} />;
   else if (route.kind === "profile") content = <UnitProfile unitId={route.unitId} initialViewState={profilvisninger.current.get(route.unitId)} onViewStateChange={huskProfilvisning} onBack={back} onNavigate={navigate} onNotice={setNotice} vehicleLookup={vehicleLookup} imageProcessor={imageProcessor} />;
   else if (route.kind === "new-report") content = <ReportWizard onNavigate={navigate} imageProcessor={imageProcessor} />;
   else if (route.kind === "triage") content = <ReportTriage reportId={route.reportId} initialViewState={triagevisning.current} onViewStateChange={huskTriagevisning} onBack={back} onNavigate={navigate} />;

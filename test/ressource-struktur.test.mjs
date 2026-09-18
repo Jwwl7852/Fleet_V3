@@ -97,18 +97,28 @@ test("ressourceregistre bruger samme linjebaserede og tastaturtilgængelige åbn
   const products = read("src/fleet/procure-v2/ProcureScreens.jsx");
   const properties = read("facility-v2/src/routes/PropertiesPage.jsx");
   const vehicles = read("fleet-v2/src/components/UnitCatalog.jsx");
+  const certificates = read("src/moduler/Kompetencer.jsx");
+  const resourceLayout = read("src/moduler/RessourceLayout.jsx");
 
   assert.match(setupOverview, /<RessourceOmraadeTabel/);
   assert.match(sharedList, /paaRaekke=\{\(post\) => navigate\(post\.til\)\}/);
   assert.match(setupCatalog, /paaRaekke=\{setKategori\}/);
   assert.match(setupCatalog, /paaRaekke=\{setEnhed\}/);
   assert.match(employees, /paaRaekke=\{\(r\) => setValgtId\(r\.id\)\}/);
-  assert.match(units, /paaRaekke=\{maaSkrive \? saetRedigerer : undefined\}/);
-  assert.match(locations, /paaRaekke=\{maaSkrive \? saetRedigerer : undefined\}/);
-  assert.match(products, /aria-label=\{`Åbn vareopsætning for \$\{item\.name\}`\}/);
+  assert.match(units, /paaRaekke=\{saetValgt\}/);
+  assert.match(locations, /paaRaekke=\{saetValgt\}/);
+  assert.match(products, /aria-label=\{`Åbn \$\{item\.name\}`\}/);
   assert.match(properties, /aria-label=\{`Åbn \$\{property\.number\} \$\{property\.name\}`\}/);
   assert.match(vehicles, /role="button" tabIndex="0" aria-label=\{`Åbn \$\{unit\.number\}`\}/);
   assert.match(vehicles, /event\.key === "Enter" \|\| event\.key === " "/);
+  for (const source of [employees, units, locations, certificates]) assert.match(source, /<RessourceAabn/);
+  assert.match(products, /className="fc-ressource-aabn"/);
+  assert.match(properties, /className="fc-ressource-aabn"/);
+  assert.match(vehicles, /className="fc-ressource-aabn"/);
+  assert.match(resourceLayout, /Åbn <span aria-hidden="true">›<\/span>/);
+  assert.match(products, /<CatalogItemDetails/);
+  assert.match(units, /titel=\{`Unit \$\{valgt\.id\}`\}/);
+  assert.match(locations, /titel=\{pladsnavn\(valgt\)\}/);
 });
 
 test("vareeditoren kobler varer til det fælles leverandørregister", () => {
@@ -139,7 +149,7 @@ test("Ressourcer følger Enheder-listens kompakte liste- og filterstruktur", () 
   assert.match(employees, /<Dialog titel=\{valgt\.navn\}/);
   assert.doesNotMatch(employees, /role="tablist" aria-label="Status"/);
   assert.match(employees, /id="mb-visning"/);
-  assert.match(employees, /setForm\(r\.id\)/);
+  assert.match(employees, /setForm\(valgt\.id\)/);
   assert.match(employees, /ressourceKategorier\/medarbejderafdelinger/);
   assert.match(employees, /Tilføj funktion/);
   assert.doesNotMatch(employees, /type="checkbox"/);
@@ -154,4 +164,7 @@ test("Ressourcer følger Enheder-listens kompakte liste- og filterstruktur", () 
   assert.doesNotMatch(properties, /directory-summary/);
   assert.doesNotMatch(vehicles, /Gem visning/);
   assert.doesNotMatch(vehicles, /Fiktive testdata ·/);
+
+  const catalogCss = read("src/fleet/procure-v2/procure-v2.css");
+  assert.match(catalogCss, /resource-catalog-directory \.procure-catalog-table :is\(th,td\)\{border-right:0;border-left:0\}/);
 });

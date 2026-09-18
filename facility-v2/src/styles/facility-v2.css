@@ -220,6 +220,7 @@ tbody tr:hover { background: #f8fcfc; }
 .resource-directory-page .directory-table tbody tr{background:var(--veyro-white)}
 .resource-directory-page .directory-table tbody tr[role="link"]:hover,.resource-directory-page .directory-table tbody tr[role="link"]:focus-visible{background:var(--veyro-teal-light)}
 .resource-directory-page .directory-table td{box-sizing:border-box;height:var(--fc-resource-table-row-height);padding:4px var(--fc-resource-cell-inline);border-color:var(--veyro-border);font-size:14px;line-height:20.3px}
+.resource-directory-page .directory-table :is(th,td):last-child{text-align:right}
 .resource-directory-page .status-badge{min-height:24px;padding:2px 8px;border-radius:12px;font-size:10px;line-height:14.5px}
 .resource-directory-page .result-count{min-height:32px;margin:0;padding:9px 2px 0;font-size:var(--fc-resource-result-size);line-height:14.5px}
 @media(max-width:620px){

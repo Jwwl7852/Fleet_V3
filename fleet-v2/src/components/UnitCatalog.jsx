@@ -33,7 +33,7 @@ function exportCsv(units, costs) {
   URL.revokeObjectURL(url);
 }
 
-export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateChange, onNavigate, onNotice, vehicleLookup, imageProcessor }) {
+export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateChange, onNavigate, onNotice, vehicleLookup, imageProcessor, resourceMode = false }) {
   const { units, relations, loading, error, saveUnit, tenantId, repositoryKind, resourceOptions } = useFleetData();
   const sharedStorage = repositoryKind === "shared-unit-register";
   const [filters, setFilters] = useState(() => ({
@@ -110,13 +110,16 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
                 <td><span className="service-cell">{dateLabel(unit.nextServiceDate)}<small>{unit.nextServiceMeter == null ? "—" : `(${formatMeter(unit, unit.nextServiceMeter)})`}</small></span></td>
                 <td><strong>{formatCurrency.format(unitCost(unit.id, relations.costs || []))}</strong></td>
                 <td><span className={`note-pill${unit.noteCount ? " has-notes" : ""}`}><Icon name="report" size={14} />{unit.noteCount || 0}</span></td>
-                <td><button className="row-action" type="button" aria-label={`Redigér ${unit.number}`} onClick={(event) => { event.stopPropagation(); setEditing(unit); }}><Icon name="more" size={18} /></button></td>
+                <td>{resourceMode
+                  ? <button className="fc-ressource-aabn" type="button" aria-label={`Åbn ${unit.number}`} onClick={(event) => { event.stopPropagation(); openUnit(unit); }}>Åbn <span aria-hidden="true">›</span></button>
+                  : <button className="row-action" type="button" aria-label={`Redigér ${unit.number}`} onClick={(event) => { event.stopPropagation(); setEditing(unit); }}><Icon name="more" size={18} /></button>}
+                </td>
               </tr>
             ))}</tbody>
           </table>
         </div>
       ) : (
-        <div className="unit-card-grid">{visible.map((unit) => <article className="unit-catalog-card" key={unit.id} onClick={() => openUnit(unit)}><UnitThumbnail unit={unit} large /><div><span className="card-unit-top"><strong>{unit.number}</strong><StatusBadge unit={unit} relations={relations} /></span><h2>{modelLabel(unit)}</h2><p>{typeLabel(unit)} · {unit.department}</p><dl><div><dt>Måler</dt><dd>{formatMeter(unit)}</dd></div><div><dt>Næste service</dt><dd>{dateLabel(unit.nextServiceDate)}</dd></div><div><dt>3 mdr.</dt><dd>{formatCurrency.format(unitCost(unit.id, relations.costs || []))}</dd></div></dl><button className="secondary-button" type="button" onClick={(event) => { event.stopPropagation(); setEditing(unit); }}><Icon name="edit" size={15} />Redigér</button></div></article>)}</div>
+        <div className="unit-card-grid">{visible.map((unit) => <article className="unit-catalog-card" key={unit.id} onClick={() => openUnit(unit)}><UnitThumbnail unit={unit} large /><div><span className="card-unit-top"><strong>{unit.number}</strong><StatusBadge unit={unit} relations={relations} /></span><h2>{modelLabel(unit)}</h2><p>{typeLabel(unit)} · {unit.department}</p><dl><div><dt>Måler</dt><dd>{formatMeter(unit)}</dd></div><div><dt>Næste service</dt><dd>{dateLabel(unit.nextServiceDate)}</dd></div><div><dt>3 mdr.</dt><dd>{formatCurrency.format(unitCost(unit.id, relations.costs || []))}</dd></div></dl>{resourceMode ? <button className="fc-ressource-aabn" type="button" aria-label={`Åbn ${unit.number}`} onClick={(event) => { event.stopPropagation(); openUnit(unit); }}>Åbn <span aria-hidden="true">›</span></button> : <button className="secondary-button" type="button" onClick={(event) => { event.stopPropagation(); setEditing(unit); }}><Icon name="edit" size={15} />Redigér</button>}</div></article>)}</div>
       )}
 
         <footer className="catalog-pagination"><span>Vis <strong>{PAGE_SIZE} pr. side</strong></span><span>{filtered.length ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filtered.length)} af ${filtered.length}` : "0 enheder"}</span><div><button type="button" disabled={page === 1} onClick={() => setPage((value) => value - 1)} aria-label="Forrige side">‹</button>{Array.from({ length: pageCount }, (_, index) => <button className={page === index + 1 ? "is-active" : ""} type="button" key={index + 1} onClick={() => setPage(index + 1)}>{index + 1}</button>)}<button type="button" disabled={page === pageCount} onClick={() => setPage((value) => value + 1)} aria-label="Næste side">›</button></div></footer>

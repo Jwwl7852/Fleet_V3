@@ -23,6 +23,22 @@ export function RessourceResultat({ children }) {
   return <div className="fc-ressource-resultat">{children}</div>;
 }
 
+export function RessourceAabn({ label, paaAabn }) {
+  return (
+    <button
+      type="button"
+      className="fc-ressource-aabn"
+      aria-label={`Åbn ${label}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        paaAabn();
+      }}
+    >
+      Åbn <span aria-hidden="true">›</span>
+    </button>
+  );
+}
+
 export function RessourceMetrik({ label, vaerdi, note }) {
   return (
     <div className="fc-ressource-metrik" aria-label={`${label}: ${vaerdi}. ${note}`}>

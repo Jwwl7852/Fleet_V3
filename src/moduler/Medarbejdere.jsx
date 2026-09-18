@@ -90,7 +90,7 @@ import {
 import { gem, nyId } from "../fleet/skriv.js";
 import { AUDIT } from "../fleet/audit.js";
 import { vaerste } from "../fleet/datatilstand.js";
-import { RessourceRegister, RessourceResultat, RessourceSide } from "./RessourceLayout.jsx";
+import { RessourceAabn, RessourceRegister, RessourceResultat, RessourceSide } from "./RessourceLayout.jsx";
 
 const passerSoegning = (p, q) =>
   !q || [p.navn, p.email, p.telefon, p.stationeret]
@@ -506,10 +506,7 @@ export default function Medarbejdere() {
                     : <span className="fc-neutral">—</span>
                 ) },
               { key: "handling", label: "", render: (r) => (
-                  <Knap disabled={!maaSkrive} onClick={(event) => { event.stopPropagation(); setForm(r.id); setValgtId(null); }}
-                    title={maaSkrive ? `Redigér ${r.navn}.` : "Kræver personale.skriv, som kun admin har."}>
-                    Redigér
-                  </Knap>
+                  <RessourceAabn label={r.navn} paaAabn={() => setValgtId(r.id)} />
                 ) },
             ]}
             raekker={viste}

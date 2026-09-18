@@ -22,10 +22,10 @@ import { num, dato, pct, iDagIso, isoTilMs, msTilIso } from "../../fleet/format.
 import { harPerm, PERM } from "../../fleet/permissions.js";
 import {
   Kort, Tabel, Pille, Knap, Felt, Feltraekke, Formular,
-  Henter, Datatilstand, Tom, Sider,
+  Henter, Datatilstand, Tom, Sider, Dialog, MiniLinje,
 } from "../../fleet/ui.jsx";
 import {
-  RessourceMetrik, RessourceRegister, RessourceResultat, RessourceSide,
+  RessourceAabn, RessourceMetrik, RessourceRegister, RessourceResultat, RessourceSide,
 } from "../RessourceLayout.jsx";
 import {
   KASSE_STATUS, ALLE_KASSE_STATUS, SELVVALGT_KASSE_STATUS,
@@ -331,6 +331,7 @@ export default function Kasser() {
   const { path, bruger } = useFleet();
   const [ny, saetNy] = useState(false);
   const [redigerer, saetRedigerer] = useState(null);
+  const [valgt, saetValgt] = useState(null);
   const [soeg, saetSoeg] = useState("");
   const [status, saetStatus] = useState("");
   const [type, saetType] = useState("");
@@ -550,13 +551,13 @@ export default function Kasser() {
                         sag {r.sagsnummer} · {dato(r.fra)}–{dato(r.til)}
                       </span>
                     );
-                  } },
+                } },
                 { key: "handling", label: "", render: (k) => (
-                    <Knap disabled={!maaSkrive} onClick={() => saetRedigerer(k)}>Redigér</Knap>
+                    <RessourceAabn label={k.id} paaAabn={() => saetValgt(k)} />
                   ) },
               ]}
               raekker={paaSiden}
-              paaRaekke={maaSkrive ? saetRedigerer : undefined}
+              paaRaekke={saetValgt}
               tom="Ingen units matcher filteret."
             />
             <RessourceResultat>Viser {num(viste.length)} af {num(kasser.length)} units.</RessourceResultat>
@@ -569,6 +570,27 @@ export default function Kasser() {
           En unit der går i stykker, får status <b>ude af drift</b>.
         </p>
       </RessourceRegister>
+
+      {valgt && (
+        <Dialog
+          titel={`Unit ${valgt.id}`}
+          under={typeMap[valgt.type]?.navn || valgt.type}
+          onLuk={() => saetValgt(null)}
+          handling={maaSkrive ? (
+            <Knap variant="primaer" onClick={() => { saetRedigerer(valgt); saetValgt(null); }}>
+              Redigér
+            </Knap>
+          ) : null}
+        >
+          <MiniLinje label="Undertype" vaerdi={undertyperFor(typeMap[valgt.type]).find((u) => u.id === valgt.undertype)?.navn || "—"} />
+          <MiniLinje label="Enhedstilstand" vaerdi={<Pille tone={KASSE_STATUS[valgt.status]?.pill || "info"}>{KASSE_STATUS[valgt.status]?.label || valgt.status}</Pille>} />
+          <MiniLinje label="Aktuel placering" vaerdi={valgt.pladsId ? pladsnavn(pladsMap[valgt.pladsId]) : "— ude"} />
+          <MiniLinje label="Hjemplads" vaerdi={pladsnavn(pladsMap[valgt.hjemPladsId]) || "—"} />
+          <MiniLinje label="Udvendige mål" vaerdi={[valgt.laengdeMm, valgt.breddeMm, valgt.hoejdeMm].every(Number.isFinite) ? `${cmFraMm(valgt.laengdeMm)} × ${cmFraMm(valgt.breddeMm)} × ${cmFraMm(valgt.hoejdeMm)} cm` : "—"} />
+          <MiniLinje label="Næste reservation" vaerdi={(() => { const r = naesteReservation(udlaan, valgt.id, nu); return r ? `Sag ${r.sagsnummer} · ${dato(r.fra)}–${dato(r.til)}` : "—"; })()} />
+          {valgt.note && <MiniLinje label="Note" vaerdi={valgt.note} />}
+        </Dialog>
+      )}
     </RessourceSide>
   );
 }
