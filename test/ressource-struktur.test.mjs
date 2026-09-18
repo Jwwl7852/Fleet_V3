@@ -29,8 +29,13 @@ test("kompakt navigation bruger Veyro-logoet og centrerer alle modulikoner", () 
   const styles = read("src/fleet/fleet.css");
   assert.match(shell, /<div className="fc-brand-logo"><VeyroLogo variant="sidebar" \/><\/div>/);
   assert.doesNotMatch(shell, /fc-brand-mark/);
+  assert.match(shell, /function Navigationsikon\(\{ navn \}\)/);
+  assert.equal((shell.match(/<Navigationsikon navn=\{m\.key\} \/>/g) || []).length, 3);
   assert.match(styles, /\.fc-menu-kompakt \.fc-brand-logo \.veyro-logo\{[^}]*display:block[^}]*width:184px[^}]*transform:translateX\(-3px\)/);
-  assert.match(styles, /\.fc-menu-kompakt \.fc-link\{[^}]*justify-content:center[^}]*width:44px[^}]*margin-inline:auto/);
+  assert.match(styles, /\.fc-nav-ikon\{[^}]*place-items:center[^}]*width:24px[^}]*height:24px/);
+  assert.match(styles, /\.fc-menu-kompakt \.fc-nav\{[^}]*padding:8px 0/);
+  assert.match(styles, /\.fc-menu-kompakt \.fc-link\{[^}]*justify-content:center[^}]*width:44px[^}]*height:44px[^}]*margin:0[^}]*padding:0/);
+  assert.match(styles, /\.fc-menu-kompakt \.fc-nav-ikon>svg\{[^}]*width:20px[^}]*height:20px[^}]*transform:none/);
 });
 
 test("modulgenveje peger på de samme fælles registre", () => {

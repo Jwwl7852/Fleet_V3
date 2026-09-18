@@ -103,6 +103,16 @@ const ICO = {
   opsaetning: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 11 4.6a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 19.4 9a2 2 0 1 1 0 4",
 };
 
+function Navigationsikon({ navn }) {
+  return (
+    <span className="fc-nav-ikon" data-ikon={navn} aria-hidden="true">
+      <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+        <path d={ICO[navn]} />
+      </svg>
+    </span>
+  );
+}
+
 export default function AppShell() {
   const { tenant, tenantId, bruger, logUd, demo, demoRolle, saetDemoRolle, moduler } = useFleet();
   const location = useLocation();
@@ -405,9 +415,7 @@ export default function AppShell() {
                                 }
                                 skifModul(m.key, aktiv);
                               }}>
-                              <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <path d={ICO[m.key]} />
-                              </svg>
+                              <Navigationsikon navn={m.key} />
                               <span>{m.label}</span>
                               <svg className={(kompaktAktiv ? kompaktAaben === m.key : undermenuAaben)
                                 ? "fc-chevron" : "fc-chevron fc-chevron-lukket"}
@@ -460,9 +468,7 @@ export default function AppShell() {
                             }
                             skifModul(m.key, aktiv);
                           }}>
-                          <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d={ICO[m.key]} />
-                          </svg>
+                          <Navigationsikon navn={m.key} />
                           <span>{m.label}</span>
                           {born.length > 0 && (
                             <svg className={visBorn ? "fc-chevron" : "fc-chevron fc-chevron-lukket"}
@@ -472,9 +478,7 @@ export default function AppShell() {
                           )}
                         </button> : <NavLink to={m.sti} end={m.sti === "/"}
                           className={aktiv ? "fc-link fc-on" : "fc-link"}>
-                          <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d={ICO[m.key]} />
-                          </svg>
+                          <Navigationsikon navn={m.key} />
                           <span>{m.label}</span>
                         </NavLink>}
                         {visBorn && (

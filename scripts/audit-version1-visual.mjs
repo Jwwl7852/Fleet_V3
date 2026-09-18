@@ -13,6 +13,7 @@ const CODE_COMMIT = process.env.VEYRO_VISUAL_COMMIT || "working-tree";
 const VIEWPORTS = [[1440, 900], [390, 844]];
 const ROUTE_CAPTURE = process.env.VEYRO_VISUAL_ROUTES !== "0";
 const INTERACTION_CAPTURE = process.env.VEYRO_VISUAL_INTERACTIONS === "1";
+const SIDEBAR_CAPTURE = process.env.VEYRO_VISUAL_SIDEBAR === "1";
 
 if (!EMAIL || !PASSWORD) throw new Error("Review-login skal komme fra procesmiljøet.");
 
@@ -42,8 +43,10 @@ if (!edge) throw new Error("Microsoft Edge blev ikke fundet.");
 
 const screenshotsDir = join(OUT, "screenshots");
 const interactionsDir = join(OUT, "interactions");
+const sidebarDir = join(OUT, "sidebar");
 mkdirSync(screenshotsDir, { recursive: true });
 if (INTERACTION_CAPTURE) mkdirSync(interactionsDir, { recursive: true });
+if (SIDEBAR_CAPTURE) mkdirSync(sidebarDir, { recursive: true });
 const profile = mkdtempSync(join(tmpdir(), "veyro-visual-v1-"));
 const browser = spawn(edge, [
   "--headless=new", "--disable-gpu", "--no-first-run", "--force-device-scale-factor=1",
@@ -166,6 +169,7 @@ const failures = [];
 const interactions = [];
 const interactionFailures = [];
 const interactionUnavailable = [];
+const sidebarAudit = [];
 const scenarios = [
   { key: "ressource-enhed-detalje", path: "/ressourcer/enheder", selector: "tbody tr[role=button]" },
   { key: "ressource-ejendom-detalje", path: "/facility-v2/ejendomme", selector: "tbody tr[role=link]" },
@@ -191,6 +195,33 @@ try {
   await waitFor("document.readyState === 'complete' && Boolean(document.querySelector('form'))", "Loginformularen blev ikke klar");
   await evaluate(`(()=>{const set=(selector,value)=>{const element=document.querySelector(selector);const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(element,value);element.dispatchEvent(new Event('input',{bubbles:true}));};set('input[type=email]',${JSON.stringify(EMAIL)});set('input[type=password]',${JSON.stringify(PASSWORD)});document.querySelector('form').requestSubmit();return true})()`);
   await waitFor("location.pathname !== '/login'", "Det lokale emulatorlogin fejlede");
+
+  if (SIDEBAR_CAPTURE) {
+    await setViewport(1440, 900);
+    await navigate("/facility-v2/arbejdsko");
+    const measureSidebar = async (state) => evaluate(`(()=>{
+      const visible=(el)=>{const r=el.getBoundingClientRect();const s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
+      const round=(value)=>+value.toFixed(2);
+      const side=document.querySelector('.fc-side');const sr=side.getBoundingClientRect();const center=sr.left+sr.width/2;
+      const links=[...document.querySelectorAll('.fc-nav-modul>.fc-link,.fc-fakturacenter-main>.fc-link')].filter(visible);
+      return {state:${JSON.stringify(state)},sidebar:{x:round(sr.x),width:round(sr.width),center:round(center)},items:links.map((link)=>{
+        const holder=link.querySelector('.fc-nav-ikon');const svg=holder?.querySelector('svg');const path=svg?.querySelector('path');
+        const lr=link.getBoundingClientRect();const hr=holder.getBoundingClientRect();const vr=svg.getBoundingClientRect();const box=path.getBBox();
+        const holderCenter=hr.left+hr.width/2;const actionCenter=lr.left+lr.width/2;const symbolDelta=((box.x+box.width/2)-12)*(vr.width/24);
+        return {label:link.getAttribute('aria-label')||link.textContent.trim(),active:link.classList.contains('fc-on'),action:{x:round(lr.x),y:round(lr.y),width:round(lr.width),height:round(lr.height),center:round(actionCenter),delta:round(actionCenter-center)},holder:{x:round(hr.x),y:round(hr.y),width:round(hr.width),height:round(hr.height),center:round(holderCenter),delta:round(holderCenter-center)},symbol:{bbox:{x:round(box.x),width:round(box.width)},opticalDelta:round(symbolDelta)}};
+      })};
+    })()`);
+    if (await evaluate("document.querySelector('.fc-app').classList.contains('fc-menu-kompakt')")) {
+      await evaluate("document.querySelector('.fc-menu-toggle').click();true");
+      await pause(250);
+    }
+    sidebarAudit.push(await measureSidebar("udfoldet"));
+    await screenshot("menu-udfoldet-1440x900.png", sidebarDir);
+    await evaluate("document.querySelector('.fc-menu-toggle').click();true");
+    await pause(250);
+    sidebarAudit.push(await measureSidebar("sammenklappet"));
+    await screenshot("menu-sammenklappet-1440x900.png", sidebarDir);
+  }
 
   if (ROUTE_CAPTURE) {
     for (const [width, height] of VIEWPORTS) {
@@ -235,7 +266,9 @@ try {
     }
   }
 
-  const reportName = ROUTE_CAPTURE ? "visual-audit.json" : "interaction-audit.json";
+  const reportName = SIDEBAR_CAPTURE && !ROUTE_CAPTURE && !INTERACTION_CAPTURE
+    ? "sidebar-audit.json"
+    : ROUTE_CAPTURE ? "visual-audit.json" : "interaction-audit.json";
   writeFileSync(join(OUT, reportName), `${JSON.stringify({
     codeCommit: CODE_COMMIT,
     capturedAt: new Date().toISOString(),
@@ -249,8 +282,9 @@ try {
     interactions,
     interactionFailures,
     interactionUnavailable,
+    sidebarAudit,
   }, null, 2)}\n`);
-  console.log(JSON.stringify({ ok: failures.length === 0 && interactionFailures.length === 0, output: OUT, routes: routes.length, captures: captures.length, failures: failures.length, interactions: interactions.length, interactionFailures: interactionFailures.length, interactionUnavailable: interactionUnavailable.length }, null, 2));
+  console.log(JSON.stringify({ ok: failures.length === 0 && interactionFailures.length === 0, output: OUT, routes: routes.length, captures: captures.length, failures: failures.length, interactions: interactions.length, interactionFailures: interactionFailures.length, interactionUnavailable: interactionUnavailable.length, sidebarStates: sidebarAudit.length }, null, 2));
 } finally {
   try { socket.close(); } catch { /* allerede lukket */ }
   browser.kill();

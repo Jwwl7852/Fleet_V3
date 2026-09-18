@@ -271,12 +271,13 @@ body:has(#root .fc-app){margin:0}
    kun for at kunne skjule dem samlet når gruppen er foldet sammen. */
 .fc-nav-gruppe-punkter{display:contents}
 .fc-nav-gruppe-punkter.fc-lukket{display:none}
-.fc-link{display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; border:0;border-radius:8px;background:transparent;
+.fc-link{box-sizing:border-box;display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; border:0;border-radius:8px;background:transparent;
   color:#c3ccda; text-decoration:none;text-align:left;font:inherit; font-size:var(--fc-t-m); font-weight:500;cursor:pointer}
 .fc-link>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fc-link:hover{background:var(--fc-navy-2); color:#fff}
 .fc-link.fc-on{background:var(--bc-accent); color:#fff; font-weight:600}
-.fc-link svg{width:17px; height:17px; flex:0 0 17px; stroke:currentColor; fill:none; stroke-width:1.9}
+.fc-nav-ikon{display:grid;place-items:center;width:24px;height:24px;min-width:24px;flex:0 0 24px;overflow:visible}
+.fc-nav-ikon>svg{display:block;width:18px;height:18px;margin:0;stroke:currentColor;fill:none;stroke-width:1.9;transform:none}
 .fc-link .fc-chevron{margin-left:auto; width:13px; height:13px; flex:0 0 13px; stroke-width:2}
 .fc-sub{display:flex; flex-direction:column; margin:2px 0 4px 27px;
   border-left:1px solid var(--fc-navy-3); padding-left:9px}
@@ -2221,10 +2222,11 @@ body:has(.fc-login-side){margin:0}
   .fc-menu-kompakt .fc-brand-logo{justify-content:flex-start;width:56px;height:58px;min-height:58px;margin:8px 0 0;padding:0;overflow:hidden}
   .fc-menu-kompakt .fc-brand-logo .veyro-logo{display:block;flex:0 0 auto;width:184px;max-width:none;margin:0;transform:translateX(-3px)}
   .fc-menu-kompakt .fc-ver,.fc-menu-kompakt .fc-tenant,.fc-menu-kompakt .fc-nav-gruppe-toggle,.fc-menu-kompakt .fc-who-txt,.fc-menu-kompakt .fc-demo-rolle,.fc-menu-kompakt .fc-side-btn{display:none}
-  .fc-menu-kompakt .fc-nav{padding:8px 7px;overflow:visible}.fc-menu-kompakt .fc-nav-gruppe-blok,.fc-menu-kompakt .fc-nav-gruppe-punkter{display:grid;overflow:visible}
-  .fc-menu-kompakt .fc-nav-modul,.fc-menu-kompakt .fc-fakturacenter-nav{width:100%}
-  .fc-menu-kompakt .fc-link{justify-content:center;width:44px;min-height:44px;margin-inline:auto;padding:8px}.fc-menu-kompakt .fc-link>span,.fc-menu-kompakt .fc-link>.fc-chevron,.fc-menu-kompakt .fc-fakturacenter-toggle{display:none}
-  .fc-menu-kompakt .fc-link>svg{width:24px;height:24px;margin:0}
+  .fc-menu-kompakt .fc-nav{padding:8px 0;overflow:visible}.fc-menu-kompakt .fc-nav-gruppe-blok,.fc-menu-kompakt .fc-nav-gruppe-punkter{display:grid;justify-items:center;width:100%;overflow:visible}
+  .fc-menu-kompakt .fc-nav-modul,.fc-menu-kompakt .fc-fakturacenter-nav{display:grid;justify-items:center;width:100%;margin:0;padding:0}
+  .fc-menu-kompakt .fc-link{justify-content:center;gap:0;width:44px;height:44px;min-height:44px;margin:0;padding:0}.fc-menu-kompakt .fc-link>span:not(.fc-nav-ikon),.fc-menu-kompakt .fc-link>.fc-chevron,.fc-menu-kompakt .fc-fakturacenter-toggle{display:none}
+  .fc-menu-kompakt .fc-nav-ikon{width:24px;height:24px;min-width:24px;margin:0}
+  .fc-menu-kompakt .fc-nav-ikon>svg{width:20px;height:20px;margin:0;transform:none}
   .fc-menu-kompakt .fc-nav-modul::after{content:"";position:absolute;left:100%;top:0;width:8px;height:100%}
   .fc-menu-kompakt .fc-sub{position:absolute;z-index:70;left:calc(100% + 8px);top:var(--fc-kompakt-top,0);display:none;min-width:220px;max-width:min(340px,calc(100vw - 100px));max-height:min(72vh,620px);margin:0;padding:8px;border:1px solid var(--veyro-border);border-radius:9px;background:var(--fc-navy-2);box-shadow:var(--fc-shadow);overflow:auto;scrollbar-gutter:stable}
   .fc-menu-kompakt .fc-nav-modul.fc-kompakt-aaben>.fc-sub,.fc-menu-kompakt .fc-fakturacenter-nav.fc-kompakt-aaben>.fc-sub{display:grid}
