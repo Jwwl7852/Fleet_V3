@@ -200,7 +200,15 @@ body:has(#root .fc-app){margin:0}
   --fc-resource-table-head-height:38px;
   --fc-resource-table-row-height:47px;
   --fc-resource-cell-inline:10px;
-  --fc-resource-result-size:10px}
+  --fc-resource-result-size:10px;
+  /* FACILITYs godkendte .card er den fælles visuelle reference for alle
+     Ressourcer-paneler. Variablerne peger direkte på de samme designtokens. */
+  --fc-resource-page-bg:var(--veyro-workspace);
+  --fc-resource-panel-bg:var(--veyro-white);
+  --fc-resource-panel-border:var(--veyro-border);
+  --fc-resource-panel-radius:var(--fc-r);
+  --fc-resource-panel-shadow:var(--fc-shadow);
+  --fc-resource-table-head-bg:var(--veyro-workspace-surface)}
 .fc-app :focus-visible{outline:2px solid var(--bc-accent); outline-offset:2px; border-radius:4px}
 
 /* Ejerkonsollen. ⚠ INGEN SIDEBAR — .fc-app er en RÆKKE, fordi sidebaren står
@@ -2379,7 +2387,9 @@ button.fc-overview-kpi{cursor:pointer}
 .fc-ressource-hoved h1{margin:0;font-size:var(--fc-resource-title-size);font-weight:700;line-height:var(--fc-resource-title-line);letter-spacing:-.015em}
 .fc-ressource-handlinger{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .fc-ressource-handlinger .fc-btn{height:var(--fc-resource-control-height);min-height:var(--fc-resource-control-height)}
-.fc-ressource-register{min-width:0;border-radius:8px;box-shadow:none}
+.fc-ressource-register{min-width:0;background:var(--fc-resource-panel-bg);border:1px solid var(--fc-resource-panel-border);border-radius:var(--fc-resource-panel-radius);box-shadow:var(--fc-resource-panel-shadow)}
+.fc-ressource-register-hoved{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:10px 12px 0}
+.fc-ressource-register-hoved h2{margin:0;font-size:var(--fc-t-l);font-weight:700}
 .fc-ressource-register .fc-card-b{padding:12px}
 .fc-ressource-side .fc-filtre{align-items:center;gap:var(--fc-resource-toolbar-gap);margin:0 0 10px}
 .fc-ressource-side .fc-filtre .fc-felt{flex:0 1 var(--fc-resource-filter-width);min-width:var(--fc-resource-filter-width);margin:0}
@@ -2388,9 +2398,12 @@ button.fc-overview-kpi{cursor:pointer}
 .fc-ressource-side .fc-filtre .fc-felt>label{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .fc-ressource-side .fc-filtre :is(input,select,.fc-btn){box-sizing:border-box;height:var(--fc-resource-control-height);min-height:var(--fc-resource-control-height);padding-block:0}
 .fc-ressource-side .fc-scroll{max-width:100%;overflow-x:auto}
-.fc-ressource-side .fc-table{font-size:14px}
-.fc-ressource-side .fc-table th{box-sizing:border-box;height:var(--fc-resource-table-head-height);padding:0 var(--fc-resource-cell-inline);font-size:12px;font-weight:700;line-height:17.4px;letter-spacing:normal;text-transform:none}
-.fc-ressource-side .fc-table td{box-sizing:border-box;height:var(--fc-resource-table-row-height);padding:4px var(--fc-resource-cell-inline);font-size:14px;line-height:20.3px}
+.fc-ressource-side .fc-table{font-size:14px;background:var(--fc-resource-panel-bg)}
+.fc-ressource-side .fc-table th{box-sizing:border-box;height:var(--fc-resource-table-head-height);padding:0 var(--fc-resource-cell-inline);background:var(--fc-resource-table-head-bg);border-color:var(--fc-resource-panel-border);font-size:12px;font-weight:700;line-height:17.4px;letter-spacing:normal;text-transform:none}
+.fc-ressource-side .fc-table tbody tr{background:var(--fc-resource-panel-bg)}
+.fc-ressource-side .fc-table tbody tr:hover{background:var(--fc-accent-soft)}
+.fc-ressource-side .fc-table tbody tr.fc-valgt{background:var(--fc-accent-soft)}
+.fc-ressource-side .fc-table td{box-sizing:border-box;height:var(--fc-resource-table-row-height);padding:4px var(--fc-resource-cell-inline);border-color:var(--fc-resource-panel-border);font-size:14px;line-height:20.3px}
 .fc-ressource-side .fc-pill{min-height:24px;padding:2px 8px;border-radius:12px;font-size:10px;line-height:14.5px}
 .fc-ressource-resultat{box-sizing:border-box;height:32px;padding:9px 2px 0;color:var(--bc-muted);font-size:var(--fc-resource-result-size);line-height:14.5px}
 .fc-ressource-side .fc-pager{min-height:32px}

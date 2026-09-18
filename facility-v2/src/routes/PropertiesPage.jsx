@@ -64,7 +64,7 @@ export function PropertiesPage() {
       <button className="primary-button" type="button" onClick={() => setShowCreate(true)}>+ Opret ejendom</button>
     </div>
     <section className="directory-layout directory-layout-single">
-      <article className="card directory-main">
+      <article className="card directory-main resource-register-panel">
         <div className="filter-bar">
           <label className="filter-search"><Icon name="search" size={17} /><input aria-label="Søg i ejendomme" value={search} onChange={(event) => set('q', event.target.value)} placeholder="Søg nummer, navn, adresse eller by" /></label>
           <select aria-label="Ejendomstype" value={type} onChange={(event) => set('type', event.target.value)}><option value="">Alle typer</option>{types.map((item) => <option key={item}>{item}</option>)}</select>

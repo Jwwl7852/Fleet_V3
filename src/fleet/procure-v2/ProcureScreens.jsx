@@ -230,7 +230,7 @@ export function ResourceCatalogScreen({ state, setState, demo, canWrite, busy, e
     <PageHead title="Varekatalog" actions={<button className="procure-button" disabled={!canWrite} onClick={() => setEditing({})}>＋ Opret vare</button>} />
     <Toast message={message?.text} tone={message?.tone} onClose={() => setMessage(null)} />
     <PageState busy={busy} error={error} />
-    {!busy && !error && <>
+    {!busy && !error && <section className="resource-register-panel">
       <div className="procure-catalog-filters">
         <label className="procure-search"><span aria-hidden="true">⌕</span><input aria-label="Søg i varekatalog" value={search} onChange={(event) => setParam("soeg", event.target.value)} placeholder="Søg efter vare, varenummer eller leverandør" /></label>
         <label><select aria-label="Kategori" value={category} onChange={(event) => setParam("kategori", event.target.value)}><option value="">Alle kategorier</option>{[...new Set(state.catalog.map((item) => item.category).filter(Boolean))].map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -249,7 +249,7 @@ export function ResourceCatalogScreen({ state, setState, demo, canWrite, busy, e
         })}</tbody></table></div>
         <div className="procure-result-count">Viser {products.length} af {state.catalog.length} varer</div>
       </> : null}
-    </>}
+    </section>}
     {editing !== null && <CatalogItemEditor item={editing?.id ? editing : null} state={state} demo={demo} canWrite={canWrite} onClose={closeEditor} onSaved={itemSaved} />}
   </section>;
 }

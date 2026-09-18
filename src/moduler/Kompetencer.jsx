@@ -258,7 +258,7 @@ function Udloebsliste({ raekker }) {
     .sort((a, b) => a.udloeberMs - b.udloeberMs);
 
   return (
-    <Kort titel="Udløber eller er udløbet">
+    <RessourceRegister titel="Udløber eller er udløbet">
       <Tabel
         kolonner={[
           { key: "person", label: "Medarbejder", render: (x) => x.person.navn },
@@ -280,6 +280,6 @@ function Udloebsliste({ raekker }) {
         skal nås først. {BLOKERENDE_KOMPETENCER.length} af kompetencetyperne
         blokerer disponeringen — resten advarer.
       </p>
-    </Kort>
+    </RessourceRegister>
   );
 }

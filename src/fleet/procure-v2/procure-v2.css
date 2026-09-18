@@ -158,10 +158,17 @@
   border-radius:0;
 }
 .procure-v2.resource-directory-page .procure-catalog-table{margin-top:0}
-.procure-v2.resource-catalog-directory{display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto;gap:10px}
+.procure-v2.resource-catalog-directory{display:grid;gap:10px}
 .procure-v2.resource-catalog-directory .procure-pagehead{margin-bottom:0}
+.procure-v2.resource-catalog-directory .resource-register-panel{min-width:0;padding:12px;background:var(--veyro-white);border:1px solid var(--veyro-border);border-radius:var(--fc-r);box-shadow:var(--fc-shadow)}
 .procure-v2.resource-catalog-directory .procure-catalog-table{min-width:0;width:100%}
 .procure-v2.resource-catalog-directory .procure-catalog-table table{min-width:920px}
+.procure-v2.resource-catalog-directory .procure-catalog-table table,
+.procure-v2.resource-catalog-directory .procure-catalog-table tbody tr{background:var(--veyro-white)}
+.procure-v2.resource-catalog-directory .procure-catalog-table th{background:var(--veyro-workspace);border-color:var(--veyro-border)}
+.procure-v2.resource-catalog-directory .procure-catalog-table td{border-color:var(--veyro-border)}
+.procure-v2.resource-catalog-directory .procure-catalog-table tbody tr:hover,
+.procure-v2.resource-catalog-directory .procure-catalog-table tbody tr:focus-visible{background:var(--veyro-teal-light)}
 .procure-v2.resource-catalog-directory .procure-catalog-table td:last-child,
 .procure-v2.resource-catalog-directory .procure-catalog-table th:last-child{text-align:right}
 .procure-v2.resource-directory-page .procure-catalog-table th{

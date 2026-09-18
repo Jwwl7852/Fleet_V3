@@ -10,9 +10,10 @@ export function RessourceSide({ titel, handling, children, className = "" }) {
   );
 }
 
-export function RessourceRegister({ children, className = "" }) {
+export function RessourceRegister({ children, className = "", titel = "" }) {
   return (
-    <section className={`fc-card fc-ressource-register${className ? ` ${className}` : ""}`}>
+    <section className={`fc-card fc-ressource-register resource-register-panel${className ? ` ${className}` : ""}`}>
+      {titel ? <header className="fc-ressource-register-hoved"><h2>{titel}</h2></header> : null}
       <div className="fc-card-b">{children}</div>
     </section>
   );
