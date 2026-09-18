@@ -522,19 +522,43 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .report-success h2, .report-success p { margin: 0; }
 .report-success > div { display: flex; gap: 8px; }
 
-.kanban-board { min-width: 0; width: 100%; display: grid; grid-template-columns: repeat(5, minmax(185px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 8px; }
-.kanban-column { min-height: 610px; padding: 9px; background: #edf1f3; border: 1px solid #dce4e8; border-radius: 12px; }
-.kanban-column > header { display: flex; justify-content: space-between; align-items: center; padding: 5px 4px 12px; }
-.kanban-column > header span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.72); font-weight: 700; }
-.kanban-column.case-triage { background: #fff8e9; }
-.kanban-column.case-ready { background: #eaf8fb; }
-.kanban-column.case-inProgress { background: #eaf8f1; }
-.kanban-column.case-awaitingInvoice { background: #f3effd; }
-.case-card { display: grid; gap: 5px; margin-bottom: 9px; padding: 12px; background: white; border: 1px solid #dfe6e9; border-radius: 9px; box-shadow: 0 3px 10px rgba(6,26,42,.04); }
-.case-card:hover { border-color: var(--veyro-cyan); }
-.case-card > small, .case-card > span { color: var(--veyro-text-secondary); font-size: 10px; }
-.case-card footer { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
-.case-card footer > span { font-size: 9px; color: var(--veyro-text-secondary); }
+.facility-queue-page { display: grid; grid-template-rows: auto 72px 45px minmax(0, 1fr); gap: 12px; }
+.facility-queue-view-switch { display: flex; overflow: hidden; border: 1px solid var(--veyro-border); border-radius: 8px; background: var(--veyro-white); }
+.facility-queue-view-switch button { min-height: 36px; padding: 0 13px; border: 0; background: transparent; color: var(--veyro-text-secondary); font: inherit; cursor: pointer; }
+.facility-queue-view-switch button[aria-pressed="true"] { background: var(--veyro-teal-light); color: var(--veyro-teal); font-weight: 750; }
+.facility-queue-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.facility-queue-kpis article { display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 10px 14px; background: var(--veyro-white); border: 1px solid var(--veyro-border); border-radius: 8px; }
+.facility-queue-kpis span { color: var(--veyro-text-secondary); font-size: 9.5px; }
+.facility-queue-kpis strong { font-size: 22px; }
+.facility-queue-toolbar { display: grid; grid-template-columns: minmax(220px, 1.45fr) repeat(5, minmax(118px, .7fr)); gap: 8px; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.facility-queue-toolbar input, .facility-queue-toolbar select { min-width: 0; height: 36px; padding: 0 10px; border: 1px solid var(--veyro-border); border-radius: 7px; background: var(--veyro-white); }
+.facility-queue-board { min-width: 0; min-height: 0; display: grid; grid-template-columns: repeat(5, minmax(205px, 1fr)); gap: 8px; overflow: auto; padding-bottom: 6px; }
+.facility-queue-column { min-height: 100%; overflow: hidden; background: color-mix(in srgb, var(--veyro-border) 32%, var(--veyro-white)); border: 1px solid var(--veyro-border); border-radius: 8px; }
+.facility-queue-column > header { height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; background: var(--veyro-white); border-bottom: 3px solid var(--veyro-border); }
+.facility-queue-column.status-new > header { border-color: var(--veyro-text-secondary); }
+.facility-queue-column.status-triage > header { border-color: var(--veyro-teal); }
+.facility-queue-column.status-ready > header { border-color: var(--veyro-cyan); }
+.facility-queue-column.status-inProgress > header { border-color: var(--veyro-success); }
+.facility-queue-column.status-awaitingInvoice > header { border-color: var(--veyro-warning); }
+.facility-queue-column > header span { width: 21px; height: 21px; display: grid; place-items: center; border-radius: 50%; background: var(--veyro-workspace); font-size: 9px; font-weight: 750; }
+.facility-queue-column > div { max-height: calc(100% - 42px); overflow-y: auto; padding: 7px; }
+.facility-queue-card { display: grid; gap: 6px; margin-bottom: 7px; padding: 10px; background: var(--veyro-white); border: 1px solid var(--veyro-border); border-radius: 6px; box-shadow: var(--shadow); }
+.facility-queue-card:hover { border-color: var(--veyro-teal); }
+.facility-queue-card:focus-visible { outline: 2px solid var(--veyro-focus); outline-offset: 1px; }
+.facility-queue-card > small, .facility-queue-card > span { overflow: hidden; color: var(--veyro-text-secondary); font-size: 8.5px; text-overflow: ellipsis; white-space: nowrap; }
+.facility-queue-card > strong { font-size: 10.5px; }
+.facility-queue-card footer { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+.facility-queue-card footer > span { color: var(--veyro-text-secondary); font-size: 8px; }
+.facility-queue-table { min-height: 0; overflow: auto; }
+
+/* V1's AppShell ejer de fælles dimensioner. Standalone-FACILITY beholder sit
+   selvstændige layout, mens den indlejrede udgave følger Enheder-referencen. */
+.veyro-module--embedded :is(.primary-button, .secondary-button) { min-height: var(--fc-control-height, 36px); padding-block: 0; }
+.veyro-module--embedded :is(input:not([type="checkbox"]):not([type="radio"]), select) { box-sizing: border-box; min-height: var(--fc-control-height, 36px); }
+.veyro-module--embedded table th { box-sizing: border-box; height: var(--fc-table-head-height, 38px); padding-block: 0; vertical-align: middle; }
+.veyro-module--embedded table td { box-sizing: border-box; height: var(--fc-table-row-height, 47px); padding-block: 4px; }
+.veyro-module--embedded .entity-dialog { border-radius: var(--fc-r, 10px); }
+.veyro-module--embedded .entity-dialog > header { padding-block: 14px; }
 
 .case-top-grid { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(300px, .85fr); gap: 12px; margin-bottom: 12px; }
 .case-summary { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, .8fr); gap: 24px; padding: 16px; }
@@ -707,8 +731,13 @@ dd { margin: 0; overflow-wrap: anywhere; }
 @media (max-width: 540px) {
   .workflow-toolbar, .economy-filters, .service-kpis, .economy-kpis, .task-identity-strip { grid-template-columns: 1fr; }
   .workflow-heading .heading-actions { grid-template-columns: 1fr; }
-  .kanban-board { min-width: 0; grid-template-columns: 1fr; }
-  .kanban-column { min-height: 100px; }
+  .facility-queue-page { grid-template-rows: auto auto auto minmax(0, 1fr); }
+  .facility-queue-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .facility-queue-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .facility-queue-toolbar input { grid-column: 1 / -1; }
+  .facility-queue-board { min-width: 0; grid-template-columns: 1fr; overflow: visible; }
+  .facility-queue-column { min-height: 100px; }
+  .facility-queue-column > div { max-height: none; }
   .timeline > div, .log-row { grid-template-columns: 1fr; }
   .timeline span, .timeline.compact span { grid-column: auto; }
   .inline-form, .relation-picker { grid-template-columns: 1fr; }

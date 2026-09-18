@@ -76,7 +76,7 @@ export function FacilityV2App({
   return (
     <FacilityRouteProvider basePath={basePath}>
       <FacilityDataProvider repository={repository}>
-        <div className="veyro-module--facility">
+        <div className={`veyro-module--facility ${embedded ? 'veyro-module--embedded' : ''}`}>
           <AppRoutes basePath={basePath} embedded={embedded} />
         </div>
       </FacilityDataProvider>

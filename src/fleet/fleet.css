@@ -193,12 +193,15 @@ body:has(#root .fc-app){margin:0}
      er afgrænset til V1-skallen, så moduloverblik og Design V2 ikke påvirkes. */
   --fc-resource-title-size:20px;
   --fc-resource-title-line:22px;
-  --fc-resource-control-height:36px;
+  --fc-control-height:36px;
+  --fc-table-head-height:38px;
+  --fc-table-row-height:47px;
+  --fc-resource-control-height:var(--fc-control-height);
   --fc-resource-toolbar-gap:8px;
   --fc-resource-filter-width:140px;
   --fc-resource-sort-width:190px;
-  --fc-resource-table-head-height:38px;
-  --fc-resource-table-row-height:47px;
+  --fc-resource-table-head-height:var(--fc-table-head-height);
+  --fc-resource-table-row-height:var(--fc-table-row-height);
   --fc-resource-cell-inline:10px;
   --fc-resource-result-size:10px;
   /* FACILITYs godkendte .card er den fælles visuelle reference for alle
@@ -310,8 +313,8 @@ body:has(#root .fc-app){margin:0}
 .fc-top-h p{margin:3px 0 0; color:var(--bc-muted); font-size:var(--fc-t-m)}
 .fc-top-ctl{display:flex; gap:9px; align-items:center; flex-wrap:wrap}
 .fc-ctl{background:var(--bc-card); border:1px solid var(--bc-line); border-radius:9px;
-  padding:8px 11px; font:inherit; font-size:var(--fc-t-m); color:var(--bc-text); cursor:pointer;
-  box-shadow:var(--fc-shadow); min-height:38px}
+  padding:0 11px; font:inherit; font-size:var(--fc-t-m); color:var(--bc-text); cursor:pointer;
+  box-shadow:var(--fc-shadow); min-height:var(--fc-control-height)}
 .fc-stamp{color:#8b97a8; font-size:var(--fc-t-s); white-space:nowrap}
 /* ⚠ min-width:0 ER IKKE PYNT — DET ER DET DER FÅR .fc-scroll TIL AT KLIPPE.
    Et flex- og et gitterbarn har min-width:auto som udgangspunkt, altsaa "bliv
@@ -407,8 +410,8 @@ body:has(#root .fc-app){margin:0}
 .fc-bad{color:var(--bc-block)} .fc-good{color:var(--bc-ok)} .fc-neutral{color:#8b97a8}
 
 .fc-table{width:100%; border-collapse:collapse}
-.fc-table th{text-align:left; vertical-align:bottom; font-size:var(--fc-t-xs); letter-spacing:.06em; text-transform:uppercase;
-  color:#8b97a8; font-weight:650; padding:0 12px 9px; white-space:nowrap}
+.fc-table th{box-sizing:border-box;height:var(--fc-table-head-height);text-align:left;vertical-align:middle;font-size:12px;letter-spacing:normal;text-transform:none;
+  color:#8b97a8;font-weight:700;padding:0 12px;white-space:nowrap;background:var(--veyro-workspace-surface)}
 /* ⚠ TABULARTAL I HVER CELLE. fc-num hoejrestiller de rene talkolonner, men
    i en venstrestillet kolonne med tal — "12 m³", datoer, "3 af 14" — har
    cifrene forskellig bredde i Inter, og saa danser kolonnen. Her faar hvert
@@ -416,7 +419,7 @@ body:has(#root .fc-app){margin:0}
 /* ⚠ V1 VISUEL KONSOLIDERING — "kompakte lister" er en kvalitet vi HENTER
    tilbage fra den gamle version (§1). 12 → 9px lodret; vandret uændret, så
    tal og tekst ikke klemmes mod hinanden. */
-.fc-table td{padding:9px 12px; border-top:1px solid var(--bc-line); font-size:var(--fc-t-m);
+.fc-table td{box-sizing:border-box;height:var(--fc-table-row-height);padding:4px 12px;border-top:1px solid var(--bc-line);font-size:var(--fc-t-m);
   font-variant-numeric:tabular-nums}
 .fc-table tbody tr:hover{background:#fafbfd}
 /* Valgt raekke i en klikbar tabel. Bruger accent-tokenet frem for en ny farve,
@@ -677,8 +680,8 @@ body:has(.fc-login-side){margin:0}
 .fc-empty-warn{color:var(--bc-warn)}
 
 .fc-btn{background:var(--bc-card); border:1px solid var(--bc-line); border-radius:9px;
-  padding:8px 13px; font:inherit; font-size:var(--fc-t-m); font-weight:600; color:var(--bc-text);
-  cursor:pointer; min-height:38px}
+  padding:0 13px; font:inherit; font-size:var(--fc-t-m); font-weight:600; color:var(--bc-text);
+  cursor:pointer; min-height:var(--fc-control-height)}
 .fc-btn:hover{background:#fafbfd}
 .fc-btn-primaer{background:var(--bc-accent); border-color:var(--bc-accent); color:#fff}
 .fc-btn-primaer:hover{filter:brightness(.94); background:var(--bc-accent)}
@@ -750,8 +753,10 @@ body:has(.fc-login-side){margin:0}
 
 .fc-felt{display:flex; flex-direction:column; gap:5px; margin-bottom:12px}
 .fc-felt label{font-size:var(--fc-t-s); font-weight:600; color:var(--bc-muted)}
-.fc-felt input,.fc-felt select,.fc-felt textarea,.fc-input-tal{border:1px solid var(--bc-line); border-radius:8px;
-  padding:9px 11px; font:inherit; font-size:var(--fc-t-m); min-height:38px; background:var(--bc-card); color:var(--bc-text)}
+.fc-felt input,.fc-felt select,.fc-felt textarea,.fc-input-tal{box-sizing:border-box;border:1px solid var(--bc-line);border-radius:8px;
+  font:inherit;font-size:var(--fc-t-m);background:var(--bc-card);color:var(--bc-text)}
+.fc-felt input,.fc-felt select,.fc-input-tal{height:var(--fc-control-height);min-height:var(--fc-control-height);padding:0 11px}
+.fc-felt textarea{min-height:84px;padding:9px 11px}
 /* Tal i en tabelcelle. ⚠ ARVER FELTETS UDSEENDE frem for at faa sit eget:
    to inputstile ville drive, og den ene ville se ud som et andet produkt.
    Ingen egne farver — se designtesten. */
