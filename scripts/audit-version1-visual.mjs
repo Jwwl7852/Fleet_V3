@@ -202,9 +202,10 @@ try {
     const measureSidebar = async (state) => evaluate(`(()=>{
       const visible=(el)=>{const r=el.getBoundingClientRect();const s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
       const round=(value)=>+value.toFixed(2);
-      const side=document.querySelector('.fc-side');const sr=side.getBoundingClientRect();const center=sr.left+sr.width/2;
+      const side=document.querySelector('.fc-side');const sr=side.getBoundingClientRect();const center=sr.left+sr.width/2;const logo=document.querySelector('.fc-brand-logo .veyro-logo');const logoRect=logo.getBoundingClientRect();
+      const logoCenter=${JSON.stringify(state)}==='sammenklappet'?logoRect.left+logoRect.width*(396/2048):logoRect.left+logoRect.width/2;
       const links=[...document.querySelectorAll('.fc-nav-modul>.fc-link,.fc-fakturacenter-main>.fc-link')].filter(visible);
-      return {state:${JSON.stringify(state)},sidebar:{x:round(sr.x),width:round(sr.width),center:round(center)},items:links.map((link)=>{
+      return {state:${JSON.stringify(state)},sidebar:{x:round(sr.x),width:round(sr.width),center:round(center)},logo:{x:round(logoRect.x),width:round(logoRect.width),visualCenter:round(logoCenter),delta:round(logoCenter-center)},items:links.map((link)=>{
         const holder=link.querySelector('.fc-nav-ikon');const svg=holder?.querySelector('svg');const path=svg?.querySelector('path');
         const lr=link.getBoundingClientRect();const hr=holder.getBoundingClientRect();const vr=svg.getBoundingClientRect();const box=path.getBBox();
         const holderCenter=hr.left+hr.width/2;const actionCenter=lr.left+lr.width/2;const symbolDelta=((box.x+box.width/2)-12)*(vr.width/24);

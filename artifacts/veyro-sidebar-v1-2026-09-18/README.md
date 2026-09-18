@@ -5,6 +5,7 @@ Browserkontrol udført 18. september 2026 ved 1440 × 900 og 100 % zoom med norm
 ## Resultat
 
 - Sidebaren er 72 px bred og har vandret midtpunkt ved 36,00 px.
+- Det synlige V-logo har vandret midtpunkt ved 35,98 px, altså 0,02 px fra den fælles akse.
 - Alle 12 synlige navigationshandlinger har midtpunkt ved 36,00 px.
 - Alle 12 ikonbeholdere har midtpunkt ved 36,00 px.
 - Alle klik- og aktivflader er 44 × 44 px.
