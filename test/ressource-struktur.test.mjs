@@ -17,9 +17,20 @@ test("Ressourcer er et hovedområde med de syv aftalte registre", () => {
   const resources = NAV.find((item) => item.key === "ressourcer");
   assert.ok(resources);
   assert.deepEqual(resources.born.filter((item) => !item.skjulINav).map((item) => item.label), [
-    "Overblik", "Enheder", "Ejendomme", "Medarbejdere", "Units",
-    "Varekatalog", "Lagerlokationer", "Certifikater",
+    "Enheder", "Ejendomme", "Medarbejdere", "Units", "Varekatalog",
+    "Lagerlokationer", "Certifikater",
   ]);
+  assert.doesNotMatch(read("src/fleet/nav.js"), /key: "ressourceOverblik"/);
+  assert.match(read("src/moduler/Ressourcer.jsx"), /<Navigate to=\{poster\[0\]\?\.til \|\| "\/"\} replace \/>/);
+});
+
+test("kompakt navigation bruger Veyro-logoet og centrerer alle modulikoner", () => {
+  const shell = read("src/fleet/AppShell.jsx");
+  const styles = read("src/fleet/fleet.css");
+  assert.match(shell, /<div className="fc-brand-logo"><VeyroLogo variant="sidebar" \/><\/div>/);
+  assert.doesNotMatch(shell, /fc-brand-mark/);
+  assert.match(styles, /\.fc-menu-kompakt \.fc-brand-logo \.veyro-logo\{[^}]*display:block[^}]*width:184px[^}]*transform:translateX\(-3px\)/);
+  assert.match(styles, /\.fc-menu-kompakt \.fc-link\{[^}]*justify-content:center[^}]*width:44px[^}]*margin-inline:auto/);
 });
 
 test("modulgenveje peger på de samme fælles registre", () => {
@@ -77,7 +88,6 @@ test("datalaget indeholder de fælles og atomiske adgangsgrænser", () => {
 });
 
 test("ressourceregistre bruger samme linjebaserede og tastaturtilgængelige åbningsmønster", () => {
-  const overview = read("src/moduler/Ressourcer.jsx");
   const setupOverview = read("src/moduler/opsaetning/RessourceOpsaetning.jsx");
   const sharedList = read("src/moduler/RessourceOmraadeTabel.jsx");
   const setupCatalog = read("src/moduler/opsaetning/RessourceKatalogOpsaetning.jsx");
@@ -88,7 +98,6 @@ test("ressourceregistre bruger samme linjebaserede og tastaturtilgængelige åbn
   const properties = read("facility-v2/src/routes/PropertiesPage.jsx");
   const vehicles = read("fleet-v2/src/components/UnitCatalog.jsx");
 
-  assert.match(overview, /<RessourceOmraadeTabel poster=\{poster\}/);
   assert.match(setupOverview, /<RessourceOmraadeTabel/);
   assert.match(sharedList, /paaRaekke=\{\(post\) => navigate\(post\.til\)\}/);
   assert.match(setupCatalog, /paaRaekke=\{setKategori\}/);
@@ -100,6 +109,21 @@ test("ressourceregistre bruger samme linjebaserede og tastaturtilgængelige åbn
   assert.match(properties, /aria-label=\{`Åbn \$\{property\.number\} \$\{property\.name\}`\}/);
   assert.match(vehicles, /role="button" tabIndex="0" aria-label=\{`Åbn \$\{unit\.number\}`\}/);
   assert.match(vehicles, /event\.key === "Enter" \|\| event\.key === " "/);
+});
+
+test("vareeditoren kobler varer til det fælles leverandørregister", () => {
+  const products = read("src/fleet/procure-v2/ProcureScreens.jsx");
+  const module = read("src/fleet/procure-v2/ProcureModule.jsx");
+  const api = read("src/fleet/varelager.js");
+
+  assert.match(products, /<span>Leverandør<\/span><select value=\{draft\.supplierId\}/);
+  assert.match(products, /Ingen fast leverandør/);
+  assert.match(products, /leverandoerId: draft\.supplierId \|\| undefined/);
+  assert.match(products, /standardAfdelingId: draft\.defaultDepartmentId \|\| undefined/);
+  assert.match(products, /Standardafdeling \(valgfri\)/);
+  assert.match(products, /supplierId: selected\.supplierId \|\| ""/);
+  assert.match(module, /supplierId: item\.leverandoerId \|\| null/);
+  assert.match(api, /leverandoerId: post\.leverandoerId \|\| undefined/);
 });
 
 test("Ressourcer følger Enheder-listens kompakte liste- og filterstruktur", () => {

@@ -293,7 +293,7 @@ export default function AppShell() {
       <MiljoeBjaelke />
       <div className={`fc-app${menuKompakt ? " fc-menu-kompakt" : ""}`}>
         <aside className="fc-side" aria-label={menuKompakt ? "Kompakt navigation" : "Navigation"}>
-          <div className="fc-brand-logo"><VeyroLogo variant="sidebar" /><span className="fc-brand-mark" aria-hidden="true">V</span></div>
+          <div className="fc-brand-logo"><VeyroLogo variant="sidebar" /></div>
           <div className="fc-ver">version 3.0</div>
           <div className="fc-tenant">{tenant?.kort || tenant?.navn || "—"}</div>
           <button type="button" className="fc-menu-toggle"

@@ -87,8 +87,6 @@ export const NAV = [
     key: "ressourcer", sti: "/ressourcer", label: "Ressourcer", titel: "Ressourcer",
     under: "Fælles registre, der bruges på tværs af de aktive moduler.", gruppe: "faelles",
     born: [
-      { key: "ressourceOverblik", sti: "/ressourcer", label: "Overblik",
-        titel: "Ressourcer", under: "Fælles, autoritative registre på tværs af VEYRO." },
       { key: "ressourceEnheder", sti: "/ressourcer/enheder", label: "Enheder",
         kraeverEtAfModuler: ["flaade", "booking"], kraeverPerm: "koeretoejer.laes",
         titel: "Ressourcer – enheder", under: "Fælles enhedsregister for Fleet og Planning." },

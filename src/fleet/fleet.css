@@ -235,7 +235,6 @@ body:has(#root .fc-app){margin:0}
 .veyro-logo--header{width:112px; max-width:32vw}
 .veyro-logo--login{width:220px; max-width:72vw; margin:0 auto}
 .fc-brand-logo{display:flex; align-items:center; min-height:52px; padding:0 4px}
-.fc-brand-mark{display:none}
 .fc-brand{padding:0 8px; font-size:var(--fc-t-2xl); font-weight:800; letter-spacing:-.02em; color:var(--veyro-white)}
 .fc-brand b{color:var(--bc-accent)}
 .fc-ver{padding:0 8px; color:var(--bc-accent); font-size:var(--fc-t-xs); font-weight:700}
@@ -2214,10 +2213,12 @@ body:has(.fc-login-side){margin:0}
 
 @media(min-width:721px){
   .fc-menu-kompakt .fc-side{width:72px;flex-basis:72px;overflow:visible}
-  .fc-menu-kompakt .fc-brand-logo{justify-content:center;padding:14px 8px 8px}.fc-menu-kompakt .fc-brand-logo .veyro-logo{display:none}.fc-menu-kompakt .fc-brand-mark{display:grid;place-items:center;width:42px;height:42px;color:var(--bc-accent);font-size:var(--fc-t-4xl);font-weight:800;line-height:1}
+  .fc-menu-kompakt .fc-brand-logo{justify-content:flex-start;width:56px;height:58px;min-height:58px;margin:8px 0 0;padding:0;overflow:hidden}
+  .fc-menu-kompakt .fc-brand-logo .veyro-logo{display:block;flex:0 0 auto;width:184px;max-width:none;margin:0;transform:translateX(-3px)}
   .fc-menu-kompakt .fc-ver,.fc-menu-kompakt .fc-tenant,.fc-menu-kompakt .fc-nav-gruppe-toggle,.fc-menu-kompakt .fc-who-txt,.fc-menu-kompakt .fc-demo-rolle,.fc-menu-kompakt .fc-side-btn{display:none}
   .fc-menu-kompakt .fc-nav{padding:8px 7px;overflow:visible}.fc-menu-kompakt .fc-nav-gruppe-blok,.fc-menu-kompakt .fc-nav-gruppe-punkter{display:grid;overflow:visible}
-  .fc-menu-kompakt .fc-link{justify-content:center;min-height:44px;padding:8px}.fc-menu-kompakt .fc-link>span,.fc-menu-kompakt .fc-link>.fc-chevron,.fc-menu-kompakt .fc-fakturacenter-toggle{display:none}
+  .fc-menu-kompakt .fc-nav-modul,.fc-menu-kompakt .fc-fakturacenter-nav{width:100%}
+  .fc-menu-kompakt .fc-link{justify-content:center;width:44px;min-height:44px;margin-inline:auto;padding:8px}.fc-menu-kompakt .fc-link>span,.fc-menu-kompakt .fc-link>.fc-chevron,.fc-menu-kompakt .fc-fakturacenter-toggle{display:none}
   .fc-menu-kompakt .fc-link>svg{width:24px;height:24px;margin:0}
   .fc-menu-kompakt .fc-nav-modul::after{content:"";position:absolute;left:100%;top:0;width:8px;height:100%}
   .fc-menu-kompakt .fc-sub{position:absolute;z-index:70;left:calc(100% + 8px);top:var(--fc-kompakt-top,0);display:none;min-width:220px;max-width:min(340px,calc(100vw - 100px));max-height:min(72vh,620px);margin:0;padding:8px;border:1px solid var(--veyro-border);border-radius:9px;background:var(--fc-navy-2);box-shadow:var(--fc-shadow);overflow:auto;scrollbar-gutter:stable}

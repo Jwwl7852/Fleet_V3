@@ -29,6 +29,7 @@ import "./procure-v2.css";
 const normalizeSupplier = (supplier) => ({
   id: supplier.id,
   name: supplier.name || supplier.navn,
+  active: supplier.active !== false && supplier.aktiv !== false,
   orderEmail: supplier.orderEmail || supplier.ordreEmail || supplier.kontaktEmail,
   address: supplier.address || supplier.adresse || "Adresse ikke registreret",
   agreement: supplier.agreement || supplier.prisaftale || null,

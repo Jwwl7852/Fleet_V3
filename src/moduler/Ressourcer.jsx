@@ -1,8 +1,7 @@
+import { Navigate } from "react-router-dom";
 import { useFleet } from "../fleet/FleetContext.jsx";
 import { harModul } from "../fleet/moduler.js";
 import { harPerm } from "../fleet/permissions.js";
-import RessourceOmraadeTabel from "./RessourceOmraadeTabel.jsx";
-import { RessourceRegister, RessourceSide } from "./RessourceLayout.jsx";
 
 const RESSOURCER = [
   {
@@ -52,11 +51,5 @@ export function synligeRessourcer({ moduler, perms }) {
 export default function Ressourcer() {
   const { bruger, moduler } = useFleet();
   const poster = synligeRessourcer({ moduler, perms: bruger?.perms });
-  return (
-    <RessourceSide titel="Ressourcer">
-      <RessourceRegister>
-        <RessourceOmraadeTabel poster={poster} visKilde={false} />
-      </RessourceRegister>
-    </RessourceSide>
-  );
+  return <Navigate to={poster[0]?.til || "/"} replace />;
 }
