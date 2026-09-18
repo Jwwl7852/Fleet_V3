@@ -11,7 +11,7 @@ test("referenceformatet viser hele Overblik uden lodret scroll eller konsolfejl"
 
   await page.setViewportSize({ width: 1672, height: 941 });
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "God aften, Dennis" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "FLEET – overblik" })).toBeVisible();
   await expect(page.getByText("Fiktive demodata · ikke live")).toBeVisible();
 
   const dimensions = await page.evaluate(() => ({
@@ -35,7 +35,7 @@ test("referenceformatet viser hele Overblik uden lodret scroll eller konsolfejl"
   await fleetToggle.click();
   await expect(fleetToggle).toHaveAttribute("aria-expanded", "false");
   await expect(fleetToggle).toHaveClass(/has-active-child/);
-  await expect(page.getByRole("heading", { name: "God aften, Dennis" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "FLEET – overblik" })).toBeVisible();
   await page.screenshot({ path: screenshotPath("fleet-v2-overview-1672x941-menu-collapsed"), fullPage: false });
 
   await page.reload();
@@ -46,18 +46,18 @@ test("referenceformatet viser hele Overblik uden lodret scroll eller konsolfejl"
 test("1366 × 768 ombryder uden vandret side-overløb", async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "God aften, Dennis" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "FLEET – overblik" })).toBeVisible();
   const widths = await page.evaluate(() => ({ inner: window.innerWidth, scroll: document.documentElement.scrollWidth }));
   expect(widths.scroll).toBe(widths.inner);
   await page.screenshot({ path: screenshotPath("fleet-v2-overview-1366x768"), fullPage: false });
 });
 
-test("mobilnavigation åbner det implementerede Enhedskartotek", async ({ page }) => {
+test("mobilnavigation åbner de implementerede Enheder", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.getByRole("button", { name: "Åbn menu" }).click();
   await expect(page.getByRole("navigation", { name: "FLEET v2 navigation" })).toBeVisible();
   await page.getByRole("button", { name: "Enheder", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Enhedskartotek" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Enheder" })).toBeVisible();
   await page.screenshot({ path: screenshotPath("fleet-v2-units-mobile-390x844"), fullPage: false });
 });

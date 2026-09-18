@@ -206,17 +206,19 @@ tbody tr:hover { background: #f8fcfc; }
 .directory-table tbody tr[role="link"]:hover, .directory-table tbody tr[role="link"]:focus-visible { background: var(--veyro-teal-light); box-shadow: inset 3px 0 var(--veyro-teal); outline: 0; }
 
 /* Kompakt Ressourcer-visning; øvrige FACILITY-sider beholder deres layout. */
-.resource-directory-page .page-heading{align-items:center;min-height:36px;margin-bottom:10px}
-.resource-directory-page .page-heading h1{margin:0;font-size:20px;letter-spacing:-.015em}
-.resource-directory-page .page-heading .primary-button{min-height:36px}
+.resource-directory-page{padding:8px 0 0}
+.resource-directory-page .page-heading{align-items:center;min-height:var(--fc-resource-control-height);margin-bottom:10px;padding:0 2px}
+.resource-directory-page .page-heading h1{margin:0;font-size:var(--fc-resource-title-size);font-weight:700;line-height:var(--fc-resource-title-line);letter-spacing:-.015em}
+.resource-directory-page .page-heading .primary-button{height:var(--fc-resource-control-height);min-height:var(--fc-resource-control-height)}
 .resource-directory-page .directory-layout{gap:10px}
 .resource-directory-page .directory-main{padding:12px;box-shadow:none}
-.resource-directory-page .filter-bar{gap:8px;margin-bottom:10px}
-.resource-directory-page .filter-bar :is(select,.filter-search,.secondary-button){min-height:36px}
+.resource-directory-page .filter-bar{grid-template-columns:minmax(240px,1fr) repeat(4,var(--fc-resource-filter-width)) auto;align-items:center;gap:var(--fc-resource-toolbar-gap);margin-bottom:10px}
+.resource-directory-page .filter-bar :is(select,.filter-search,.secondary-button){box-sizing:border-box;height:var(--fc-resource-control-height);min-height:var(--fc-resource-control-height)}
 .resource-directory-page .directory-table{font-size:14px}
-.resource-directory-page .directory-table th{height:38px;padding-block:7px}
-.resource-directory-page .directory-table td{height:40px;padding-block:7px}
-.resource-directory-page .result-count{margin:9px 2px 0;font-size:12px}
+.resource-directory-page .directory-table th{box-sizing:border-box;height:var(--fc-resource-table-head-height);padding:0 var(--fc-resource-cell-inline);font-size:12px;font-weight:700;line-height:17.4px}
+.resource-directory-page .directory-table td{box-sizing:border-box;height:var(--fc-resource-table-row-height);padding:4px var(--fc-resource-cell-inline);font-size:14px;line-height:20.3px}
+.resource-directory-page .status-badge{min-height:24px;padding:2px 8px;border-radius:12px;font-size:10px;line-height:14.5px}
+.resource-directory-page .result-count{min-height:32px;margin:0;padding:9px 2px 0;font-size:var(--fc-resource-result-size);line-height:14.5px}
 @media(max-width:620px){
   .resource-directory-page .page-heading{align-items:flex-start;min-height:0}
   .resource-directory-page .page-heading h1{font-size:18px}

@@ -9,11 +9,11 @@ const collectBrowserErrors = (page) => {
   return errors;
 };
 
-test("Enhedskartotek søger, filtrerer, sorterer, skifter visning og eksporterer", async ({ page }) => {
+test("Enheder søger, filtrerer, sorterer, skifter visning og eksporterer", async ({ page }) => {
   const errors = collectBrowserErrors(page);
   await page.setViewportSize({ width: 1672, height: 941 });
   await page.goto("/enheder");
-  await expect(page.getByRole("heading", { name: "Enhedskartotek" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Enheder" })).toBeVisible();
   await expect(page.getByText("Fiktive demodata · lokal prototype")).toBeVisible();
 
   await page.getByLabel("Søg i enheder").fill("Silence");

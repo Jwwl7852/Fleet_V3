@@ -5,7 +5,7 @@ import { createMemoryUnitRepository } from "../src/data/unitRepository";
 import { filterAndSortUnits, validateUnit } from "../src/data/unitSelectors";
 import { createFixtureDataset } from "../src/data/fleetFixtures";
 
-describe("Enhedskartotek og Enhedsprofil", () => {
+describe("Enheder og Enhedsprofil", () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.history.replaceState({}, "", "/enheder");
@@ -13,7 +13,7 @@ describe("Enhedskartotek og Enhedsprofil", () => {
 
   it("søger, filtrerer og sorterer uden chaufførfelter", async () => {
     render(<FleetV2App repository={createMemoryUnitRepository()} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.change(screen.getByLabelText("Søg i enheder"), { target: { value: "Silence" } });
     expect(screen.getByText("SC-104")).toBeTruthy();
     expect(screen.getByText("NB-016")).toBeTruthy();
@@ -39,7 +39,7 @@ describe("Enhedskartotek og Enhedsprofil", () => {
 
   it("bevarer katalogfilter, visning og profilfane gennem sagsmappe-retur", async () => {
     render(<FleetV2App repository={createMemoryUnitRepository()} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.change(screen.getByLabelText("Søg i enheder"), { target: { value: "Silence" } });
     fireEvent.click(screen.getByRole("button", { name: "Kortvisning" }));
     fireEvent.click(screen.getByText("SC-104"));
@@ -53,7 +53,7 @@ describe("Enhedskartotek og Enhedsprofil", () => {
     expect(screen.getByRole("tab", { name: "Skader" }).getAttribute("aria-selected")).toBe("true");
 
     fireEvent.click(document.querySelector(".profile-breadcrumb button"));
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     expect(screen.getByLabelText("Søg i enheder").value).toBe("Silence");
     expect(screen.getByRole("button", { name: "Kortvisning" }).getAttribute("aria-pressed")).toBe("true");
   });
@@ -61,7 +61,7 @@ describe("Enhedskartotek og Enhedsprofil", () => {
   it("opretter og redigerer en enhed med stabilt internt ID", async () => {
     const repository = createMemoryUnitRepository();
     const { unmount } = render(<FleetV2App repository={repository} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.click(screen.getByRole("button", { name: "Opret enhed" }));
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText(/Enhedsnummer/), { target: { value: "QA-900" } });
@@ -83,7 +83,7 @@ describe("Enhedskartotek og Enhedsprofil", () => {
     unmount();
     window.history.replaceState({}, "", "/enheder");
     render(<FleetV2App repository={repository} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.change(screen.getByLabelText("Søg i enheder"), { target: { value: "QA-901" } });
     expect(await screen.findByText("QA-901")).toBeTruthy();
     expect(repository.inspect().units.find((unit) => unit.number === "QA-901").id).toBe(created.id);

@@ -24,11 +24,11 @@ test("Ressourcer er et hovedområde med de syv aftalte registre", () => {
 
 test("modulgenveje peger på de samme fælles registre", () => {
   const byKey = new Map(NAV.flatMap((item) => item.born || [item]).map((item) => [item.key, item]));
-  assert.equal(byKey.get("fleetV2Enheder").sti, "/ressourcer/enheder");
+  assert.equal(byKey.get("fleetV2Enheder").sti, "/fleet-v2/enheder");
   assert.equal(byKey.get("planningV2Ressourcer").sti, "/ressourcer/enheder");
   assert.equal(byKey.get("workforceMedarbejdere").sti, "/ressourcer/medarbejdere");
   assert.equal(byKey.get("unitbookingRegister").sti, "/ressourcer/units");
-  assert.equal(byKey.get("indkoebKatalog").sti, "/ressourcer/varekatalog");
+  assert.equal(byKey.get("indkoebKatalog").sti, "/indkoeb/katalog");
   assert.equal(byKey.get("warehouseLokationer").sti, "/ressourcer/lagerlokationer");
   assert.equal(byKey.get("reolpladser").skjulINav, true);
 });
@@ -113,6 +113,9 @@ test("Ressourcer følger Enheder-listens kompakte liste- og filterstruktur", () 
 
   assert.match(shell, /ressourceOwnsPageTitle/);
   assert.match(employees, /<Dialog titel=\{valgt\.navn\}/);
+  assert.doesNotMatch(employees, /role="tablist" aria-label="Status"/);
+  assert.match(employees, /id="mb-visning"/);
+  assert.match(employees, /setForm\(r\.id\)/);
   assert.match(employees, /ressourceKategorier\/medarbejderafdelinger/);
   assert.match(employees, /Tilføj funktion/);
   assert.doesNotMatch(employees, /type="checkbox"/);
@@ -126,4 +129,5 @@ test("Ressourcer følger Enheder-listens kompakte liste- og filterstruktur", () 
   assert.match(properties, /directory-layout-single/);
   assert.doesNotMatch(properties, /directory-summary/);
   assert.doesNotMatch(vehicles, /Gem visning/);
+  assert.doesNotMatch(vehicles, /Fiktive testdata ·/);
 });

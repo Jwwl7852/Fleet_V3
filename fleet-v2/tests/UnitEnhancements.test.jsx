@@ -49,7 +49,7 @@ describe("FLEET v2 enhedsforbedringer", () => {
 
   it("viser frakoblet opslag og tillader fortsat manuel oprettelse", async () => {
     render(<FleetV2App repository={createMemoryUnitRepository()} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.click(screen.getByRole("button", { name: "Opret enhed" }));
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("Registreringsnummer"), { target: { value: "ab 12 345" } });
@@ -61,7 +61,7 @@ describe("FLEET v2 enhedsforbedringer", () => {
   it("viser opslag til gennemgang og beskytter manuelt udfyldte felter", async () => {
     const lookup = { lookup: vi.fn(async () => lookupPayload()) };
     render(<FleetV2App repository={createMemoryUnitRepository()} vehicleLookup={lookup} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.click(screen.getByRole("button", { name: "Opret enhed" }));
     const dialog = screen.getByRole("dialog");
     fillRequired(dialog);
@@ -85,7 +85,7 @@ describe("FLEET v2 enhedsforbedringer", () => {
     const first = new Promise((resolve) => { resolveFirst = resolve; });
     const lookup = { lookup: vi.fn(() => first) };
     render(<FleetV2App repository={createMemoryUnitRepository()} vehicleLookup={lookup} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.click(screen.getByRole("button", { name: "Opret enhed" }));
     const dialog = screen.getByRole("dialog");
     const registration = within(dialog).getByLabelText("Registreringsnummer");
@@ -110,7 +110,7 @@ describe("FLEET v2 enhedsforbedringer", () => {
   it("gemmer decimalkomma som strukturerede valgfrie centimetermål og viser dem på profilen", async () => {
     const repository = createMemoryUnitRepository();
     render(<FleetV2App repository={repository} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.click(screen.getByRole("button", { name: "Opret enhed" }));
     const dialog = screen.getByRole("dialog");
     fillRequired(dialog, "QA-921");
@@ -157,7 +157,7 @@ describe("FLEET v2 enhedsforbedringer", () => {
   it("gemmer indvendige mål og særskilte udstyrsvalg og viser dem på profilen", async () => {
     const repository = createMemoryUnitRepository();
     render(<FleetV2App repository={repository} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.click(screen.getByRole("button", { name: "Opret enhed" }));
     const dialog = screen.getByRole("dialog");
     fillRequired(dialog, "QA-924");
@@ -188,7 +188,7 @@ describe("FLEET v2 enhedsforbedringer", () => {
     target.dimensions = { unit: "cm", lengthCm: 500, widthCm: null, heightCm: null };
     const repository = createMemoryUnitRepository(dataset);
     render(<FleetV2App repository={repository} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.click(screen.getByRole("button", { name: `Redigér ${target.number}` }));
     const dialog = screen.getByRole("dialog");
     const toggle = within(dialog).getByLabelText(/Tilføj udvendige mål/);
@@ -209,7 +209,7 @@ describe("FLEET v2 enhedsforbedringer", () => {
     const repository = createMemoryUnitRepository();
     const imageProcessor = vi.fn(async (file) => ({ blob: file, type: file.type, name: file.name, width: 100, height: 60, source: "user-upload", updatedAt: "2026-09-07T12:00:00Z" }));
     render(<FleetV2App repository={repository} imageProcessor={imageProcessor} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.click(screen.getByRole("button", { name: "Opret enhed" }));
     let dialog = screen.getByRole("dialog");
     fillRequired(dialog, "QA-922");
@@ -235,7 +235,7 @@ describe("FLEET v2 enhedsforbedringer", () => {
     const repository = createMemoryUnitRepository();
     repository.saveUnit = vi.fn(async () => { throw new Error("IndexedDB er fuld"); });
     render(<FleetV2App repository={repository} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.click(screen.getByRole("button", { name: "Opret enhed" }));
     const dialog = screen.getByRole("dialog");
     fillRequired(dialog, "QA-923");
@@ -247,7 +247,7 @@ describe("FLEET v2 enhedsforbedringer", () => {
     const repository = createMemoryUnitRepository();
     const original = repository.inspect().units.find((item) => item.number === "NB-001");
     render(<FleetV2App repository={repository} imageProcessor={async (file) => ({ blob: file, type: file.type, name: file.name })} />);
-    await screen.findByRole("heading", { name: "Enhedskartotek" });
+    await screen.findByRole("heading", { name: "Enheder" });
     fireEvent.click(screen.getByRole("button", { name: `Redigér ${original.number}` }));
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText(/^Mærke/), { target: { value: "Må ikke gemmes" } });

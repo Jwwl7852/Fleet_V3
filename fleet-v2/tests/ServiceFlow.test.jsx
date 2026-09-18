@@ -10,7 +10,7 @@ describe("selvstændigt Service-modul", () => {
 
   it("åbner Service fra menuen og viser alle fire relevante tilstande", async () => {
     start("/");
-    await screen.findByRole("heading", { name: "God aften, Dennis" });
+    await screen.findByRole("heading", { name: "FLEET – overblik" });
     fireEvent.click(screen.getByRole("button", { name: "Service" }));
     expect(await screen.findByRole("heading", { name: "Service og compliance" })).toBeTruthy();
     expect(screen.getByText("Overskredet", { selector: ".service-kpis span" })).toBeTruthy();
@@ -47,7 +47,7 @@ describe("selvstændigt Service-modul", () => {
       error: null,
       capabilities: { saveRequirement: false, runAutomation: false, planService: false, saveHistory: false, saveSettings: false },
     }} />);
-    expect(await screen.findByRole("heading", { name: "God aften, Dennis" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "FLEET – overblik" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Service" }));
     expect(await screen.findByText("Indlæser servicekrav …")).toBeTruthy();
   });

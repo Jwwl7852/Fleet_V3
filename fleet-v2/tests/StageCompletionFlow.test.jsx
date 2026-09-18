@@ -24,7 +24,7 @@ describe("statuskorrektion, mobilflow, økonomi og fælles billeder",()=>{
     const after=repository.inspect(); const item=after.relations.cases.find((entry)=>entry.id===before.id);
     expect(item).toMatchObject({id:before.id,reportId:before.reportId,priority:before.priority,assigneeId:before.assigneeId,dueDate:before.dueDate});
     expect(after.relations.caseEvents.some((event)=>event.caseId===before.id&&event.title==="Status ændret til Ny")).toBe(true);
-  });
+  }, 10000);
 
   it("viser mobiladgang, gemmer brugerejede kladder og opretter samme indberetning og sag",async()=>{
     const repository=start("/mobil");

@@ -14,35 +14,34 @@ describe("FLEET v2 navigation", () => {
   it("render sidebar, topbjælke og Overblik med beregnede demodata", async () => {
     renderApp();
     expect(screen.getByRole("navigation", { name: "FLEET v2 navigation" })).toBeTruthy();
-    expect(await screen.findByRole("heading", { name: "God aften, Dennis" })).toBeTruthy();
-    expect(screen.getByText("Fiktive demodata · ikke live")).toBeTruthy();
-    expect(screen.getByText("19")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "FLEET – overblik" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Enheder: 19" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Kommende service" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Åbne sager" })).toBeTruthy();
     expect(screen.getByLabelText("Søg i FLEET v2-demodata").getAttribute("placeholder")).not.toMatch(/chauffør/i);
-    expect(screen.getByText("Demopositioner – ikke live")).toBeTruthy();
   });
 
-  it("åbner Enhedskartotek og aktiverer Indberetninger uden at åbne gamle sider", async () => {
+  it("åbner Enheder og aktiverer Indberetninger uden at åbne gamle sider", async () => {
     renderApp();
     fireEvent.click(screen.getByRole("button", { name: "Enheder" }));
-    expect(await screen.findByRole("heading", { name: "Enhedskartotek" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Enheder" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Indberetninger" }));
     expect(await screen.findByRole("heading", { name: "Indberetninger", level: 1 })).toBeTruthy();
     expect(window.location.pathname).toBe("/indberetninger");
   });
 
-  it("åbner overblikkets nøgletal med det relevante arbejdsfilter", async () => {
+  it("åbner Enheder fra overblikkets nøgletal", async () => {
     renderApp();
-    await screen.findByRole("heading", { name: "God aften, Dennis" });
-    fireEvent.click(screen.getByRole("button", { name: /Åbn i drift/ }));
-    expect(await screen.findByRole("heading", { name: "Enhedskartotek" })).toBeTruthy();
-    expect(screen.getByLabelText("Status").value).toBe("operation");
-    expect(window.location.search).toBe("?status=operation");
+    await screen.findByRole("heading", { name: "FLEET – overblik" });
+    fireEvent.click(screen.getByRole("button", { name: "Enheder: 19" }));
+    expect(await screen.findByRole("heading", { name: "Enheder" })).toBeTruthy();
+    expect(window.location.pathname).toBe("/enheder");
   });
 
   it("viser platformshierarkiet og folder kun FLEET uden at skifte side", async () => {
     const repository = createMemoryUnitRepository();
     const { unmount } = render(<FleetV2App repository={repository} />);
-    await screen.findByRole("heading", { name: "God aften, Dennis" });
+    await screen.findByRole("heading", { name: "FLEET – overblik" });
     const fleetToggle = screen.getByRole("button", { name: "FLEET" });
     expect(fleetToggle.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByRole("button", { name: "Overblik" }).getAttribute("aria-current")).toBe("page");
@@ -53,39 +52,35 @@ describe("FLEET v2 navigation", () => {
     fireEvent.click(fleetToggle);
     expect(fleetToggle.getAttribute("aria-expanded")).toBe("false");
     expect(fleetToggle.className).toContain("has-active-child");
-    expect(screen.getByRole("heading", { name: "God aften, Dennis" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "FLEET – overblik" })).toBeTruthy();
     expect(window.localStorage.getItem("veyro:fleet-v2:fleet-menu-open")).toBe("false");
 
     unmount();
     render(<FleetV2App repository={repository} />);
-    await screen.findByRole("heading", { name: "God aften, Dennis" });
+    await screen.findByRole("heading", { name: "FLEET – overblik" });
     expect(screen.getByRole("button", { name: "FLEET" }).getAttribute("aria-expanded")).toBe("false");
   });
 
   it("markerer platformdestinationer som ikke implementeret", async () => {
     renderApp();
-    await screen.findByRole("heading", { name: "God aften, Dennis" });
+    await screen.findByRole("heading", { name: "FLEET – overblik" });
     fireEvent.click(screen.getByRole("button", { name: "Dashboard" }));
     expect(screen.getByRole("status").textContent).toContain("Dashboard: Ikke implementeret i denne etape");
   });
 
-  it("ændrer driftsgrundlag og omkostningsmåned fra overblikket", async () => {
+  it("viser de tre aftalte nøgletal og de to handlingslister", async () => {
     renderApp();
-    await screen.findByRole("heading", { name: "God aften, Dennis" });
-    const period = screen.getByLabelText("Driftsperiode");
-    expect(period.value).toBe("week");
-    fireEvent.change(period, { target: { value: "quarter" } });
-    expect(period.value).toBe("quarter");
-    expect(document.querySelectorAll(".operation-chart .bar-column")).toHaveLength(3);
-    const month = screen.getByLabelText("Omkostningsmåned");
-    fireEvent.change(month, { target: { value: "2025-02" } });
-    expect(month.value).toBe("2025-02");
-    expect(screen.queryByText(/Periodevalg: Ikke implementeret/)).toBeNull();
+    await screen.findByRole("heading", { name: "FLEET – overblik" });
+    expect(screen.getByRole("button", { name: "Enheder: 19" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Åbne sager: 14" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Service snart: 4" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Kommende service" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Åbne sager" })).toBeTruthy();
   });
 
   it("viser ingen Planning- eller fakturaproces på Overblik", async () => {
     const { container } = renderApp();
-    await screen.findByRole("heading", { name: "God aften, Dennis" });
+    await screen.findByRole("heading", { name: "FLEET – overblik" });
     const text = container.textContent.toLowerCase();
     expect(text).not.toContain("dagens opgaver");
     expect(text).not.toContain("planlagt rute");

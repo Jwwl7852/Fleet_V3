@@ -434,17 +434,6 @@ export default function Medarbejdere() {
 
       <>
         <RessourceRegister>
-          <div className="fc-faner" role="tablist" aria-label="Status">
-            <button type="button" role="tab" className="fc-fane" aria-selected={!visAlle}
-                    onClick={() => setVisAlle(false)}>
-              Aktive
-            </button>
-            <button type="button" role="tab" className="fc-fane" aria-selected={visAlle}
-                    onClick={() => setVisAlle(true)}>
-              Alle, inkl. orlov og fratrådte
-            </button>
-          </div>
-
           <div className="fc-filtre">
             <div className="fc-felt" style={{ flex: "1 1 240px", marginBottom: 0 }}>
               <label htmlFor="mb-soeg">Søg</label>
@@ -468,6 +457,14 @@ export default function Medarbejdere() {
               <select id="mb-afdeling" value={afdeling} onChange={(event) => setAfdeling(event.target.value)}>
                 <option value="">Alle afdelinger</option>
                 {afdelinger.filter((post) => post.aktiv !== false).map((post) => <option key={post.id} value={post.id}>{post.navn}</option>)}
+              </select>
+            </div>
+            <div className="fc-felt">
+              <label htmlFor="mb-visning">Medarbejdere</label>
+              <select id="mb-visning" value={visAlle ? "alle" : "aktive"}
+                      onChange={(event) => setVisAlle(event.target.value === "alle")}>
+                <option value="aktive">Aktive</option>
+                <option value="alle">Alle, inkl. orlov og fratrådte</option>
               </select>
             </div>
             <div className="fc-felt">
@@ -507,6 +504,12 @@ export default function Medarbejdere() {
                   r.email
                     ? <a className="fc-a" href={`mailto:${r.email}`}>{r.email}</a>
                     : <span className="fc-neutral">—</span>
+                ) },
+              { key: "handling", label: "", render: (r) => (
+                  <Knap disabled={!maaSkrive} onClick={(event) => { event.stopPropagation(); setForm(r.id); setValgtId(null); }}
+                    title={maaSkrive ? `Redigér ${r.navn}.` : "Kræver personale.skriv, som kun admin har."}>
+                    Redigér
+                  </Knap>
                 ) },
             ]}
             raekker={viste}

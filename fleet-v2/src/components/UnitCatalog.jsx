@@ -75,7 +75,7 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
   return (
     <main className="workspace-page catalog-page resource-directory-page" id="main-content">
       <header className="page-heading-row">
-        <div><h1>Enheder</h1><span className="demo-inline">Fiktive testdata · {sharedStorage ? "fælles emulatorregister" : "lokal prototype"}</span></div>
+        <div><h1>Enheder</h1></div>
         <div className="page-actions">
           <button className="secondary-button" type="button" onClick={() => exportCsv(filtered, relations.costs || [])}><Icon name="download" size={17} />Eksportér CSV</button>
           <button className="primary-button" type="button" onClick={() => setCreating(true)}><Icon name="plus" size={19} />Opret enhed</button>

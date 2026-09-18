@@ -109,11 +109,14 @@ export default function AppShell() {
   const { pathname } = location;
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
-  const procureOwnsPageTitle = pathname === "/indkoeb" || pathname.startsWith("/indkoeb/")
-    || pathname === "/ressourcer/varekatalog" || pathname === "/opsaetning/ressourcer/varer";
   const ressourceOwnsPageTitle = pathname === "/ressourcer"
     || pathname.startsWith("/ressourcer/")
-    || pathname === "/facility-v2/ejendomme";
+    || pathname === "/facility-v2/ejendomme"
+    || pathname === "/opsaetning/ressourcer/varer";
+  const modulePage = ["flaade", "facility", "booking", "indkoeb", "warehouse", "unitbooking", "bemanding"].includes(hoved.key);
+  const modulePageTitle = modulePage
+    ? `${String(hoved.label || hoved.titel).toLocaleUpperCase("da-DK")} – ${modul.label || modul.titel}`
+    : modul.titel;
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
   const visningsKontekst = tenantId || tenant?.id || "ingen-tenant";
@@ -537,7 +540,7 @@ export default function AppShell() {
           </div>
         </aside>
 
-        <div className="fc-main">
+        <div className={`fc-main${modulePage ? " fc-main--module-title" : ""}`}>
           <div className="fc-visningslinje" aria-label="Visningsindstillinger">
             <div className="fc-zoomkontroller" role="group" aria-label="Arbejdsområdezoom">
               <button type="button" onClick={() => skiftZoom(-5)} aria-label="Zoom ud">−</button>
@@ -546,9 +549,9 @@ export default function AppShell() {
             </div>
             <button type="button" className="fc-nulstil-visning" onClick={nulstilVisning}>Nulstil visning</button>
           </div>
-          {!procureOwnsPageTitle && !ressourceOwnsPageTitle && <header className="fc-top">
+          {!ressourceOwnsPageTitle && <header className="fc-top">
             <div className="fc-top-h">
-              <h1>{modul.titel}</h1>
+              <h1>{modulePageTitle}</h1>
               <p>{modul.under}</p>
             </div>
             {/* ⚠ HER LÅ FIRMAVÆLGEREN, PERIODEVÆLGEREN OG "Opdateret 22.43".

@@ -12,7 +12,7 @@ import {
   DEMO_INVENTORY_MOVEMENTS, DEMO_QR_LABELS, DEMO_RECEIPTS, DEMO_RULES, DEMO_SUPPLIERS,
 } from "./procure-v2-demo.js";
 import {
-  ApprovalsScreen, CatalogScreen, ConsumptionScreen, GroupConsumptionScreen,
+  ApprovalsScreen, CatalogScreen, ConsumptionScreen, GroupConsumptionScreen, ResourceCatalogScreen,
   OrdersScreen, OverviewScreen, ReceiptScreen,
 } from "./ProcureScreens.jsx";
 import MobileOrderScreen from "./MobileOrderScreen.jsx";
@@ -204,14 +204,14 @@ export default function ProcureModule() {
   const error = !demo && (needsSource.fejl || ordersSource.fejl || suppliersSource.fejl || catalogSource.fejl || resourceCategoriesSource.fejl || invoicesSource.fejl || approvalsSource.fejl || inventoryMovementsSource.fejl || purchasesSource.fejl);
   const tenantDetails = { ...(tenant || {}), ...(companySource.post || {}) };
   const common = { state, setState, demo, tenant: tenantDetails, user: bruger, canWrite, canApprove, canAdmin, busy: busy || companySource.henter, error: error || companySource.fejl };
-  if (path === "/ressourcer/varekatalog") return <CatalogScreen {...common} />;
+  if (path === "/ressourcer/varekatalog") return <ResourceCatalogScreen {...common} />;
   if (path === "/opsaetning/ressourcer/varer") return <ProcureSetupScreen {...common} />;
   if (path === "/indkoeb") return <OverviewScreen {...common} />;
   if (path === "/indkoeb/mobil/qr-maerkater") return <QrLabelScreen {...common} />;
   if (/^\/indkoeb\/mobil\/modtag(?:\/[^/]+)?$/.test(path)) return <MobileReceiptScreen {...common} />;
   if (/^\/indkoeb\/mobil(?:\/(?:kurv|mine|scan(?:\/[^/]+)?))?$/.test(path)) return <MobileOrderScreen {...common} />;
   if (path === "/indkoeb/behov") return <Navigate to={`/indkoeb/bestillinger${location.search}`} replace />;
-  if (path === "/indkoeb/katalog") return <Navigate to={`/ressourcer/varekatalog${location.search}`} replace />;
+  if (path === "/indkoeb/katalog") return <CatalogScreen {...common} />;
   if (path === "/indkoeb/godkendelser") return <ApprovalsScreen {...common} />;
   if (path === "/indkoeb/forbrug/varegrupper") return <GroupConsumptionScreen {...common} />;
   if (path === "/indkoeb/forbrug") return <ConsumptionScreen {...common} />;

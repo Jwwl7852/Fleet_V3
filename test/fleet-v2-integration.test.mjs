@@ -32,7 +32,7 @@ describe("FLEET v2 integrationsgrænse", () => {
   });
 
   it("skelner katalogruten fra den dynamiske enhedsprofil i AppShell", () => {
-    assert.equal(findModul("/fleet-v2/enheder").key, "fleetV2EnhederLegacy");
+    assert.equal(findModul("/fleet-v2/enheder").key, "fleetV2Enheder");
     assert.equal(findModul("/fleet-v2/enheder/unit-1").key, "fleetV2Enhed");
     assert.equal(findModul("/ressourcer/enheder").key, "ressourceEnheder");
     assert.equal(findModul("/ressourcer/enheder/unit-1").key, "ressourceEnhed");

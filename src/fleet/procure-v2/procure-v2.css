@@ -111,6 +111,112 @@
 .procure-mobile-line-department{display:grid;gap:5px;font-size:13px;color:var(--veyro-muted-accessible)}.procure-mobile-line-department select{min-height:44px;width:100%;border:1px solid var(--veyro-border-strong);border-radius:8px;background:var(--veyro-white);padding:0 11px;color:var(--veyro-text)}
 .procure-cart-line>select{grid-column:2/5;grid-row:2;width:100%;min-height:36px;border:1px solid var(--veyro-border);border-radius:7px;background:var(--veyro-white);padding:5px 8px}.procure-cart-line>b{grid-column:5;grid-row:1}.procure-cart-line>button{grid-column:6;grid-row:1}
 
-/* Kompakt kataloglayout når Varekatalog åbnes fra Ressourcer. */
-.procure-v2.resource-directory-page{padding:8px 0 0}.procure-v2.resource-directory-page .procure-pagehead{align-items:center;margin-bottom:10px;min-height:36px}.procure-v2.resource-directory-page .procure-pagehead h1{font-size:20px;letter-spacing:-.015em}.procure-v2.resource-directory-page .procure-head-actions .procure-button{min-height:36px}.procure-v2.resource-directory-page .procure-catalog-filters{grid-template-columns:minmax(240px,1fr) 170px 180px auto;gap:8px;margin-bottom:10px}.procure-v2.resource-directory-page .procure-catalog-filters :is(input,select,.procure-button){min-height:36px}.procure-v2.resource-directory-page .procure-catalog-table{margin-top:10px;border-radius:8px;box-shadow:none}.procure-v2.resource-directory-page .procure-catalog-table table{font-size:14px}.procure-v2.resource-directory-page .procure-catalog-table :is(th,td){height:40px;padding-block:7px}.procure-result-count{padding:9px 2px 0;color:var(--veyro-muted-accessible);font-size:12px}
-@media(max-width:620px){.procure-v2.resource-directory-page{padding-top:0}.procure-v2.resource-directory-page .procure-pagehead{align-items:stretch}.procure-v2.resource-directory-page .procure-pagehead h1{font-size:18px}.procure-v2.resource-directory-page .procure-catalog-filters{grid-template-columns:1fr}.procure-v2.resource-directory-page .procure-catalog-filters>*{width:100%}.procure-v2.resource-directory-page .procure-table-wrap{max-width:100%;overflow-x:auto}}
+/* Enheder er den målte dimensionsreference for Ressourcer. Reglerne er
+   afgrænset til katalogruten og ændrer derfor ikke PROCURE-overblikket. */
+.procure-v2.resource-directory-page{padding:8px 0 0}
+.procure-v2.resource-directory-page .procure-pagehead{
+  align-items:center;
+  min-height:var(--fc-resource-control-height);
+  margin-bottom:10px;
+  padding:0 2px;
+}
+.procure-v2.resource-directory-page .procure-pagehead h1{
+  font-size:var(--fc-resource-title-size);
+  font-weight:700;
+  line-height:var(--fc-resource-title-line);
+}
+.procure-v2.resource-directory-page .procure-pagehead p:empty{display:none}
+.procure-v2.resource-directory-page .procure-head-actions .procure-button{
+  height:var(--fc-resource-control-height);
+  min-height:var(--fc-resource-control-height);
+}
+.procure-v2.resource-directory-page .procure-tabs{margin-bottom:10px}
+.procure-v2.resource-directory-page .procure-catalog-filters{
+  grid-template-columns:minmax(240px,1fr) var(--fc-resource-filter-width) var(--fc-resource-filter-width) auto;
+  align-items:center;
+  gap:var(--fc-resource-toolbar-gap);
+  margin-bottom:10px;
+}
+.procure-v2.resource-directory-page .procure-catalog-filters :is(.procure-search,select,.procure-button){
+  box-sizing:border-box;
+  height:var(--fc-resource-control-height);
+  min-height:var(--fc-resource-control-height);
+}
+.procure-v2.resource-directory-page .procure-catalog-filters .procure-search{
+  flex-direction:row;
+  align-items:center;
+  min-width:0;
+  padding:0 12px;
+}
+.procure-v2.resource-directory-page .procure-catalog-filters .procure-search input{
+  flex:1;
+  min-width:0;
+  height:auto;
+  min-height:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+}
+.procure-v2.resource-directory-page .procure-catalog-table{margin-top:0}
+.procure-v2.resource-catalog-directory{display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto;gap:10px}
+.procure-v2.resource-catalog-directory .procure-pagehead{margin-bottom:0}
+.procure-v2.resource-catalog-directory .procure-catalog-table{min-width:0;width:100%}
+.procure-v2.resource-catalog-directory .procure-catalog-table table{min-width:920px}
+.procure-v2.resource-catalog-directory .procure-catalog-table td:last-child,
+.procure-v2.resource-catalog-directory .procure-catalog-table th:last-child{text-align:right}
+.procure-v2.resource-directory-page .procure-catalog-table th{
+  box-sizing:border-box;
+  height:var(--fc-resource-table-head-height);
+  padding:0 var(--fc-resource-cell-inline);
+  font-size:12px;
+  font-weight:700;
+  line-height:17.4px;
+}
+.procure-v2.resource-directory-page .procure-catalog-table td{
+  box-sizing:border-box;
+  height:var(--fc-resource-table-row-height);
+  padding:4px var(--fc-resource-cell-inline);
+  font-size:14px;
+  line-height:20.3px;
+}
+.procure-v2.resource-directory-page .procure-catalog-item{min-width:210px;max-width:320px;gap:9px}
+.procure-v2.resource-directory-page .procure-catalog-item>span:last-child{min-width:0}
+.procure-v2.resource-directory-page .procure-catalog-item .procure-product-visual{
+  width:38px;
+  height:38px;
+  flex-basis:38px;
+}
+.procure-v2.resource-directory-page .procure-catalog-ellipsis{
+  display:block;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.procure-v2.resource-directory-page .procure-status{
+  min-height:24px;
+  padding:2px 8px;
+  border-radius:12px;
+  font-size:10px;
+  line-height:14.5px;
+}
+.procure-v2.resource-directory-page .procure-catalog-actions .procure-favorite,
+.procure-v2.resource-directory-page .procure-catalog-actions .procure-button{
+  height:var(--fc-resource-control-height);
+  min-height:var(--fc-resource-control-height);
+}
+.procure-v2.resource-directory-page .procure-result-count{
+  box-sizing:border-box;
+  height:32px;
+  padding:9px 2px 0;
+  font-size:var(--fc-resource-result-size);
+  line-height:14.5px;
+}
+@media(max-width:620px){
+  .procure-v2.resource-directory-page{padding-top:0}
+  .procure-v2.resource-directory-page .procure-pagehead{align-items:stretch}
+  .procure-v2.resource-directory-page .procure-pagehead h1{font-size:18px}
+  .procure-v2.resource-directory-page .procure-catalog-filters{grid-template-columns:1fr}
+  .procure-v2.resource-directory-page .procure-catalog-filters>*{width:100%}
+  .procure-v2.resource-directory-page .procure-table-wrap{max-width:100%;overflow-x:auto}
+}

@@ -123,7 +123,7 @@ export function UnitProfile({ unitId, initialViewState, onViewStateChange, onNav
   useEffect(() => { onViewStateChange?.(unitId, { tab }); }, [onViewStateChange, tab, unitId]);
 
   if (loading) return <main className="workspace-page loading-state" id="main-content"><span className="loading-spinner" /><p>Indlæser enhedsprofil …</p></main>;
-  if (!unit) return <main className="workspace-page not-found-state" id="main-content"><Icon name="warning" size={38} /><span className="eyebrow">FLEET v2 · lokal prototype</span><h1>Enheden findes ikke</h1><p>ID’et <code>{unitId}</code> findes ikke i det lokale testdatasæt.</p><button className="primary-button" type="button" onClick={() => onBack("/enheder")}>Tilbage til Enhedskartotek</button></main>;
+  if (!unit) return <main className="workspace-page not-found-state" id="main-content"><Icon name="warning" size={38} /><span className="eyebrow">FLEET v2 · lokal prototype</span><h1>Enheden findes ikke</h1><p>ID’et <code>{unitId}</code> findes ikke i det lokale testdatasæt.</p><button className="primary-button" type="button" onClick={() => onBack("/enheder")}>Tilbage til Enheder</button></main>;
 
   const meta = statusMeta(unit);
   const position = related.positions?.[0];
