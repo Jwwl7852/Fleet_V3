@@ -392,7 +392,6 @@ body:has(.fic-shell) {
 }
 .fc-app:has(.fic-shell) { height: auto; }
 .fc-app:has(.fic-shell) .fc-side { height: 100%; }
-.fc-app:has(.fic-shell) .fc-top { display: none; }
 .fc-slot:has(.fic-shell) {
   display: flex;
   padding-bottom: 10px;

@@ -133,7 +133,7 @@ export default function Fakturacenter() {
     return (
       <section className="fc-empty fc-empty-bad" role="alert"
                aria-labelledby="fakturacenter-adgang-afvist">
-        <h1 id="fakturacenter-adgang-afvist">Ingen adgang til Fakturacenter</h1>
+        <h2 id="fakturacenter-adgang-afvist">Ingen adgang til Fakturacenter</h2>
         <p>Din bruger mangler rettigheden <code>{PERM.fakturaerLaes}</code>.</p>
         <p>Et direkte link giver ikke adgang til prototypens syntetiske fakturadata.</p>
       </section>

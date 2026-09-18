@@ -115,7 +115,12 @@ async function navigate(path) {
   await call("Page.navigate", { url: `${BASE}${path}` });
   await waitFor("document.readyState === 'complete'", `${path} blev ikke indlæst`);
   await waitFor("location.pathname !== '/login'", `${path} sendte tilbage til login`);
-  await pause(450);
+  await pause(350);
+  /* Lazy-moduler og emulatoropslag må være færdige, før layoutet måles.
+     En fortsat loader registreres stadig i rapporten efter timeout, men den
+     må ikke blive et falsk screenshot blot fordi modulet tog >450 ms. */
+  await waitFor("!/(Henter skærmen|Indlæser [^\\n]*data)/i.test(document.body.innerText)", `${path} blev ved med at indlæse`, 10000).catch(() => false);
+  await pause(150);
 }
 async function screenshot(file, directory = screenshotsDir) {
   const result = await call("Page.captureScreenshot", {
@@ -134,6 +139,11 @@ const measureExpression = `(()=>{
   const median=(values)=>{const sorted=values.filter(Number.isFinite).sort((a,b)=>a-b);if(!sorted.length)return null;return +sorted[Math.floor(sorted.length/2)].toFixed(1)};
   const root=document.querySelector('.fc-indhold')||document.querySelector('main')||document.body;
   const heading=[...root.querySelectorAll('h1')].find(visible)||null;
+  const shellTitle=document.querySelector('.fc-top h1');
+  const shellTitleRect=rect(shellTitle);
+  const logo=document.querySelector('.fc-brand-logo .veyro-logo');
+  const logoRect=rect(logo);
+  const viewControl=document.querySelector('.fc-visning>summary');
   const candidates=[...root.querySelectorAll('.fc-kort,.fc-panel,.fc-ressource-register,.resource-directory-panel,.card,.wf-card,.pr-panel,.procure-panel,section')].filter(visible);
   const panel=candidates.find((el)=>{const s=getComputedStyle(el);return s.backgroundColor!=='rgba(0, 0, 0, 0)'&&parseFloat(s.borderTopWidth)>0})||candidates[0]||null;
   const controls=[...root.querySelectorAll('input,select,button')].filter(visible);
@@ -143,6 +153,7 @@ const measureExpression = `(()=>{
   const rows=[...root.querySelectorAll('tbody tr')].filter(visible);
   const dialog=[...document.querySelectorAll('[role=dialog],.fc-dialog,.wf-modal,.procure-modal')].find(visible)||null;
   const rootRect=rect(root);const headingRect=rect(heading);const panelRect=rect(panel);
+  const topActions=buttons.map(el=>({el,r:el.getBoundingClientRect()})).filter(({r})=>shellTitleRect&&r.width>0&&r.height>0&&Math.abs((r.y+r.height/2)-(shellTitleRect.y+shellTitleRect.height/2))<=12&&r.x>shellTitleRect.x).map(({el,r})=>({text:el.textContent.replace(/\\s+/g,' ').trim(),x:+r.x.toFixed(1),y:+r.y.toFixed(1),width:+r.width.toFixed(1),height:+r.height.toFixed(1)}));
   return {
     actualPath:location.pathname+location.search,
     title:heading?.textContent?.replace(/\\s+/g,' ').trim()||document.title,
@@ -151,6 +162,7 @@ const measureExpression = `(()=>{
     loading:/Henter skærmen|Indlæser/.test(root.innerText),
     denied:/ingen adgang|ikke adgang|adgang nægtet/i.test(root.innerText),
     rootClass:root.className||'',headingClass:heading?.className||'',panelClass:panel?.className||'',
+    pageTop:{title:shellTitle?.textContent?.replace(/\\s+/g,' ').trim()||'',titleRect:shellTitleRect,logoRect,centerDelta:shellTitleRect&&logoRect?+((shellTitleRect.y+shellTitleRect.height/2)-(logoRect.y+logoRect.height/2)).toFixed(1):null,topActions,visibleH1:[...document.querySelectorAll('h1')].filter(visible).map(el=>el.textContent.replace(/\\s+/g,' ').trim()),viewControl:rect(viewControl)},
     root:rootRect,heading:headingRect,headingStyle:style(heading),panel:panelRect,panelStyle:style(panel),
     headingToPanel:headingRect&&panelRect?+(panelRect.y-(headingRect.y+headingRect.height)).toFixed(1):null,
     rightMargin:rootRect?+(innerWidth-(rootRect.x+rootRect.width)).toFixed(1):null,
@@ -218,10 +230,25 @@ try {
     }
     sidebarAudit.push(await measureSidebar("udfoldet"));
     await screenshot("menu-udfoldet-1440x900.png", sidebarDir);
+    await evaluate("document.querySelector('.fc-visning>summary').click();true");
+    await pause(150);
+    await screenshot("visning-udfoldet-1440x900.png", sidebarDir);
+    await evaluate("document.querySelector('.fc-visning>summary').click();true");
     await evaluate("document.querySelector('.fc-menu-toggle').click();true");
     await pause(250);
     sidebarAudit.push(await measureSidebar("sammenklappet"));
     await screenshot("menu-sammenklappet-1440x900.png", sidebarDir);
+    await evaluate("document.querySelector('.fc-visning>summary').click();true");
+    await pause(150);
+    await screenshot("visning-sammenklappet-1440x900.png", sidebarDir);
+    await evaluate("document.querySelector('.fc-visning>summary').click();true");
+    await evaluate("document.querySelector('.fc-menu-toggle').click();true");
+    await pause(250);
+    await setViewport(390, 844);
+    await navigate("/ressourcer/varekatalog");
+    await evaluate("document.querySelector('.fc-visning>summary').click();true");
+    await pause(150);
+    await screenshot("visning-mobil-390x844.png", sidebarDir);
   }
 
   if (ROUTE_CAPTURE) {

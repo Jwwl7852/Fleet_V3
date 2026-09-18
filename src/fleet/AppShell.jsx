@@ -119,7 +119,7 @@ export default function AppShell() {
   const { pathname } = location;
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
-  const ressourceOwnsPageTitle = pathname === "/ressourcer"
+  const ressourceSide = pathname === "/ressourcer"
     || pathname.startsWith("/ressourcer/")
     || pathname === "/facility-v2/ejendomme"
     || pathname === "/opsaetning/ressourcer/varer";
@@ -127,6 +127,9 @@ export default function AppShell() {
   const modulePageTitle = modulePage
     ? `${String(hoved.label || hoved.titel).toLocaleUpperCase("da-DK")} – ${modul.label || modul.titel}`
     : modul.titel;
+  const pageTitle = pathname.startsWith("/oekonomi/fakturacenter")
+    ? "Fakturacenter"
+    : ressourceSide ? (modul.label || modul.titel) : modulePageTitle;
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
   const visningsKontekst = tenantId || tenant?.id || "ingen-tenant";
@@ -503,6 +506,24 @@ export default function AppShell() {
           </nav>
 
           <div className="fc-foot">
+            <details className="fc-visning">
+              <summary>
+                <span className="fc-visning-ikon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M3 5h18v12H3zM8 21h8M12 17v4" /></svg>
+                </span>
+                <span className="fc-visning-label">Visning</span>
+                <span className="fc-visning-chevron" aria-hidden="true">⌄</span>
+              </summary>
+              <div className="fc-visning-panel" aria-label="Visningsindstillinger">
+                <span className="fc-visning-panel-label">Zoom</span>
+                <div className="fc-zoomkontroller" role="group" aria-label="Arbejdsområdezoom">
+                  <button type="button" onClick={() => skiftZoom(-5)} aria-label="Zoom ud">−</button>
+                  <output aria-live="polite">{begraensZoom(zoom)} %</output>
+                  <button type="button" onClick={() => skiftZoom(5)} aria-label="Zoom ind">+</button>
+                </div>
+                <button type="button" className="fc-nulstil-visning" onClick={nulstilVisning}>Nulstil visning</button>
+              </div>
+            </details>
             <div className="fc-who">
               <div className="fc-av">{initialer}</div>
               <div className="fc-who-txt">
@@ -544,19 +565,10 @@ export default function AppShell() {
           </div>
         </aside>
 
-        <div className={`fc-main${modulePage ? " fc-main--module-title" : ""}`}>
-          <div className="fc-visningslinje" aria-label="Visningsindstillinger">
-            <div className="fc-zoomkontroller" role="group" aria-label="Arbejdsområdezoom">
-              <button type="button" onClick={() => skiftZoom(-5)} aria-label="Zoom ud">−</button>
-              <output aria-live="polite">{begraensZoom(zoom)} %</output>
-              <button type="button" onClick={() => skiftZoom(5)} aria-label="Zoom ind">+</button>
-            </div>
-            <button type="button" className="fc-nulstil-visning" onClick={nulstilVisning}>Nulstil visning</button>
-          </div>
-          {!ressourceOwnsPageTitle && <header className="fc-top">
+        <div className={`fc-main fc-main--shared-page-top${modulePage ? " fc-main--module-title" : ""}`}>
+          <header className="fc-top">
             <div className="fc-top-h">
-              <h1>{modulePageTitle}</h1>
-              <p>{modul.under}</p>
+              <h1>{pageTitle}</h1>
             </div>
             {/* ⚠ HER LÅ FIRMAVÆLGEREN, PERIODEVÆLGEREN OG "Opdateret 22.43".
                 Alle tre er væk fra HVER side — ikke skjult pr. modul.
@@ -580,7 +592,7 @@ export default function AppShell() {
                 vinduer. Det er KONTROLLERNE der er væk, ikke begrebet — og
                 skal en periodevælger tilbage, hører den her i shellen igen,
                 aldrig i et modul. */}
-          </header>}
+          </header>
           {/* ⚠ Suspense LIGGER HER, IKKE OM HELE RUTETRÆET.
               Skærmene hentes når de åbnes (beslutning 97), og React
               venter ved den NÆRMESTE grænse. Lå den om <Routes> i

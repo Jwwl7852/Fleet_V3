@@ -32,7 +32,7 @@ export default function FacilityV2Module() {
   if (!hasModule || !hasPermission) {
     return (
       <section className="fc-card" aria-labelledby="facility-v2-adgang-afvist">
-        <h1 id="facility-v2-adgang-afvist">Ingen adgang til FACILITY</h1>
+        <h2 id="facility-v2-adgang-afvist">Ingen adgang til FACILITY</h2>
         <p>
           {hasModule
             ? `Ruten kræver permissionen ${requiredPermission}.`

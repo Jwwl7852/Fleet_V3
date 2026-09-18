@@ -184,7 +184,7 @@ export default function FleetV2Module() {
   if (!hasModule || !hasPermission) {
     return (
       <section className="fc-card" aria-labelledby="fleet-v2-adgang-afvist">
-        <h1 id="fleet-v2-adgang-afvist">Ingen adgang til FLEET</h1>
+        <h2 id="fleet-v2-adgang-afvist">Ingen adgang til FLEET</h2>
         <p>
           {hasModule
             ? `Ruten kræver permissionen ${requiredPermission}.`

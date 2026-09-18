@@ -296,21 +296,21 @@ body:has(#root .fc-app){margin:0}
   border-radius:999px; text-align:center; font-size:var(--fc-t-tight); font-variant-numeric:tabular-nums}
 .fc-sub-fakturacenter .fc-sublink.fc-on .fc-sub-count{color:var(--fc-navy); background:#fff}
 
-.fc-foot{border-top:1px solid var(--fc-navy-3); padding-top:12px; margin-top:8px}
+.fc-foot{position:relative;border-top:1px solid var(--fc-navy-3); padding-top:10px; margin-top:8px}
 .fc-who{display:flex; gap:9px; align-items:center; padding:4px 6px}
 .fc-av{width:31px; height:31px; border-radius:50%; background:var(--fc-navy-3); color:#fff;
   display:grid; place-items:center; font-size:var(--fc-t-xs); font-weight:700; flex:0 0 31px}
 .fc-who-n{color:#fff; font-size:var(--fc-t-s); font-weight:600}
 .fc-who-r{color:#94a3b8; font-size:var(--fc-t-xs)}
 
-.fc-main{flex:1; min-width:0; display:flex; flex-direction:column}
+.fc-main{position:relative;flex:1; min-width:0; display:flex; flex-direction:column}
 /* ⚠ V1 VISUEL KONSOLIDERING — §1/§16. Toppadding var 22/14, målt som den
    største enkeltstående luftflade over "fold": et skærmbillede uden en
    tabel eller et kort viste kun mørk sidebar og hvid top. Ingen ny token —
    samme skala, mindre af den. */
-.fc-top{display:flex; align-items:flex-start; gap:14px; padding:15px 26px 9px; flex-wrap:wrap}
+.fc-top{box-sizing:border-box;display:flex;align-items:center;gap:14px;min-height:88px;padding:18px 26px;flex-wrap:wrap}
 .fc-top-h{flex:1; min-width:220px}
-.fc-top-h h1{margin:0; font-size:var(--fc-t-3xl); font-weight:700; letter-spacing:-.02em}
+.fc-top-h h1{margin:0;font-size:var(--fc-t-3xl);font-weight:700;line-height:1.2;letter-spacing:-.02em}
 .fc-top-h p{margin:3px 0 0; color:var(--bc-muted); font-size:var(--fc-t-m)}
 .fc-top-ctl{display:flex; gap:9px; align-items:center; flex-wrap:wrap}
 .fc-ctl{background:var(--bc-card); border:1px solid var(--bc-line); border-radius:9px;
@@ -2207,7 +2207,17 @@ body:has(.fc-login-side){margin:0}
 .fc-menu-toggle::before{content:"";position:absolute;inset:5px 7px;border:1px solid var(--veyro-border);border-radius:9px;background:var(--fc-navy-2);box-shadow:var(--fc-shadow)}
 .fc-menu-toggle>span{position:relative;z-index:1;line-height:1}
 .fc-menu-toggle:hover::before,.fc-menu-toggle:focus-visible::before{border-color:var(--veyro-cyan);background:var(--fc-navy-3)}
-.fc-visningslinje{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-height:42px;padding:6px 26px;border-bottom:1px solid var(--veyro-border);background:var(--veyro-surface)}
+.fc-visning{position:relative;margin-bottom:7px;color:var(--veyro-white)}
+.fc-visning>summary{box-sizing:border-box;display:grid;grid-template-columns:24px minmax(0,1fr) 18px;align-items:center;gap:9px;min-height:38px;padding:6px 8px;border:1px solid var(--fc-navy-3);border-radius:8px;background:var(--fc-navy-2);color:var(--veyro-white);cursor:pointer;list-style:none}
+.fc-visning>summary::-webkit-details-marker{display:none}
+.fc-visning>summary:hover,.fc-visning>summary:focus-visible{border-color:var(--veyro-cyan);background:var(--fc-navy-3)}
+.fc-visning-ikon{display:grid;place-items:center;width:24px;height:24px}
+.fc-visning-ikon svg{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fc-visning-label{font-size:var(--fc-t-m);font-weight:600}
+.fc-visning-chevron{justify-self:end;transition:transform .14s ease}
+.fc-visning[open] .fc-visning-chevron{transform:rotate(180deg)}
+.fc-visning-panel{position:absolute;z-index:80;left:0;bottom:calc(100% + 7px);display:grid;gap:8px;min-width:196px;padding:10px;border:1px solid var(--veyro-border);border-radius:9px;background:var(--veyro-white);box-shadow:var(--fc-shadow);color:var(--bc-text)}
+.fc-visning-panel-label{color:var(--bc-muted);font-size:var(--fc-t-s);font-weight:700}
 .fc-zoomkontroller{display:inline-grid;grid-template-columns:34px 62px 34px;align-items:center;min-height:32px;border:1px solid var(--veyro-border);border-radius:8px;background:var(--veyro-surface);overflow:hidden}
 .fc-zoomkontroller button,.fc-nulstil-visning{min-height:32px;border:0;background:transparent;color:var(--bc-text);font:inherit;cursor:pointer}
 .fc-zoomkontroller button:hover,.fc-nulstil-visning:hover{background:var(--fc-accent-soft)}
@@ -2221,7 +2231,7 @@ body:has(.fc-login-side){margin:0}
   .fc-menu-kompakt .fc-side{width:72px;flex-basis:72px;overflow:visible}
   .fc-menu-kompakt .fc-brand-logo{justify-content:flex-start;width:56px;height:58px;min-height:58px;margin:8px 0 0;padding:0;overflow:hidden}
   .fc-menu-kompakt .fc-brand-logo .veyro-logo{display:block;flex:0 0 auto;width:184px;max-width:none;margin:0;transform:translateX(-11.6px)}
-  .fc-menu-kompakt .fc-ver,.fc-menu-kompakt .fc-tenant,.fc-menu-kompakt .fc-nav-gruppe-toggle,.fc-menu-kompakt .fc-who-txt,.fc-menu-kompakt .fc-demo-rolle,.fc-menu-kompakt .fc-side-btn{display:none}
+  .fc-menu-kompakt .fc-ver,.fc-menu-kompakt .fc-tenant,.fc-menu-kompakt .fc-nav-gruppe-toggle,.fc-menu-kompakt .fc-who-txt,.fc-menu-kompakt .fc-demo-rolle,.fc-menu-kompakt .fc-side-btn,.fc-menu-kompakt .fc-visning-label,.fc-menu-kompakt .fc-visning-chevron{display:none}
   .fc-menu-kompakt .fc-nav{padding:8px 0;overflow:visible}.fc-menu-kompakt .fc-nav-gruppe-blok,.fc-menu-kompakt .fc-nav-gruppe-punkter{display:grid;justify-items:center;width:100%;overflow:visible}
   .fc-menu-kompakt .fc-nav-modul,.fc-menu-kompakt .fc-fakturacenter-nav{display:grid;justify-items:center;width:100%;margin:0;padding:0}
   .fc-menu-kompakt .fc-link{justify-content:center;gap:0;width:44px;height:44px;min-height:44px;margin:0;padding:0}.fc-menu-kompakt .fc-link>span:not(.fc-nav-ikon),.fc-menu-kompakt .fc-link>.fc-chevron,.fc-menu-kompakt .fc-fakturacenter-toggle{display:none}
@@ -2232,7 +2242,7 @@ body:has(.fc-login-side){margin:0}
   .fc-menu-kompakt .fc-nav-modul.fc-kompakt-aaben>.fc-sub,.fc-menu-kompakt .fc-fakturacenter-nav.fc-kompakt-aaben>.fc-sub{display:grid}
   .fc-menu-kompakt .fc-kompakt-modulnavn{display:block;padding:7px 8px;color:var(--veyro-white);font-size:var(--fc-t-s)}
   .fc-menu-kompakt .fc-sublink{display:flex;min-height:34px;align-items:center;color:var(--veyro-white)}
-  .fc-menu-kompakt .fc-foot{padding:8px}.fc-menu-kompakt .fc-who{justify-content:center}.fc-menu-kompakt .fc-av{margin:0}
+  .fc-menu-kompakt .fc-foot{padding:8px}.fc-menu-kompakt .fc-visning>summary{display:grid;place-items:center;width:44px;height:44px;min-height:44px;margin-inline:auto;padding:0}.fc-menu-kompakt .fc-visning-panel{left:calc(100% + 8px);bottom:0}.fc-menu-kompakt .fc-who{justify-content:center}.fc-menu-kompakt .fc-av{margin:0}
 }
 
 .fc-table tbody tr[role="button"]{cursor:pointer;transition:background .14s ease,box-shadow .14s ease}
@@ -2279,8 +2289,6 @@ body:has(.fc-login-side){margin:0}
   .fc-justerbart-panel{max-height:none;overflow:visible}.fc-panelhaandtag{display:none}
   .fc-justerbare-paneler.fc-support-layout .fc-support-main,.fc-justerbare-paneler.fc-support-layout .fc-support-side{padding:0}
 }
-@media(max-width:720px){.fc-visningslinje{padding-inline:16px}.fc-nulstil-visning{display:none}}
-
 /* Mobilskallen skal stadig vise miljø, logo, navigation og arbejdszoom, men
    de fire lag må ikke skubbe selve sagsarbejdet under folden. Den aktive
    modulrække forbliver vandret og tastatur-/touchbetjent. */
@@ -2296,9 +2304,16 @@ body:has(.fc-login-side){margin:0}
   .fc-link svg{width:16px;height:16px;flex-basis:16px}
   .fc-nav-modul.fc-modul-aaben>.fc-sub{width:min(250px,calc(100vw - 100px));margin-top:1px}
   .fc-sublink{min-height:30px;padding:5px 7px}
-  .fc-visningslinje{min-height:34px;padding:2px 10px}
+  .fc-foot{grid-column:1/-1;display:block;width:100%;margin:3px 0 0;padding:3px 0 0;border-top:1px solid var(--fc-navy-3)}
+  .fc-foot>:not(.fc-visning){display:none}
+  .fc-visning{width:100%;margin:0}
+  .fc-visning>summary{min-height:34px}
+  .fc-visning-panel{position:static;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;margin-top:4px}
   .fc-zoomkontroller{grid-template-columns:30px 54px 30px;min-height:30px}
   .fc-zoomkontroller button{min-height:30px}
+  .fc-top{min-height:64px;padding:12px 10px;align-items:center}
+  .fc-top-h{min-width:min(180px,100%)}
+  .fc-top-h h1{font-size:var(--fc-t-2xl);overflow-wrap:anywhere}
   .fc-slot{padding:8px 10px 16px}
 }
 
@@ -2323,6 +2338,86 @@ body:has(.fc-login-side){margin:0}
 .fc-main--module-title .pr-page-heading h1,
 .fc-main--module-title .pr-calendar-heading>div:first-child>h1,
 .fc-main--module-title .pr-calendar-heading>div:first-child>p{display:none}
+
+/* Godkendt fælles sidetop i V1. AppShell ejer titlen; de integrerede
+   skærmes lokale titelkopier fjernes, mens deres virkende handlinger flyttes
+   op på samme midterlinje på desktop. Dialogoverskrifter er ikke omfattet. */
+.fc-main--shared-page-top :is(
+  .fleet-v2-embedded .page-heading-row,
+  .fleet-v2-embedded .page-heading,
+  .fleet-v2-embedded .page-title-row,
+  .fleet-v2-embedded .workspace-heading,
+  .veyro-module--facility .page-heading,
+  .wf-app--embedded .wf-page-head,
+  .procure-v2 .procure-pagehead,
+  .fic-hero,
+  .fc-ressource-hoved,
+  .ub-sidehoved,
+  .pu-view-title,
+  .ps-heading
+) > :first-child:not(button):not(a){display:none}
+.fc-main--shared-page-top .fc-operational-overview>.fc-overview-heading{display:none}
+.fc-main--shared-page-top .mobile-center-header>div:first-child{display:none}
+.fc-main--shared-page-top .pr-page-heading h1,
+.fc-main--shared-page-top .pr-calendar-heading>div:first-child>h1,
+.fc-main--shared-page-top .pr-calendar-heading>div:first-child>p{display:none}
+.fc-main--shared-page-top .fc-overview-summary{grid-template-columns:minmax(0,1fr)}
+
+@media(min-width:721px){
+  .fc-main--shared-page-top :is(
+    .fleet-v2-embedded .page-heading-row,
+    .fleet-v2-embedded .page-heading,
+    .fleet-v2-embedded .page-title-row,
+    .fleet-v2-embedded .workspace-heading,
+    .veyro-module--facility .page-heading,
+    .wf-app--embedded .wf-page-head,
+    .procure-v2 .procure-pagehead,
+    .fic-hero,
+    .fc-ressource-hoved,
+    .ub-sidehoved,
+    .pu-view-title,
+    .ps-heading
+  ){
+    position:absolute;z-index:12;top:25px;right:26px;display:flex;align-items:center;
+    justify-content:flex-end;width:auto;min-height:38px;margin:0;padding:0;
+  }
+  .fc-main--shared-page-top :is(
+    .fleet-v2-embedded .page-heading-row,
+    .fleet-v2-embedded .page-heading,
+    .fleet-v2-embedded .page-title-row,
+    .fleet-v2-embedded .workspace-heading,
+    .veyro-module--facility .page-heading,
+    .wf-app--embedded .wf-page-head,
+    .procure-v2 .procure-pagehead,
+    .fic-hero,
+    .fc-ressource-hoved,
+    .ub-sidehoved,
+    .pu-view-title,
+    .ps-heading
+  ):has(> :first-child:last-child){display:none}
+  .fc-main--shared-page-top .fc-overview-primary{position:absolute;z-index:12;top:20px;right:26px;min-height:48px}
+  .fc-main--shared-page-top .fc-overview-summary{gap:0}
+}
+
+@media(max-width:720px){
+  .fc-main--shared-page-top :is(
+    .fleet-v2-embedded .page-heading-row,
+    .fleet-v2-embedded .page-heading,
+    .fleet-v2-embedded .page-title-row,
+    .fleet-v2-embedded .workspace-heading,
+    .veyro-module--facility .page-heading,
+    .wf-app--embedded .wf-page-head,
+    .procure-v2 .procure-pagehead,
+    .fic-hero,
+    .fc-ressource-hoved,
+    .ub-sidehoved,
+    .pu-view-title,
+    .ps-heading
+  ){
+    min-height:0;margin:0 0 10px;padding:0;align-items:stretch;justify-content:flex-start;
+  }
+  .fc-main--shared-page-top .fc-overview-primary{width:100%;min-height:40px}
+}
 
 /* Fælles driftsoversigt for Version 1-modulerne. Farver og typografi bruger
    udelukkende de centrale tokens ovenfor, så modulerne ikke får egne temaer. */

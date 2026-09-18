@@ -47,7 +47,7 @@ export default function PlanningV2Module() {
   if (!hasModule || !hasPermission) {
     return (
       <section className="fc-card" aria-labelledby="planning-v2-adgang-afvist">
-        <h1 id="planning-v2-adgang-afvist">Ingen adgang til PLANNING</h1>
+        <h2 id="planning-v2-adgang-afvist">Ingen adgang til PLANNING</h2>
         <p>
           {hasModule
             ? `Ruten kræver permissionen ${requiredPermission}.`

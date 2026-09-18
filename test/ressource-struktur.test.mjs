@@ -150,7 +150,10 @@ test("Ressourcer følger Enheder-listens kompakte liste- og filterstruktur", () 
   const properties = read("facility-v2/src/routes/PropertiesPage.jsx");
   const vehicles = read("fleet-v2/src/components/UnitCatalog.jsx");
 
-  assert.match(shell, /ressourceOwnsPageTitle/);
+  assert.match(shell, /const ressourceSide =/);
+  assert.match(shell, /fc-main fc-main--shared-page-top/);
+  assert.match(shell, /<header className="fc-top">/);
+  assert.doesNotMatch(shell, /ressourceOwnsPageTitle/);
   assert.match(employees, /<Dialog titel=\{valgt\.navn\}/);
   assert.doesNotMatch(employees, /role="tablist" aria-label="Status"/);
   assert.match(employees, /id="mb-visning"/);

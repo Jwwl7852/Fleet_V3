@@ -39,7 +39,7 @@ export default function WorkforceV2Module() {
   if (henter) return <div className="fc-empty">Henter medarbejderidentitet …</div>;
   if (!hasModule || (!manager && !employeeId)) {
     return <section className="fc-card" aria-labelledby="workforce-v2-adgang-afvist">
-      <h1 id="workforce-v2-adgang-afvist">Ingen adgang til WORKFORCE</h1>
+      <h2 id="workforce-v2-adgang-afvist">Ingen adgang til WORKFORCE</h2>
       <p>{hasModule ? "Brugeren er ikke knyttet til en medarbejder og har ingen WORKFORCE-lederadgang." : "Tenantens abonnement omfatter ikke WORKFORCE."}</p>
       <p>Et direkte link indlæser ikke WORKFORCE-data.</p>
     </section>;
