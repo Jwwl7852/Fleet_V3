@@ -53,7 +53,8 @@ test("modulgenveje peger på de samme fælles registre", () => {
   assert.equal(byKey.get("planningV2Ressourcer").sti, "/ressourcer/enheder");
   assert.equal(byKey.get("workforceMedarbejdere"), undefined);
   assert.equal(byKey.get("ressourceMedarbejdere").sti, "/ressourcer/medarbejdere");
-  assert.equal(byKey.get("unitbookingRegister").sti, "/ressourcer/units");
+  assert.equal(byKey.get("unitbookingRegister"), undefined);
+  assert.equal(byKey.get("ressourceUnits").sti, "/ressourcer/units");
   assert.equal(byKey.get("indkoebKatalog"), undefined);
   assert.equal(byKey.get("ressourceVarekatalog").sti, "/ressourcer/varekatalog");
   assert.equal(byKey.get("warehouseLokationer").sti, "/ressourcer/lagerlokationer");
