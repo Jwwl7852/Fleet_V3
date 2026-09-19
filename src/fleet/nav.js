@@ -18,11 +18,12 @@
  * SKIVE 2A (V1-redesign) — GRUPPEOVERSKRIFTER, IKKE EN NY MEKANISME.
  * ══════════════════════════════════════════════════════════════════════════
  *
- * Hvert topniveaupunkt bærer nu et `gruppe`-felt (`faelles` | `drift` |
- * `admin` | `hjaelp`). AppShell render'er én overskrift pr. gruppe i
- * `GRUPPE_ORDEN`s rækkefølge, og punkterne INDEN i en gruppe i den
- * rækkefølge de allerede står i `NAV` — grupperingen er et RENDER-lag oven
- * på den eksisterende flade liste, ikke en ny node/permission/regel.
+ * Hvert topniveaupunkt bærer nu et `gruppe`-felt (`top` | `drift` | `admin` |
+ * `hjaelp`). AppShell render'er grupperne i `GRUPPE_ORDEN`s rækkefølge og
+ * punkterne INDEN i en gruppe i den rækkefølge de allerede står i `NAV`.
+ * `top` er uden gruppeoverskrift og bruges kun til Dashboard; grupperingen er
+ * et RENDER-lag oven på den eksisterende flade liste, ikke en ny
+ * node/permission/regel.
  * `kraeverModul` og `kraeverPerm` er UÆNDREDE mekanismer: de får blot flere
  * punkter at stå på (se `kunderOversigt` og `fakturacenter` nedenfor, som nu
  * er TOPNIVEAUPUNKTER uden `born`, ligesom Dashboard).
@@ -33,11 +34,11 @@
  * af felterne. `kunderOversigt` (kraeverModul) og `fakturacenter`
  * (kraeverPerm) er de to FØRSTE der gør, og AppShell.jsx er derfor udvidet
  * til at spørge om begge felter på ALLE topniveaupunkter — se filens egen
- * kommentar. Uden den udvidelse ville Fakturaer & bilag stå åben for en
- * chauffør, som ikke har `indkoeb.laes` — præcis den eksponering
+ * kommentar. Uden den udvidelse ville Fakturacenter stå åben for en
+ * chauffør, som ikke har `fakturaer.laes` — præcis den eksponering
  * beslutning 105 findes for at forhindre.
  *
- * ⚠ FAKTURAER & BILAG'S OVERGANGSTILSTAND ER AFSLUTTET — SKIVE 4A.
+ * ⚠ FAKTURACENTERETS OVERGANGSTILSTAND ER AFSLUTTET — SKIVE 4A.
  * Målplanen (02_TARGET_NAVIGATION.md, Korrektion 2) er nu ført ud:
  * `kraeverPerm` er `fakturaer.laes`, en ny, delt permission-familie
  * (`fakturaer.laes`/`.skriv`/`.godkend`) der dækker begge forbrugere
@@ -68,11 +69,11 @@ import { MODUL } from "./moduler.js";
 import { FAKTURACENTER_SEKTIONER } from "./fakturacenter-intake.js";
 
 /** Fast rækkefølge for gruppeoverskrifterne i sidebaren. */
-export const GRUPPE_ORDEN = ["drift", "faelles", "admin", "hjaelp"];
+export const GRUPPE_ORDEN = ["top", "drift", "admin", "hjaelp"];
 
 /** Overskriftstekst pr. gruppe. */
 export const GRUPPE_LABEL = {
-  faelles: "Fælles",
+  top: null,
   drift: "Driftsmoduler",
   admin: "Administration",
   hjaelp: "Hjælp",
@@ -81,11 +82,11 @@ export const GRUPPE_LABEL = {
 export const NAV = [
   {
     key: "dashboard", sti: "/", label: "Dashboard", titel: "Dashboard",
-    under: "Operativt overblik og økonomi", gruppe: "faelles",
+    under: "Operativt overblik og økonomi", gruppe: "top",
   },
   {
     key: "ressourcer", sti: "/ressourcer", label: "Ressourcer", titel: "Ressourcer",
-    under: "Fælles registre, der bruges på tværs af de aktive moduler.", gruppe: "faelles",
+    under: "Fælles registre, der bruges på tværs af de aktive moduler.", gruppe: "admin",
     born: [
       { key: "ressourceEnheder", sti: "/ressourcer/enheder", label: "Enheder",
         kraeverEtAfModuler: ["flaade", "booking"], kraeverPerm: "koeretoejer.laes",
@@ -132,17 +133,8 @@ export const NAV = [
     kraeverModul: "kunder", gruppe: "admin",
     titel: "Kunder", under: "Kundekartotek og aftaler.",
   },
-  /* ⚠ FAKTURAER & BILAG — se filens hoved. Skive 4A: `kraeverPerm` er nu
-     `fakturaer.laes`, ikke `indkoeb.laes`. */
-  {
-    key: "fakturacenter", kraeverPerm: "fakturaer.laes", sti: "/oekonomi/fakturacenter",
-    label: "Fakturaer & bilag", gruppe: "faelles",
-    fakturacenterSektioner: FAKTURACENTER_SEKTIONER,
-    titel: "Fakturaer & bilag",
-    under: "Ét fælles sted til fakturaer, bilag og match på tværs af Fleet, Facility og Procure.",
-  },
   /* ⚠ LEVERANDØRER — SKIVE 4B, Model B (Korrektion 3), flyttet ud af
-     Procure-undermenuen til et Fælles-topniveaupunkt. V1-brugertest,
+     Procure-undermenuen til et topniveaupunkt. V1-brugertest,
      31/8, flytter den ét skridt videre: "Denne del skal også rykket til
      Administrations/opsætning" — samme begrundelse og samme afgørelse som
      for Kunder ovenfor. Ruten er FORSAT MED VILJE uændret
@@ -158,14 +150,14 @@ export const NAV = [
   },
   {
     key: "oekonomi", sti: "/oekonomi/fakturering", label: "Økonomi / Fakturagrundlag",
-    titel: "Økonomi / Fakturagrundlag", gruppe: "faelles",
+    titel: "Økonomi / Fakturagrundlag", gruppe: "admin",
     under: "Faktureringsgrundlag på tværs af drift og opgaver — det vi SENDER.",
     born: [
       { key: "oekonomiOversigt", sti: "/oekonomi", label: "Overblik", skjulINav: true,
         titel: "Økonomi & Rapporter",
         under: "Overblik over økonomi, driftsomkostninger og faktureringsgrundlag på tværs af drift og opgaver." },
-      /* ⚠ FAKTURACENTERET ER FLYTTET UD — se Fælles > Fakturaer & bilag
-         ovenfor. Fakturering var ENESTE synlige barn i denne gruppe.
+      /* ⚠ FAKTURACENTERET ER FLYTTET UD — se Driftsmoduler > Fakturacenter.
+         Fakturering var ENESTE synlige barn i denne gruppe.
          ⚠ MASTEROPGAVE §5 SÆTTER GRUPPEN PÅ PAUSE — brugertesten pegede på
          at "Økonomi / Fakturagrundlag" stod synlig i FÆLLES uden at være
          klar. Begge børn er nu skjulINav, og per beslutning 105's
@@ -600,6 +592,16 @@ export const NAV = [
       { key: "fravaer", sti: "/bemanding/fravaer", label: "Tidligere ferie & fravær", skjulINav: true,
         titel: "Ferie & fravær", under: "Tidligere fraværsvisning" },
     ],
+  },
+  /* Fakturacenter er en tværmodulær driftsflade og står derfor sidst
+     blandt driftsmodulerne. Adgangen er fortsat `fakturaer.laes`; placering
+     og navn ændrer hverken rute, data eller rettigheder. */
+  {
+    key: "fakturacenter", kraeverPerm: "fakturaer.laes", sti: "/oekonomi/fakturacenter",
+    label: "Fakturacenter", gruppe: "drift",
+    fakturacenterSektioner: FAKTURACENTER_SEKTIONER,
+    titel: "Fakturacenter",
+    under: "Ét fælles sted til fakturaer, bilag og match på tværs af Fleet, Facility og Procure.",
   },
   {
     key: "opsaetning", sti: "/opsaetning", label: "Opsætning", titel: "Opsætning",

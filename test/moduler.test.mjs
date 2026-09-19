@@ -77,7 +77,7 @@ describe("modulkataloget svarer til menuen", () => {
      læses af elleve skærme uden for Procure, og adgangen afgøres udelukkende
      af permissionen, ikke af et modul. */
   const UDEN_MODUL_MED_GRUND = new Set(["fakturacenter", "leverandoerer"]);
-  const FAELLES_HOVEDPUNKTER = new Set(["ressourcer"]);
+  const TVAERMODULAERE_HOVEDPUNKTER = new Set(["ressourcer"]);
 
   it("hvert HOVEDpunkt har et modul", () => {
     /* Et menupunkt uden modul kan ikke sælges — og kan heller ikke skjules
@@ -87,17 +87,17 @@ describe("modulkataloget svarer til menuen", () => {
        egen prøve længere nede. */
     const modulNav = new Set(ALLE_MODULER.map((m) => MODUL[m].navKey));
     for (const m of NAV) {
-      if (UDEN_MODUL_MED_GRUND.has(m.key) || FAELLES_HOVEDPUNKTER.has(m.key)) continue;
+      if (UDEN_MODUL_MED_GRUND.has(m.key) || TVAERMODULAERE_HOVEDPUNKTER.has(m.key)) continue;
       assert.ok(modulNav.has(m.key) || ALLE_MODULER.includes(m.key),
         `menupunktet "${m.key}" har intet modul`);
     }
   });
 
-  it("⚠ FÆLLES HOVEDPUNKTER ER TVÆRMODULÆRE, IKKE SKJULTE MODULER", () => {
-    for (const k of FAELLES_HOVEDPUNKTER) {
+  it("⚠ TVÆRMODULÆRE HOVEDPUNKTER ER IKKE SKJULTE MODULER", () => {
+    for (const k of TVAERMODULAERE_HOVEDPUNKTER) {
       const punkt = NAV.find((m) => m.key === k);
-      assert.ok(punkt, `FAELLES_HOVEDPUNKTER peger på "${k}", som ikke findes i NAV`);
-      assert.equal(punkt.gruppe, "faelles", `"${k}" ligger ikke i den fælles gruppe`);
+      assert.ok(punkt, `TVAERMODULAERE_HOVEDPUNKTER peger på "${k}", som ikke findes i NAV`);
+      assert.equal(punkt.gruppe, "admin", `"${k}" ligger ikke under Administration`);
       assert.ok((punkt.born || []).some((barn) => barn.kraeverModul || barn.kraeverEtAfModuler),
         `"${k}" afgrænser ikke sine modulafhængige registre`);
     }

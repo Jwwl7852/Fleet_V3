@@ -11,7 +11,7 @@ import JusterbarePaneler from "../../fleet/JusterbarePaneler.jsx";
 const GUIDER = [
   ["Find en opgave eller booking", "Brug søgning og filtre i den relevante arbejdsflade. Send ikke uvedkommende driftsdata med til support."],
   ["Ret adgang og roller", "Opsætning → Brugere & roller viser den aktuelle adgang. Support kan ikke give sig selv adgang til jeres data."],
-  ["Fakturaer og bilag", "Fakturacenter samler arbejdet i Indbakke. Afsluttet Veyro-kontrol findes i Arkiv."],
+  ["Fakturacenter", "Fakturacenter samler arbejdet i Indbakke. Afsluttet Veyro-kontrol findes i Arkiv."],
 ];
 
 const MODULER = ["FLEET", "FACILITY", "PLANNING", "FAKTURACENTER", "FÆLLES"];

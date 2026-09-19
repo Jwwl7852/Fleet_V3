@@ -4,7 +4,7 @@ import { selvkontrol } from "./selvkontrol.js";
 export const DEMO_SUPPORT_VIDEN = [{
   id: "demo-fakturacenter-status-v1",
   titel: "Find fakturaer der afventer kontrol",
-  indhold: "Åbn Fakturaer & bilag → Indbakke. Her kan du åbne fakturaen, gennemgå match og fordeling og derefter bruge den viste kontrolhandling. Hvis fakturaen ikke står på listen, så skriv hvilket filter du bruger og fakturaens lokale test-id.",
+  indhold: "Åbn Fakturacenter → Indbakke. Her kan du åbne fakturaen, gennemgå match og fordeling og derefter bruge den viste kontrolhandling. Hvis fakturaen ikke står på listen, så skriv hvilket filter du bruger og fakturaens lokale test-id.",
   kilde: "Fakturacenterets integrerede arbejdsflade /oekonomi/fakturacenter?sektion=kontrol",
     modul: "FAKTURACENTER",
     relevanteVersioner: "3.x",

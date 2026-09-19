@@ -284,7 +284,7 @@ export default function AppShell() {
      `kraeverPerm` — ethvert topniveaupunkt blev tegnet, fordi intet af dem
      bar felterne. `kunderOversigt` (kraeverModul) og `fakturacenter`
      (kraeverPerm) er de to FØRSTE topniveaupunkter uden `born` der gør, og
-     uden udvidelsen her ville Fakturaer & bilag stå åben for en chauffør,
+     uden udvidelsen her ville Fakturacenter stå åben for en chauffør,
      som ikke har `indkoeb.laes` — se nav.js's hoved.
 
      ⚠ OG `m.key` ER IKKE ALTID ET MODULNAVN — se `modulNavnFor()` i nav.js
@@ -356,17 +356,18 @@ export default function AppShell() {
             {GRUPPE_ORDEN.map((gruppe) => {
               const punkter = synligeToppunkter.filter((m) => m.gruppe === gruppe);
               if (!punkter.length) return null;
-              const lukket = !menuKompakt && !!gruppeLukket[gruppe];
+              const harGruppeoverskrift = !!GRUPPE_LABEL[gruppe];
+              const lukket = harGruppeoverskrift && !menuKompakt && !!gruppeLukket[gruppe];
               return (
                 <div key={gruppe} className="fc-nav-gruppe-blok">
-                  <button type="button" className="fc-nav-gruppe-toggle"
+                  {harGruppeoverskrift && <button type="button" className="fc-nav-gruppe-toggle"
                           onClick={() => skifGruppe(gruppe)} aria-expanded={!lukket}>
                     <span className="fc-nav-gruppe">{GRUPPE_LABEL[gruppe]}</span>
                     <svg className={lukket ? "fc-chevron fc-chevron-lukket" : "fc-chevron"}
                          viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M6 9l6 6 6-6" />
                     </svg>
-                  </button>
+                  </button>}
                   <div className={lukket ? "fc-nav-gruppe-punkter fc-lukket" : "fc-nav-gruppe-punkter"}>
                   {punkter.map((m) => {
                     const aktiv = hoved.key === m.key;

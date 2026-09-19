@@ -5,8 +5,9 @@
  * ⚠ HVORFOR FILEN FINDES
  * ══════════════════════════════════════════════════════════════════════════
  *
- * Skive 2A indfører fire gruppeoverskrifter (Fælles/Driftsmoduler/
- * Administration/Hjælp) og gør to topniveaupunkter uden børn
+ * Navigationen har en titel-løs topsektion til Dashboard og tre
+ * gruppeoverskrifter (Driftsmoduler/Administration/Hjælp). To
+ * topniveaupunkter uden børn
  * (`kunderOversigt`, `fakturacenter`) selv-spærrede via `kraeverModul`
  * hhv. `kraeverPerm` — noget AppShell.jsx aldrig har skullet gøre for et
  * BARNLØST topniveaupunkt før. `test/navadgang.test.mjs` og
@@ -150,7 +151,7 @@ describe("Skive 2A — det rendererede træ for konkrete tenant-modulkombination
     const menu = renderetMenu({ moduler, perms: chauffoerPerms });
     const top = noegler(menu);
     assert.ok(!top.includes("fakturacenter"),
-      "chaufføren ser Fakturaer & bilag, men har ikke indkoeb.laes");
+      "chaufføren ser Fakturacenter, men har ikke fakturaer.laes");
     /* Kunder er kun modul-gatet (ingen kraeverPerm), så den er upåvirket af
        permission-aksen — det bekræftes her for at vise at forskellen er
        bevidst, ikke en tilfældighed. */
@@ -169,39 +170,35 @@ describe("Skive 2A — det rendererede træ for konkrete tenant-modulkombination
 });
 
 describe("Skive 2A — strukturelle invarianter", () => {
-  it("Driftsmoduler står før Fælles i sidebaren", () => {
-    assert.deepEqual(GRUPPE_ORDEN, ["drift", "faelles", "admin", "hjaelp"]);
+  it("Dashboard står alene før Driftsmoduler, Administration og Hjælp", () => {
+    assert.deepEqual(GRUPPE_ORDEN, ["top", "drift", "admin", "hjaelp"]);
   });
 
   it("hvert topniveaupunkt hører til én af de fire kendte grupper", () => {
-    const KENDTE = new Set(["faelles", "drift", "admin", "hjaelp"]);
+    const KENDTE = new Set(["top", "drift", "admin", "hjaelp"]);
     for (const m of NAV) {
       assert.ok(KENDTE.has(m.gruppe), `${m.key} har ${m.gruppe ? `en ukendt gruppe "${m.gruppe}"` : "ingen gruppe"}`);
     }
   });
 
-  it("⚠ V1-BRUGERTEST 31/8 — Kunder og Leverandører er flyttet ud af Fælles, ind under Administration", () => {
-    /* Skive 4B satte Leverandører (og tidligere Skive 2A satte Kunder) i
-       Fælles. V1-brugertesten omgjorde begge: hverken kartotek er en
-       daglig arbejdsflade for en kunde der kun har fx Fleet eller Facility
-       — se nav.js's kommentarer ved kunderOversigt og leverandoerer. */
-    const faelles = NAV.filter((m) => m.gruppe === "faelles").map((m) => m.key);
-    assert.deepEqual(faelles, ["dashboard", "ressourcer", "fakturacenter", "oekonomi"]);
+  it("Fælles-gruppen er fjernet, og Dashboard er eneste titel-løse toppunkt", () => {
+    assert.equal(NAV.some((m) => m.gruppe === "faelles"), false);
+    assert.deepEqual(NAV.filter((m) => m.gruppe === "top").map((m) => m.key), ["dashboard"]);
   });
 
-  it("Driftsmoduler-gruppen står i rækkefølgen Planning, Fleet, Facility, Procure, Warehouse, Unitbooking, Workforce", () => {
+  it("Fakturacenter står sidst under Driftsmoduler", () => {
     const drift = NAV.filter((m) => m.gruppe === "drift").map((m) => m.key);
     assert.deepEqual(drift,
-      ["booking", "flaade", "facility", "indkoeb", "warehouse", "unitbooking", "bemanding"]);
+      ["booking", "flaade", "facility", "indkoeb", "warehouse", "unitbooking", "bemanding", "fakturacenter"]);
   });
 
-  it("Administration er Kunder, Leverandører og Opsætning, Hjælp er Hjælp", () => {
+  it("Ressourcer står under Administration, og Hjælp er Hjælp", () => {
     assert.deepEqual(NAV.filter((m) => m.gruppe === "admin").map((m) => m.key),
-      ["kunderOversigt", "leverandoerer", "opsaetning"]);
+      ["ressourcer", "kunderOversigt", "leverandoerer", "oekonomi", "opsaetning"]);
     assert.deepEqual(NAV.filter((m) => m.gruppe === "hjaelp").map((m) => m.key), ["support"]);
   });
 
-  it("Fakturaer & bilag: samme rute som Skive 2A — kraeverPerm opdateret i Skive 4A", () => {
+  it("Fakturacenter: samme rute og adgangsregel, nyt navn og placering", () => {
     const punkt = NAV.find((m) => m.key === "fakturacenter");
     assert.equal(punkt.sti, "/oekonomi/fakturacenter",
       "ruten er ændret — den blev bevidst IKKE omdøbt i Skive 4A, se nav.js's hoved");
@@ -211,7 +208,9 @@ describe("Skive 2A — strukturelle invarianter", () => {
     assert.equal(punkt.kraeverPerm, "fakturaer.laes",
       "kraeverPerm er ikke fakturaer.laes — Skive 4A's permission-split er ikke ført ud");
     assert.equal(punkt.kraeverModul, undefined,
-      "Fakturaer & bilag har fået en modulklausul den ikke havde før — det ville gøre den SMALLERE end i dag, ikke bredere, men stadig en utilsigtet ændring");
+      "Fakturacenter har fået en modulklausul den ikke havde før — det ville gøre den SMALLERE end i dag, ikke bredere, men stadig en utilsigtet ændring");
+    assert.equal(punkt.label, "Fakturacenter");
+    assert.equal(punkt.gruppe, "drift");
   });
 
   it("Kunder er UÆNDRET tilgængelig — samme rute, samme kraeverModul som før flytningen", () => {

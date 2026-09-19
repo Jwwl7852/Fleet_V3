@@ -111,7 +111,14 @@ describe("Skive 2B — 3) Disponent, navvisning med kun Planning + Fleet", () =>
   const perms = permStrengFraRolle("disponent");
   /* Disponenten er i forvejen berettiget til hele driftssiden (fuld
      tenant); navvisning vælger kun to af dem. */
-  const navvisning = { facility: false, indkoeb: false, warehouse: false, unitbooking: false, bemanding: false };
+  const navvisning = {
+    facility: false,
+    indkoeb: false,
+    warehouse: false,
+    unitbooking: false,
+    bemanding: false,
+    fakturacenter: false,
+  };
   const menu = renderetMenu({ moduler: FULD_TENANT, perms, navvisning });
   const drift = menu.filter((m) => m.gruppe === "drift").map((m) => m.key).sort();
 
