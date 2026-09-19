@@ -12,7 +12,7 @@ import {
   DEMO_INVENTORY_MOVEMENTS, DEMO_QR_LABELS, DEMO_RECEIPTS, DEMO_RULES, DEMO_SUPPLIERS,
 } from "./procure-v2-demo.js";
 import {
-  ApprovalsScreen, CatalogScreen, ConsumptionScreen, GroupConsumptionScreen, ResourceCatalogScreen,
+  ApprovalsScreen, ConsumptionScreen, GroupConsumptionScreen, ResourceCatalogScreen,
   OrdersScreen, OverviewScreen, ReceiptScreen,
 } from "./ProcureScreens.jsx";
 import MobileOrderScreen from "./MobileOrderScreen.jsx";
@@ -212,7 +212,7 @@ export default function ProcureModule() {
   if (/^\/indkoeb\/mobil\/modtag(?:\/[^/]+)?$/.test(path)) return <MobileReceiptScreen {...common} />;
   if (/^\/indkoeb\/mobil(?:\/(?:kurv|mine|scan(?:\/[^/]+)?))?$/.test(path)) return <MobileOrderScreen {...common} />;
   if (path === "/indkoeb/behov") return <Navigate to={`/indkoeb/bestillinger${location.search}`} replace />;
-  if (path === "/indkoeb/katalog") return <CatalogScreen {...common} />;
+  if (path === "/indkoeb/katalog") return <Navigate to="/ressourcer/varekatalog" replace />;
   if (path === "/indkoeb/godkendelser") return <ApprovalsScreen {...common} />;
   if (path === "/indkoeb/forbrug/varegrupper") return <GroupConsumptionScreen {...common} />;
   if (path === "/indkoeb/forbrug") return <ConsumptionScreen {...common} />;

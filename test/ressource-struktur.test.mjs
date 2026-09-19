@@ -45,7 +45,8 @@ test("modulgenveje peger på de samme fælles registre", () => {
   assert.equal(byKey.get("planningV2Ressourcer").sti, "/ressourcer/enheder");
   assert.equal(byKey.get("workforceMedarbejdere").sti, "/ressourcer/medarbejdere");
   assert.equal(byKey.get("unitbookingRegister").sti, "/ressourcer/units");
-  assert.equal(byKey.get("indkoebKatalog").sti, "/indkoeb/katalog");
+  assert.equal(byKey.get("indkoebKatalog"), undefined);
+  assert.equal(byKey.get("ressourceVarekatalog").sti, "/ressourcer/varekatalog");
   assert.equal(byKey.get("warehouseLokationer").sti, "/ressourcer/lagerlokationer");
   assert.equal(byKey.get("reolpladser").skjulINav, true);
 });
@@ -63,6 +64,7 @@ test("gamle opsætningslinks har interne kompatibilitetsmål", () => {
   assert.equal(redirects.get("/opsaetning/fleet-kategorier"), "/opsaetning/ressourcer/enheder");
   assert.equal(redirects.get("/opsaetning/kasser"), "/ressourcer/units");
   assert.equal(redirects.get("/opsaetning/medarbejdere"), "/ressourcer/medarbejdere");
+  assert.equal(redirects.get("/indkoeb/katalog"), "/ressourcer/varekatalog");
   assert.equal(redirects.get("/opsaetning/aftalepriser"), "/opsaetning/priser/kunder");
   assert.equal(redirects.get("/opsaetning/procure/godkendelsesregler"), "/opsaetning/godkendelsesregler/procure");
 });
