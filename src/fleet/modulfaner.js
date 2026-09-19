@@ -10,17 +10,14 @@
  * `born`-liste for `flaade`, hvor børnene alle er `skjulINav: true` af netop
  * den grund.
  *
- * ⚠ ADMINISTRATIVE SKÆRME FLYTTES IKKE HERIND. Opsætning, leverandørmaster,
- * kunder, kategorier osv. bliver i den globale Administration/Opsætning —
- * kun "Enheder" står med her, fordi produktejeren eksplicit bad om den i
- * Fleets egen fanebjælke (samme fælles rute, `/ressourcer/enheder`).
+ * ⚠ FÆLLES REGISTRE FLYTTES IKKE HERIND. Enheder vedligeholdes fra
+ * Ressourcer → Enheder og står derfor ikke også i Fleets fanebjælke.
  */
 export const FLEET_FANER = [
   { sti: "/flaade", label: "Overblik" },
   { sti: "/flaade/driftskalender", label: "Driftskalender" },
   { sti: "/flaade/indberetninger", label: "Indberetninger" },
   { sti: "/flaade/servicebog", label: "Servicebog" },
-  { sti: "/ressourcer/enheder", label: "Enheder" },
   { sti: "/flaade/statistik", label: "Statistik" },
   { sti: "/flaade/kontakter", label: "Kontakter" },
 ];

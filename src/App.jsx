@@ -687,9 +687,8 @@ export default function App() {
                 2026-09-01) — IKKE LÆNGERE DRIFTSKALENDEREN. Se
                 fleet/modulfaner.js. Driftskalenderen flyttede til sin egen
                 rute; /flaade/vaerksted er stadig en redirect i REDIRECTS,
-                nu til /flaade/driftskalender. Enheder ligger fortsat under
-                Opsaetning — se nav.js — men vises også som en fane i Fleets
-                egen modulnavigation. */}
+                nu til /flaade/driftskalender. Enheder ligger i det fælles
+                Ressourcer-register og vises ikke også i Fleet. */}
             <Route path="flaade" element={<FlaadeOverblik />} />
             <Route path="flaade/driftskalender" element={<Vaerkstedskalender />} />
             <Route path="flaade/indberetninger" element={<Indberetninger />} />
@@ -701,8 +700,6 @@ export default function App() {
             {/* Det sikrede FLEET v2-checkpoint monteres på et nyt prefix, så
                 de eksisterende /flaade-ruter og gamle dybe links bevares. */}
             <Route path="fleet-v2" element={<FleetV2Module />} />
-            <Route path="fleet-v2/enheder" element={<FleetV2Module />} />
-            <Route path="fleet-v2/enheder/:id" element={<FleetV2Module />} />
             <Route path="fleet-v2/indberetninger" element={<FleetV2Module />} />
             <Route path="fleet-v2/indberetninger/ny" element={<FleetV2Module />} />
             <Route path="fleet-v2/arbejdsko" element={<FleetV2Module />} />

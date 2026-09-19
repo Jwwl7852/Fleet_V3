@@ -226,10 +226,14 @@ export default function FleetV2Module() {
         }
       }}
       onNavigate={(target, options = {}) => {
-        const resourceTarget = resourceRoute && target.startsWith("/ressourcer/")
-          && !target.startsWith("/ressourcer/enheder")
-          ? target.replace("/ressourcer", FLEET_V2_ROUTE_PREFIX)
+        const sharedUnitTarget = target === `${FLEET_V2_ROUTE_PREFIX}/enheder`
+          || target.startsWith(`${FLEET_V2_ROUTE_PREFIX}/enheder/`)
+          ? target.replace(FLEET_V2_ROUTE_PREFIX, "/ressourcer")
           : target;
+        const resourceTarget = resourceRoute && sharedUnitTarget.startsWith("/ressourcer/")
+          && !sharedUnitTarget.startsWith("/ressourcer/enheder")
+          ? sharedUnitTarget.replace("/ressourcer", FLEET_V2_ROUTE_PREFIX)
+          : sharedUnitTarget;
         navigate(resourceTarget, {
           ...options,
           state: { ...(options.state || {}), ...opretReturtilstand(aktuelSti, window.scrollY) },

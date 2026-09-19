@@ -41,7 +41,7 @@ test("kompakt navigation bruger Veyro-logoet og centrerer alle modulikoner", () 
 
 test("modulgenveje peger på de samme fælles registre", () => {
   const byKey = new Map(NAV.flatMap((item) => item.born || [item]).map((item) => [item.key, item]));
-  assert.equal(byKey.get("fleetV2Enheder").sti, "/fleet-v2/enheder");
+  assert.equal(byKey.get("fleetV2Enheder"), undefined);
   assert.equal(byKey.get("planningV2Ressourcer").sti, "/ressourcer/enheder");
   assert.equal(byKey.get("workforceMedarbejdere").sti, "/ressourcer/medarbejdere");
   assert.equal(byKey.get("unitbookingRegister").sti, "/ressourcer/units");
@@ -64,6 +64,8 @@ test("gamle opsætningslinks har interne kompatibilitetsmål", () => {
   assert.equal(redirects.get("/opsaetning/fleet-kategorier"), "/opsaetning/ressourcer/enheder");
   assert.equal(redirects.get("/opsaetning/kasser"), "/ressourcer/units");
   assert.equal(redirects.get("/opsaetning/medarbejdere"), "/ressourcer/medarbejdere");
+  assert.equal(redirects.get("/fleet-v2/enheder"), "/ressourcer/enheder");
+  assert.equal(redirects.get("/fleet-v2/enheder/:id"), "/ressourcer/enheder/:id");
   assert.equal(redirects.get("/indkoeb/katalog"), "/ressourcer/varekatalog");
   assert.equal(redirects.get("/opsaetning/aftalepriser"), "/opsaetning/priser/kunder");
   assert.equal(redirects.get("/opsaetning/procure/godkendelsesregler"), "/opsaetning/godkendelsesregler/procure");

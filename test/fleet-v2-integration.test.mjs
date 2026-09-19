@@ -7,7 +7,7 @@ import {
   fleetV2PermissionForPath,
 } from "../src/fleet/fleet-v2-integration.js";
 import { PERM } from "../src/fleet/permissions.js";
-import { findModul } from "../src/fleet/nav.js";
+import { findModul, REDIRECTS } from "../src/fleet/nav.js";
 
 describe("FLEET v2 integrationsgrænse", () => {
   it("bruger særskilte databasenavne til integration og automatiske tests", () => {
@@ -31,9 +31,10 @@ describe("FLEET v2 integrationsgrænse", () => {
     }), { id: "uid-1", name: "Test Bruger", role: "Disponent" });
   });
 
-  it("skelner katalogruten fra den dynamiske enhedsprofil i AppShell", () => {
-    assert.equal(findModul("/fleet-v2/enheder").key, "fleetV2Enheder");
-    assert.equal(findModul("/fleet-v2/enheder/unit-1").key, "fleetV2Enhed");
+  it("bruger kun Ressourcer til enhedsregister og -profiler", () => {
+    const redirects = new Map(REDIRECTS.map(({ fra, til }) => [fra, til]));
+    assert.equal(redirects.get("/fleet-v2/enheder"), "/ressourcer/enheder");
+    assert.equal(redirects.get("/fleet-v2/enheder/:id"), "/ressourcer/enheder/:id");
     assert.equal(findModul("/ressourcer/enheder").key, "ressourceEnheder");
     assert.equal(findModul("/ressourcer/enheder/unit-1").key, "ressourceEnhed");
   });
