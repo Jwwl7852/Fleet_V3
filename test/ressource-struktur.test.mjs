@@ -28,6 +28,7 @@ test("kompakt navigation bruger Veyro-logoet og centrerer alle modulikoner", () 
   const shell = read("src/fleet/AppShell.jsx");
   const styles = read("src/fleet/fleet.css");
   assert.match(shell, /<div className="fc-brand-logo"><VeyroLogo variant="sidebar" \/><\/div>/);
+  assert.doesNotMatch(shell, /className="fc-tenant"/);
   assert.doesNotMatch(shell, /fc-brand-mark/);
   assert.match(shell, /function Navigationsikon\(\{ navn \}\)/);
   assert.equal((shell.match(/<Navigationsikon navn=\{m\.key\} \/>/g) || []).length, 3);

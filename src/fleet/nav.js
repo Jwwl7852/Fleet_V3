@@ -68,7 +68,7 @@ import { MODUL } from "./moduler.js";
 import { FAKTURACENTER_SEKTIONER } from "./fakturacenter-intake.js";
 
 /** Fast rækkefølge for gruppeoverskrifterne i sidebaren. */
-export const GRUPPE_ORDEN = ["faelles", "drift", "admin", "hjaelp"];
+export const GRUPPE_ORDEN = ["drift", "faelles", "admin", "hjaelp"];
 
 /** Overskriftstekst pr. gruppe. */
 export const GRUPPE_LABEL = {

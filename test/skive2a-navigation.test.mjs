@@ -31,7 +31,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { NAV, ALLE } from "../src/fleet/nav.js";
+import { NAV, ALLE, GRUPPE_ORDEN } from "../src/fleet/nav.js";
 import { harModul, modulsaet, VALGFRIE_MODULER, MODUL } from "../src/fleet/moduler.js";
 import { ROLLE_PERMS, harPerm, permStrengFraRolle } from "../src/fleet/permissions.js";
 
@@ -169,6 +169,10 @@ describe("Skive 2A — det rendererede træ for konkrete tenant-modulkombination
 });
 
 describe("Skive 2A — strukturelle invarianter", () => {
+  it("Driftsmoduler står før Fælles i sidebaren", () => {
+    assert.deepEqual(GRUPPE_ORDEN, ["drift", "faelles", "admin", "hjaelp"]);
+  });
+
   it("hvert topniveaupunkt hører til én af de fire kendte grupper", () => {
     const KENDTE = new Set(["faelles", "drift", "admin", "hjaelp"]);
     for (const m of NAV) {

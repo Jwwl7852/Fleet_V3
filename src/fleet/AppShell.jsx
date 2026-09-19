@@ -310,7 +310,6 @@ export default function AppShell() {
         <aside className="fc-side" aria-label={menuKompakt ? "Kompakt navigation" : "Navigation"}>
           <div className="fc-brand-logo"><VeyroLogo variant="sidebar" /></div>
           <div className="fc-ver">version 3.0</div>
-          <div className="fc-tenant">{tenant?.kort || tenant?.navn || "—"}</div>
           <button type="button" className="fc-menu-toggle"
             aria-label={menuKompakt ? "Åbn normal menu" : "Fold menuen sammen"}
             aria-pressed={menuKompakt}

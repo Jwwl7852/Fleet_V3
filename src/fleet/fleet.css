@@ -241,7 +241,6 @@ body:has(#root .fc-app){margin:0}
 .fc-brand{padding:0 8px; font-size:var(--fc-t-2xl); font-weight:800; letter-spacing:-.02em; color:var(--veyro-white)}
 .fc-brand b{color:var(--bc-accent)}
 .fc-ver{padding:0 8px; color:var(--bc-accent); font-size:var(--fc-t-xs); font-weight:700}
-.fc-tenant{padding:10px 8px 12px; color:#cbd5e1; font-size:var(--fc-t-s); font-weight:600}
 
 .fc-div{display:flex; gap:4px; background:var(--fc-navy-2); padding:4px; border-radius:9px; margin:0 4px 14px}
 .fc-div button{flex:1; border:0; background:transparent; color:#94a3b8; cursor:pointer;
@@ -2231,7 +2230,7 @@ body:has(.fc-login-side){margin:0}
   .fc-menu-kompakt .fc-side{width:72px;flex-basis:72px;overflow:visible}
   .fc-menu-kompakt .fc-brand-logo{justify-content:flex-start;width:56px;height:58px;min-height:58px;margin:8px 0 0;padding:0;overflow:hidden}
   .fc-menu-kompakt .fc-brand-logo .veyro-logo{display:block;flex:0 0 auto;width:184px;max-width:none;margin:0;transform:translateX(-11.6px)}
-  .fc-menu-kompakt .fc-ver,.fc-menu-kompakt .fc-tenant,.fc-menu-kompakt .fc-nav-gruppe-toggle,.fc-menu-kompakt .fc-who-txt,.fc-menu-kompakt .fc-demo-rolle,.fc-menu-kompakt .fc-side-btn,.fc-menu-kompakt .fc-visning-label,.fc-menu-kompakt .fc-visning-chevron{display:none}
+  .fc-menu-kompakt .fc-ver,.fc-menu-kompakt .fc-nav-gruppe-toggle,.fc-menu-kompakt .fc-who-txt,.fc-menu-kompakt .fc-demo-rolle,.fc-menu-kompakt .fc-side-btn,.fc-menu-kompakt .fc-visning-label,.fc-menu-kompakt .fc-visning-chevron{display:none}
   .fc-menu-kompakt .fc-nav{padding:8px 0;overflow:visible}.fc-menu-kompakt .fc-nav-gruppe-blok,.fc-menu-kompakt .fc-nav-gruppe-punkter{display:grid;justify-items:center;width:100%;overflow:visible}
   .fc-menu-kompakt .fc-nav-modul,.fc-menu-kompakt .fc-fakturacenter-nav{display:grid;justify-items:center;width:100%;margin:0;padding:0}
   .fc-menu-kompakt .fc-link{justify-content:center;gap:0;width:44px;height:44px;min-height:44px;margin:0;padding:0}.fc-menu-kompakt .fc-link>span:not(.fc-nav-ikon),.fc-menu-kompakt .fc-link>.fc-chevron,.fc-menu-kompakt .fc-fakturacenter-toggle{display:none}
@@ -2298,7 +2297,7 @@ body:has(.fc-login-side){margin:0}
   .fc-side{display:grid;grid-template-columns:82px minmax(0,1fr);align-items:start;padding:3px 6px 4px}
   .fc-brand-logo{grid-column:1;min-height:34px;padding:0 5px}
   .fc-brand-logo .veyro-logo{width:72px}
-  .fc-ver,.fc-tenant{display:none}
+  .fc-ver{display:none}
   .fc-nav{grid-column:2;min-height:34px;align-items:flex-start}
   .fc-link{min-height:34px;padding:6px 8px;gap:6px}
   .fc-link svg{width:16px;height:16px;flex-basis:16px}
