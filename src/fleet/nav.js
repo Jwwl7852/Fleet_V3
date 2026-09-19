@@ -99,7 +99,12 @@ export const NAV = [
         titel: "Ressourcer – ejendomme", under: "Ejendomsregister anvendt af Facility." },
       { key: "ressourceMedarbejdere", sti: "/ressourcer/medarbejdere", label: "Medarbejdere",
         kraeverEtAfModuler: ["bemanding", "booking"], kraeverPerm: "personale.laes",
-        titel: "Ressourcer – medarbejdere", under: "Fælles medarbejderregister; logins administreres særskilt." },
+        titel: "Ressourcer – medarbejdere", under: "Fælles medarbejderregister; logins administreres særskilt.",
+        underpunkter: [
+          { key: "workforceKompetencer", sti: "/ressourcer/medarbejdere/kompetencer", label: "Kompetencer",
+            kraeverModul: "bemanding",
+            titel: "Ressourcer – kompetencer", under: "Gyldighed og krav knyttet til medarbejderne." },
+        ] },
       { key: "ressourceUnits", sti: "/ressourcer/units", label: "Units",
         kraeverEtAfModuler: ["unitbooking", "warehouse"],
         titel: "Ressourcer – units", under: "Konkrete transportenheder med type, QR og placering." },
@@ -576,8 +581,6 @@ export const NAV = [
         titel: "Workforce – bemanding", under: "Vagter og offentliggjort plan" },
       { key: "workforceFravaer", sti: "/workforce-v2/fravaer", label: "Ferie & fravær",
         titel: "Workforce – ferie & fravær", under: "Ansøgning, afgørelse og tilgængelighed" },
-      { key: "workforceKompetencer", sti: "/workforce-v2/kompetencer", label: "Kompetencer",
-        titel: "Workforce – kompetencer", under: "Gyldighed og krav på opgavetidspunktet" },
       { key: "workforceTimer", sti: "/workforce-v2/timer", label: "Timer",
         titel: "Workforce – timer", under: "Planlagt og faktisk arbejdstid" },
       { key: "workforceSelvbetjening", sti: "/workforce-v2/min-arbejdsdag", label: "Min arbejdsdag",
@@ -672,7 +675,9 @@ export const NAV = [
 ];
 
 /** Flad liste over alt der har en rute. */
-export const ALLE = NAV.flatMap((m) => (m.born ? m.born : [m]));
+export const ALLE = NAV.flatMap((m) => (m.born
+  ? m.born.flatMap((b) => [b, ...(b.underpunkter || [])])
+  : [m]));
 
 /**
  * Hvilket modul (hvis noget) gater et TOPNIVEAUpunkt? `null` = intet modul.
@@ -759,6 +764,7 @@ export const REDIRECTS = [
   { fra: "/opsaetning/medarbejdere", til: "/ressourcer/medarbejdere" },
   { fra: "/bemanding/medarbejdere", til: "/ressourcer/medarbejdere" },
   { fra: "/workforce-v2/medarbejdere", til: "/ressourcer/medarbejdere" },
+  { fra: "/workforce-v2/kompetencer", til: "/ressourcer/medarbejdere/kompetencer" },
   { fra: "/warehouse/lokationer", til: "/ressourcer/lagerlokationer" },
   { fra: "/indkoeb/katalog", til: "/ressourcer/varekatalog" },
   { fra: "/opsaetning/aftalepriser", til: "/opsaetning/priser/kunder" },
@@ -784,5 +790,6 @@ export function findModul(pathname) {
 /** Hvilket hovedmodul er aktivt (til at fremhæve i sidebaren). */
 export function findHovedmodul(pathname) {
   const m = findModul(pathname);
-  return NAV.find((h) => h.key === m.key || h.born?.some((b) => b.key === m.key)) || NAV[0];
+  return NAV.find((h) => h.key === m.key || h.born?.some((b) =>
+    b.key === m.key || b.underpunkter?.some((u) => u.key === m.key))) || NAV[0];
 }

@@ -330,10 +330,15 @@ describe("Hvad rollerne faktisk ser", () => {
     const born = (m) => (m.born || [])
       .filter((b) => !b.skjulINav)
       .filter((b) => !b.kraeverPerm || harPerm(perms, b.kraeverPerm));
+    const underpunkter = (b) => (b.underpunkter || [])
+      .filter((u) => !u.skjulINav)
+      .filter((u) => !u.kraeverPerm || harPerm(perms, u.kraeverPerm));
     return NAV
       .filter((m) => !m.kraeverPerm || harPerm(perms, m.kraeverPerm))
       .filter((m) => !m.born?.length || born(m).length)
-      .flatMap((m) => (m.born?.length ? born(m) : [m]));
+      .flatMap((m) => (m.born?.length
+        ? born(m).flatMap((b) => [b, ...underpunkter(b)])
+        : [m]));
   };
 
   /**

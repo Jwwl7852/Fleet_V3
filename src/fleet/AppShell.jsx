@@ -278,6 +278,11 @@ export default function AppShell() {
     .filter((b) => !b.kraeverModul || harModul(moduler, b.kraeverModul))
     .filter((b) => !b.kraeverEtAfModuler || b.kraeverEtAfModuler.some((navn) => harModul(moduler, navn)))
     .filter((b) => !b.kraeverPerm || harPerm(bruger?.perms, b.kraeverPerm));
+  const synligeUnderpunkter = (b) => (b.underpunkter || [])
+    .filter((u) => !u.skjulINav)
+    .filter((u) => !u.kraeverModul || harModul(moduler, u.kraeverModul))
+    .filter((u) => !u.kraeverEtAfModuler || u.kraeverEtAfModuler.some((navn) => harModul(moduler, navn)))
+    .filter((u) => !u.kraeverPerm || harPerm(bruger?.perms, u.kraeverPerm));
 
   /* ⚠ SKIVE 2A: ET TOPNIVEAUPUNKT KAN NU OGSÅ VÆRE SPÆRRET, IKKE KUN ET
      BARN. Før i dag blev kun `synligeBorn()` spurgt om `kraeverModul`/
@@ -489,13 +494,31 @@ export default function AppShell() {
                         {visBorn && (
                           <div className="fc-sub">
                             <strong className="fc-kompakt-modulnavn">{m.label}</strong>
-                            {born.map((b) => (
-                              <NavLink key={b.key} to={b.sti} end
-                                       onClick={() => lukKompaktMenu()}
-                                       className={modul.key === b.key ? "fc-sublink fc-on" : "fc-sublink"}>
-                                {b.label}
-                              </NavLink>
-                            ))}
+                            {born.map((b) => {
+                              const underpunkter = synligeUnderpunkter(b);
+                              const link = (
+                                <NavLink key={underpunkter.length ? undefined : b.key} to={b.sti} end
+                                         onClick={() => lukKompaktMenu()}
+                                         className={modul.key === b.key ? "fc-sublink fc-on" : "fc-sublink"}>
+                                  {b.label}
+                                </NavLink>
+                              );
+                              if (!underpunkter.length) return link;
+                              return (
+                                <div key={b.key} className="fc-subgruppe">
+                                  {link}
+                                  <div className="fc-sub-sub" aria-label={`${b.label} – underpunkter`}>
+                                    {underpunkter.map((u) => (
+                                      <NavLink key={u.key} to={u.sti} end
+                                               onClick={() => lukKompaktMenu()}
+                                               className={modul.key === u.key ? "fc-sub-sublink fc-on" : "fc-sub-sublink"}>
+                                        {u.label}
+                                      </NavLink>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>

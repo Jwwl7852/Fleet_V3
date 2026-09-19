@@ -655,6 +655,9 @@ export default function App() {
             <Route element={<ModulRute moduler={moduler} modul={["bemanding", "booking"]} label="MEDARBEJDERE" />}>
               <Route path="ressourcer/medarbejdere" element={<Medarbejdere />} />
             </Route>
+            <Route element={<ModulRute moduler={moduler} modul="bemanding" label="KOMPETENCER" />}>
+              <Route path="ressourcer/medarbejdere/kompetencer" element={<WorkforceV2Module />} />
+            </Route>
             <Route element={<ModulRute moduler={moduler} modul={["unitbooking", "warehouse"]} label="UNITS" />}>
               <Route path="ressourcer/units" element={<UnitbookingKasser />} />
               <Route path="ressourcer/lagerlokationer" element={<Wmslokationer />} />

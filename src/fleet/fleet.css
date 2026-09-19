@@ -283,6 +283,11 @@ body:has(#root .fc-app){margin:0}
 .fc-sublink{color:#9aa7b8; text-decoration:none; font-size:var(--fc-t-s); padding:6px 8px; border-radius:6px}
 .fc-sublink:hover{color:#fff; background:var(--fc-navy-2)}
 .fc-sublink.fc-on{color:#fff; font-weight:600}
+.fc-subgruppe{display:flex;flex-direction:column;min-width:0}
+.fc-sub-sub{display:flex;flex-direction:column;margin:0 0 2px 10px;padding-left:7px;border-left:1px solid var(--fc-navy-3)}
+.fc-sub-sublink{padding:5px 8px;border-radius:6px;color:#8fa0b5;text-decoration:none;font-size:var(--fc-t-xs)}
+.fc-sub-sublink:hover{color:#fff;background:var(--fc-navy-2)}
+.fc-sub-sublink.fc-on{color:#fff;font-weight:600}
 .fc-fakturacenter-main{display:block}
 .fc-fakturacenter-main .fc-link{min-width:0}
 .fc-fakturacenter-toggle{display:grid; place-items:center; width:34px; min-height:36px; padding:0;
@@ -2241,6 +2246,7 @@ body:has(.fc-login-side){margin:0}
   .fc-menu-kompakt .fc-nav-modul.fc-kompakt-aaben>.fc-sub,.fc-menu-kompakt .fc-fakturacenter-nav.fc-kompakt-aaben>.fc-sub{display:grid}
   .fc-menu-kompakt .fc-kompakt-modulnavn{display:block;padding:7px 8px;color:var(--veyro-white);font-size:var(--fc-t-s)}
   .fc-menu-kompakt .fc-sublink{display:flex;min-height:34px;align-items:center;color:var(--veyro-white)}
+  .fc-menu-kompakt .fc-sub-sublink{display:flex;min-height:32px;align-items:center;color:var(--veyro-white)}
   .fc-menu-kompakt .fc-foot{padding:8px}.fc-menu-kompakt .fc-visning>summary{display:grid;place-items:center;width:44px;height:44px;min-height:44px;margin-inline:auto;padding:0}.fc-menu-kompakt .fc-visning-panel{left:calc(100% + 8px);bottom:0}.fc-menu-kompakt .fc-who{justify-content:center}.fc-menu-kompakt .fc-av{margin:0}
 }
 

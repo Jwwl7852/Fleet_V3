@@ -20,6 +20,14 @@ test("Ressourcer er et hovedområde med de syv aftalte registre", () => {
     "Enheder", "Ejendomme", "Medarbejdere", "Units", "Varekatalog",
     "Lagerlokationer", "Certifikater",
   ]);
+  const medarbejdere = resources.born.find((item) => item.key === "ressourceMedarbejdere");
+  assert.deepEqual(medarbejdere.underpunkter.map((item) => item.label), ["Kompetencer"]);
+  assert.equal(medarbejdere.underpunkter[0].sti, "/ressourcer/medarbejdere/kompetencer");
+  assert.equal(NAV.find((item) => item.key === "bemanding").born.some((item) => item.key === "workforceKompetencer"), false);
+  assert.match(read("src/fleet/AppShell.jsx"), /synligeUnderpunkter/);
+  assert.match(read("src/fleet/AppShell.jsx"), /className="fc-sub-sub"/);
+  assert.match(read("src/App.jsx"), /path="ressourcer\/medarbejdere\/kompetencer" element=\{<WorkforceV2Module \/>\}/);
+  assert.match(read("src/fleet/workforce-v2-integration.js"), /ressourcer\/medarbejdere\/kompetencer"\) return "skills"/);
   assert.doesNotMatch(read("src/fleet/nav.js"), /key: "ressourceOverblik"/);
   assert.match(read("src/moduler/Ressourcer.jsx"), /<Navigate to=\{poster\[0\]\?\.til \|\| "\/"\} replace \/>/);
 });
@@ -66,6 +74,7 @@ test("gamle opsætningslinks har interne kompatibilitetsmål", () => {
   assert.equal(redirects.get("/opsaetning/kasser"), "/ressourcer/units");
   assert.equal(redirects.get("/opsaetning/medarbejdere"), "/ressourcer/medarbejdere");
   assert.equal(redirects.get("/workforce-v2/medarbejdere"), "/ressourcer/medarbejdere");
+  assert.equal(redirects.get("/workforce-v2/kompetencer"), "/ressourcer/medarbejdere/kompetencer");
   assert.equal(redirects.get("/fleet-v2/enheder"), "/ressourcer/enheder");
   assert.equal(redirects.get("/fleet-v2/enheder/:id"), "/ressourcer/enheder/:id");
   assert.equal(redirects.get("/indkoeb/katalog"), "/ressourcer/varekatalog");

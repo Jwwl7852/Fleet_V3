@@ -14,6 +14,7 @@ export const WORKFORCE_V2_PAGES = Object.freeze({
 });
 
 export function workforceV2PageForPath(pathname = "") {
+  if (pathname === "/ressourcer/medarbejdere/kompetencer") return "skills";
   const tail = pathname.replace(/^\/workforce-v2\/?/, "").split("/")[0];
   return Object.entries(WORKFORCE_V2_PAGES).find(([, path]) => path === tail)?.[0] || "overview";
 }
