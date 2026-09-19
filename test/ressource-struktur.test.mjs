@@ -153,6 +153,7 @@ test("Ressourcer følger Enheder-listens kompakte liste- og filterstruktur", () 
   assert.match(shell, /const ressourceSide =/);
   assert.match(shell, /fc-main fc-main--shared-page-top/);
   assert.match(shell, /<header className="fc-top">/);
+  assert.match(shell, /pathname === "\/facility-v2\/ejendomme"[\s\S]*"FACILITY – Ejendomme"/);
   assert.doesNotMatch(shell, /ressourceOwnsPageTitle/);
   assert.match(employees, /<Dialog titel=\{valgt\.navn\}/);
   assert.doesNotMatch(employees, /role="tablist" aria-label="Status"/);
