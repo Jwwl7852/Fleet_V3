@@ -580,8 +580,6 @@ export const NAV = [
     born: [
       { key: "workforceOverblik", sti: "/workforce-v2", label: "Overblik",
         titel: "Workforce – overblik", under: "Bemanding, fravær og timer" },
-      { key: "workforceMedarbejdere", sti: "/ressourcer/medarbejdere", label: "Medarbejdere",
-        kraeverPerm: "personale.laes", titel: "Workforce – medarbejdere", under: "Fælles medarbejderstamdata" },
       { key: "workforceBemanding", sti: "/workforce-v2/bemanding", label: "Bemanding",
         titel: "Workforce – bemanding", under: "Vagter og offentliggjort plan" },
       { key: "workforceFravaer", sti: "/workforce-v2/fravaer", label: "Ferie & fravær",
