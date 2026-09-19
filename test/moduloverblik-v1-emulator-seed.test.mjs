@@ -6,7 +6,7 @@ process.env.VITE_DEV_EJER_MAIL ||= "admin@integration.invalid";
 process.env.VITE_DEV_BRUGER_KODE ||= "test-only-not-used";
 
 const {
-  TENANT_ID, REVIEW_CATALOG_ITEMS, REVIEW_CATALOG_SUPPLIERS, workforcePatch,
+  TENANT_ID, REVIEW_CALENDAR_CATEGORIES, REVIEW_CATALOG_ITEMS, REVIEW_CATALOG_SUPPLIERS, workforcePatch,
 } = await import("../scripts/moduloverblik-v1-emulator-seed.mjs");
 
 describe("Version 1 moduloverblik – WORKFORCE emulatorfixture", () => {
@@ -57,5 +57,13 @@ describe("Version 1 moduloverblik – WORKFORCE emulatorfixture", () => {
     for (const row of [...items, ...suppliers]) {
       assert.equal(row.fixture, "moduloverblik-v1-synthetic");
     }
+  });
+
+  it("leverer kalenderkategorier gennem det autoritative Opsætning-register", () => {
+    const patch = workforcePatch({ uid: "uid-review", now: Date.parse("2026-09-17T10:00:00Z") });
+    const categories = REVIEW_CALENDAR_CATEGORIES.map(([id]) => patch[`tenants/${TENANT_ID}/ressourceKategorier/kalenderkategorier/${id}`]);
+    assert.equal(categories.length, 8);
+    assert.ok(categories.every((category) => category.aktiv === true));
+    assert.ok(categories.every((category) => category.fixture === "moduloverblik-v1-synthetic"));
   });
 });
