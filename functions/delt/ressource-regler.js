@@ -4,7 +4,8 @@
  * test/functions-delt.test.mjs fejler hvis de to ikke er identiske.
  */
 export const RESSOURCE_GRUPPER = Object.freeze([
-  "enheder", "ejendomme", "medarbejdere", "units", "varer", "warehouse", "certifikater",
+  "enheder", "ejendomme", "medarbejdere", "medarbejderafdelinger", "kalenderkategorier",
+  "units", "varer", "warehouse", "certifikater",
 ]);
 export const HARDWARE_ARTER = Object.freeze(["obd", "gps"]);
 

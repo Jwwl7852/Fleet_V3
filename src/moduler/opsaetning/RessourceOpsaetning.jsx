@@ -55,7 +55,8 @@ function Gruppeindhold({ id }) {
   if (id === "medarbejdere") return <>
     <RessourceKatalogOpsaetning gruppe="medarbejdere" titel="Funktioner" />
     <RessourceKatalogOpsaetning gruppe="medarbejderafdelinger" titel="Afdelinger" />
-    <Kort titel="Adgang er adskilt"><p className="fc-hint">Funktioner og afdelinger er valgmuligheder på medarbejderen. De giver ikke login eller roller. Brugere og roller vedligeholdes fortsat separat.</p></Kort>
+    <RessourceKatalogOpsaetning gruppe="kalenderkategorier" titel="Kalenderkategorier" />
+    <Kort titel="Adgang er adskilt"><p className="fc-hint">Funktioner, afdelinger og kalenderkategorier er valgmuligheder. De giver ikke login eller roller. Brugere og roller vedligeholdes fortsat separat.</p></Kort>
   </>;
   if (id === "units") return <>
     <RessourceKatalogOpsaetning gruppe="units" titel="Units" hardwareArt="gps" visKategorier={false} />

@@ -129,6 +129,18 @@ export const harFunktion = (person, funktion) =>
 export const funktionerAf = (person) =>
   ALLE_FUNKTIONER.filter((f) => harFunktion(person, f));
 
+/**
+ * Kundens synlige funktionskategorier ligger i Opsætning → Ressourcer.
+ * De gemmes som stabile kategori-id'er ved siden af de ældre, tekniske
+ * `funktioner`. Den adskillelse gør, at eksisterende PLANNING-regler fortsat
+ * kan forstå fx `chauffoer`, mens en omdøbt kundekategori ikke mister sin
+ * reference.
+ */
+export const funktionKategoriIderAf = (person) =>
+  Object.keys(person?.funktionKategoriIder || {})
+    .filter((id) => person.funktionKategoriIder[id] === true)
+    .sort((a, b) => a.localeCompare(b, "da"));
+
 /* ---- Kompetencetjek ------------------------------------------------- */
 
 /**
@@ -256,7 +268,8 @@ export function valideMedarbejder(post = {}) {
   }
 
   const valgte = ALLE_FUNKTIONER.filter((fn) => post.funktioner?.[fn]);
-  if (!valgte.length) {
+  const kategoriValgte = funktionKategoriIderAf(post);
+  if (!valgte.length && !kategoriValgte.length) {
     f.funktioner = "Vælg mindst én funktion — ellers kan personen ikke disponeres.";
   }
 
@@ -306,6 +319,11 @@ export function byggMedarbejder(post) {
       ALLE_FUNKTIONER.filter((fn) => post.funktioner?.[fn]).map((fn) => [fn, true])
     ),
   };
+  const funktionKategoriIder = funktionKategoriIderAf(post);
+  if (funktionKategoriIder.length) {
+    ud.funktionKategoriIder = Object.fromEntries(funktionKategoriIder.map((id) => [id, true]));
+  }
+  if (post.stationeringKategoriId) ud.stationeringKategoriId = String(post.stationeringKategoriId);
   if (post.ansaettelsesform) ud.ansaettelsesform = post.ansaettelsesform;
   if (post.telefon) ud.telefon = String(post.telefon).trim();
   if (post.email) ud.email = String(post.email).trim();

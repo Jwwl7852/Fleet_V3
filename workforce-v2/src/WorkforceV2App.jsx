@@ -9,7 +9,7 @@ import { TimePage } from "./components/TimePage.jsx";
 import { SelfServicePage } from "./components/SelfServicePage.jsx";
 
 const PAGES = [
-  ["overview", "Overblik"], ["employees", "Medarbejdere"], ["schedule", "Bemanding"],
+  ["overview", "Overblik"], ["employees", "Medarbejdere"], ["schedule", "Kalender"],
   ["leave", "Ferie & fravær"], ["skills", "Kompetencer"], ["time", "Timer"], ["self", "Min arbejdsdag"],
 ];
 
@@ -25,7 +25,7 @@ function readableLoadError(reason) {
   return `WORKFORCE-data kunne ikke hentes. ${reason?.message || "Prøv igen om lidt."}`;
 }
 
-export function WorkforceV2App({ actor: actorProp, embedded = false, repository: repositoryProp, initialPage, onNavigate, pathname, environmentNotice = null }) {
+export function WorkforceV2App({ actor: actorProp, embedded = false, repository: repositoryProp, initialPage, onNavigate, pathname, environmentNotice = null, calendarCategories = [] }) {
   const [demoRole, setDemoRole] = useState("manager");
   const actor = actorProp || (demoRole === "manager" ? MANAGER_ACTOR : EMPLOYEE_ACTOR);
   const repository = useMemo(() => repositoryProp || createIndexedDbWorkforceRepository({ databaseName: import.meta.env.VITE_WORKFORCE_DATABASE_NAME || WORKFORCE_DB_NAME, tenantId: actor.tenantId }), [repositoryProp, actor.tenantId]);
@@ -59,7 +59,7 @@ export function WorkforceV2App({ actor: actorProp, embedded = false, repository:
   };
   const manager = actor.permissions.includes("workforce.employee.read");
   const pages = manager ? PAGES : PAGES.filter(([key]) => key === "self");
-  const shared = { actor, state, repository, run, busy };
+  const shared = { actor, state, repository, run, busy, calendarCategories };
   const Component = { overview: OverviewPage, employees: EmployeesPage, schedule: SchedulePage, leave: LeavePage,
     skills: SkillsPage, time: TimePage, self: SelfServicePage }[page] || (manager ? OverviewPage : SelfServicePage);
 

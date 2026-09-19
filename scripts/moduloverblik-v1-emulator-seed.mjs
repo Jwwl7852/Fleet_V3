@@ -36,6 +36,17 @@ export const REVIEW_CATALOG_ITEMS = [
   { id: "review-item-ties", varenummer: "TEST-BIN-300", navn: "Syntetiske kabelbindere 300 mm UV-bestandige", varegruppe: "Befæstelse", leverandoerId: "review-supplier-kontor", enhed: "pose", pakningsstoerrelse: "100 stk.", indkoebsprisOere: 3895, billedeType: "parts" },
 ];
 
+export const REVIEW_CALENDAR_CATEGORIES = [
+  ["ferie", "Ferie"],
+  ["feriefridag", "Feriefridag"],
+  ["afspadsering", "Afspadsering"],
+  ["sygdom", "Sygdom"],
+  ["barnSyg", "Barns 1. sygedag"],
+  ["barsel", "Barsel"],
+  ["kursus", "Kursus"],
+  ["andet", "Andet"],
+];
+
 function catalogPatch() {
   return Object.fromEntries([
     ...REVIEW_CATALOG_SUPPLIERS.map((row) => [`tenants/${TENANT_ID}/leverandoerer/${row.id}`, { ...row, aktiv: true, fixture: FIXTURE }]),
@@ -77,6 +88,10 @@ export function workforcePatch({ uid, now = Date.now() }) {
   const day = 24 * hour;
   return {
     ...catalogPatch(),
+    ...Object.fromEntries(REVIEW_CALENDAR_CATEGORIES.map(([id, navn], index) => [
+      `tenants/${TENANT_ID}/ressourceKategorier/kalenderkategorier/${id}`,
+      { navn, aktiv: true, sortering: (index + 1) * 10, fixture: FIXTURE },
+    ])),
     [`tenants/${TENANT_ID}/_findes`]: true,
     [`tenants/${TENANT_ID}/abonnement/status`]: "aktiv",
     [`tenants/${TENANT_ID}/moduler/bemanding`]: true,
@@ -247,6 +262,7 @@ export async function seedModuleOverviewWorkforce() {
     units: 3,
     catalogItems: REVIEW_CATALOG_ITEMS.length,
     catalogSuppliers: REVIEW_CATALOG_SUPPLIERS.length,
+    calendarCategories: REVIEW_CALENDAR_CATEGORIES.length,
     externalServices: false,
   };
 }

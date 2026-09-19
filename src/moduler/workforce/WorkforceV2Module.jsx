@@ -6,6 +6,7 @@ import "../../../workforce-v2/src/styles/workforce-v2.css";
 import { demoMode } from "../../firebase.js";
 import { useFleet } from "../../fleet/FleetContext.jsx";
 import { usePost } from "../../fleet/usePost.js";
+import { useListe } from "../../fleet/useListe.js";
 import { harModul } from "../../fleet/moduler.js";
 import {
   createFirebaseWorkforceRepository,
@@ -14,11 +15,27 @@ import {
   workforceV2PathForPage,
 } from "../../fleet/workforce-v2-integration.js";
 
+const SYNTHETIC_CALENDAR_CATEGORIES = [
+  { id: "vacation", navn: "Ferie", aktiv: true, sortering: 10 },
+  { id: "personal", navn: "Feriefridag", aktiv: true, sortering: 20 },
+  { id: "timeOff", navn: "Afspadsering", aktiv: true, sortering: 30 },
+  { id: "sickness", navn: "Sygdom", aktiv: true, sortering: 40 },
+  { id: "childSick", navn: "Barns 1. sygedag", aktiv: true, sortering: 50 },
+  { id: "parental", navn: "Barsel", aktiv: true, sortering: 60 },
+  { id: "course", navn: "Kursus", aktiv: true, sortering: 70 },
+  { id: "other", navn: "Andet", aktiv: true, sortering: 80 },
+];
+
 export default function WorkforceV2Module() {
   const { bruger, moduler } = useFleet();
   const location = useLocation();
   const navigate = useNavigate();
   const { post: brugerPost, henter } = usePost("brugere", bruger?.uid || null);
+  const kalenderkategorier = useListe("ressourceKategorier/kalenderkategorier", {
+    vindue: "alle", graense: 500,
+    sorter: (a, b) => Number(a.sortering) - Number(b.sortering),
+    demo: SYNTHETIC_CALENDAR_CATEGORIES,
+  });
   /* Demoen har ingen brugernode at slå op i. Den eksplicitte syntetiske
      WORKFORCE-fixture bruger emp-dennis; i emulator/dev kommer identiteten
      fortsat udelukkende fra den autentificerede brugers brugernode. */
@@ -47,6 +64,7 @@ export default function WorkforceV2Module() {
 
   return <WorkforceV2App
     actor={actor}
+    calendarCategories={kalenderkategorier.data}
     embedded
     initialPage={manager ? page : "self"}
     environmentNotice={demoMode

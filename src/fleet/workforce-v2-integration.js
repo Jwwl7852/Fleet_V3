@@ -6,7 +6,7 @@ export const WORKFORCE_V2_ROUTE_PREFIX = "/workforce-v2";
 export const WORKFORCE_V2_PAGES = Object.freeze({
   overview: "",
   employees: "medarbejdere",
-  schedule: "bemanding",
+  schedule: "kalender",
   leave: "fravaer",
   skills: "kompetencer",
   time: "timer",

@@ -1,0 +1,264 @@
+{
+  "title": "VEYRO V1 · WORKFORCE Kalender · browserrapport",
+  "capturedAtUtc": "2026-09-19T09:31:30.974Z",
+  "baseUrl": "http://127.0.0.1:5199",
+  "login": "Normal lokal emulator-login med forudfyldt syntetisk testbruger",
+  "screenshots": [
+    "screenshots/01-dag-1440x900.png",
+    "screenshots/02-uge-1440x900.png",
+    "screenshots/03-maaned-1440x900.png",
+    "screenshots/04-aar-1440x900.png",
+    "screenshots/05-uge-popup-1440x900.png",
+    "screenshots/06-maaned-1280x800.png",
+    "screenshots/07-uge-mobil-390x844.png",
+    "screenshots/08-uge-popup-mobil-390x844.png",
+    "screenshots/09-uge-mobil-kompakt-menu-390x844.png"
+  ],
+  "measurements": [
+    {
+      "label": "Dag 1440x900",
+      "path": "/workforce-v2/kalender",
+      "viewport": [
+        1440,
+        900
+      ],
+      "documentClientWidth": 1425,
+      "documentScrollWidth": 1425,
+      "pageHorizontalOverflow": false,
+      "gridClientWidth": 1041,
+      "gridScrollWidth": 1041,
+      "popover": null,
+      "view": "Dag",
+      "period": "Lørdag den 19. september 2026 ▾",
+      "employees": 3,
+      "yearMonths": 0
+    },
+    {
+      "label": "Uge 1440x900",
+      "path": "/workforce-v2/kalender",
+      "viewport": [
+        1440,
+        900
+      ],
+      "documentClientWidth": 1425,
+      "documentScrollWidth": 1425,
+      "pageHorizontalOverflow": false,
+      "gridClientWidth": 1041,
+      "gridScrollWidth": 1108,
+      "popover": null,
+      "view": "Uge",
+      "period": "Uge 38 · 14. september–20. september 2026 ▾",
+      "employees": 3,
+      "yearMonths": 0
+    },
+    {
+      "label": "Måned 1440x900",
+      "path": "/workforce-v2/kalender",
+      "viewport": [
+        1440,
+        900
+      ],
+      "documentClientWidth": 1425,
+      "documentScrollWidth": 1425,
+      "pageHorizontalOverflow": false,
+      "gridClientWidth": 1041,
+      "gridScrollWidth": 3874,
+      "popover": null,
+      "view": "Måned",
+      "period": "September 2026 ▾",
+      "employees": 3,
+      "yearMonths": 0
+    },
+    {
+      "label": "År 1440x900",
+      "path": "/workforce-v2/kalender",
+      "viewport": [
+        1440,
+        900
+      ],
+      "documentClientWidth": 1425,
+      "documentScrollWidth": 1425,
+      "pageHorizontalOverflow": false,
+      "gridClientWidth": 0,
+      "gridScrollWidth": 0,
+      "popover": null,
+      "view": "År",
+      "period": "2026 ▾",
+      "employees": 0,
+      "yearMonths": 12
+    },
+    {
+      "label": "Uge-popup 1440x900",
+      "path": "/workforce-v2/kalender",
+      "viewport": [
+        1440,
+        900
+      ],
+      "documentClientWidth": 1425,
+      "documentScrollWidth": 1425,
+      "pageHorizontalOverflow": false,
+      "gridClientWidth": 1041,
+      "gridScrollWidth": 1108,
+      "popover": {
+        "left": 964,
+        "right": 1314,
+        "top": 209,
+        "bottom": 490
+      },
+      "view": "Uge",
+      "period": "Uge 38 · 14. september–20. september 2026 ▾",
+      "employees": 3,
+      "yearMonths": 0
+    },
+    {
+      "label": "Måned 1280x800",
+      "path": "/workforce-v2/kalender",
+      "viewport": [
+        1280,
+        800
+      ],
+      "documentClientWidth": 1265,
+      "documentScrollWidth": 1265,
+      "pageHorizontalOverflow": false,
+      "gridClientWidth": 888,
+      "gridScrollWidth": 3874,
+      "popover": null,
+      "view": "Måned",
+      "period": "September 2026 ▾",
+      "employees": 3,
+      "yearMonths": 0
+    },
+    {
+      "label": "Uge mobil 390x844",
+      "path": "/workforce-v2/kalender",
+      "viewport": [
+        390,
+        844
+      ],
+      "documentClientWidth": 375,
+      "documentScrollWidth": 375,
+      "pageHorizontalOverflow": false,
+      "gridClientWidth": 307,
+      "gridScrollWidth": 997,
+      "popover": null,
+      "view": "Uge",
+      "period": "Uge 38 · 14. september–20. september 2026 ▾",
+      "employees": 3,
+      "yearMonths": 0
+    },
+    {
+      "label": "Uge-popup mobil 390x844",
+      "path": "/workforce-v2/kalender",
+      "viewport": [
+        390,
+        844
+      ],
+      "documentClientWidth": 375,
+      "documentScrollWidth": 375,
+      "pageHorizontalOverflow": false,
+      "gridClientWidth": 307,
+      "gridScrollWidth": 997,
+      "popover": {
+        "left": 12,
+        "right": 363,
+        "top": 551,
+        "bottom": 832
+      },
+      "view": "Uge",
+      "period": "Uge 38 · 14. september–20. september 2026 ▾",
+      "employees": 3,
+      "yearMonths": 0
+    },
+    {
+      "label": "Uge mobil kompakt navigation 390x844",
+      "path": "/workforce-v2/kalender",
+      "viewport": [
+        390,
+        844
+      ],
+      "documentClientWidth": 375,
+      "documentScrollWidth": 375,
+      "pageHorizontalOverflow": false,
+      "gridClientWidth": 307,
+      "gridScrollWidth": 997,
+      "popover": null,
+      "view": "Uge",
+      "period": "Uge 38 · 14. september–20. september 2026 ▾",
+      "employees": 3,
+      "yearMonths": 0
+    }
+  ],
+  "checks": {
+    "oldRouteRedirect": "/workforce-v2/kalender",
+    "periodPickerSelections": {
+      "Dag": {
+        "before": "Lørdag den 19. september 2026 ▾",
+        "after": "Mandag den 31. august 2026 ▾"
+      },
+      "Uge": {
+        "before": "Uge 38 · 14. september–20. september 2026 ▾",
+        "after": "Uge 36 · 31. august–6. september 2026 ▾"
+      },
+      "Måned": {
+        "before": "September 2026 ▾",
+        "after": "Januar 2026 ▾"
+      },
+      "År": {
+        "before": "2026 ▾",
+        "after": "2016 ▾"
+      }
+    },
+    "weekPickerRows": 5,
+    "escapeReturnsFocus": true,
+    "categoryOptions": 8,
+    "combinedFilters": 3,
+    "openEdit": "Redigér denne vagt",
+    "compactNavigation": true
+  },
+  "console": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "info",
+      "text": "Ingen valideret offentlig loginkontekst; neutral loginflade vises."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    }
+  ]
+}

@@ -573,9 +573,9 @@ export const NAV = [
     under: "Medarbejdere, vagtplan, fravær, kompetencer og timer", gruppe: "drift",
     born: [
       { key: "workforceOverblik", sti: "/workforce-v2", label: "Overblik",
-        titel: "Workforce – overblik", under: "Bemanding, fravær og timer" },
-      { key: "workforceBemanding", sti: "/workforce-v2/bemanding", label: "Bemanding",
-        titel: "Workforce – bemanding", under: "Vagter og offentliggjort plan" },
+        titel: "Workforce – overblik", under: "Kalender, fravær og timer" },
+      { key: "workforceKalender", sti: "/workforce-v2/kalender", label: "Kalender",
+        titel: "Workforce – kalender", under: "Vagter, bemanding og fravær" },
       { key: "workforceFravaer", sti: "/workforce-v2/fravaer", label: "Ferie & fravær",
         titel: "Workforce – ferie & fravær", under: "Ansøgning, afgørelse og tilgængelighed" },
       { key: "workforceTimer", sti: "/workforce-v2/timer", label: "Timer",
@@ -732,6 +732,7 @@ export function modulNavnFor(punkt) {
 
 /** Gamle stier → nye. Lægges som <Navigate> så v1.4-links overlever. */
 export const REDIRECTS = [
+  { fra: "/workforce-v2/bemanding", til: "/workforce-v2/kalender" },
   { fra: "/dispatch", til: "/booking/disponering" },
   { fra: "/tracking", til: "/booking/live-kort" },
   /* Driftskalenderen flyttede op paa /flaade, da Enheder gik til Opsaetning,
