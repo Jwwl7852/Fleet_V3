@@ -5,6 +5,7 @@
  * præsentationsformat internt; mapperne her er den eneste overgang mellem de
  * to modeller. Der findes bevidst ingen IndexedDB-fallback ved kaldfejl.
  */
+import { resolveUnitType } from "../../fleet-v2/src/data/unitTypeRegistry.js";
 const valueOf = (response) => response?.data ?? response ?? null;
 const requestId = (prefix) => `${prefix}-${globalThis.crypto?.randomUUID?.()
   || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`.slice(0, 80);
@@ -56,8 +57,9 @@ export function fleetServiceProjectionState(service = {}) {
   };
 }
 
-export function mapSharedUnitToFleet(unit = {}) {
+export function mapSharedUnitToFleet(unit = {}, resourceTypes = []) {
   const profile = unit.fleetProfil || {};
+  const resolvedType = resolveUnitType(unit, resourceTypes);
   const type = unit.art === "scooter" ? "scooter"
     : ["truck", "maskine", "udstyr"].includes(unit.art) ? "machine" : "vehicle";
   const status = SHARED_TO_FLEET_STATUS[unit.status] || "operation";
@@ -95,12 +97,16 @@ export function mapSharedUnitToFleet(unit = {}) {
     energy: profile.vehicleDetails?.fuel || unit.drivmiddel || unit.energikilde || null,
     sharedArt: unit.art || null,
     categoryId: unit.kategoriId || null,
+    categoryName: resolvedType.name,
+    categoryActive: resolvedType.selected?.aktiv !== false,
+    unitTypeConflict: resolvedType.conflict,
     obdHardwareId: unit.obdHardwareId || null,
     source: "shared-unit-register",
   };
 }
 
 const sharedArtFor = (unit, current) => {
+  if (unit.sharedArt) return unit.sharedArt;
   if (current?.art) return current.art;
   if (unit.type === "scooter") return "scooter";
   if (unit.type === "machine") return "truck";

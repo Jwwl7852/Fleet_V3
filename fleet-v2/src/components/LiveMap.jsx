@@ -4,6 +4,7 @@ import { CONNECTION_STATES, MOVEMENT_STATES, filterPositionUnits, positionForUni
 import { modelLabel, typeLabel } from "../data/unitSelectors";
 import { GeoMap } from "./GeoMap";
 import { Icon } from "./Icon";
+import { unitTypeKey } from "../data/unitTypeRegistry";
 
 const dateTime = (value) => value
   ? new Date(value).toLocaleString("da-DK", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
@@ -63,7 +64,10 @@ export function LiveMap({ initialViewState, onNavigate, onViewStateChange }) {
   const [demoStatus, setDemoStatus] = useState("");
   const [demoBusy, setDemoBusy] = useState(false);
   const departments = useMemo(() => [...new Set(units.map((unit) => unit.department))].sort(), [units]);
-  const types = useMemo(() => [...new Set(units.map((unit) => unit.type))].sort(), [units]);
+  const types = useMemo(() => units
+    .map((unit) => ({ id: unitTypeKey(unit), label: typeLabel(unit) }))
+    .filter((type, index, all) => all.findIndex((item) => item.id === type.id) === index)
+    .sort((a, b) => a.label.localeCompare(b.label, "da")), [units]);
   const filteredUnits = useMemo(() => filterPositionUnits(units, positions, filters), [filters, positions, units]);
   const filteredIds = useMemo(() => new Set(filteredUnits.map((unit) => unit.id)), [filteredUnits]);
   const filteredPositions = useMemo(() => positions.filter((position) => filteredIds.has(position.unitId)), [filteredIds, positions]);
@@ -105,7 +109,7 @@ export function LiveMap({ initialViewState, onNavigate, onViewStateChange }) {
       <aside className="live-map-list-panel">
         <header><div><h2>Enheder</h2><span>{filteredUnits.length} af {units.length}</span></div><button className="link-button" type="button" onClick={clearFilters}>Nulstil filtre</button></header>
         <label className="live-search"><Icon name="search" size={17} /><span className="sr-only">Søg efter enhed</span><input placeholder="Søg nummer, registrering, mærke …" value={filters.query} onChange={(event) => setFilter("query", event.target.value)} /></label>
-        <div className="live-filter-grid"><SelectFilter label="Afdeling" value={filters.department} onChange={(value) => setFilter("department", value)}>{departments.map((value) => <option key={value} value={value}>{value}</option>)}</SelectFilter><SelectFilter label="Enhedstype" value={filters.type} onChange={(value) => setFilter("type", value)}>{types.map((value) => <option key={value} value={value}>{typeLabel({ type: value })}</option>)}</SelectFilter><SelectFilter label="Bevægelse" value={filters.movement} onChange={(value) => setFilter("movement", value)}>{Object.entries(MOVEMENT_STATES).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</SelectFilter><SelectFilter label="Forbindelse" value={filters.connection} onChange={(value) => setFilter("connection", value)}>{Object.entries(CONNECTION_STATES).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</SelectFilter></div>
+        <div className="live-filter-grid"><SelectFilter label="Afdeling" value={filters.department} onChange={(value) => setFilter("department", value)}>{departments.map((value) => <option key={value} value={value}>{value}</option>)}</SelectFilter><SelectFilter label="Enhedstype" value={filters.type} onChange={(value) => setFilter("type", value)}>{types.map((type) => <option key={type.id} value={type.id}>{type.label}</option>)}</SelectFilter><SelectFilter label="Bevægelse" value={filters.movement} onChange={(value) => setFilter("movement", value)}>{Object.entries(MOVEMENT_STATES).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</SelectFilter><SelectFilter label="Forbindelse" value={filters.connection} onChange={(value) => setFilter("connection", value)}>{Object.entries(CONNECTION_STATES).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</SelectFilter></div>
         <div className="position-unit-list">{filteredUnits.length ? filteredUnits.map((unit) => <UnitPositionRow key={unit.id} unit={unit} position={positionForUnit(relations, unit.id)} selected={selectedUnitId === unit.id} now={now} onSelect={() => { setSelectedUnitId(unit.id); setMobileView("map"); }} />) : <div className="live-empty compact"><Icon name="search" size={25} /><strong>Ingen enheder matcher</strong><p>Nulstil filtrene eller prøv en anden søgning.</p></div>}</div>
       </aside>
       <section className="live-map-map-panel"><GeoMap positions={filteredPositions} units={units} selectedUnitId={selectedUnitId} onSelect={setSelectedUnitId} onOpenUnit={(unitId) => onNavigate(`/enheder/${unitId}`)} now={now} /><div className="live-map-legend"><span><i className="online" />Online</span><span><i className="degraded" />Ustabil</span><span><i className="offline" />Offline</span><span><i className="missing" />Uden position</span></div></section>

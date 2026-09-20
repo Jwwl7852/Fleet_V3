@@ -90,7 +90,8 @@ export function filterEconomyEntries(entries, units, filters = {}) {
     const unit = units.find((entry) => entry.id === item.unitId);
     return (!item.date || item.date >= from && item.date <= to)
       && (!filters.department || unit?.department === filters.department)
-      && (!filters.unitType || unit?.type === filters.unitType)
+      && (!filters.unitType || (unit?.categoryId || `legacy:${unit?.type}`) === filters.unitType
+        || (!unit?.categoryId && unit?.type === filters.unitType))
       && (!filters.unitId || item.unitId === filters.unitId)
       && (!filters.category || item.categoryKey === filters.category);
   });

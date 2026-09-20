@@ -5,6 +5,11 @@ import { parsePositiveDanishNumber, validateUnit } from "../data/unitSelectors";
 import { disconnectedVehicleLookup, mapVehicleLookupResult, normalizeDanishRegistration } from "../data/vehicleLookup";
 import { Icon } from "./Icon";
 import { confirmBusinessSave, useModalDialog } from "./useModalDialog";
+import {
+  fleetTypeForTechnicalType,
+  selectableUnitTypes,
+  unitTypeById,
+} from "../data/unitTypeRegistry";
 
 const emptyValues = {
   number: "", type: "vehicle", make: "", model: "", variant: "", registration: "", serialNumber: "",
@@ -81,8 +86,8 @@ function ImageEditor({ image, onChange, imageProcessor }) {
   </section>;
 }
 
-function LookupReview({ result, selected, onToggle, onApply, onDismiss }) {
-  const available = LOOKUP_FIELDS.filter(([key]) => result.fields[key] !== "" && result.fields[key] != null);
+function LookupReview({ result, selected, onToggle, onApply, onDismiss, fieldDefinitions = LOOKUP_FIELDS }) {
+  const available = fieldDefinitions.filter(([key]) => result.fields[key] !== "" && result.fields[key] != null);
   return <section className="lookup-review" aria-labelledby="lookup-review-title">
     <div className="lookup-review-header"><div><span className="eyebrow">Gennemgå før anvendelse</span><h3 id="lookup-review-title">Fundne køretøjsoplysninger</h3><p>{result.source} · opslag {new Date(result.lookedUpAt).toLocaleString("da-DK")}</p></div><button type="button" className="icon-button" onClick={onDismiss} aria-label="Luk opslag"><Icon name="close" size={16} /></button></div>
     {available.length ? <div className="lookup-field-list">{available.map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(selected[key])} onChange={() => onToggle(key)} /><span><strong>{label}</strong><small>{result.fields[key]}</small></span></label>)}</div> : <p className="lookup-empty">Datakilden returnerede ingen understøttede oplysninger.</p>}
@@ -93,6 +98,7 @@ function LookupReview({ result, selected, onToggle, onApply, onDismiss }) {
 
 export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb-prototype", resourceOptions = {}, onClose, onSave, vehicleLookup = disconnectedVehicleLookup, imageProcessor = prepareUnitImage }) {
   const sharedStorage = storageKind === "shared-unit-register";
+  const lookupFields = sharedStorage ? LOOKUP_FIELDS.filter(([key]) => key !== "type") : LOOKUP_FIELDS;
   const openedUnitRef = useRef(unit ? structuredClone(unit) : null);
   const [values, setValues] = useState(() => valuesFromUnit(openedUnitRef.current));
   const [image, setImage] = useState(openedUnitRef.current?.image || null);
@@ -102,11 +108,25 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
   const [lookupState, setLookupState] = useState({ status: "idle", message: "" });
   const [lookupResult, setLookupResult] = useState(null);
   const [lookupSelection, setLookupSelection] = useState({});
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const requestSequence = useRef(0);
   const registrationRef = useRef(values.registration);
   const valuesRef = useRef(values);
-  const errors = useMemo(() => validateUnit(values, units, unit?.id), [unit?.id, units, values]);
-  const categoryOptions = (resourceOptions.categories || []).filter((item) => item.aktiv !== false || item.id === values.categoryId);
+  const selectedCategory = unitTypeById(resourceOptions.categories || [], values.categoryId);
+  const errors = useMemo(() => {
+    const found = validateUnit(values, units, unit?.id);
+    if (!sharedStorage) return found;
+    if (!values.categoryId) found.categoryId = "Vælg en enhedstype.";
+    else if (!selectedCategory) found.categoryId = "Den valgte enhedstype findes ikke længere i Opsætning.";
+    else if (!selectedCategory.tekniskArt) found.categoryId = "Enhedstypen mangler en teknisk grundtype i Opsætning.";
+    else if (selectedCategory.aktiv === false && (!unit || values.categoryId !== unit.categoryId)) {
+      found.categoryId = "En inaktiv enhedstype kan ikke tildeles på ny.";
+    } else if (unit?.unitTypeConflict && values.categoryId === unit.categoryId && !categoryTouched) {
+      found.categoryId = "Den eksisterende typekonflikt skal afklares i Opsætning eller ved at vælge en anden type.";
+    }
+    return found;
+  }, [categoryTouched, selectedCategory, sharedStorage, unit, units, values]);
+  const categoryOptions = selectableUnitTypes(resourceOptions.categories || [], values.categoryId);
   const hardwareOptions = (resourceOptions.obdHardware || []).filter((item) => (item.status === "aktiv" || item.id === values.obdHardwareId)
     && (!item.tilknytning?.ressourceId || (item.tilknytning.ressourceType === "enhed" && item.tilknytning.ressourceId === unit?.id)));
   const dirty = JSON.stringify(values) !== JSON.stringify(valuesFromUnit(openedUnitRef.current))
@@ -115,6 +135,7 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
   useEffect(() => { valuesRef.current = values; }, [values]);
   const set = (key) => (event) => {
     const value = event.target.value;
+    if (key === "categoryId") setCategoryTouched(true);
     setValues((current) => {
       const next = { ...current, [key]: value };
       valuesRef.current = next;
@@ -142,7 +163,11 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
       const result = mapVehicleLookupResult(await vehicleLookup.lookup(registration));
       if (sequence !== requestSequence.current || normalizeDanishRegistration(registrationRef.current) !== registration) return;
       const selection = {};
-      LOOKUP_FIELDS.forEach(([key]) => { const present = result.fields[key] !== "" && result.fields[key] != null; selection[key] = present && (valuesRef.current[key] === "" || valuesRef.current[key] == null); });
+      LOOKUP_FIELDS.forEach(([key]) => {
+        const present = result.fields[key] !== "" && result.fields[key] != null;
+        selection[key] = (!sharedStorage || key !== "type") && present
+          && (valuesRef.current[key] === "" || valuesRef.current[key] == null);
+      });
       setLookupSelection(selection); setLookupResult(result);
       setLookupState({ status: "success", message: "Oplysninger fundet. Vælg hvad der skal anvendes." });
     } catch (cause) {
@@ -154,7 +179,11 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
   const applyLookup = () => {
     setValues((current) => {
       const next = { ...current };
-      LOOKUP_FIELDS.forEach(([key]) => { if (lookupSelection[key]) next[key] = String(lookupResult.fields[key]).replace(".", ","); });
+      LOOKUP_FIELDS.forEach(([key]) => {
+        if (lookupSelection[key] && (!sharedStorage || key !== "type")) {
+          next[key] = String(lookupResult.fields[key]).replace(".", ",");
+        }
+      });
       if (["lengthCm", "widthCm", "heightCm"].some((key) => lookupSelection[key])) next.dimensionsEnabled = true;
       return next;
     });
@@ -184,8 +213,12 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
     const dimensions = values.dimensionsEnabled ? { unit: "cm", lengthCm: parsePositiveDanishNumber(values.lengthCm), widthCm: parsePositiveDanishNumber(values.widthCm), heightCm: parsePositiveDanishNumber(values.heightCm) } : null;
     const interiorDimensions = values.interiorDimensionsEnabled ? { unit: "cm", lengthCm: parsePositiveDanishNumber(values.interiorLengthCm), widthCm: parsePositiveDanishNumber(values.interiorWidthCm), heightCm: parsePositiveDanishNumber(values.interiorHeightCm) } : null;
     try {
+      const technicalType = sharedStorage ? selectedCategory?.tekniskArt : unit?.sharedArt;
       await onSave({
-        ...(unit || {}), id, tenantId, number: values.number.trim(), type: values.type, make: values.make.trim(), model: values.model.trim(),
+        ...(unit || {}), id, tenantId, number: values.number.trim(),
+        type: sharedStorage ? fleetTypeForTechnicalType(technicalType) : values.type,
+        sharedArt: technicalType || unit?.sharedArt || null,
+        make: values.make.trim(), model: values.model.trim(),
         categoryId: values.categoryId || null, obdHardwareId: values.obdHardwareId || null,
         registration: normalizeDanishRegistration(values.registration) || null, serialNumber: values.serialNumber.trim() || null,
         department: values.department.trim(), year: values.year ? Number(values.year) : null, meterType: values.meterType,
@@ -206,12 +239,12 @@ export function UnitFormDialog({ unit, units, tenantId, storageKind = "indexeddb
       <form onSubmit={submit} noValidate>
         <div className="unit-form-grid">
           <Field label="Enhedsnummer *" error={submitted ? errors.number : null} hint={unit ? "Visningsfelt – det stabile interne ID ændres ikke." : "Fx NB-019."}><input autoFocus value={values.number} onChange={set("number")} /></Field>
-          <Field label="Enhedstype *" error={submitted ? errors.type : null}><select value={values.type} onChange={set("type")}>{Object.entries(UNIT_TYPES).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></Field>
-          {sharedStorage ? <Field label="Kundekategori" hint="Vedligeholdes under Opsætning → Ressourcer → Enheder."><select value={values.categoryId} onChange={set("categoryId")}><option value="">Ingen kategori</option>{categoryOptions.map((item) => <option key={item.id} value={item.id}>{item.navn}{item.aktiv === false ? " (inaktiv)" : ""}</option>)}</select></Field> : null}
+          {sharedStorage ? <Field label="Enhedstype *" error={submitted ? errors.categoryId : null} hint="Vedligeholdes under Opsætning → Ressourcer → Enheder."><select value={values.categoryId} onChange={set("categoryId")} disabled={!categoryOptions.length}><option value="">{categoryOptions.length ? "Vælg enhedstype" : "Ingen enhedstyper er oprettet"}</option>{categoryOptions.map((item) => <option key={item.id} value={item.id}>{item.navn}{item.aktiv === false ? " (inaktiv)" : ""}</option>)}</select></Field> : <Field label="Enhedstype *" error={submitted ? errors.type : null}><select value={values.type} onChange={set("type")}>{Object.entries(UNIT_TYPES).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></Field>}
+          {sharedStorage && unit?.unitTypeConflict ? <p className="form-error span-all" role="alert"><strong>Eksisterende typekonflikt:</strong> {unit.unitTypeConflict} Oplysningerne er ikke ændret automatisk.</p> : null}
           {sharedStorage ? <Field label="OBD-enhed" hint="Kun ledig, aktiv hardware vises. Tilknytningen kontrolleres atomisk af serveren."><select value={values.obdHardwareId} onChange={set("obdHardwareId")}><option value="">Ingen OBD-enhed</option>{hardwareOptions.map((item) => <option key={item.id} value={item.id}>{item.serienummer}{item.model ? ` · ${item.model}` : ""}</option>)}</select></Field> : null}
           <Field label="Registreringsnummer" wide hint="Danmark · mellemrum og bindestreger normaliseres. Feltet er valgfrit."><div className="registration-lookup"><input aria-label="Registreringsnummer" value={values.registration} onChange={setRegistration} onBlur={() => setValues((current) => ({ ...current, registration: normalizeDanishRegistration(current.registration) }))} /><button className="secondary-button" type="button" onClick={lookup} disabled={lookupState.status === "loading"}>{lookupState.status === "loading" ? <span className="mini-spinner" /> : <Icon name="search" size={16} />}Hent køretøjsdata</button></div></Field>
           <div className={`lookup-status is-${lookupState.status}`} role="status"><Icon name={lookupState.status === "error" ? "warning" : "info"} size={15} /><span>{lookupState.message || "Nummerpladeopslag er ikke tilsluttet. Manuel oprettelse fungerer uafhængigt."}</span></div>
-          {lookupResult ? <LookupReview result={lookupResult} selected={lookupSelection} onToggle={(key) => setLookupSelection((current) => ({ ...current, [key]: !current[key] }))} onApply={applyLookup} onDismiss={() => setLookupResult(null)} /> : null}
+          {lookupResult ? <LookupReview result={lookupResult} selected={lookupSelection} fieldDefinitions={lookupFields} onToggle={(key) => setLookupSelection((current) => ({ ...current, [key]: !current[key] }))} onApply={applyLookup} onDismiss={() => setLookupResult(null)} /> : null}
           <Field label="Mærke *" error={submitted ? errors.make : null}><input value={values.make} onChange={set("make")} /></Field><Field label="Model *" error={submitted ? errors.model : null}><input value={values.model} onChange={set("model")} /></Field>
           <Field label="Variant"><input value={values.variant} onChange={set("variant")} /></Field><Field label="VIN / serienummer" hint="Valgfrit, når enheden ikke har et nummer."><input value={values.serialNumber} onChange={set("serialNumber")} /></Field>
           <Field label="Afdeling *" error={submitted ? errors.department : null}><input value={values.department} onChange={set("department")} /></Field><Field label="Produktionsår / modelår" error={submitted ? errors.year : null}><input inputMode="numeric" value={values.year} onChange={set("year")} /></Field>

@@ -96,7 +96,7 @@ export default function FleetV2Module() {
   const serviceState = fleetServiceProjectionState(service);
   const serviceBackend = useMemo(() => {
     const rawUnits = JSON.parse(serviceUnitsPayload);
-    const units = rawUnits.map(mapSharedUnitToFleet);
+    const units = rawUnits.map((unit) => mapSharedUnitToFleet(unit, sharedResourceCategories));
     const requirements = JSON.parse(serviceRequirementsPayload).map(mapServerRequirementToFleet);
     const occurrences = JSON.parse(serviceOccurrencesPayload).map(mapServerOccurrenceToFleet);
     const reports = JSON.parse(serviceReportsPayload).map(mapServerReportToFleet);
@@ -156,7 +156,10 @@ export default function FleetV2Module() {
         reload();
         resourceCategories.genindlaes();
         obdHardware.genindlaes();
-        return mapSharedUnitToFleet({ id: input.id, tenantId, ...result.data, obdHardwareId: valgtHardwareId });
+        return mapSharedUnitToFleet(
+          { id: input.id, tenantId, ...result.data, obdHardwareId: valgtHardwareId },
+          sharedResourceCategories,
+        );
       },
       async saveRequirement(input) {
         const current = requirements.find((item) => item.id === input.id) || null;

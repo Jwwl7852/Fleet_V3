@@ -91,6 +91,16 @@ test("kategorier deaktiveres, og hardware kan kun vælges ledigt på korrekt res
   assert.deepEqual(validerHardwareTilknytning({ art: "gps", hardwareId: "g1", ressourceType: "enhed", ressourceId: "v1" }), {
     ressourceType: "GPS kan ikke knyttes til denne ressourcetype.",
   });
+  const enhedstype = validerRessourceKategori(
+    { navn: " Servicebil ", aktiv: true, sortering: 10, tekniskArt: "varevogn" },
+    { tekniskeArter: ["varevogn", "lastbil"] },
+  );
+  assert.deepEqual(enhedstype.fejl, {});
+  assert.equal(enhedstype.post.tekniskArt, "varevogn");
+  assert.ok(validerRessourceKategori(
+    { navn: "Ukendt", aktiv: true, sortering: 10, tekniskArt: "fly" },
+    { tekniskeArter: ["varevogn"] },
+  ).fejl.tekniskArt);
 });
 
 test("datalaget indeholder de fælles og atomiske adgangsgrænser", () => {

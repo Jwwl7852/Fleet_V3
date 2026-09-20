@@ -6,7 +6,8 @@ process.env.VITE_DEV_EJER_MAIL ||= "admin@integration.invalid";
 process.env.VITE_DEV_BRUGER_KODE ||= "test-only-not-used";
 
 const {
-  TENANT_ID, REVIEW_CALENDAR_CATEGORIES, REVIEW_CATALOG_ITEMS, REVIEW_CATALOG_SUPPLIERS, workforcePatch,
+  TENANT_ID, REVIEW_CALENDAR_CATEGORIES, REVIEW_CATALOG_ITEMS, REVIEW_CATALOG_SUPPLIERS,
+  REVIEW_UNIT_TYPES, workforcePatch,
 } = await import("../scripts/moduloverblik-v1-emulator-seed.mjs");
 
 describe("Version 1 moduloverblik – WORKFORCE emulatorfixture", () => {
@@ -65,5 +66,14 @@ describe("Version 1 moduloverblik – WORKFORCE emulatorfixture", () => {
     assert.equal(categories.length, 8);
     assert.ok(categories.every((category) => category.aktiv === true));
     assert.ok(categories.every((category) => category.fixture === "moduloverblik-v1-synthetic"));
+  });
+
+  it("leverer kundestyrede enhedstyper med stabilt ID og teknisk grundtype", () => {
+    const patch = workforcePatch({ uid: "uid-review", now: Date.parse("2026-09-17T10:00:00Z") });
+    const types = REVIEW_UNIT_TYPES.map(([id]) => patch[`tenants/${TENANT_ID}/ressourceKategorier/enheder/${id}`]);
+    assert.equal(types.length, 3);
+    assert.ok(types.every((type) => type.tekniskArt));
+    assert.equal(types.filter((type) => type.aktiv === false).length, 1);
+    assert.equal(patch[`tenants/${TENANT_ID}/koeretoejer/review-unit-service`].kategoriId, "review-servicekoeretoej");
   });
 });

@@ -9,7 +9,7 @@ export const formatCurrency = new Intl.NumberFormat("da-DK", { style: "currency"
 
 export const meterUnit = (unit) => unit.meterType === "hours" ? "t" : "km";
 export const formatMeter = (unit, value = unit.meter) => Number.isFinite(value) ? `${formatNumber.format(value)} ${meterUnit(unit)}` : "—";
-export const typeLabel = (unit) => UNIT_TYPES[unit.type]?.label || "Ikke oplyst";
+export const typeLabel = (unit) => unit.categoryName || UNIT_TYPES[unit.type]?.label || "Ikke oplyst";
 export const statusMeta = (unit) => UNIT_STATUSES[unit.status] || { label: "Ikke oplyst", tone: "neutral" };
 export const modelLabel = (unit) => [unit.make, unit.model].filter(Boolean).join(" ") || "Ikke oplyst";
 export const formatDimension = (value) => Number.isFinite(value) ? `${formatNumber.format(value)} cm` : "Ikke oplyst";
@@ -35,7 +35,8 @@ export function filterAndSortUnits(units, filters) {
     return (!query || haystack.includes(query))
       && (filters.tab === "all" || unit.type === filters.tab)
       && (!filters.department || unit.department === filters.department)
-      && (!filters.type || unit.type === filters.type)
+      && (!filters.type || (unit.categoryId || `legacy:${unit.type}`) === filters.type
+        || (!unit.categoryId && unit.type === filters.type))
       && (!filters.status || unit.status === filters.status);
   });
 

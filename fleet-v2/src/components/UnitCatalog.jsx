@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { UNIT_STATUSES, UNIT_TYPES } from "../data/fleetFixtures";
+import { UNIT_STATUSES } from "../data/fleetFixtures";
 import { useFleetData } from "../data/FleetDataContext";
 import { filterAndSortUnits, formatCurrency, formatMeter, modelLabel, statusMeta, typeLabel, unitCost } from "../data/unitSelectors";
 import { Icon } from "./Icon";
 import { UnitFormDialog } from "./UnitFormDialog";
 import { UnitThumbnail } from "./UnitThumbnail";
 import { deriveUnitUsability } from "../data/caseWorkflow";
+import { unitTypeKey } from "../data/unitTypeRegistry";
 
 const PAGE_SIZE = 10;
 const initialFilters = { query: "", tab: "all", department: "", type: "", status: "", sort: "number" };
@@ -49,6 +50,16 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const departments = [...new Set(units.map((unit) => unit.department))].sort((a, b) => a.localeCompare(b, "da"));
+  const unitTypes = useMemo(() => {
+    const configured = (resourceOptions.categories || []).map((type) => ({
+      id: type.id, label: `${type.navn}${type.aktiv === false ? " (inaktiv)" : ""}`,
+    }));
+    const known = new Set(configured.map((type) => type.id));
+    const legacy = units
+      .filter((unit) => !known.has(unitTypeKey(unit)))
+      .map((unit) => ({ id: unitTypeKey(unit), label: typeLabel(unit) }));
+    return [...configured, ...legacy.filter((type, index, all) => all.findIndex((item) => item.id === type.id) === index)];
+  }, [resourceOptions.categories, units]);
 
   useEffect(() => setPage(1), [filters]);
   useEffect(() => { if (page > pageCount) setPage(pageCount); }, [page, pageCount]);
@@ -86,7 +97,7 @@ export function UnitCatalog({ initialStatus = "", initialViewState, onViewStateC
         <section className="catalog-toolbar" aria-label="Filtrering af enheder">
           <label className="catalog-search"><Icon name="search" size={18} /><input aria-label="Søg i enheder" placeholder="Søg i enheder …" value={filters.query} onChange={setFilter("query")} /></label>
           <label><span className="sr-only">Afdeling</span><select aria-label="Afdeling" value={filters.department} onChange={setFilter("department")}><option value="">Alle afdelinger</option>{departments.map((value) => <option key={value}>{value}</option>)}</select></label>
-          <label><span className="sr-only">Type</span><select aria-label="Type" value={filters.type} onChange={setFilter("type")}><option value="">Alle typer</option>{Object.entries(UNIT_TYPES).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label>
+          <label><span className="sr-only">Enhedstype</span><select aria-label="Enhedstype" value={filters.type} onChange={setFilter("type")}><option value="">Alle enhedstyper</option>{unitTypes.map((type) => <option value={type.id} key={type.id}>{type.label}</option>)}</select></label>
           <label><span className="sr-only">Status</span><select aria-label="Status" value={filters.status} onChange={setFilter("status")}><option value="">Alle statusser</option>{Object.entries(UNIT_STATUSES).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label>
           <button className="reset-button" type="button" onClick={() => setFilters(initialFilters)}>Nulstil</button>
           <label className="sort-select"><span className="sr-only">Sortering</span><select aria-label="Sortering" value={filters.sort} onChange={setFilter("sort")}><option value="number">Sortér: Enhedsnummer</option><option value="model">Sortér: Mærke/model</option><option value="meter-desc">Sortér: Højeste målerstand</option><option value="service">Sortér: Næste service</option></select></label>

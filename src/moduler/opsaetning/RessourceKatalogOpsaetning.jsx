@@ -6,11 +6,12 @@ import { AUDIT } from "../../fleet/audit.js";
 import { validerRessourceKategori, validerRessourceHardware } from "../../fleet/ressource-regler.js";
 import { Datatilstand, Henter, Knap, Kort, Pille, Tabel } from "../../fleet/ui.jsx";
 
-const tomKategori = { id: "", navn: "", aktiv: true, sortering: 100 };
+const tomKategori = { id: "", navn: "", aktiv: true, sortering: 100, tekniskArt: "" };
 const tomHardware = { id: "", serienummer: "", leverandoer: "", model: "", status: "aktiv" };
 
 export default function RessourceKatalogOpsaetning({
   gruppe, titel, hardwareArt = null, children = null, visKategorier = true,
+  kategoriEntal = "kategori", kategoriFlertal = "kategorier", tekniskeArter = null,
 }) {
   const { path, bruger } = useFleet();
   const kategorier = useListe(`ressourceKategorier/${gruppe}`, {
@@ -33,7 +34,9 @@ export default function RessourceKatalogOpsaetning({
 
   const gemKategori = async (event) => {
     event.preventDefault();
-    const { fejl, post } = validerRessourceKategori(kategori);
+    const { fejl, post } = validerRessourceKategori(kategori, {
+      tekniskeArter: tekniskeArter ? Object.keys(tekniskeArter) : null,
+    });
     if (Object.keys(fejl).length) { setSvar({ ok: false, besked: Object.values(fejl)[0] }); return; }
     setGemmer(true);
     const id = kategori.id || nyId(`ressource-${gruppe}`);
@@ -93,11 +96,12 @@ export default function RessourceKatalogOpsaetning({
 
   return <div className="fc-grid" style={{ gap: 16 }}>
     {visKategorier ? <>
-    <Kort titel={`${titel} – kundedefinerede kategorier`} handling={<Knap onClick={() => setKategori(tomKategori)}>Ny kategori</Knap>}>
-      <p className="fc-hint">Kategorier har stabile ID'er og deaktiveres i stedet for at blive slettet. Eksisterende ressourcer og historik beholder derfor deres reference. Vælg en række for at redigere den.</p>
+    <Kort titel={`${titel} – kundedefinerede ${kategoriFlertal}`} handling={<Knap onClick={() => setKategori(tomKategori)}>Ny {kategoriEntal}</Knap>}>
+      <p className="fc-hint">{kategoriFlertal[0].toUpperCase() + kategoriFlertal.slice(1)} har stabile ID'er og deaktiveres i stedet for at blive slettet. Eksisterende ressourcer og historik beholder derfor deres reference. Vælg en række for at redigere den.</p>
       <Tabel
         kolonner={[
-          { key: "navn", label: "Kategori", render: (post) => <><b>{post.navn}</b><br /><small>{post.id}</small></> },
+          { key: "navn", label: kategoriEntal[0].toUpperCase() + kategoriEntal.slice(1), render: (post) => <><b>{post.navn}</b><br /><small>{post.id}</small></> },
+          ...(tekniskeArter ? [{ key: "tekniskArt", label: "Teknisk grundtype", render: (post) => tekniskeArter[post.tekniskArt] || "Mangler" }] : []),
           { key: "sortering", label: "Sortering" },
           { key: "status", label: "Status", render: (post) => <Pille tone={post.aktiv === false ? "neutral" : "ok"}>{post.aktiv === false ? "Inaktiv" : "Aktiv"}</Pille> },
           { key: "handling", label: "Handling", render: (post) => <Knap disabled={gemmer} onClick={() => skiftKategori(post)}>{post.aktiv === false ? "Genaktivér" : "Deaktivér"}</Knap> },
@@ -105,11 +109,11 @@ export default function RessourceKatalogOpsaetning({
         raekker={kategorier.data}
         paaRaekke={setKategori}
         erValgt={(post) => post.id === kategori.id}
-        tom="Ingen kategorier er oprettet endnu."
+        tom={`Ingen ${kategoriFlertal} er oprettet endnu.`}
       />
     </Kort>
-    <Kort titel={kategori.id ? `Redigér ${kategori.navn}` : "Opret kategori"}>
-      <form className="fc-form-grid" onSubmit={gemKategori}><label className="fc-felt"><span>Navn</span><input value={kategori.navn} maxLength="80" onChange={(e) => setKategori({ ...kategori, navn: e.target.value })} /></label><label className="fc-felt"><span>Sorteringsrækkefølge</span><input type="number" min="0" max="9999" value={kategori.sortering} onChange={(e) => setKategori({ ...kategori, sortering: e.target.value })} /><small className="fc-felt-hint">Lavere tal vises først. 100 er standardværdien.</small></label><div><Knap type="submit" disabled={gemmer}>{gemmer ? "Gemmer …" : "Gem kategori"}</Knap></div></form>
+    <Kort titel={kategori.id ? `Redigér ${kategori.navn}` : `Opret ${kategoriEntal}`}>
+      <form className="fc-form-grid" onSubmit={gemKategori}><label className="fc-felt"><span>Navn</span><input value={kategori.navn} maxLength="80" onChange={(e) => setKategori({ ...kategori, navn: e.target.value })} /></label>{tekniskeArter ? <label className="fc-felt"><span>Teknisk grundtype</span><select value={kategori.tekniskArt || ""} onChange={(e) => setKategori({ ...kategori, tekniskArt: e.target.value })}><option value="">Vælg grundtype</option>{Object.entries(tekniskeArter).map(([id, navn]) => <option key={id} value={id}>{navn}</option>)}</select><small className="fc-felt-hint">Styrer enhedens felter og funktioner. Brugeren vælger kun Enhedstype på selve enheden.</small></label> : null}<label className="fc-felt"><span>Sorteringsrækkefølge</span><input type="number" min="0" max="9999" value={kategori.sortering} onChange={(e) => setKategori({ ...kategori, sortering: e.target.value })} /><small className="fc-felt-hint">Lavere tal vises først. 100 er standardværdien.</small></label><div><Knap type="submit" disabled={gemmer}>{gemmer ? "Gemmer …" : `Gem ${kategoriEntal}`}</Knap></div></form>
     </Kort>
     </> : null}
     {hardwareArt ? <>

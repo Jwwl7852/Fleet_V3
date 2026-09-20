@@ -68,7 +68,8 @@ export function filterPositionUnits(units, positions, filters = {}) {
     const haystack = [unit.number, unit.registration, unit.make, unit.model].filter(Boolean).join(" ").toLocaleLowerCase("da-DK");
     return (!query || haystack.includes(query))
       && (!filters.department || unit.department === filters.department)
-      && (!filters.type || unit.type === filters.type)
+      && (!filters.type || (unit.categoryId || `legacy:${unit.type}`) === filters.type
+        || (!unit.categoryId && unit.type === filters.type))
       && (!filters.movement || movement === filters.movement)
       && (!filters.connection || connection === filters.connection);
   });

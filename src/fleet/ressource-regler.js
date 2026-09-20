@@ -7,7 +7,7 @@ export const HARDWARE_ARTER = Object.freeze(["obd", "gps"]);
 const tekst = (vaerdi, maks = 100) => typeof vaerdi === "string"
   ? vaerdi.trim().slice(0, maks) : "";
 
-export function validerRessourceKategori(input = {}) {
+export function validerRessourceKategori(input = {}, { tekniskeArter = null } = {}) {
   const fejl = {};
   const navn = tekst(input.navn, 80);
   const sortering = Number(input.sortering);
@@ -15,7 +15,17 @@ export function validerRessourceKategori(input = {}) {
   if (!Number.isInteger(sortering) || sortering < 0 || sortering > 9999) {
     fejl.sortering = "Sortering skal være et helt tal mellem 0 og 9999.";
   }
-  return { fejl, post: { navn, aktiv: input.aktiv !== false, sortering } };
+  const tekniskArt = tekst(input.tekniskArt, 40);
+  if (tekniskeArter && !tekniskeArter.includes(tekniskArt)) {
+    fejl.tekniskArt = "Vælg en teknisk grundtype.";
+  }
+  return {
+    fejl,
+    post: {
+      navn, aktiv: input.aktiv !== false, sortering,
+      ...(tekniskeArter ? { tekniskArt } : {}),
+    },
+  };
 }
 
 export function validerRessourceHardware(input = {}, art) {

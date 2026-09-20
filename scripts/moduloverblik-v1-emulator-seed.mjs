@@ -47,6 +47,12 @@ export const REVIEW_CALENDAR_CATEGORIES = [
   ["andet", "Andet"],
 ];
 
+export const REVIEW_UNIT_TYPES = [
+  ["review-servicekoeretoej", "Servicekøretøj", "varevogn", true],
+  ["review-lagertruck", "Lagertruck", "truck", true],
+  ["review-udgaaet-trailer", "Udgået trailertype", "trailer", false],
+];
+
 function catalogPatch() {
   return Object.fromEntries([
     ...REVIEW_CATALOG_SUPPLIERS.map((row) => [`tenants/${TENANT_ID}/leverandoerer/${row.id}`, { ...row, aktiv: true, fixture: FIXTURE }]),
@@ -88,6 +94,13 @@ export function workforcePatch({ uid, now = Date.now() }) {
   const day = 24 * hour;
   return {
     ...catalogPatch(),
+    ...Object.fromEntries(REVIEW_UNIT_TYPES.map(([id, navn, tekniskArt, aktiv], index) => [
+      `tenants/${TENANT_ID}/ressourceKategorier/enheder/${id}`,
+      {
+        navn, tekniskArt, aktiv, sortering: (index + 1) * 10,
+        oprettetMs: now - day, oprettetAf: uid, opdateretMs: now, opdateretAf: uid,
+      },
+    ])),
     ...Object.fromEntries(REVIEW_CALENDAR_CATEGORIES.map(([id, navn], index) => [
       `tenants/${TENANT_ID}/ressourceKategorier/kalenderkategorier/${id}`,
       { navn, aktiv: true, sortering: (index + 1) * 10, fixture: FIXTURE },
@@ -100,6 +113,23 @@ export function workforcePatch({ uid, now = Date.now() }) {
     [`tenants/${TENANT_ID}/moduler/facility`]: true,
     [`tenants/${TENANT_ID}/moduler/indkoeb`]: true,
     [`tenants/${TENANT_ID}/moduler/warehouse`]: true,
+    [`tenants/${TENANT_ID}/koeretoejer/review-unit-service`]: {
+      art: "varevogn",
+      kategoriId: "review-servicekoeretoej",
+      status: "aktiv",
+      kaldenavn: "TEST-101",
+      navn: "Syntetisk servicebil",
+      hjemsted: "Review-værksted",
+      registrering: "TEST101",
+      kmStand: 12500,
+      fleetProfil: {
+        schemaVersion: 1, number: "TEST-101", type: "vehicle",
+        make: "Syntetisk", model: "Servicebil", department: "Review-værksted",
+        meterType: "km", meter: 12500,
+        equipment: { towHook: false, trailerCoupling: false, crane: false, lift: false },
+        notes: "Kun syntetiske testdata", updatedAt: new Date(now).toISOString(),
+      },
+    },
     [`tenants/${TENANT_ID}/brugere/${uid}`]: {
       email: REVIEW_EMAIL,
       navn: "Syntetisk administrator",

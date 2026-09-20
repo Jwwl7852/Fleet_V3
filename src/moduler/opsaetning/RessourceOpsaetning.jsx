@@ -8,9 +8,10 @@ import FleetKategorier from "./FleetKategorier.jsx";
 import Reolpladser from "../unitbooking/Reolpladser.jsx";
 import Wmslokationer from "../warehouse/Lokationer.jsx";
 import RessourceKatalogOpsaetning from "./RessourceKatalogOpsaetning.jsx";
+import { TECHNICAL_UNIT_TYPES } from "../../../fleet-v2/src/data/unitTypeRegistry.js";
 
 const GRUPPER = [
-  { key: "enheder", label: "Enheder", ikon: "lastbil", moduler: ["flaade", "booking"], tekst: "Enhedskategorier, FLEET-driftskategorier og OBD-hardware.", kilde: "Kategorier og hardware" },
+  { key: "enheder", label: "Enheder", ikon: "lastbil", moduler: ["flaade", "booking"], tekst: "Enhedstyper, FLEET-driftskategorier og OBD-hardware.", kilde: "Typer og hardware" },
   { key: "ejendomme", label: "Ejendomme", ikon: "bygning", moduler: ["facility"], tekst: "Ejendomskategorier og relevante FACILITY-valgmuligheder.", kilde: "Kategorier" },
   { key: "medarbejdere", label: "Medarbejdere", ikon: "personer", moduler: ["bemanding", "booking"], tekst: "Medarbejderkategorier uden login-, rolle- eller lønadgang.", kilde: "Kategorier" },
   { key: "units", label: "Units", ikon: "kasse", moduler: ["unitbooking", "warehouse"], tekst: "Eksisterende unittyper og GPS-trackere. Ekstern GPS-forbindelse er ikke aktiveret.", kilde: "Typer og hardware" },
@@ -45,7 +46,11 @@ function Oversigt({ grupper }) {
 
 function Gruppeindhold({ id }) {
   if (id === "enheder") return <>
-    <RessourceKatalogOpsaetning gruppe="enheder" titel="Enheder" hardwareArt="obd" />
+    <RessourceKatalogOpsaetning
+      gruppe="enheder" titel="Enhedstyper" hardwareArt="obd"
+      kategoriEntal="enhedstype" kategoriFlertal="enhedstyper"
+      tekniskeArter={TECHNICAL_UNIT_TYPES}
+    />
     <Kort titel="FLEET-driftskategorier">
       <p className="fc-hint">De eksisterende FLEET-kategorier styrer serviceintervaller og sagsarbejde. De er samlet her og har ikke længere et selvstændigt menupunkt.</p>
     </Kort>

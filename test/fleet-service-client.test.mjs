@@ -45,6 +45,34 @@ describe("FLEET-serviceklientens autoritative grænse", () => {
     assert.equal(mapped.source, "shared-unit-register");
   });
 
+  it("løser det brugerrettede typenavn fra kundens stabile kategori-ID", () => {
+    const mapped = mapSharedUnitToFleet({
+      id: "kt-104", kategoriId: "servicebil", art: "varevogn", status: "aktiv",
+    }, [{ id: "servicebil", navn: "Servicebil", tekniskArt: "varevogn", aktiv: true }]);
+    assert.equal(mapped.categoryId, "servicebil");
+    assert.equal(mapped.categoryName, "Servicebil");
+    assert.equal(mapped.unitTypeConflict, null);
+  });
+
+  it("bevarer kategori-ID og rapporterer en konflikt uden at omskrive data", () => {
+    const mapped = mapSharedUnitToFleet({
+      id: "kt-104", kategoriId: "servicebil", art: "lastbil", status: "aktiv",
+    }, [{ id: "servicebil", navn: "Servicebil", tekniskArt: "varevogn", aktiv: true }]);
+    assert.equal(mapped.categoryId, "servicebil");
+    assert.equal(mapped.sharedArt, "lastbil");
+    assert.match(mapped.unitTypeConflict, /mens enheden er gemt som lastbil/);
+  });
+
+  it("gemmer den tekniske art bag et eksplicit valg af Enhedstype", () => {
+    const shared = mapFleetUnitToShared({
+      id: "kt-104", number: "Bil 104", type: "machine", sharedArt: "truck",
+      categoryId: "lagertruck", make: "Still", model: "RX", department: "Lager",
+      meterType: "hours", meter: 100, status: "operation", equipment: {},
+    }, { id: "kt-104", art: "varevogn", status: "aktiv" });
+    assert.equal(shared.kategoriId, "lagertruck");
+    assert.equal(shared.art, "truck");
+  });
+
   it("round-tripper FLEET-profilen gennem den fælles koeretoejer-post", () => {
     const shared = mapFleetUnitToShared({
       id: "kt-104", number: "Bil 104", type: "vehicle", make: "Mercedes",
