@@ -238,7 +238,7 @@ function FleetRessourcer({ resources, loading, error }) {
     {error ? <section className="pu-card" role="alert"><h2>Enhedsregisteret kunne ikke læses</h2><p>{error.message}</p></section> : null}
     {!loading && !error ? <section className="pu-card pr-resource-list" aria-label="Fælles FLEET-enheder">
       <div className="pu-card-head"><div><span className="pu-eyebrow">Serverprojektion</span><h2>{resources.length} enheder</h2></div><Statusmaerke niveau="normal">Fælles kilde</Statusmaerke></div>
-      {resources.length ? <div className="pr-resource-rows">{resources.map((resource) => <article key={resource.reference.id} tabIndex="0"><div><strong>{resource.visningsnavn}</strong><small>{resource.reference.id} · {resource.koeretoej.type}</small></div><span>{resource.stationering || "Hjemsted ikke oplyst"}</span><Statusmaerke niveau={resource.status === "aktiv" ? "normal" : "advarsel"}>{resource.status || "Ukendt"}</Statusmaerke></article>)}</div> : <p className="pu-help">Ingen enheder findes i tenantens fælles register.</p>}
+      {resources.length ? <div className="pr-resource-rows">{resources.map((resource) => <article key={resource.reference.id} tabIndex="0"><div><strong>{resource.visningsnavn}</strong><small>{resource.reference.id} · {resource.koeretoej.enhedstype?.navn || resource.koeretoej.type}</small></div><span>{resource.stationering || "Hjemsted ikke oplyst"}</span><Statusmaerke niveau={resource.status === "aktiv" ? "normal" : "advarsel"}>{resource.status || "Ukendt"}</Statusmaerke></article>)}</div> : <p className="pu-help">Ingen enheder findes i tenantens fælles register.</p>}
     </section> : null}
   </div>;
 }

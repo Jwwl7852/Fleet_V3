@@ -31,6 +31,17 @@ describe("Fleet- og Workforce-adaptere", () => {
     assert.equal(ressource.koeretoej.kapacitet.kg, 900);
   });
 
+  it("bevarer kundens stabile enhedstype-ID og viser det aktuelle navn", () => {
+    const kilde = { ...DEMO_FLEET_KILDE_KOERETOEJER[0], kategoriId: "servicebil" };
+    const ressource = fraFleetKoeretoej(kilde, [
+      { id: "servicebil", navn: "Servicekøretøj – omdøbt", aktiv: true, tekniskArt: kilde.art },
+    ]);
+    assert.deepEqual(ressource.koeretoej.enhedstype, {
+      id: "servicebil", navn: "Servicekøretøj – omdøbt", aktiv: true,
+    });
+    assert.equal(ressource.koeretoej.type, kilde.art);
+  });
+
   it("bevarer personId og eksponerer aldrig fraværsårsag eller note", () => {
     const person = DEMO_WORKFORCE_KILDE.personale[2];
     const ressource = fraWorkforceMedarbejder(person, {

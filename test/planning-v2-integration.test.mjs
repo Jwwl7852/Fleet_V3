@@ -44,7 +44,8 @@ describe("PLANNING v2-platformintegration", () => {
 
   it("læser FLEET-enheder fra koeretoejer og sender samme projektion til PLANNING", () => {
     assert.match(moduleSource, /useListe\("koeretoejer"/);
-    assert.match(moduleSource, /fraFleetKoeretoejer\(sharedUnits\.data\)/);
+    assert.match(moduleSource, /useListe\("ressourceKategorier\/enheder"/);
+    assert.match(moduleSource, /fraFleetKoeretoejer\(sharedUnits\.data, sharedUnitTypes\.data\)/);
     assert.match(moduleSource, /fleetResources=\{fleetResources\}/);
     assert.match(demo, /source: "fleet-shared-register"/);
     assert.match(demo, /FLEET-enheder i PLANNING/);

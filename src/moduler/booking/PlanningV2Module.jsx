@@ -30,9 +30,13 @@ export default function PlanningV2Module() {
     vindue: "alle",
     hent: hasModule && hasPermission,
   });
+  const sharedUnitTypes = useListe("ressourceKategorier/enheder", {
+    vindue: "alle",
+    hent: hasModule && hasPermission,
+  });
   const fleetResources = useMemo(
-    () => fraFleetKoeretoejer(sharedUnits.data),
-    [sharedUnits.data],
+    () => fraFleetKoeretoejer(sharedUnits.data, sharedUnitTypes.data),
+    [sharedUnits.data, sharedUnitTypes.data],
   );
   const syncChannelName = useMemo(() => planningV2ChannelName({
     environment: PLANNING_V2_INTEGRATION_ENVIRONMENT,
@@ -68,8 +72,8 @@ export default function PlanningV2Module() {
         onNavigate={(view) => navigate(planningV2PathForView(view))}
         workforceAvailabilityCheck={workforcePlanningCheck}
         fleetResources={fleetResources}
-        fleetResourcesLoading={sharedUnits.henter}
-        fleetResourcesError={sharedUnits.fejl}
+        fleetResourcesLoading={sharedUnits.henter || sharedUnitTypes.henter}
+        fleetResourcesError={sharedUnits.fejl || sharedUnitTypes.fejl}
         syncChannelName={syncChannelName}
       />
     </section>
