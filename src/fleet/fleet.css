@@ -2379,6 +2379,15 @@ body:has(.fc-login-side){margin:0}
    standalone-padding oveni og fik derfor en ekstra indrykning i V1. */
 .fc-main .fc-workspace-zoom>.procure-v2{padding-inline:0}
 
+/* Livekortet er den eneste integrerede V1-side, der skal bruge hele den
+   resterende arbejdshøjde. Gør slotten til en højdekæde uden at ændre de
+   øvrige modulers naturlige dokumentflow. */
+@media(min-width:761px){
+  .fc-slot:has(.fleet-v2-embedded>.live-map-page-v2){display:flex;flex-direction:column;min-height:0}
+  .fc-slot:has(.fleet-v2-embedded>.live-map-page-v2)>.fc-workspace-zoom{flex:1 1 0;min-height:0}
+  .fc-slot:has(.fleet-v2-embedded>.live-map-page-v2) :is(.veyro-module--fleet,.fleet-v2-embedded,.live-map-page-v2){height:100%;min-height:0}
+}
+
 @media(min-width:721px){
   .fc-main--shared-page-top :is(
     .fleet-v2-embedded .page-heading-row,
