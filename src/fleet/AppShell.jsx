@@ -129,8 +129,6 @@ export default function AppShell() {
     : modul.titel;
   const pageTitle = pathname.startsWith("/oekonomi/fakturacenter")
     ? "Fakturacenter"
-    : pathname === "/facility-v2/ejendomme"
-      ? "FACILITY – Ejendomme"
     : ressourceSide ? (modul.label || modul.titel) : modulePageTitle;
   const initialer = (bruger?.navn || bruger?.email || "?")
     .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();

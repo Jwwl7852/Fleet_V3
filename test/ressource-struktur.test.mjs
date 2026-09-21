@@ -42,7 +42,7 @@ test("kompakt navigation bruger Veyro-logoet og centrerer alle modulikoner", () 
   assert.equal((shell.match(/<Navigationsikon navn=\{m\.key\} \/>/g) || []).length, 3);
   assert.match(styles, /\.fc-menu-kompakt \.fc-brand-logo \.veyro-logo\{[^}]*display:block[^}]*width:184px[^}]*transform:translateX\(-11\.6px\)/);
   assert.match(styles, /\.fc-nav-ikon\{[^}]*place-items:center[^}]*width:24px[^}]*height:24px/);
-  assert.match(styles, /\.fc-menu-kompakt \.fc-nav\{[^}]*padding:8px 0/);
+  assert.match(styles, /\.fc-menu-kompakt \.fc-nav\{[^}]*padding:8px 8px 8px 0[^}]*overflow-y:auto/);
   assert.match(styles, /\.fc-menu-kompakt \.fc-link\{[^}]*justify-content:center[^}]*width:44px[^}]*height:44px[^}]*margin:0[^}]*padding:0/);
   assert.match(styles, /\.fc-menu-kompakt \.fc-nav-ikon>svg\{[^}]*width:20px[^}]*height:20px[^}]*transform:none/);
 });
@@ -180,7 +180,8 @@ test("Ressourcer følger Enheder-listens kompakte liste- og filterstruktur", () 
   assert.match(shell, /const ressourceSide =/);
   assert.match(shell, /fc-main fc-main--shared-page-top/);
   assert.match(shell, /<header className="fc-top">/);
-  assert.match(shell, /pathname === "\/facility-v2\/ejendomme"[\s\S]*"FACILITY – Ejendomme"/);
+  assert.match(shell, /pathname === "\/facility-v2\/ejendomme"/);
+  assert.doesNotMatch(shell, /FACILITY – Ejendomme/);
   assert.doesNotMatch(shell, /ressourceOwnsPageTitle/);
   assert.match(employees, /<Dialog titel=\{valgt\.navn\}/);
   assert.doesNotMatch(employees, /role="tablist" aria-label="Status"/);
