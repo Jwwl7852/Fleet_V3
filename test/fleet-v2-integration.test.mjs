@@ -39,5 +39,7 @@ describe("FLEET v2 integrationsgrænse", () => {
     assert.equal(findModul("/ressourcer/enheder/unit-1").key, "ressourceEnhed");
     assert.equal(findModul("/fleet-v2/leasing").key, "fleetV2Leasing");
     assert.equal(findHovedmodul("/fleet-v2/leasing").key, "ressourcer");
+    assert.equal(findModul("/fleet-v2/dokumenter").key, "fleetV2Dokumenter");
+    assert.equal(findHovedmodul("/fleet-v2/dokumenter").key, "ressourcer");
   });
 });

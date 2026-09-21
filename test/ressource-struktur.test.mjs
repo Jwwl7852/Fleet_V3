@@ -22,9 +22,11 @@ test("Ressourcer er et hovedområde med de syv aftalte registre", () => {
   ]);
   const medarbejdere = resources.born.find((item) => item.key === "ressourceMedarbejdere");
   const enheder = resources.born.find((item) => item.key === "ressourceEnheder");
-  assert.deepEqual(enheder.underpunkter.map((item) => item.label), ["Leasing"]);
+  assert.deepEqual(enheder.underpunkter.map((item) => item.label), ["Leasing", "Dokumenter"]);
   assert.equal(enheder.underpunkter[0].sti, "/fleet-v2/leasing");
+  assert.equal(enheder.underpunkter[1].sti, "/fleet-v2/dokumenter");
   assert.equal(NAV.find((item) => item.key === "flaade").born.some((item) => item.key === "fleetV2Leasing"), false);
+  assert.equal(NAV.find((item) => item.key === "flaade").born.some((item) => item.key === "fleetV2Dokumenter"), false);
   assert.deepEqual(medarbejdere.underpunkter.map((item) => item.label), ["Kompetencer"]);
   assert.equal(medarbejdere.underpunkter[0].sti, "/ressourcer/medarbejdere/kompetencer");
   assert.equal(NAV.find((item) => item.key === "bemanding").born.some((item) => item.key === "workforceKompetencer"), false);
