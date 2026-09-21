@@ -122,6 +122,7 @@ export default function AppShell() {
   const ressourceSide = pathname === "/ressourcer"
     || pathname.startsWith("/ressourcer/")
     || pathname === "/facility-v2/ejendomme"
+    || pathname === "/fleet-v2/leasing"
     || pathname === "/opsaetning/ressourcer/varer";
   const modulePage = ["flaade", "facility", "booking", "indkoeb", "warehouse", "unitbooking", "bemanding"].includes(hoved.key);
   const modulePageTitle = modulePage

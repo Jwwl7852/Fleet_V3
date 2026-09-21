@@ -7,7 +7,7 @@ import {
   fleetV2PermissionForPath,
 } from "../src/fleet/fleet-v2-integration.js";
 import { PERM } from "../src/fleet/permissions.js";
-import { findModul, REDIRECTS } from "../src/fleet/nav.js";
+import { findHovedmodul, findModul, REDIRECTS } from "../src/fleet/nav.js";
 
 describe("FLEET v2 integrationsgrænse", () => {
   it("bruger særskilte databasenavne til integration og automatiske tests", () => {
@@ -37,5 +37,7 @@ describe("FLEET v2 integrationsgrænse", () => {
     assert.equal(redirects.get("/fleet-v2/enheder/:id"), "/ressourcer/enheder/:id");
     assert.equal(findModul("/ressourcer/enheder").key, "ressourceEnheder");
     assert.equal(findModul("/ressourcer/enheder/unit-1").key, "ressourceEnhed");
+    assert.equal(findModul("/fleet-v2/leasing").key, "fleetV2Leasing");
+    assert.equal(findHovedmodul("/fleet-v2/leasing").key, "ressourcer");
   });
 });
