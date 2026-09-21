@@ -9133,3 +9133,30 @@ netop de seks. `npm test` grønt.
 `src/fleet/booking-state.js`, `functions/index.js`,
 `scripts/provisioner-dev.mjs`, `scripts/provisioner-v1-test-brugere.mjs`,
 `scripts/v1-test-data/drift.mjs`, 16 testfiler, `ARKITEKTUR.md`, `PRISER.md`.
+
+## 121. Livekort-historik har en eksplicit syntetisk adaptergrænse
+
+Version 1's Livekort har nu én samlet arbejdsflade for Live, historikkort,
+turafspilning, positioner, målinger og eksport. Den nuværende historikadapter er
+bevidst deterministisk og lokal: den bruges kun i det tydeligt markerede
+testmiljø og fremstilles aldrig som leverandørdata.
+
+Aktuelle positioner fra det eksisterende enhedsgrundlag bevares uændret. Kun
+når en lokal fixture ikke har en position, vises en markeret demoposition.
+Enhedstypefilteret læser kundens stabile type-ID'er fra Ressourceopsætning og
+supplerer kun med læsbare legacy-værdier for allerede eksisterende enheder.
+
+Turafledning er dokumenteret og testet: over 2 km/t med tænding tæller som
+kørsel, mindst fem minutters stilstand inden for 80 meter som stop, og et
+databrud splitter både rute og distance. Seneste måling vælges ved eller før det
+valgte tidspunkt; registreret nul må ikke blive til “mangler”.
+
+En rigtig adapter skal håndhæve tenant og rettigheder på serversiden, hente
+efter enhed/periode og bevare trackerens historiske enhedstilknytning. Det er en
+udtrykkelig integrationsgrænse, ikke noget browserprototypen foregiver at have
+verificeret.
+
+`fleet-v2/src/components/LiveMap.jsx`,
+`fleet-v2/src/components/GeoMap.jsx`,
+`fleet-v2/src/data/liveMapHistory.js`,
+`test/live-map-history.test.mjs`.
