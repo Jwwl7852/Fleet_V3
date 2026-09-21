@@ -114,6 +114,7 @@ export default function FleetV2Module() {
     return {
       kind: "server",
       units,
+      serviceCategories: sharedCategories,
       resourceOptions: { categories: sharedResourceCategories, obdHardware: sharedObdHardware },
       relations: {
         serviceRequirements: requirements,
@@ -181,7 +182,7 @@ export default function FleetV2Module() {
     serviceReportsPayload, serviceCasesPayload, serviceHistoryPayload,
     service.units.genindlaes, service.requirements.genindlaes, service.occurrences.genindlaes,
     service.reports.genindlaes, service.cases.genindlaes, service.history.genindlaes,
-    mayManageService, path, tenantId, sharedResourceCategories, sharedObdHardware,
+    mayManageService, path, tenantId, sharedCategories, sharedResourceCategories, sharedObdHardware,
     resourceCategories.genindlaes, obdHardware.genindlaes]);
 
   if (!hasModule || !hasPermission) {

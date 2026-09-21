@@ -1,0 +1,18 @@
+.service-multiselect { position: relative; min-width: 0; }
+.service-multiselect-label { display: block; margin-bottom: 4px; color: var(--veyro-text-secondary); font-size: var(--fc-t-tight); font-weight: 700; }
+.service-multiselect-trigger { width: 100%; min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 11px; color: var(--veyro-text); background: var(--veyro-white); border: 1px solid var(--veyro-border); border-radius: 7px; cursor: pointer; text-align: left; }
+.service-multiselect-trigger:focus-visible { outline: 2px solid var(--veyro-cyan); outline-offset: 2px; }
+.service-multiselect-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.service-multiselect-popover { position: absolute; z-index: 40; top: calc(100% + 5px); left: 0; width: max(100%, 250px); padding: 8px; color: var(--veyro-text); background: var(--veyro-white); border: 1px solid var(--veyro-border); border-radius: 8px; box-shadow: var(--fc-shadow); }
+.service-multiselect-search input { width: 100%; min-height: 36px; padding: 0 10px; color: var(--veyro-text); background: var(--veyro-white); border: 1px solid var(--veyro-border); border-radius: 6px; }
+.service-multiselect-search input:focus-visible { outline: 2px solid var(--veyro-cyan); outline-offset: 1px; }
+.service-multiselect-options { max-height: 220px; margin-top: 7px; overflow-y: auto; }
+.service-multiselect-option { min-height: 34px; display: flex; align-items: center; gap: 8px; padding: 6px 7px; border-radius: 5px; cursor: pointer; }
+.service-multiselect-option:hover, .service-multiselect-option:focus-within { background: var(--veyro-teal-light); }
+.service-multiselect-option input { accent-color: var(--veyro-teal); }
+.service-multiselect-all { margin-bottom: 4px; border-bottom: 1px solid var(--veyro-border); border-radius: 5px 5px 0 0; font-weight: 700; }
+.service-multiselect-empty { margin: 8px; color: var(--veyro-text-secondary); }
+
+@media (max-width: 700px) {
+  .service-multiselect-popover { width: 100%; }
+}

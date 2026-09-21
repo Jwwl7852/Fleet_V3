@@ -256,6 +256,7 @@ export function FleetDataProvider({ children, repository = defaultUnitRepository
     serviceLoading: serverControlledService ? serviceBackend.loading : !dataset && !error,
     serviceError: serverControlledService ? serviceBackend.error : error,
     serviceBackendKind: serverControlledService ? "server" : "prototype",
+    serviceCategories: serviceBackend?.serviceCategories || [],
     serviceCapabilities: serviceBackend?.capabilities || {
       saveRequirement: true, runAutomation: true, planService: true,
       saveHistory: true, saveSettings: true,

@@ -1091,6 +1091,9 @@ button { color: inherit; }
 .service-toolbar { min-height: 58px; display: grid; grid-template-columns: minmax(260px, 1fr) 220px auto auto; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--veyro-border); }
 .service-toolbar select { height: 36px; padding: 0 32px 0 11px; color: var(--veyro-primary-text); background: var(--veyro-white); border: 1px solid var(--veyro-border); border-radius: 6px; }
 .service-toolbar > strong { color: var(--veyro-text-secondary); font-size: 11px; font-weight: 600; text-align: right; }
+.service-filter-toolbar { grid-template-columns: repeat(3, minmax(170px, 1fr)) auto auto; align-items: end; overflow: visible; }
+.service-filter-reset { min-height: 38px; white-space: nowrap; }
+.service-filter-notice { margin: 0; padding: 8px 14px; color: var(--veyro-primary-text); background: var(--veyro-teal-light); border-bottom: 1px solid var(--veyro-border); font-size: 10px; }
 .service-requirement-table { min-width: 1030px; }
 .service-requirement-head, .service-requirement-row { display: grid; grid-template-columns: 115px minmax(160px, 1.25fr) minmax(130px, 1fr) 115px 115px minmax(125px, .8fr) 230px; align-items: center; gap: 12px; padding: 0 14px; }
 .service-requirement-head { min-height: 35px; color: var(--veyro-text-secondary); background: var(--veyro-app-background); border-bottom: 1px solid var(--veyro-border); font-size: 9.5px; font-weight: 700; text-transform: uppercase; }
@@ -1132,6 +1135,8 @@ button { color: inherit; }
   .service-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .service-table-card { overflow-x: auto; }
   .service-toolbar { min-width: 760px; }
+  .service-filter-toolbar { grid-template-columns: repeat(3, minmax(150px, 1fr)) auto; }
+  .service-filter-toolbar > strong { grid-column: 1 / -1; text-align: left; }
 }
 
 @media (max-width: 700px) {

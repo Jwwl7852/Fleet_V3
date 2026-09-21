@@ -643,6 +643,18 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .service-detail header { margin-bottom: 12px; }
 .service-detail header small { color: var(--veyro-teal); font-size: 9px; font-weight: 800; }
 .service-page tbody tr { cursor: pointer; }
+.facility-service-filter-toolbar { display: grid; grid-template-columns: repeat(3, minmax(170px, 1fr)) auto auto; align-items: end; gap: 10px; margin-bottom: 14px; padding: 12px; overflow: visible; }
+.facility-service-filter-toolbar > strong { align-self: center; color: var(--veyro-text-secondary); white-space: nowrap; }
+.facility-service-filter-toolbar + .service-filter-notice { margin: -6px 0 14px; border: 1px solid var(--veyro-border); border-radius: 8px; }
+
+@media (max-width: 900px) {
+  .facility-service-filter-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .facility-service-filter-toolbar > strong { text-align: left; }
+}
+
+@media (max-width: 620px) {
+  .facility-service-filter-toolbar { grid-template-columns: 1fr; }
+}
 
 .documents-layout { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 12px; align-items: start; }
 .document-list { min-width: 0; }

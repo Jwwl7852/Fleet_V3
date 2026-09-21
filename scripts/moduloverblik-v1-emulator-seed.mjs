@@ -53,6 +53,12 @@ export const REVIEW_UNIT_TYPES = [
   ["review-udgaaet-trailer", "Udgået trailertype", "trailer", false],
 ];
 
+export const REVIEW_FLEET_SERVICE_CATEGORIES = [
+  ["review-maintenance", "Vedligeholdelse"],
+  ["review-inspection", "Eftersyn"],
+  ["review-documentation", "Dokumentation"],
+];
+
 function catalogPatch() {
   return Object.fromEntries([
     ...REVIEW_CATALOG_SUPPLIERS.map((row) => [`tenants/${TENANT_ID}/leverandoerer/${row.id}`, { ...row, aktiv: true, fixture: FIXTURE }]),
@@ -105,6 +111,10 @@ export function workforcePatch({ uid, now = Date.now() }) {
       `tenants/${TENANT_ID}/ressourceKategorier/kalenderkategorier/${id}`,
       { navn, aktiv: true, sortering: (index + 1) * 10, fixture: FIXTURE },
     ])),
+    ...Object.fromEntries(REVIEW_FLEET_SERVICE_CATEGORIES.map(([id, navn], index) => [
+      `tenants/${TENANT_ID}/fleetKategorier/${id}`,
+      { navn, aktiv: true, sortering: (index + 1) * 10, fixture: FIXTURE },
+    ])),
     [`tenants/${TENANT_ID}/_findes`]: true,
     [`tenants/${TENANT_ID}/abonnement/status`]: "aktiv",
     [`tenants/${TENANT_ID}/moduler/bemanding`]: true,
@@ -130,6 +140,38 @@ export function workforcePatch({ uid, now = Date.now() }) {
         equipment: { towHook: false, trailerCoupling: false, crane: false, lift: false },
         notes: "Kun syntetiske testdata", updatedAt: new Date(now).toISOString(),
       },
+    },
+    [`tenants/${TENANT_ID}/koeretoejer/review-unit-logistics`]: {
+      art: "varevogn",
+      kategoriId: "review-servicekoeretoej",
+      status: "aktiv",
+      kaldenavn: "TEST-202",
+      navn: "Syntetisk logistikbil",
+      hjemsted: "Review-lager",
+      registrering: "TEST202",
+      kmStand: 48000,
+      fleetProfil: {
+        schemaVersion: 1, number: "TEST-202", type: "vehicle",
+        make: "Syntetisk", model: "Logistikbil", department: "Review-lager",
+        meterType: "km", meter: 48000,
+        equipment: { towHook: false, trailerCoupling: false, crane: false, lift: false },
+        notes: "Kun syntetiske testdata", updatedAt: new Date(now).toISOString(),
+      },
+    },
+    [`tenants/${TENANT_ID}/fleetServiceKrav/review-service-overdue`]: {
+      enhedId: "review-unit-service", titel: "Syntetisk overskredet årsservice",
+      kategori: "review-maintenance", naesteDato: "2026-09-01", varselDage: 30,
+      maalerEnhed: "km", aktiv: true, revision: 1, fixture: FIXTURE,
+    },
+    [`tenants/${TENANT_ID}/fleetServiceKrav/review-service-upcoming`]: {
+      enhedId: "review-unit-logistics", titel: "Syntetisk kommende sikkerhedseftersyn",
+      kategori: "review-inspection", naesteDato: "2026-10-01", varselDage: 30,
+      maalerEnhed: "km", aktiv: true, revision: 1, fixture: FIXTURE,
+    },
+    [`tenants/${TENANT_ID}/fleetServiceKrav/review-service-undated`]: {
+      enhedId: "review-unit-service", titel: "Syntetisk dokumentationskontrol uden dato",
+      kategori: "review-documentation", varselDage: 30,
+      maalerEnhed: "km", aktiv: true, revision: 1, fixture: FIXTURE,
     },
     [`tenants/${TENANT_ID}/brugere/${uid}`]: {
       email: REVIEW_EMAIL,
