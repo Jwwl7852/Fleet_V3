@@ -3,7 +3,7 @@ import { createFacilityRepository } from './facilityRepositoryV2';
 
 const FacilityDataContext = createContext(null);
 
-export function FacilityDataProvider({ children, repository: repositoryOverride }) {
+export function FacilityDataProvider({ actor = null, children, repository: repositoryOverride }) {
   const repository = useMemo(
     () => repositoryOverride ?? createFacilityRepository(),
     [repositoryOverride],
@@ -45,7 +45,10 @@ export function FacilityDataProvider({ children, repository: repositoryOverride 
     return result;
   }
 
-  const value = useMemo(() => ({ dataset, error, repository, setDataset, runMutation }), [dataset, error, repository]);
+  const value = useMemo(
+    () => ({ actor, dataset, error, repository, setDataset, runMutation }),
+    [actor, dataset, error, repository],
+  );
 
   return <FacilityDataContext.Provider value={value}>{children}</FacilityDataContext.Provider>;
 }

@@ -69,13 +69,14 @@ function AppRoutes({ basePath, embedded }) {
 }
 
 export function FacilityV2App({
+  actor = null,
   basePath = FACILITY_STANDALONE_ROUTE_PREFIX,
   embedded = false,
   repository,
 }) {
   return (
     <FacilityRouteProvider basePath={basePath}>
-      <FacilityDataProvider repository={repository}>
+      <FacilityDataProvider actor={actor} repository={repository}>
         <div className={`veyro-module--facility ${embedded ? 'veyro-module--embedded' : ''}`}>
           <AppRoutes basePath={basePath} embedded={embedded} />
         </div>

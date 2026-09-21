@@ -82,4 +82,21 @@ describe('FACILITY v2 appskal', () => {
     await user.click(row);
     expect(await screen.findByText('EJENDOMSPROFIL')).toBeInTheDocument();
   });
+
+  it('kan justere og nulstille kolonnerne i Indberetninger med tastaturet', async () => {
+    const user = userEvent.setup();
+    renderEmbedded('/facility-v2/indberetninger');
+    expect(await screen.findByRole('heading', { name: 'Indberetninger og triage' })).toBeInTheDocument();
+    const separators = screen.getAllByRole('separator');
+    expect(separators).toHaveLength(2);
+    expect(separators[0]).toHaveAttribute('aria-label', 'Juster venstre panelbredde');
+    expect(separators[1]).toHaveAttribute('aria-label', 'Juster højre panelbredde');
+    expect(separators[0]).toHaveAttribute('aria-valuenow', '27');
+
+    separators[0].focus();
+    await user.keyboard('{ArrowRight}');
+    expect(separators[0]).toHaveAttribute('aria-valuenow', '29');
+    await user.keyboard('{Home}');
+    expect(separators[0]).toHaveAttribute('aria-valuenow', '27');
+  });
 });

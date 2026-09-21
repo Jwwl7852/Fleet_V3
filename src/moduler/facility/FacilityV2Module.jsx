@@ -45,6 +45,7 @@ export default function FacilityV2Module() {
 
   return (
     <FacilityV2App
+      actor={actor}
       basePath={FACILITY_V2_ROUTE_PREFIX}
       embedded
       repository={repository}

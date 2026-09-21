@@ -493,7 +493,10 @@ button:disabled, .is-disabled { cursor: not-allowed; opacity: .56; }
 .attachment-list small { color: var(--veyro-text-secondary); }
 .attachment-list a { color: var(--veyro-teal); font-weight: 700; }
 
-.triage-layout { display: grid; grid-template-columns: minmax(270px, .82fr) minmax(430px, 1.38fr) minmax(290px, .85fr); gap: 12px; align-items: start; }
+.triage-layout.facility-three-panel { display: grid; grid-template-columns: minmax(270px, var(--facility-panel-left)) 12px minmax(430px, 1fr) 12px minmax(290px, var(--facility-panel-right)); gap: 0; align-items: start; }
+.facility-panel-handle { position: relative; align-self: stretch; min-height: 100%; cursor: col-resize; touch-action: none; }
+.facility-panel-handle::before { content: ""; position: absolute; inset: 0 4px; border-radius: 999px; background: var(--veyro-border); }
+.facility-panel-handle:hover::before, .facility-panel-handle:focus-visible::before { background: var(--veyro-teal); }
 .triage-list, .triage-detail, .triage-editor { min-width: 0; min-height: 690px; padding: 15px; }
 .triage-list h2, .triage-editor h2 { margin: 0 0 12px; font-size: 15px; }
 .compact-filters { display: grid; grid-template-columns: 1fr 105px; gap: 6px; margin-bottom: 8px; }
@@ -693,7 +696,8 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .economy-basis > p { color: var(--veyro-text-secondary); }
 
 @media (max-width: 1250px) {
-  .triage-layout { grid-template-columns: minmax(260px, .75fr) minmax(390px, 1.25fr); }
+  .triage-layout.facility-three-panel { grid-template-columns: minmax(260px, var(--facility-panel-left)) 12px minmax(390px, 1fr); }
+  .facility-three-panel > .facility-panel-handle:nth-of-type(2) { display: none; }
   .triage-editor { position: static; grid-column: 1 / -1; min-height: auto; }
   .task-work-grid { grid-template-columns: 1fr 1fr; }
   .task-right-stack { grid-column: 1 / -1; grid-template-columns: repeat(2, 1fr); }
@@ -715,7 +719,8 @@ dd { margin: 0; overflow-wrap: anywhere; }
   .local-map svg { min-height: 410px; }
 }
 @media (max-width: 760px) {
-  .triage-layout, .task-work-grid, .mobile-report-layout { grid-template-columns: 1fr; }
+  .triage-layout.facility-three-panel, .task-work-grid, .mobile-report-layout { grid-template-columns: 1fr; gap: 12px; }
+  .facility-panel-handle { display: none; }
   .triage-list, .triage-detail, .triage-editor { min-height: auto; }
   .task-right-stack { grid-column: auto; grid-template-columns: 1fr; }
   .case-summary { grid-template-columns: 1fr; }
