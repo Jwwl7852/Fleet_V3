@@ -29,6 +29,17 @@ test("ture, stop og databrud adskilles uden afstand hen over brud", () => {
   assert.ok(events.filter((event) => event.kind === "trip").every((event) => event.distanceKm > 0));
 });
 
+test("manglende signal må ikke blive afledt som et stop", () => {
+  const packets = [
+    { id: "a", providerPacketId: "a", measuredAt: "2026-09-21T08:00:00.000Z", latitude: 55.67, longitude: 12.55, speedKph: 0, ignition: true },
+    { id: "b", providerPacketId: "b", measuredAt: "2026-09-21T08:20:00.000Z", latitude: 55.6701, longitude: 12.5501, speedKph: 0, ignition: true, gapBefore: true },
+    { id: "c", providerPacketId: "c", measuredAt: "2026-09-21T08:21:00.000Z", latitude: 55.6701, longitude: 12.5501, speedKph: 20, ignition: true },
+  ];
+  const events = deriveTripsAndStops(packets);
+  assert.ok(events.some((event) => event.kind === "gap"));
+  assert.equal(events.some((event) => event.kind === "stop"), false);
+});
+
 test("seneste gyldige måling før valgt tidspunkt bevarer nul", () => {
   const packets = createSyntheticHistory("unit-test");
   const at = packets.at(-1).measuredAt;

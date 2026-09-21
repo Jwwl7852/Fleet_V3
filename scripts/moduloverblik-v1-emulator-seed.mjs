@@ -111,6 +111,7 @@ export function workforcePatch({ uid, now = Date.now() }) {
     [`tenants/${TENANT_ID}/moduler/unitbooking`]: true,
     [`tenants/${TENANT_ID}/moduler/flaade`]: true,
     [`tenants/${TENANT_ID}/moduler/facility`]: true,
+    [`tenants/${TENANT_ID}/moduler/booking`]: true,
     [`tenants/${TENANT_ID}/moduler/indkoeb`]: true,
     [`tenants/${TENANT_ID}/moduler/warehouse`]: true,
     [`tenants/${TENANT_ID}/koeretoejer/review-unit-service`]: {

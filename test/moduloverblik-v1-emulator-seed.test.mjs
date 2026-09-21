@@ -15,6 +15,7 @@ describe("Version 1 moduloverblik – WORKFORCE emulatorfixture", () => {
     const patch = workforcePatch({ uid: "uid-review", now: Date.parse("2026-09-17T10:00:00Z") });
     assert.equal(patch[`tenants/${TENANT_ID}/_findes`], true);
     assert.equal(patch[`tenants/${TENANT_ID}/moduler/bemanding`], true);
+    assert.equal(patch[`tenants/${TENANT_ID}/moduler/booking`], true);
     assert.equal(patch[`tenants/${TENANT_ID}/moduler/unitbooking`], true);
     assert.equal(patch[`tenants/${TENANT_ID}/brugere/uid-review`].personId, "wf-review-admin");
   });

@@ -54,7 +54,7 @@ function clusterMarkers(markers) {
   return groups;
 }
 
-export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId = null, focusUnitId = null, onSelect, onOpenUnit, compact = false, controls = true, now = new Date().toISOString(), ariaLabel = "Geografisk kort med demopositioner", routeSegments = [], routeCursor = null, showMarkers = true }) {
+export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId = null, focusUnitId = null, followUnitId = null, onSelect, onOpenUnit, onToggleFollow, compact = false, controls = true, now = new Date().toISOString(), ariaLabel = "Geografisk kort med demopositioner", routeSegments = [], routeGaps = [], routeCursor = null, showMarkers = true }) {
   const initial = useMemo(() => fitView(positions, compact ? 480 : 820, compact ? 240 : 520), []); // Positionsopdateringer må ikke flytte brugerens udsnit.
   const [center, setCenter] = useState(initial.center);
   const [zoom, setZoom] = useState(initial.zoom);
@@ -90,6 +90,14 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
     setActiveUnitId(focusUnitId);
     setDismissedUnitId(null);
   }, [focusUnitId, positions]);
+  useEffect(() => {
+    if (!followUnitId) return;
+    const position = positions.find((item) => item.unitId === followUnitId && hasValidCoordinates(item));
+    if (!position) return;
+    setCenter({ latitude: position.latitude, longitude: position.longitude });
+    setActiveUnitId(followUnitId);
+    setDismissedUnitId(null);
+  }, [followUnitId, positions]);
   const tiles = useMemo(() => {
     const count = 2 ** zoom;
     const left = centerWorld.x - size.width / 2;
@@ -127,6 +135,7 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
     return { x: size.width / 2 + deltaX, y: size.height / 2 + point.y - centerWorld.y };
   };
   const routeLines = routeSegments.map((segment) => segment.map(screenPoint));
+  const gapLines = routeGaps.map((segment) => segment.map(screenPoint));
   const cursorPoint = routeCursor && hasValidCoordinates(routeCursor) ? screenPoint(routeCursor) : null;
 
   return <div
@@ -153,7 +162,11 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
     tabIndex={0}
   >
     {!tilesFailed ? <div className="map-tiles" aria-hidden="true">{tiles.map((tile) => <img alt="" draggable="false" key={tile.key} onError={() => setTilesFailed(true)} src={tile.url} style={{ left: tile.x, top: tile.y }} />)}</div> : <div className="map-fallback" aria-label="Lokalt reservekort"><svg viewBox="0 0 800 520" preserveAspectRatio="none"><defs><pattern id="geo-grid" width="80" height="52" patternUnits="userSpaceOnUse"><path d="M80 0H0v52" fill="none" stroke="currentColor" strokeOpacity=".18" /></pattern></defs><rect width="800" height="520" fill="currentColor" opacity=".06" /><rect width="800" height="520" fill="url(#geo-grid)" /><path d="M300 0v520M0 260h800" stroke="currentColor" strokeOpacity=".2" strokeDasharray="7 7" /></svg><span>Lokalt reservekort · geografisk koordinatgitter</span></div>}
-    {routeLines.length ? <svg className="geo-route-overlay" aria-hidden="true" viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="none">{routeLines.map((line, index) => <polyline key={`route-${index}`} points={line.map((point) => `${point.x},${point.y}`).join(" ")} />)}</svg> : null}
+    {routeLines.length || gapLines.length ? <svg className="geo-route-overlay" aria-hidden="true" viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="none">{routeLines.map((line, index) => <g key={`route-${index}`}><polyline points={line.map((point) => `${point.x},${point.y}`).join(" ")} />{line.map((point, pointIndex) => {
+      if (!pointIndex || pointIndex % 5 !== 0) return null;
+      const previous = line[pointIndex - 1]; const angle = Math.atan2(point.y - previous.y, point.x - previous.x) * 180 / Math.PI;
+      return <path className="geo-route-arrow" d="M-4 -3L4 0 -4 3Z" key={`${point.x}-${point.y}`} transform={`translate(${point.x} ${point.y}) rotate(${angle})`} />;
+    })}</g>)}{gapLines.map((line, index) => <polyline className="geo-route-gap" key={`gap-${index}`} points={line.map((point) => `${point.x},${point.y}`).join(" ")} />)}</svg> : null}
     {cursorPoint ? <span className="geo-route-cursor" aria-hidden="true" style={{ left: cursorPoint.x, top: cursorPoint.y, transform: `translate(-50%, -50%) rotate(${Number(routeCursor.heading) || 0}deg)` }}><Icon name="unit" size={16} /></span> : null}
     {showMarkers ? <div className="map-markers">{groups.map((group) => {
       if (group.items.length > 1) {
@@ -164,13 +177,15 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
       const unit = units.find((item) => item.id === position.unitId);
       const freshness = positionFreshness(position, now);
       const liveStatus = liveOperationalStatus(position, now);
-      return <button aria-label={`${unit?.number || "Ukendt enhed"}, ${LIVE_STATUS_LABELS[liveStatus]}, ${freshness.label}`} className={`geo-marker ${liveStatus}${freshness.stale ? " stale" : ""}${selectedUnitId === position.unitId ? " selected" : ""}`} key={position.unitId} onClick={() => { setActiveUnitId(position.unitId); setActiveCluster(null); onSelect?.(position.unitId); }} style={{ left: group.x, top: group.y }} title={`${unit?.number || position.unitId} · ${position.label}`} type="button">{position.movementState === "moving" ? <span className="geo-heading" style={{ transform: `rotate(${Number(position.heading) || 0}deg)` }}>▲</span> : <Icon name="pin" size={compact ? 13 : 15} />}<span>{unit?.number}</span></button>;
+      const hasHeading = Number.isFinite(Number(position.heading));
+      return <button aria-label={`${unit?.number || "Ukendt enhed"}, ${LIVE_STATUS_LABELS[liveStatus]}, ${freshness.label}`} className={`geo-marker ${liveStatus}${freshness.stale ? " stale" : ""}${selectedUnitId === position.unitId ? " selected" : ""}`} key={position.unitId} onClick={() => { setActiveUnitId(position.unitId); setActiveCluster(null); onSelect?.(position.unitId); }} style={{ left: group.x, top: group.y }} title={`${unit?.number || position.unitId} · ${position.label}`} type="button">{position.movementState === "moving" ? <span className={`geo-heading${hasHeading ? "" : " heading-unknown"}`} style={hasHeading ? { transform: `rotate(${Number(position.heading)}deg)` } : undefined}>{hasHeading ? "▲" : "◆"}</span> : <Icon name="pin" size={compact ? 13 : 15} />}<span>{unit?.number}</span></button>;
     })}</div> : null}
     {activeMarker && activeUnit ? <section className="geo-unit-popup" aria-label={`Detaljer for ${activeUnit.number}`} style={{ left: clamp(activeMarker.x, 126, Math.max(126, size.width - 126)), top: clamp(activeMarker.y - 18, 116, Math.max(116, size.height - 80)) }}>
       <header><div><span className={`position-dot ${activeMarker.position.connectionStatus}`} /><strong>{activeUnit.number}</strong></div><button type="button" aria-label="Luk enhedsdetaljer" onClick={() => { setActiveUnitId(null); setDismissedUnitId(visiblePopupUnitId); }}>×</button></header>
       <p>{activeUnit.make} {activeUnit.model}</p>
       <dl><div><dt>Position</dt><dd>{activeMarker.position.label}</dd></div><div><dt>Status</dt><dd>{CONNECTION_STATES[activeMarker.position.connectionStatus]} · {MOVEMENT_STATES[activeMarker.position.movementState]}</dd></div><div><dt>Aktualitet</dt><dd>{activeFreshness.label}</dd></div></dl>
       {onOpenUnit ? <button className="geo-unit-popup-link" type="button" onClick={() => onOpenUnit(activeUnit.id)}>Åbn enhedsprofil</button> : null}
+      {onToggleFollow ? <button className="geo-unit-popup-link" type="button" aria-pressed={followUnitId === activeUnit.id} onClick={() => onToggleFollow(activeUnit.id)}>{followUnitId === activeUnit.id ? "Stop med at følge" : "Følg enhed"}</button> : null}
     </section> : null}
     {activeCluster ? <section className="geo-cluster-list" aria-label="Vælg enhed i klynge" style={{ left: clamp(activeCluster.x, 92, Math.max(92, size.width - 92)), top: clamp(activeCluster.y + 28, 72, Math.max(72, size.height - 72)) }}>
       <header><strong>{activeCluster.items.length} enheder</strong><button type="button" aria-label="Luk enhedsliste" onClick={() => setActiveCluster(null)}>×</button></header>

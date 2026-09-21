@@ -108,6 +108,9 @@ export function deriveTripsAndStops(packets = []) {
     const moving = Number(packet.speedKph) > 2 && packet.ignition !== false;
     if (packet.gapBefore) {
       closeTrip(sorted[index - 1]);
+      // Et databrud er hverken kørsel eller stilstand. En igangværende
+      // stopkandidat må derfor ikke fortsætte på tværs af hullet.
+      stopStart = null;
       events.push({ id: `gap-${packet.measuredAt}`, kind: "gap", from: sorted[index - 1]?.measuredAt, to: packet.measuredAt });
     }
     if (moving) {
