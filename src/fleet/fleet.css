@@ -2372,6 +2372,10 @@ body:has(.fc-login-side){margin:0}
 .fc-main--shared-page-top .pr-calendar-heading>div:first-child>p{display:none}
 .fc-main--shared-page-top .fc-overview-summary{grid-template-columns:minmax(0,1fr)}
 
+/* AppShell ejer allerede sidernes vandrette margin. Procure beholdt sin
+   standalone-padding oveni og fik derfor en ekstra indrykning i V1. */
+.fc-main .fc-workspace-zoom>.procure-v2{padding-inline:0}
+
 @media(min-width:721px){
   .fc-main--shared-page-top :is(
     .fleet-v2-embedded .page-heading-row,
