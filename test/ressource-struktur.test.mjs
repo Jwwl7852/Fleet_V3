@@ -56,7 +56,7 @@ test("kompakt navigation bruger Veyro-logoet og centrerer alle modulikoner", () 
 test("modulgenveje peger på de samme fælles registre", () => {
   const byKey = new Map(NAV.flatMap((item) => item.born || [item]).map((item) => [item.key, item]));
   assert.equal(byKey.get("fleetV2Enheder"), undefined);
-  assert.equal(byKey.get("planningV2Ressourcer").sti, "/ressourcer/enheder");
+  assert.equal(byKey.get("planningV2Ressourcer"), undefined);
   assert.equal(byKey.get("workforceMedarbejdere"), undefined);
   assert.equal(byKey.get("ressourceMedarbejdere").sti, "/ressourcer/medarbejdere");
   assert.equal(byKey.get("unitbookingRegister"), undefined);

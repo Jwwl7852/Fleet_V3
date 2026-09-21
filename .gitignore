@@ -11,5 +11,6 @@ dist
 *serviceaccount*.json
 *firebase-adminsdk*.json
 .firebase
+.local-tools/
 *.log
 .DS_Store

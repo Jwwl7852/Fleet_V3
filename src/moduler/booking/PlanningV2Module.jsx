@@ -10,6 +10,7 @@ import { useListe } from "../../fleet/useListe.js";
 import { fraFleetKoeretoejer } from "../../fleet/planning-adapters/fleet.js";
 import {
   PLANNING_V2_INTEGRATION_ENVIRONMENT,
+  PLANNING_V2_LEGACY_RESOURCE_PATH,
   planningV2ChannelName,
   planningV2LocalUrl,
   planningV2PathForView,
@@ -44,7 +45,7 @@ export default function PlanningV2Module() {
     userId,
   }), [tenantId, userId]);
 
-  if (location.pathname.replace(/\/+$/, "") === "/planning-v2/ressourcer") {
+  if (location.pathname.replace(/\/+$/, "") === PLANNING_V2_LEGACY_RESOURCE_PATH) {
     return <Navigate to="/ressourcer/enheder?fra=planning" replace />;
   }
 

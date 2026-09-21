@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   PLANNING_V2_ROUTE_PREFIX,
   PLANNING_V2_ROUTES,
+  PLANNING_V2_LEGACY_RESOURCE_PATH,
   planningV2ChannelName,
   planningV2PathForView,
   planningV2PermissionForPath,
@@ -19,12 +20,13 @@ const css = readFileSync("src/fleet/planning-ui/planning-demo.css", "utf8");
 describe("PLANNING v2-platformintegration", () => {
   it("bruger et nyt prefix og bevarer entydig mapping for alle arbejdsflader", () => {
     assert.equal(PLANNING_V2_ROUTE_PREFIX, "/planning-v2");
-    assert.equal(new Set(Object.values(PLANNING_V2_ROUTES)).size, 9);
+    assert.equal(new Set(Object.values(PLANNING_V2_ROUTES)).size, 8);
     for (const [view, path] of Object.entries(PLANNING_V2_ROUTES)) {
       assert.equal(planningV2ViewForPath(`${path}/`), view);
       assert.equal(planningV2PathForView(view), path);
     }
     assert.equal(planningV2ViewForPath("/planning-v2/ukendt"), "overblik");
+    assert.equal(planningV2ViewForPath(PLANNING_V2_LEGACY_RESOURCE_PATH), "overblik");
   });
 
   it("kræver den eksisterende Booking-læsepermission", () => {
@@ -48,7 +50,9 @@ describe("PLANNING v2-platformintegration", () => {
     assert.match(moduleSource, /fraFleetKoeretoejer\(sharedUnits\.data, sharedUnitTypes\.data\)/);
     assert.match(moduleSource, /fleetResources=\{fleetResources\}/);
     assert.match(demo, /source: "fleet-shared-register"/);
-    assert.match(demo, /FLEET-enheder i PLANNING/);
+    assert.match(demo, /withFleetResources\(current, fleetResources\)/);
+    assert.doesNotMatch(demo, /FLEET-enheder i PLANNING|\["ressourcer", "Ressourcer"/);
+    assert.match(moduleSource, /<Navigate to="\/ressourcer\/enheder\?fra=planning" replace \/>/);
   });
 
   it("isolerer vinduessynkronisering pr. miljø, tenant og bruger", () => {

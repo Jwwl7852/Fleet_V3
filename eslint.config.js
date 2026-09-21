@@ -42,6 +42,9 @@ import globals from "globals";
 const IGNORERET = [
   "dist/**",
   "node_modules/**",
+  /* Lokale, downloadede hjælpeprojekter har egne afhængigheder og configs.
+     De er ikke en del af VEYRO-kildekoden og er også ignoreret af Git. */
+  ".local-tools/**",
   /* ⚠ KOPI, lagt af `npm run delt:kopier`. En fejl her er en fejl i
      src/fleet/ — og retter man kopien, filtrerer klienten mod én allowliste
      og serveren mod en anden. Se CLAUDE.md. */

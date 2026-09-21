@@ -2,6 +2,7 @@ import { PERM } from "./permissions.js";
 
 export const PLANNING_V2_ROUTE_PREFIX = "/planning-v2";
 export const PLANNING_V2_INTEGRATION_ENVIRONMENT = "veyro-integration-v1";
+export const PLANNING_V2_LEGACY_RESOURCE_PATH = `${PLANNING_V2_ROUTE_PREFIX}/ressourcer`;
 
 export const PLANNING_V2_ROUTES = Object.freeze({
   overblik: PLANNING_V2_ROUTE_PREFIX,
@@ -10,7 +11,6 @@ export const PLANNING_V2_ROUTES = Object.freeze({
   planlaegning: `${PLANNING_V2_ROUTE_PREFIX}/planlaegning`,
   optimering: `${PLANNING_V2_ROUTE_PREFIX}/optimering`,
   "faste-ruter": `${PLANNING_V2_ROUTE_PREFIX}/faste-ruter`,
-  ressourcer: `${PLANNING_V2_ROUTE_PREFIX}/ressourcer`,
   rapporter: `${PLANNING_V2_ROUTE_PREFIX}/rapporter`,
   mobil: `${PLANNING_V2_ROUTE_PREFIX}/mobilvisning`,
 });

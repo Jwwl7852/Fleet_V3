@@ -29,7 +29,6 @@ const NAVIGATION = [
   [VISNING.PLANLAEGNING, "Planlægning", "calendar"],
   [VISNING.OPTIMERING, "Optimering", "route"],
   [VISNING.FASTE_RUTER, "Faste ruter", "repeat"],
-  ["ressourcer", "Ressourcer", "people"],
   ["rapporter", "Rapporter", "report"],
   [VISNING.MOBIL, "Mobilvisning", "mobile"],
 ];
@@ -231,18 +230,6 @@ function IkkeTilsluttetVisning({ title, text }) {
   return <div className="pu-view pr-placeholder"><section className="pu-card"><span>Planning Basic</span><h1>{title}</h1><p>{text}</p><strong>Lokal prototype · ingen ekstern integration</strong></section></div>;
 }
 
-function FleetRessourcer({ resources, loading, error }) {
-  return <div className="pu-view pr-shared-resources" data-view="ressourcer">
-    <header className="pu-view-title"><div><span className="pu-eyebrow">Fælles stamdata</span><h1>FLEET-enheder i PLANNING</h1><p>Læsbar projektion af tenantens autoritative enhedsregister. Stamdata redigeres i FLEET.</p></div></header>
-    {loading ? <section className="pu-card"><p>Indlæser fælles enhedsregister …</p></section> : null}
-    {error ? <section className="pu-card" role="alert"><h2>Enhedsregisteret kunne ikke læses</h2><p>{error.message}</p></section> : null}
-    {!loading && !error ? <section className="pu-card pr-resource-list" aria-label="Fælles FLEET-enheder">
-      <div className="pu-card-head"><div><span className="pu-eyebrow">Serverprojektion</span><h2>{resources.length} enheder</h2></div><Statusmaerke niveau="normal">Fælles kilde</Statusmaerke></div>
-      {resources.length ? <div className="pr-resource-rows">{resources.map((resource) => <article key={resource.reference.id} tabIndex="0"><div><strong>{resource.visningsnavn}</strong><small>{resource.reference.id} · {resource.koeretoej.enhedstype?.navn || resource.koeretoej.type}</small></div><span>{resource.stationering || "Hjemsted ikke oplyst"}</span><Statusmaerke niveau={resource.status === "aktiv" ? "normal" : "advarsel"}>{resource.status || "Ukendt"}</Statusmaerke></article>)}</div> : <p className="pu-help">Ingen enheder findes i tenantens fælles register.</p>}
-    </section> : null}
-  </div>;
-}
-
 const planningVehicleResources = (resources = []) => resources.map((resource) => ({
   id: resource.reference.id,
   type: "koeretoej",
@@ -404,7 +391,6 @@ export default function PlanningDemo({
           {visning === VISNING.OPTIMERING && <PlanningOptimization planlaegningspulje={planlaegningspulje} />}
           {visning === VISNING.FASTE_RUTER && <FasteRuter skabeloner={skabeloner} setSkabeloner={setSkabeloner} koeretider={skabelonKoeretider} setKoeretider={setSkabelonKoeretider} ressourcer={fixtures.ressourceSnapshot} medarbejdere={fixtures.medarbejdere} koeretoejer={fixtures.koeretoejer} />}
           {visning === VISNING.MOBIL && <Mobilvisning ruter={ruter} setRuter={setRuter} medarbejdere={fixtures.medarbejdere} onAabnKalender={aabnRute} />}
-          {visning === "ressourcer" && <FleetRessourcer resources={fleetResources} loading={fleetResourcesLoading} error={fleetResourcesError} />}
           {visning === "rapporter" && <IkkeTilsluttetVisning title="Rapporter" text="Rapporter er ikke en del af denne visuelle etape. Ingen data eksporteres eller gemmes." />}
         </main>
       </div>

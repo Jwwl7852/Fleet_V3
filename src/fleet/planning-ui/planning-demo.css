@@ -413,7 +413,5 @@ tr[data-tone="advarsel"] .pr-route-link>i{background:var(--veyro-warning);filter
 .pr-platform.pr-platform-embedded main{height:auto;min-height:0;overflow:visible;background:var(--veyro-app-background)}
 .pr-platform.pr-platform-embedded .pr-page{height:auto;min-height:calc(100dvh - 132px);overflow:visible}
 .pr-platform.pr-platform-embedded .ps-flex-view{height:calc(100dvh - 132px)}
-.pr-shared-resources{padding:24px}.pr-resource-list{overflow:hidden}.pr-resource-rows{display:grid}.pr-resource-rows article{display:grid;grid-template-columns:minmax(220px,1fr) minmax(150px,.6fr) auto;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--bc-line,ButtonBorder)}.pr-resource-rows article:focus-visible{outline:2px solid var(--bc-accent,AccentColor);outline-offset:-2px}.pr-resource-rows article>div{display:flex;flex-direction:column;gap:3px}.pr-resource-rows small,.pr-resource-rows>article>span{color:var(--bc-muted,GrayText)}
-@media(max-width:700px){.pr-shared-resources{padding:10px}.pr-resource-rows article{grid-template-columns:minmax(0,1fr) auto}.pr-resource-rows>article>span{grid-column:1/-1}}
 
 }
