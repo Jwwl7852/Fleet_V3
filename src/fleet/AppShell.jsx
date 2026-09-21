@@ -203,6 +203,7 @@ export default function AppShell() {
   const kompaktAnker = useRef(null);
   const undertrykKompaktFokusaabning = useRef(false);
   const kompaktLukTimer = useRef(null);
+  const visningDetaljer = useRef(null);
   const [fakturacenterAntal, setFakturacenterAntal] = useState({});
   const erModulAaben = (key, aktiv) => Object.hasOwn(modulAaben || {}, key)
     ? !!modulAaben[key] : aktiv;
@@ -216,6 +217,27 @@ export default function AppShell() {
       kompaktAnker.current?.focus();
     }
   };
+
+  useEffect(() => {
+    const lukVisningVedKlikUdenfor = (event) => {
+      const detaljer = visningDetaljer.current;
+      if (!detaljer?.open || detaljer.contains(event.target)) return;
+      detaljer.open = false;
+    };
+    const lukVisningVedEscape = (event) => {
+      const detaljer = visningDetaljer.current;
+      if (event.key !== "Escape" || !detaljer?.open) return;
+      detaljer.open = false;
+      detaljer.querySelector("summary")?.focus();
+    };
+
+    document.addEventListener("pointerdown", lukVisningVedKlikUdenfor, true);
+    document.addEventListener("keydown", lukVisningVedEscape);
+    return () => {
+      document.removeEventListener("pointerdown", lukVisningVedKlikUdenfor, true);
+      document.removeEventListener("keydown", lukVisningVedEscape);
+    };
+  }, []);
   const aabnKompaktMenu = (key, anker) => {
     if (!kompaktAktiv) return;
     if (undertrykKompaktFokusaabning.current) {
@@ -531,7 +553,7 @@ export default function AppShell() {
           </nav>
 
           <div className="fc-foot">
-            <details className="fc-visning">
+            <details ref={visningDetaljer} className="fc-visning">
               <summary>
                 <span className="fc-visning-ikon" aria-hidden="true">
                   <svg viewBox="0 0 24 24"><path d="M3 5h18v12H3zM8 21h8M12 17v4" /></svg>
