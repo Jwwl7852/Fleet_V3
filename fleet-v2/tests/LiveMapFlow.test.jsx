@@ -102,6 +102,17 @@ describe("Livekort", () => {
     expect(container.querySelector(".map-tiles img")?.getAttribute("src")).toBe(after);
   });
 
+  it("viser kun historik som handling på en enhed og kan vende tilbage til Livekort", async () => {
+    render(<FleetV2App repository={createMemoryUnitRepository()} />);
+    await screen.findByRole("heading", { name: "Livekort" });
+    expect(screen.queryByRole("group", { name: "Vælg Live eller Historik" })).toBeNull();
+    expect(screen.queryByText("DEMO · Syntetiske data")).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "Historik", exact: true })[0]);
+    expect(await screen.findByRole("button", { name: "Tilbage til Livekort" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Tilbage til Livekort" }));
+    expect(await screen.findByRole("application", { name: /Livekort med/ })).toBeTruthy();
+  });
+
   it("lader brugeren vælge hver enhed på samme position fra en klyngeliste", async () => {
     const dataset = createFixtureDataset();
     dataset.relations.positions[1].latitude = dataset.relations.positions[0].latitude;

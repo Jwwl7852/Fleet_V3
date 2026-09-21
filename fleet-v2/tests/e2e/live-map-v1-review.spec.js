@@ -17,7 +17,7 @@ async function openLiveMap(page) {
   await page.goto("/fleet-v2/livekort");
   await loginIfNeeded(page);
   await expect(page.getByRole("heading", { name: "FLEET – Livekort" })).toBeVisible();
-  await expect(page.getByText("DEMO · Syntetiske data")).toBeVisible();
+  await expect(page.getByRole("group", { name: "Vælg Live eller Historik" })).toHaveCount(0);
 }
 
 async function settleMap(page) {
@@ -69,7 +69,7 @@ test("Version 1 Livekort review screenshots", async ({ page }) => {
   await page.screenshot({ path: resolve(output, "05-maalinger-1440x900.png"), fullPage: false });
 
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.getByRole("button", { name: "Live", exact: true }).click();
+  await page.getByRole("button", { name: "Tilbage til Livekort" }).click();
   const expand = page.getByRole("button", { name: "Åbn normal menu" });
   if (await expand.count()) await expand.click();
   await expect(page.getByRole("button", { name: "Planning", exact: true })).toBeVisible();
@@ -82,6 +82,7 @@ test("Version 1 Livekort review screenshots", async ({ page }) => {
   await page.screenshot({ path: resolve(output, "07-live-mobil-390x844.png"), fullPage: false });
   const dimensions = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
   expect(dimensions.document).toBe(dimensions.viewport);
+  await page.getByRole("button", { name: "Enheder", exact: true }).click();
   await page.getByRole("button", { name: "Historik", exact: true }).first().click();
   await expect(page.getByRole("application", { name: /Historisk rute/ })).toBeVisible();
   await settleMap(page);
