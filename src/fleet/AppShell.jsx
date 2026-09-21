@@ -250,7 +250,7 @@ export default function AppShell() {
     const maksHoejde = Math.min(window.innerHeight * 0.72, 620);
     saetKompaktTop((forrige) => ({
       ...forrige,
-      [key]: Math.min(0, window.innerHeight - top - maksHoejde - 12),
+      [key]: Math.max(8, Math.min(top, window.innerHeight - maksHoejde - 12)),
     }));
     saetKompaktAaben(key);
   };
