@@ -7,7 +7,6 @@ import {
   localDateTime, localTime, routeSegments,
 } from "../data/liveMapHistory";
 import { modelLabel, typeLabel } from "../data/unitSelectors";
-import { unitTypeKey } from "../data/unitTypeRegistry";
 import { GeoMap } from "./GeoMap";
 import { Icon } from "./Icon";
 
@@ -28,30 +27,14 @@ function downloadText(contents, fileName, type) {
   anchor.href = url; anchor.download = fileName; anchor.click(); URL.revokeObjectURL(url);
 }
 
-function operationalPositions(units, stored, now) {
-  const anchors = [[55.6761, 12.5683, "København"], [55.6295, 12.6492, "Amager"], [55.6471, 12.4756, "Hvidovre"], [55.6611, 12.5160, "Valby"], [55.7314, 12.3633, "Ballerup"], [55.5830, 12.3006, "Greve"]];
-  return units.map((unit, index) => {
-    const existing = stored.find((position) => position.unitId === unit.id);
-    if (existing) {
-      return {
-        ...existing,
-        heading: Number.isFinite(Number(existing.heading)) ? Number(existing.heading) : null,
-        source: existing.source || "existing-position-source",
-        demo: existing.demo !== false,
-      };
-    }
-    const [latitude, longitude, label] = anchors[index % anchors.length];
-    const status = index % 6 === 3 ? "offline" : index % 3 === 0 ? "moving" : "holding";
-    const age = status === "offline" ? 190 : 1 + index * 2;
-    const measuredAt = new Date(Date.parse(now) - age * 60000).toISOString();
-    return { id: `synthetic-live-${unit.id}`, unitId: unit.id,
-      latitude: latitude + (index % 4) * 0.008, longitude: longitude + (index % 3) * 0.006,
-      label, measuredAt, receivedAt: measuredAt, lastContactAt: measuredAt,
-      movementState: status === "moving" ? "moving" : status === "holding" ? "stationary" : "unknown",
-      connectionStatus: status === "offline" ? "offline" : "online", speedKph: status === "moving" ? 36 + index : status === "holding" ? 0 : null,
-      heading: (index * 43) % 360, accuracyMeters: 8, source: "synthetic-live-map-fixture", demo: true,
-      alarms: status === "offline" ? [{ code: "connection_lost", label: "Intet signal" }] : [] };
-  });
+function operationalPositions(units, stored) {
+  const allowedUnitIds = new Set(units.map((unit) => unit.id));
+  return stored.filter((position) => allowedUnitIds.has(position.unitId)).map((position) => ({
+    ...position,
+    heading: position.heading !== null && position.heading !== undefined && position.heading !== "" && Number.isFinite(Number(position.heading)) ? Number(position.heading) : null,
+    source: position.source || "existing-position-source",
+    demo: position.demo !== false,
+  }));
 }
 
 function PeriodPicker({ from, to, onApply }) {
@@ -90,26 +73,28 @@ function LiveUnitRow({ unit, position, selected, now, onSelect, onFind, onHistor
   return <article className={`live-unit-card${selected ? " is-selected" : ""}`}><button className="live-unit-main" type="button" onClick={onSelect} aria-pressed={selected}><span className={`live-status-dot ${state}`} aria-hidden="true" /><span><strong>{unit.number} · {typeLabel(unit)}</strong><small>{LIVE_STATUS_LABELS[state]}{position?.speedKph != null && state === "moving" ? ` · ${position.speedKph} km/t` : ""}</small><small><Icon name="pin" size={12} />{position?.label || "Ingen position"}</small><em>{freshness.stale ? `Sidst set · ${freshness.label}` : freshness.label}</em></span></button><div><button type="button" onClick={onFind}><Icon name="pin" size={14} />Find på kort</button><button type="button" onClick={onHistory}><Icon name="clock" size={14} />Historik</button></div></article>;
 }
 
-function LiveOverview({ units, resourceOptions, storedPositions, filters, setFilters, selectedUnitId, setSelectedUnitId, setMode, setMobileView, mobileView }) {
-  const [listOpen, setListOpen] = useState(true); const [focusUnitId, setFocusUnitId] = useState(null); const [followUnitId, setFollowUnitId] = useState(null); const now = useMemo(() => new Date().toISOString(), []);
-  const positions = useMemo(() => operationalPositions(units, storedPositions, now), [now, storedPositions, units]);
+function LiveOverview({ units, storedPositions, filters, setFilters, selectedUnitId, setSelectedUnitId, setMode, setMobileView, mobileView }) {
+  const [listOpen, setListOpen] = useState(true); const [focusRequest, setFocusRequest] = useState({ unitId: null, id: 0 }); const [followUnitId, setFollowUnitId] = useState(null); const [mapNotice, setMapNotice] = useState(""); const now = useMemo(() => new Date().toISOString(), []);
+  const positions = useMemo(() => operationalPositions(units, storedPositions), [storedPositions, units]);
   const departments = useMemo(() => [...new Set(units.map((unit) => unit.department).filter(Boolean))].sort(), [units]);
-  const types = useMemo(() => {
-    const configured = (resourceOptions?.categories || []).map((type) => ({ id: type.id, label: `${type.navn}${type.aktiv === false ? " (inaktiv)" : ""}` }));
-    const configuredIds = new Set(configured.map((type) => type.id));
-    const legacy = units.filter((unit) => !configuredIds.has(unitTypeKey(unit))).map((unit) => ({ id: unitTypeKey(unit), label: typeLabel(unit) }));
-    return [...configured, ...legacy.filter((type, index, all) => all.findIndex((item) => item.id === type.id) === index)].sort((a, b) => a.label.localeCompare(b.label, "da"));
-  }, [resourceOptions?.categories, units]);
   const filteredUnits = useMemo(() => filterPositionUnits(units, positions, filters).filter((unit) => !filters.status || liveOperationalStatus(positionForUnit({ positions }, unit.id), now) === filters.status), [filters, now, positions, units]);
   const filteredIds = useMemo(() => new Set(filteredUnits.map((unit) => unit.id)), [filteredUnits]);
   const filteredPositions = positions.filter((position) => filteredIds.has(position.unitId));
   const counts = Object.fromEntries(STATUS_ORDER.map((status) => [status, units.filter((unit) => liveOperationalStatus(positionForUnit({ positions }, unit.id), now) === status).length]));
   const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
   const select = (unitId) => { setSelectedUnitId(unitId); setMobileView("map"); };
-  const findOnMap = (unitId) => { select(unitId); setFocusUnitId(unitId); };
+  const findOnMap = (unitId) => {
+    select(unitId);
+    const position = positionForUnit({ positions }, unitId);
+    const unit = units.find((item) => item.id === unitId);
+    if (!position) { setMapNotice(`${unit?.number || "Enheden"} har ingen kendt position.`); return; }
+    const freshness = positionFreshness(position, now);
+    setMapNotice(freshness.stale ? `${unit?.number || "Enhedens"} position er gammel: ${freshness.label}.` : `${unit?.number || "Enheden"} er centreret på sin senest kendte position.`);
+    setFocusRequest((current) => ({ unitId, id: current.id + 1 }));
+  };
   const toggleFollow = (unitId) => { select(unitId); setFollowUnitId((current) => current === unitId ? null : unitId); };
   useEffect(() => { if (!selectedUnitId || !filteredIds.has(selectedUnitId)) setSelectedUnitId(filteredUnits[0]?.id || ""); }, [filteredIds, filteredUnits, selectedUnitId, setSelectedUnitId]);
-  return <><section className="live-map-toolbar"><label className="live-search"><Icon name="search" size={17} /><span className="sr-only">Søg enhed eller nummerplade</span><input placeholder="Søg enhed eller nummerplade" value={filters.query} onChange={(event) => setFilter("query", event.target.value)} /></label><SelectFilter label="Afdeling" value={filters.department} onChange={(value) => setFilter("department", value)} allLabel="Alle afdelinger">{departments.map((value) => <option key={value} value={value}>{value}</option>)}</SelectFilter><SelectFilter label="Enhedstype" value={filters.type} onChange={(value) => setFilter("type", value)} allLabel="Alle enhedstyper">{types.map((type) => <option key={type.id} value={type.id}>{type.label}</option>)}</SelectFilter><button className="primary-button" type="button" onClick={() => setFilters({ query: "", department: "", type: "", status: "" })}>Vis alle</button></section><div className="live-mobile-switch" role="group" aria-label="Mobil visning"><button className={mobileView === "map" ? "is-active" : ""} type="button" onClick={() => setMobileView("map")}><Icon name="map" size={16} />Kort</button><button className={mobileView === "list" ? "is-active" : ""} type="button" onClick={() => setMobileView("list")}><Icon name="unit" size={16} />Enheder</button></div><section className={`live-overview-shell${listOpen ? "" : " list-collapsed"}`}><div className="live-overview-map"><GeoMap positions={filteredPositions} units={units} selectedUnitId={selectedUnitId} popupUnitId={selectedUnitId} focusUnitId={focusUnitId} followUnitId={followUnitId} onSelect={setSelectedUnitId} onToggleFollow={toggleFollow} now={now} ariaLabel="Livekort med syntetiske enhedspositioner" /><div className="live-map-legend"><span><i className="moving" />Kører</span><span><i className="holding" />Holder</span><span><i className="offline" />Intet signal</span>{followUnitId ? <b>Følger valgt enhed</b> : null}</div></div><aside className="live-unit-panel" aria-label="Enhedsoversigt"><button className="live-list-toggle" type="button" aria-label={listOpen ? "Skjul enhedsoversigt" : "Vis enhedsoversigt"} onClick={() => setListOpen((value) => !value)}><Icon name="chevron" size={16} /></button><div className="live-status-tabs" role="group" aria-label="Filtrér efter status"><button className={!filters.status ? "is-active" : ""} type="button" onClick={() => setFilter("status", "")}>Alle {units.length}</button>{STATUS_ORDER.map((status) => <button className={filters.status === status ? `is-active ${status}` : status} type="button" key={status} onClick={() => setFilter("status", status)}><i />{LIVE_STATUS_LABELS[status]} {counts[status]}</button>)}</div><div className="live-unit-scroll">{filteredUnits.length ? filteredUnits.map((unit) => <LiveUnitRow key={unit.id} unit={unit} position={positionForUnit({ positions }, unit.id)} selected={selectedUnitId === unit.id} now={now} onSelect={() => select(unit.id)} onFind={() => findOnMap(unit.id)} onHistory={() => { setSelectedUnitId(unit.id); setMode("history"); }} />) : <div className="live-empty compact"><Icon name="search" size={24} /><strong>Ingen enheder matcher</strong><p>Nulstil filtrene eller vælg en anden status.</p></div>}</div></aside></section></>;
+  return <><div className="live-mobile-switch" role="group" aria-label="Mobil visning"><button className={mobileView === "map" ? "is-active" : ""} type="button" onClick={() => setMobileView("map")}><Icon name="map" size={16} />Kort</button><button className={mobileView === "list" ? "is-active" : ""} type="button" onClick={() => setMobileView("list")}><Icon name="unit" size={16} />Enheder</button></div><section className={`live-overview-shell${listOpen ? "" : " list-collapsed"}`}><div className="live-overview-map"><GeoMap positions={filteredPositions} units={units} selectedUnitId={selectedUnitId} popupUnitId={selectedUnitId} focusUnitId={focusRequest.unitId} focusRequestId={focusRequest.id} followUnitId={followUnitId} onSelect={setSelectedUnitId} onToggleFollow={toggleFollow} now={now} ariaLabel="Livekort med syntetiske enhedspositioner" /><div className="live-map-legend"><span><i className="moving" />Kører</span><span><i className="holding" />Holder</span><span><i className="offline" />Intet signal</span>{followUnitId ? <b>Følger valgt enhed</b> : null}</div>{mapNotice ? <p className="live-map-notice" role="status">{mapNotice}</p> : null}</div><aside className="live-unit-panel" aria-label="Enhedsoversigt"><button className="live-list-toggle" type="button" aria-label={listOpen ? "Skjul enhedsoversigt" : "Vis enhedsoversigt"} onClick={() => setListOpen((value) => !value)}><Icon name="chevron" size={16} /></button><div className="live-panel-filters"><button className="primary-button" type="button" onClick={() => { setFilters({ query: "", department: "", type: "", status: "" }); setMapNotice(""); }}>Vis alle</button><SelectFilter label="Afdeling" value={filters.department} onChange={(value) => setFilter("department", value)} allLabel="Alle afdelinger">{departments.map((value) => <option key={value} value={value}>{value}</option>)}</SelectFilter><label className="live-vehicle-search"><Icon name="search" size={15} /><span className="sr-only">Vælg køretøj</span><input aria-label="Vælg køretøj" list="live-map-units" placeholder="Skriv enhedsnummer, navn eller nummerplade" value={filters.query} onChange={(event) => setFilter("query", event.target.value)} /><datalist id="live-map-units">{units.map((unit) => <option key={unit.id} value={unit.number}>{[unit.registration, modelLabel(unit)].filter(Boolean).join(" · ")}</option>)}</datalist></label></div><div className="live-status-tabs" role="group" aria-label="Filtrér efter status"><button className={!filters.status ? "is-active" : ""} type="button" onClick={() => setFilter("status", "")}>Alle {units.length}</button>{STATUS_ORDER.map((status) => <button className={filters.status === status ? `is-active ${status}` : status} type="button" key={status} onClick={() => setFilter("status", status)}><i />{LIVE_STATUS_LABELS[status]} {counts[status]}</button>)}</div><div className="live-unit-scroll">{filteredUnits.length ? filteredUnits.map((unit) => <LiveUnitRow key={unit.id} unit={unit} position={positionForUnit({ positions }, unit.id)} selected={selectedUnitId === unit.id} now={now} onSelect={() => select(unit.id)} onFind={() => findOnMap(unit.id)} onHistory={() => { setSelectedUnitId(unit.id); setMode("history"); }} />) : <div className="live-empty compact"><Icon name="search" size={24} /><strong>Ingen enheder matcher</strong><p>Vælg en anden afdeling eller nulstil visningen.</p></div>}</div></aside></section></>;
 }
 
 function TripList({ events, selectedPacket, onSelectTrip }) {
@@ -167,11 +152,11 @@ function HistoryWorkspace({ units, selectedUnitId, setSelectedUnitId, from, to, 
 }
 
 export function LiveMap({ initialViewState, onViewStateChange }) {
-  const { units, relations, resourceOptions, loading } = useFleetData(); const queryUnit = new URLSearchParams(window.location.search).get("unit");
+  const { units, relations, loading } = useFleetData(); const queryUnit = new URLSearchParams(window.location.search).get("unit");
   const [mode, setMode] = useState("live"); const [filters, setFilters] = useState(initialViewState?.filters || { query: "", department: "", type: "", status: "" });
   const [selectedUnitId, setSelectedUnitId] = useState(queryUnit || initialViewState?.selectedUnitId || ""); const [mobileView, setMobileView] = useState(initialViewState?.mobileView || "map"); const [period, setPeriod] = useState(initialViewState?.period || { from: DEFAULT_FROM, to: DEFAULT_TO });
   useEffect(() => { if (!selectedUnitId && units.length) setSelectedUnitId(units[0].id); }, [selectedUnitId, units]);
   useEffect(() => { onViewStateChange?.({ mode, filters, selectedUnitId, mobileView, period }); }, [filters, mobileView, mode, onViewStateChange, period, selectedUnitId]);
   if (loading) return <main className="workspace-page loading-state" id="main-content"><span className="loading-spinner" /><p>Indlæser Livekort …</p></main>;
-  return <main className={`workspace-page live-map-page-v2 ${mode === "live" ? "is-live" : "is-history"} mobile-${mobileView}`} id="main-content"><h2 className="sr-only">Livekort</h2>{mode === "live" ? <LiveOverview units={units} resourceOptions={resourceOptions} storedPositions={relations.positions || []} filters={filters} setFilters={setFilters} selectedUnitId={selectedUnitId} setSelectedUnitId={setSelectedUnitId} setMode={setMode} mobileView={mobileView} setMobileView={setMobileView} /> : <HistoryWorkspace units={units} selectedUnitId={selectedUnitId} setSelectedUnitId={setSelectedUnitId} from={period.from} to={period.to} setPeriod={setPeriod} onBack={() => setMode("live")} />}</main>;
+  return <main className={`workspace-page live-map-page-v2 ${mode === "live" ? "is-live" : "is-history"} mobile-${mobileView}`} id="main-content"><h2 className="sr-only">Livekort</h2>{mode === "live" ? <LiveOverview units={units} storedPositions={relations.positions || []} filters={filters} setFilters={setFilters} selectedUnitId={selectedUnitId} setSelectedUnitId={setSelectedUnitId} setMode={setMode} mobileView={mobileView} setMobileView={setMobileView} /> : <HistoryWorkspace units={units} selectedUnitId={selectedUnitId} setSelectedUnitId={setSelectedUnitId} from={period.from} to={period.to} setPeriod={setPeriod} onBack={() => setMode("live")} />}</main>;
 }

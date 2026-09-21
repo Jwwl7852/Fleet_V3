@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CONNECTION_STATES, MOVEMENT_STATES, hasValidCoordinates, positionFreshness } from "../data/positionWorkflow";
-import { LIVE_STATUS_LABELS, liveOperationalStatus } from "../data/liveMapHistory";
+import { LIVE_STATUS_LABELS, liveOperationalStatus, localDateTime } from "../data/liveMapHistory";
 import { Icon } from "./Icon";
 
 const TILE_SIZE = 256;
@@ -41,10 +41,14 @@ function fitView(positions, width, height) {
   return { center, zoom };
 }
 
-function clusterMarkers(markers) {
+function clusterMarkers(markers, isolatedUnitId = null) {
   const groups = [];
   markers.forEach((marker) => {
-    const group = groups.find((item) => Math.hypot(item.x - marker.x, item.y - marker.y) < 38);
+    if (marker.position.unitId === isolatedUnitId) {
+      groups.push({ x: marker.x, y: marker.y, items: [marker], isolated: true });
+      return;
+    }
+    const group = groups.find((item) => !item.isolated && Math.hypot(item.x - marker.x, item.y - marker.y) < 38);
     if (group) {
       group.items.push(marker);
       group.x = group.items.reduce((sum, item) => sum + item.x, 0) / group.items.length;
@@ -54,7 +58,7 @@ function clusterMarkers(markers) {
   return groups;
 }
 
-export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId = null, focusUnitId = null, followUnitId = null, onSelect, onOpenUnit, onToggleFollow, compact = false, controls = true, now = new Date().toISOString(), ariaLabel = "Geografisk kort med demopositioner", routeSegments = [], routeGaps = [], routeCursor = null, showMarkers = true }) {
+export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId = null, focusUnitId = null, focusRequestId = 0, followUnitId = null, onSelect, onOpenUnit, onToggleFollow, compact = false, controls = true, now = new Date().toISOString(), ariaLabel = "Geografisk kort med demopositioner", routeSegments = [], routeGaps = [], routeCursor = null, showMarkers = true }) {
   const initial = useMemo(() => fitView(positions, compact ? 480 : 820, compact ? 240 : 520), []); // Positionsopdateringer må ikke flytte brugerens udsnit.
   const [center, setCenter] = useState(initial.center);
   const [zoom, setZoom] = useState(initial.zoom);
@@ -62,6 +66,7 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
   const [activeCluster, setActiveCluster] = useState(null);
   const [activeUnitId, setActiveUnitId] = useState(null);
   const [dismissedUnitId, setDismissedUnitId] = useState(null);
+  const [highlightedUnitId, setHighlightedUnitId] = useState(null);
   const [size, setSize] = useState({ width: compact ? 480 : 820, height: compact ? 240 : 520 });
   const mapRef = useRef(null);
   const dragRef = useRef(null);
@@ -79,7 +84,6 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
   };
   const changeZoom = (delta) => setZoom((value) => clamp(value + delta, 5, 18));
   const showAll = () => { const fitted = fitView(positions, size.width, size.height); setCenter(fitted.center); setZoom(fitted.zoom); };
-  const handledFocusRef = useRef(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return undefined;
@@ -93,15 +97,18 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
     return () => map.removeEventListener("wheel", handleWheel);
   }, []);
   useEffect(() => {
-    if (!focusUnitId || handledFocusRef.current === focusUnitId) return;
+    if (!focusUnitId) return undefined;
     const position = positions.find((item) => item.unitId === focusUnitId && hasValidCoordinates(item));
-    if (!position) return;
-    handledFocusRef.current = focusUnitId;
+    if (!position) return undefined;
     setCenter({ latitude: position.latitude, longitude: position.longitude });
     setZoom((value) => Math.max(value, 14));
     setActiveUnitId(focusUnitId);
     setDismissedUnitId(null);
-  }, [focusUnitId, positions]);
+    setActiveCluster(null);
+    setHighlightedUnitId(focusUnitId);
+    const timer = window.setTimeout(() => setHighlightedUnitId((current) => current === focusUnitId ? null : current), 1800);
+    return () => window.clearTimeout(timer);
+  }, [focusRequestId, focusUnitId, positions]);
   useEffect(() => {
     if (!followUnitId) return;
     const position = positions.find((item) => item.unitId === followUnitId && hasValidCoordinates(item));
@@ -133,7 +140,7 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
     if (deltaX < -world / 2) deltaX += world;
     return { position, x: size.width / 2 + deltaX, y: size.height / 2 + point.y - centerWorld.y };
   }).filter((item) => item.x > -50 && item.x < size.width + 50 && item.y > -50 && item.y < size.height + 50);
-  const groups = clusterMarkers(markers);
+  const groups = clusterMarkers(markers, focusUnitId);
   const visiblePopupUnitId = activeUnitId || (popupUnitId !== dismissedUnitId ? popupUnitId : null) || focusUnitId;
   const activeMarker = markers.find((item) => item.position.unitId === visiblePopupUnitId);
   const activeUnit = units.find((item) => item.id === visiblePopupUnitId);
@@ -183,8 +190,10 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
       const unit = units.find((item) => item.id === position.unitId);
       const freshness = positionFreshness(position, now);
       const liveStatus = liveOperationalStatus(position, now);
-      const hasHeading = Number.isFinite(Number(position.heading));
-      return <button aria-label={`${unit?.number || "Ukendt enhed"}, ${LIVE_STATUS_LABELS[liveStatus]}, ${freshness.label}`} className={`geo-marker ${liveStatus}${freshness.stale ? " stale" : ""}${selectedUnitId === position.unitId ? " selected" : ""}`} key={position.unitId} onClick={() => { setActiveUnitId(position.unitId); setActiveCluster(null); onSelect?.(position.unitId); }} style={{ left: group.x, top: group.y }} title={`${unit?.number || position.unitId} · ${position.label}`} type="button">{position.movementState === "moving" ? <span className={`geo-heading${hasHeading ? "" : " heading-unknown"}`} style={hasHeading ? { transform: `rotate(${Number(position.heading)}deg)` } : undefined}>{hasHeading ? "▲" : "◆"}</span> : <Icon name="pin" size={compact ? 13 : 15} />}<span>{unit?.number}</span></button>;
+      const hasHeading = position.heading !== null && position.heading !== undefined && position.heading !== "" && Number.isFinite(Number(position.heading));
+      const unitName = [unit?.make, unit?.model].filter(Boolean).join(" ") || unit?.categoryName || "Navn ikke oplyst";
+      const tooltipId = `geo-marker-tooltip-${position.unitId}`;
+      return <button aria-describedby={tooltipId} aria-label={`${unit?.number || "Ukendt enhed"}, ${unitName}, ${LIVE_STATUS_LABELS[liveStatus]}, ${freshness.label}`} className={`geo-marker ${liveStatus}${freshness.stale ? " stale" : ""}${selectedUnitId === position.unitId ? " selected" : ""}${highlightedUnitId === position.unitId ? " located" : ""}`} key={position.unitId} onClick={() => { setActiveUnitId(position.unitId); setActiveCluster(null); onSelect?.(position.unitId); }} style={{ left: group.x, top: group.y }} type="button"><span aria-hidden="true" className={hasHeading ? "geo-direction" : "geo-direction-dot"} style={hasHeading ? { transform: `rotate(${Number(position.heading)}deg)` } : undefined}>{hasHeading ? "▲" : ""}</span><span className="geo-marker-tooltip" id={tooltipId} role="tooltip"><strong>{unit?.number || position.unitId} · {unitName}</strong>{unit?.registration ? <small>Nummerplade: {unit.registration}</small> : null}<small>{LIVE_STATUS_LABELS[liveStatus]} · Seneste position {localDateTime(position.measuredAt)}</small>{freshness.stale ? <em>{freshness.label}</em> : null}</span></button>;
     })}</div> : null}
     {activeMarker && activeUnit ? <section className="geo-unit-popup" aria-label={`Detaljer for ${activeUnit.number}`} style={{ left: clamp(activeMarker.x, 126, Math.max(126, size.width - 126)), top: clamp(activeMarker.y - 18, 116, Math.max(116, size.height - 80)) }}>
       <header><div><span className={`position-dot ${activeMarker.position.connectionStatus}`} /><strong>{activeUnit.number}</strong></div><button type="button" aria-label="Luk enhedsdetaljer" onClick={() => { setActiveUnitId(null); setDismissedUnitId(visiblePopupUnitId); }}>×</button></header>
