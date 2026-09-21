@@ -534,9 +534,6 @@ export const NAV = [
       { key: "warehouseSporbarhed", sti: "/warehouse/sporbarhed", label: "Sporbarhed",
         titel: "WAREHOUSE – sporbarhed",
         under: "Hvor er partiet nu, og hvor har det vaeret" },
-      { key: "warehouseLokationer", sti: "/ressourcer/lagerlokationer", label: "Lagerlokationer",
-        titel: "WAREHOUSE – lokationer",
-        under: "Zoner, hylder, belægning og status. Deles med Unitbooking." },
     ],
   },
   {

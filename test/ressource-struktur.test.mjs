@@ -63,7 +63,8 @@ test("modulgenveje peger på de samme fælles registre", () => {
   assert.equal(byKey.get("ressourceUnits").sti, "/ressourcer/units");
   assert.equal(byKey.get("indkoebKatalog"), undefined);
   assert.equal(byKey.get("ressourceVarekatalog").sti, "/ressourcer/varekatalog");
-  assert.equal(byKey.get("warehouseLokationer").sti, "/ressourcer/lagerlokationer");
+  assert.equal(byKey.get("warehouseLokationer"), undefined);
+  assert.equal(byKey.get("ressourceLagerlokationer").sti, "/ressourcer/lagerlokationer");
   assert.equal(byKey.get("reolpladser").skjulINav, true);
 });
 
@@ -85,6 +86,7 @@ test("gamle opsætningslinks har interne kompatibilitetsmål", () => {
   assert.equal(redirects.get("/fleet-v2/enheder"), "/ressourcer/enheder");
   assert.equal(redirects.get("/fleet-v2/enheder/:id"), "/ressourcer/enheder/:id");
   assert.equal(redirects.get("/indkoeb/katalog"), "/ressourcer/varekatalog");
+  assert.equal(redirects.get("/warehouse/lokationer"), "/ressourcer/lagerlokationer");
   assert.equal(redirects.get("/opsaetning/aftalepriser"), "/opsaetning/priser/kunder");
   assert.equal(redirects.get("/opsaetning/procure/godkendelsesregler"), "/opsaetning/godkendelsesregler/procure");
 });
