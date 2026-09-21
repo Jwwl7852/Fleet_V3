@@ -250,15 +250,16 @@ suite. Hooken i `.githooks/pre-commit` fanger det automatisk, hvis
   redigere sine roller, og `claimForRolle()` læser
   `tenants/<id>/roller/<rolle>/perms`. `ROLLE_PERMS` er standarden man falder
   tilbage på når noden mangler, ikke svaret.
-  I dev skifter man **session**, ikke visning: `fleet/Brugervaelger.jsx` logger
-  ud og ind som en anden seedet DEV-bruger, så perms skifter fordi *tokenet*
-  skifter. `rolleskifte` er `miljoe === "demo"` — rør ikke den betingelse.
-  Se beslutning 28.
+  I dev skifter man **session**, ikke visning: log ud og log ind som en anden
+  seedet DEV-bruger, så perms skifter fordi *tokenet* skifter. Sidebaren må
+  ikke tegne en bruger- eller rollevælger. En eventuel `rolleskifte`-mekanisme
+  i demo er intern og må ikke vises som en brugerrettet kontrol. Se beslutning
+  28.
 - **Lade adgangsvejen afhænge af miljøet.** `harAdgang` i `App.jsx` kræver et
   **tenant-claim**, ikke "en bruger" og ikke "ikke produktion". Der må ikke være
   en dev-variant og en prod-variant: det er den slags forskel der får en
   spærring til at gælde alle andre steder end dér hvor den betyder noget. Det
-  eneste der må afhænge af miljøet, er om brugervælgeren **tegnes**.
+  Der tegnes ingen brugervælger i sidebaren i noget miljø.
 - **Vise demo-data oven på en afvist læsning.** En `permission-denied` er
   reglerne der **virker** — den må ikke oversættes til "ingen forbindelse" og
   fyldes ud med opdigtede tal. Brug `dataTilstand()` fra `datatilstand.js` og

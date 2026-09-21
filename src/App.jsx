@@ -587,10 +587,9 @@ export default function App() {
       : [];
 
   return medInaktivitetsvagt(
-    /* rolleskifte er nu KUN demo. Klientside-overstyringen af perms er
-       meningsløs alle andre steder: claims kommer fra tokenet, og klienten
-       kan ikke ændre sit eget token. I dev skifter man bruger i stedet — se
-       Brugervaelger og beslutning 28. */
+    /* rolleskifte er kun en intern demo-mekanisme. AppShell tegner ingen
+       bruger- eller rollevælger; identitet skiftes ved log ud og nyt login.
+       Se beslutning 28. */
     <FleetProvider tenants={tenantListe} moduler={moduler} bruger={bruger}
                    rolleskifte={miljoe === "demo"}
                    logUd={() => auth?.signOut()}>

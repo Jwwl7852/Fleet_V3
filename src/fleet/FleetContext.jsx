@@ -49,7 +49,8 @@ export function FleetProvider({
      udrullede regler. Det er det ikke længere: feltet er forbudt overalt, og
      de sidste tre læsere er ryddet i beslutning 79. En konstant ingen læser,
      er en akse der ligger og venter. */
-  /* Kun meningsfuld i demo-mode — se saetDemoRolle nedenfor. */
+  /* Kun meningsfuld som intern demo-mekanisme. AppShell tegner ingen
+     brugerrettet vælger — se saetDemoRolle nedenfor. */
   const [demoRolle, setDemoRolle] = useState(demo ? (start.demoRolle || null) : null);
 
   /**
@@ -99,8 +100,8 @@ export function FleetProvider({
    * der ingen server at være uenig med, og at kunne vise platformen som en
    * disponent er hele pointen med en demo.
    *
-   * I DEV skifter man i stedet SESSION — se fleet/Brugervaelger.jsx. Log ud,
-   * log ind som en anden seedet bruger, hent nyt token. Så skifter perms fordi
+   * I DEV skifter man i stedet SESSION: Log ud, log ind som en anden seedet
+   * bruger, hent nyt token. Så skifter perms fordi
    * tokenet skifter, og det er dér man kan se at UI og regler er enige.
    * Beslutning 28.
    *
@@ -146,7 +147,7 @@ export function FleetProvider({
       moduler,
       path, bruger: effektivBruger, logUd,
       /* demo er false i produktion, og så er demoRolle altid null og
-         saetDemoRolle en no-op. Shellen render kun vælgeren når demo er sand. */
+         saetDemoRolle en no-op. AppShell tegner ingen brugerrettet vælger. */
       demo, demoRolle, saetDemoRolle,
     }),
     [tenantId, tenant, tenants, dage, periode, moduler, path,

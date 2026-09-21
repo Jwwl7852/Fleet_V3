@@ -8,13 +8,12 @@
  */
 import { Suspense, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { useFleet, DEMO_ROLLER } from "./FleetContext.jsx";
+import { useFleet } from "./FleetContext.jsx";
 import { findModul, findHovedmodul, NAV, GRUPPE_ORDEN, GRUPPE_LABEL, modulNavnFor } from "./nav.js";
 import { harModul } from "./moduler.js";
 import { harPerm } from "./permissions.js";
 import { usePost } from "./usePost.js";
 import { erSkjultVedNavvisning } from "./navvisning.js";
-import Brugervaelger from "./Brugervaelger.jsx";
 import VeyroLogo from "./VeyroLogo.jsx";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
 import { useVisningsvalg } from "./useVisningsvalg.js";
@@ -114,7 +113,7 @@ function Navigationsikon({ navn }) {
 }
 
 export default function AppShell() {
-  const { tenant, tenantId, bruger, logUd, demo, demoRolle, saetDemoRolle, moduler } = useFleet();
+  const { tenant, tenantId, bruger, logUd, moduler } = useFleet();
   const location = useLocation();
   const { pathname } = location;
   const modul = findModul(pathname);
@@ -574,39 +573,11 @@ export default function AppShell() {
               <div className="fc-av">{initialer}</div>
               <div className="fc-who-txt">
                 <div className="fc-who-n">{bruger?.navn || "Ikke logget ind"}</div>
-                <div className="fc-who-r">{bruger?.rolleLabel || bruger?.email || "—"}</div>
               </div>
             </div>
-            {/* ⚠ KUN DEMO-MODE. Klientside-overstyringen af perms er
-                meningsløs alle andre steder: perms kommer fra tokenets claims,
-                og en klient kan ikke ændre sit eget token. Med en rigtig
-                server ville den vise knapper serveren afviser.
-
-                I demo er der ingen server at være uenig med, og at kunne vise
-                platformen som en disponent er hele pointen med en demo.
-                I dev afløser Brugervaelger den — se beslutning 28.
-                saetDemoRolle er en no-op uden flaget; se FleetContext. */}
-            {demo && (
-              <div className="fc-demo-rolle">
-                <label htmlFor="fc-rolle">Se platformen som</label>
-                <select id="fc-rolle" value={demoRolle || bruger?.rolle || "admin"}
-                        onChange={(e) => saetDemoRolle(e.target.value)}>
-                  {DEMO_ROLLER.map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-                <span>Ændrer kun hvad UI'et viser. Der er ingen server at spørge.</span>
-              </div>
-            )}
-
-            {/* Dev skifter SESSION frem for visning. Det er den eneste måde at
-                ændre perms på, fordi de står i tokenet.
-                ⚠ devTester STYRER KUN OM SKIFTET SKER FJERNT (custom token
-                via en Cloud Function) I STEDET FOR LOKALT (email+kode). Se
-                Brugervaelger.jsx's eget hoved. */}
-            {miljoe === "dev" && (
-              <Brugervaelger email={bruger?.email} devTester={bruger?.devTester} />
-            )}
+            {/* Identitet skiftes ved log ud og nyt login. Sidebaren viser kun
+                hvem der er logget ind og tilbyder derfor ingen bruger- eller
+                rollevælger — heller ikke i DEV eller demo. Se beslutning 28. */}
             <button type="button" className="fc-side-btn" onClick={logUd}>Log ud</button>
           </div>
         </aside>

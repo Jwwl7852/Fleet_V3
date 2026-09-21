@@ -764,12 +764,14 @@ ske ved at skifte session.
 
 **I dev: log ud, log ind som en anden seedet DEV-bruger, hent nyt token.** Så
 skifter perms fordi *tokenet* skifter, og det er præcis dér man kan se om UI og
-regler er enige. `fleet/Brugervaelger.jsx`, kun når `miljoe === "dev"`.
+regler er enige. Den indloggede shell viser kun brugerens navn og en log
+ud-knap; den indbyggede brugervælger er fjernet, så samme loginmønster gælder i
+test og produktion.
 
-**I demo bevares overstyringen** — dér er der ingen server at være uenig med,
-og at kunne vise platformen som en disponent er hele pointen med en demo.
-`rolleskifte` er derfor tilbage på `miljoe === "demo"`, men denne gang af den
-rigtige grund og ikke fordi ingen havde tænkt over dev.
+**Demo-overstyringen kan fortsat eksistere som intern testmekanisme**, hvor der
+ingen server er at være uenig med, men den tegnes ikke som en brugerrettet
+kontrol i sidebaren. En almindelig bruger skifter altid identitet ved at logge
+ud og logge ind igen.
 
 Formuleringen i CLAUDE.md er rettet med. Der stod "no-op i produktion", hvilket
 beskriver en **adfærd** — og en adfærd kan man fortolke sig uden om. Der står nu
@@ -781,8 +783,8 @@ tenant-claim — ikke "en bruger", og ikke "ikke produktion". En bruger uden cla
 må ingenting, så at lukke den ind i shellen ville give en app hvor hver eneste
 læsning bliver afvist. Der er med vilje ikke en dev-variant og en prod-variant:
 det er den slags forskel der får en spærring til at gælde alle andre steder end
-dér hvor den betyder noget. Den eneste tilbageværende miljøafhængighed er, om
-brugervælgeren **tegnes**.
+dér hvor den betyder noget. Sidebaren tegner derfor heller ingen
+miljøafhængig brugervælger.
 
 En bruger der er logget ind uden tenant-claim, får sin egen besked. Det sker
 hver gang provisioneringen kun er kørt halvt, og "forkert adgangskode" ville
