@@ -89,3 +89,17 @@ test("Version 1 Livekort review screenshots", async ({ page }) => {
   const historyDimensions = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
   expect(historyDimensions.document).toBe(historyDimensions.viewport);
 });
+
+test("musehjul over kortet zoomer uden at rulle siden", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 700 });
+  await openLiveMap(page);
+  const map = page.getByRole("application", { name: /Livekort med/ });
+  await expect(map).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, Math.min(180, document.documentElement.scrollHeight - window.innerHeight)));
+  const scrollBefore = await page.evaluate(() => window.scrollY);
+  const tileBefore = await map.locator(".map-tiles img").first().getAttribute("src");
+  await map.hover({ position: { x: 400, y: 220 } });
+  await page.mouse.wheel(0, -180);
+  await expect.poll(() => map.locator(".map-tiles img").first().getAttribute("src")).not.toBe(tileBefore);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollBefore);
+});

@@ -81,6 +81,18 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
   const showAll = () => { const fitted = fitView(positions, size.width, size.height); setCenter(fitted.center); setZoom(fitted.zoom); };
   const handledFocusRef = useRef(null);
   useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    const handleWheel = (event) => {
+      if (event.shiftKey || event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setZoom((value) => clamp(value + (event.deltaY < 0 ? 1 : -1), 5, 18));
+    };
+    map.addEventListener("wheel", handleWheel, { passive: false });
+    return () => map.removeEventListener("wheel", handleWheel);
+  }, []);
+  useEffect(() => {
     if (!focusUnitId || handledFocusRef.current === focusUnitId) return;
     const position = positions.find((item) => item.unitId === focusUnitId && hasValidCoordinates(item));
     if (!position) return;
@@ -147,12 +159,6 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
       else if (event.key === "+" || event.key === "=") changeZoom(1);
       else if (event.key === "-") changeZoom(-1);
       else if (event.key === "Escape") { setActiveCluster(null); setActiveUnitId(null); }
-    }}
-    onWheel={(event) => {
-      if (event.shiftKey || event.ctrlKey || event.metaKey) return;
-      event.preventDefault();
-      event.stopPropagation();
-      changeZoom(event.deltaY < 0 ? 1 : -1);
     }}
     onPointerDown={(event) => { if (event.button !== 0 || event.target.closest("button, a")) return; setActiveCluster(null); setActiveUnitId(null); dragRef.current = { x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture?.(event.pointerId); }}
     onPointerMove={(event) => { if (!dragRef.current) return; const dx = dragRef.current.x - event.clientX; const dy = dragRef.current.y - event.clientY; dragRef.current = { x: event.clientX, y: event.clientY }; moveBy(dx, dy); }}

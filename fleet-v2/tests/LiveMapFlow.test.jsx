@@ -93,12 +93,12 @@ describe("Livekort", () => {
   it("zoomer kortet med almindeligt musehjul men overlader Shift-hjulet til arbejdsområdet", async () => {
     const { container } = render(<FleetV2App repository={createMemoryUnitRepository()} />);
     await screen.findByRole("heading", { name: "Livekort" });
-    const map = screen.getByRole("application", { name: /Geografisk kort/ });
+    const map = screen.getByRole("application", { name: /Livekort med/ });
     const before = container.querySelector(".map-tiles img")?.getAttribute("src");
-    fireEvent.wheel(map, { deltaY: -100 });
+    expect(fireEvent.wheel(map, { deltaY: -100 })).toBe(false);
     const after = container.querySelector(".map-tiles img")?.getAttribute("src");
     expect(after).not.toBe(before);
-    fireEvent.wheel(map, { deltaY: -100, shiftKey: true });
+    expect(fireEvent.wheel(map, { deltaY: -100, shiftKey: true })).toBe(true);
     expect(container.querySelector(".map-tiles img")?.getAttribute("src")).toBe(after);
   });
 
