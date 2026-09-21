@@ -58,7 +58,7 @@ function clusterMarkers(markers, isolatedUnitId = null) {
   return groups;
 }
 
-export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId = null, focusUnitId = null, focusRequestId = 0, followUnitId = null, onSelect, onOpenUnit, onToggleFollow, compact = false, controls = true, now = new Date().toISOString(), ariaLabel = "Geografisk kort med demopositioner", routeSegments = [], routeGaps = [], routeCursor = null, showMarkers = true }) {
+export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId = null, focusUnitId = null, focusRequestId = 0, followUnitId = null, onSelect, onOpenUnit, onToggleFollow, compact = false, controls = true, now = new Date().toISOString(), ariaLabel = "Geografisk kort med demopositioner", routeSegments = [], routeGaps = [], routeStops = [], routeCursor = null, showMarkers = true }) {
   const initial = useMemo(() => fitView(positions, compact ? 480 : 820, compact ? 240 : 520), []); // Positionsopdateringer må ikke flytte brugerens udsnit.
   const [center, setCenter] = useState(initial.center);
   const [zoom, setZoom] = useState(initial.zoom);
@@ -156,6 +156,10 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
   const routeLines = routeSegments.map((segment) => segment.map(screenPoint));
   const gapLines = routeGaps.map((segment) => segment.map(screenPoint));
   const cursorPoint = routeCursor && hasValidCoordinates(routeCursor) ? screenPoint(routeCursor) : null;
+  const firstRoutePosition = routeSegments[0]?.[0];
+  const lastRouteSegment = routeSegments.at(-1);
+  const lastRoutePosition = lastRouteSegment?.at(-1);
+  const routeEndpoints = [firstRoutePosition && { key: "start", label: "A", title: "Rutens start", position: firstRoutePosition }, lastRoutePosition && { key: "end", label: "B", title: "Rutens slutning", position: lastRoutePosition }].filter(Boolean);
 
   return <div
     aria-label={ariaLabel}
@@ -180,7 +184,9 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
       const previous = line[pointIndex - 1]; const angle = Math.atan2(point.y - previous.y, point.x - previous.x) * 180 / Math.PI;
       return <path className="geo-route-arrow" d="M-4 -3L4 0 -4 3Z" key={`${point.x}-${point.y}`} transform={`translate(${point.x} ${point.y}) rotate(${angle})`} />;
     })}</g>)}{gapLines.map((line, index) => <polyline className="geo-route-gap" key={`gap-${index}`} points={line.map((point) => `${point.x},${point.y}`).join(" ")} />)}</svg> : null}
-    {cursorPoint ? <span className="geo-route-cursor" aria-hidden="true" style={{ left: cursorPoint.x, top: cursorPoint.y, transform: `translate(-50%, -50%) rotate(${Number(routeCursor.heading) || 0}deg)` }}><Icon name="unit" size={16} /></span> : null}
+    {routeEndpoints.map((endpoint) => { const point = screenPoint(endpoint.position); return <span className={`geo-route-endpoint ${endpoint.key}`} aria-label={endpoint.title} key={endpoint.key} style={{ left: point.x, top: point.y }}>{endpoint.label}</span>; })}
+    {routeStops.filter(hasValidCoordinates).map((stop, index) => { const point = screenPoint(stop); return <span className="geo-route-stop" aria-label={`Stop ${index + 1}`} key={stop.id || `${stop.measuredAt}-${index}`} style={{ left: point.x, top: point.y }}>{index + 1}</span>; })}
+    {cursorPoint ? <button className="geo-route-cursor geo-marker moving selected" aria-label={`Valgt historisk position ${localDateTime(routeCursor.measuredAt, { seconds: true })}`} type="button" style={{ left: cursorPoint.x, top: cursorPoint.y }}><span aria-hidden="true" className={Number.isFinite(Number(routeCursor.heading)) ? "geo-direction" : "geo-direction-dot"} style={Number.isFinite(Number(routeCursor.heading)) ? { transform: `rotate(${Number(routeCursor.heading)}deg)` } : undefined}>{Number.isFinite(Number(routeCursor.heading)) ? "▲" : ""}</span><span className="geo-marker-tooltip" role="tooltip"><strong>{units[0]?.number || routeCursor.unitId} · valgt position</strong><small>{routeCursor.address || routeCursor.label || "Adresse ikke oplyst"}</small><small>{localDateTime(routeCursor.measuredAt, { seconds: true })}</small></span></button> : null}
     {showMarkers ? <div className="map-markers">{groups.map((group) => {
       if (group.items.length > 1) {
         const key = group.items.map((item) => item.position.unitId).join("-");
@@ -211,7 +217,7 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
       <button className="geo-cluster-zoom" type="button" onClick={() => { const first = activeCluster.items[0].position; setCenter({ latitude: first.latitude, longitude: first.longitude }); changeZoom(1); setActiveCluster(null); }}>Zoom ind på placeringen</button>
     </section> : null}
     {controls ? <div className="geo-map-controls"><button aria-label="Zoom ind" onClick={() => changeZoom(1)} type="button">+</button><button aria-label="Zoom ud" onClick={() => changeZoom(-1)} type="button">−</button><button aria-label="Vis alle filtrerede positioner" onClick={showAll} type="button"><Icon name="map" size={16} /></button></div> : null}
-    <span className="geo-map-demo-label">Demopositioner – ikke live</span>
+    {positions.length && positions.every((position) => position.demo === true) ? <span className="geo-map-demo-label">Demopositioner – ikke live</span> : null}
     {!tilesFailed ? <a className="map-attribution" href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">© OpenStreetMap-bidragsydere</a> : <span className="map-attribution">Lokalt reservekort</span>}
   </div>;
 }
