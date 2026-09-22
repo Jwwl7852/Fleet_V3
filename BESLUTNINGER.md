@@ -9160,3 +9160,23 @@ verificeret.
 `fleet-v2/src/components/GeoMap.jsx`,
 `fleet-v2/src/data/liveMapHistory.js`,
 `test/live-map-history.test.mjs`.
+
+## 122. Version 1 har én fælles arbejdsbaggrund
+
+Den beregnede baggrund bag sidetitlen på `FLEET / Arbejdskø` er gjort til
+Version 1's fælles arbejdsflade: `#e9ecef` (`rgb(233, 236, 239)`). Farven var
+tidligere udtrykt som en blanding af 95 % `#f5f7f9` og 5 % `#061a2a`; den
+eksplicitte værdi ligger nu i `--veyro-v1-workspace-background`, og
+`--veyro-workspace-surface` peger på dette token.
+
+Reglen er afgrænset til den fælles `.fc-app`-skal og dens aktive V1-layouts.
+Dermed får sidetitel, arbejdsområde, mellemrum og tomme flader samme baggrund,
+mens hvide paneler, statusfarver, topbjælke, kortgrundlag og dialogoverlays
+bevarer deres semantiske farver. Standalone-/Design V2-flader ændres ikke.
+
+Browserkontrollen omfatter FLEET, FACILITY, PLANNING, PROCURE, WAREHOUSE,
+WORKFORCE, UNITBOOKING, Fakturacenter, Ressourcer og Opsætning ved 1440×900,
+1280×800 og 390×844. De fælles shell-containere beregnes til samme farve, og
+ingen af de kontrollerede ruter får vandret dokumentoverflow.
+
+`src/fleet/fleet.css`, `test/design-tokens.test.mjs`.

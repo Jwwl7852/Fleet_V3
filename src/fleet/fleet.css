@@ -28,7 +28,12 @@
   --veyro-link-accessible:#087484;
   --veyro-muted-accessible:#5b6b7b;
   --veyro-card-surface:#f7f8f9;
-  --veyro-workspace-surface:color-mix(in srgb,var(--veyro-app-background) 95%,var(--veyro-deep-navy));
+  /* Fælles V1-arbejdsbaggrund. Værdien er den beregnede farve, som allerede
+     blev brugt bag sidetitlen på FLEET / Arbejdskø: 95 % #f5f7f9 blandet
+     med 5 % #061a2a = rgb(233 236 239). Den er gjort eksplicit, så alle
+     aktive V1-layouts kan genbruge præcis samme flade. */
+  --veyro-v1-workspace-background:#e9ecef;
+  --veyro-workspace-surface:var(--veyro-v1-workspace-background);
   --veyro-border-strong:#dbe2e7;
 
   --veyro-surface:var(--veyro-card-surface);
@@ -212,6 +217,30 @@ body:has(#root .fc-app){margin:0}
   --fc-resource-panel-radius:var(--fc-r);
   --fc-resource-panel-shadow:var(--fc-shadow);
   --fc-resource-table-head-bg:var(--veyro-workspace-surface)}
+
+/* Fælles V1-arbejdsflade under den mørkeblå topbjælke. Reglen rammer kun
+   layoutcontainere i den aktive V1-skal. Hvide kort/paneler, statusflader,
+   kortgrundlag og dialog-overlays beholder deres egne semantiske farver. */
+.fc-app :is(.fc-main,.fc-sidehoved,.fc-slot,.fc-workspace-zoom),
+.fc-app :is(
+  .fleet-v2-embedded,
+  .veyro-module--fleet,
+  .veyro-module--facility,
+  .wf-app--embedded,
+  .procure-v2,
+  .warehouse-workspace,
+  .ub-side,
+  .fic-page,
+  .fc-ressource-side,
+  .planning-v2-standalone,
+  .pr-platform.pr-platform-embedded,
+  .pr-platform.pr-platform-embedded main,
+  .pr-platform.pr-platform-embedded .pr-page,
+  .pr-platform.pr-platform-embedded .pr-mobile-agenda,
+  .ps-view,
+  .ps-standalone-calendar
+){background-color:var(--veyro-v1-workspace-background)}
+.fc-app .ps-splitter::before{background:var(--veyro-v1-workspace-background)}
 .fc-app :focus-visible{outline:2px solid var(--bc-accent); outline-offset:2px; border-radius:4px}
 
 /* Ejerkonsollen. ⚠ INGEN SIDEBAR — .fc-app er en RÆKKE, fordi sidebaren står
