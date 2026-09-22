@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useFleetData } from "../data/FleetDataContext";
 import { CASE_PRIORITIES, CASE_STATUSES, DEMO_ACTORS, REPORT_TYPES, filterAndSortCases } from "../data/caseWorkflow";
-import { modelLabel } from "../data/unitSelectors";
+import { workQueueUnitLabel, workQueueUnits } from "../data/workQueuePresentation";
 import { CaseActionPanel } from "./CaseActionPanel";
 import { Icon } from "./Icon";
 import { ManualCaseDialog } from "./ManualCaseDialog";
@@ -13,13 +13,27 @@ const columns = Object.keys(CASE_STATUSES);
 const actorName = (id) => DEMO_ACTORS.find((item) => item.id === id)?.name || "Ikke tildelt";
 const dateOnly = (value) => value ? new Date(`${value}T12:00:00`).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "Ingen frist";
 function CaseCard({ item, report, unit, onOpen }) {
+  const title = report?.title || item.title || "Manuel sag";
+  const type = report ? REPORT_TYPES[report.type] : item.serviceRequirementId ? "Servicekrav" : "Manuel sag";
   return <article className={`queue-card priority-${item.priority}`}>
-    <button className="queue-card-main" type="button" onClick={onOpen}><span><Icon name="unit" size={15} />{item.number}</span><strong>{report?.title || item.title || "Manuel sag"}</strong><small>{unit?.number} · {modelLabel(unit || {})}</small><div><span className={`priority-pill ${item.priority}`}>{CASE_PRIORITIES[item.priority]}</span><span>{item.readOnly ? "Serverstyret" : actorName(item.assigneeId)}</span></div><footer><span><Icon name="clock" size={12} />{dateOnly(item.dueDate)}</span><span>{report ? REPORT_TYPES[report.type] : item.serviceRequirementId ? "Servicekrav" : "Manuel sag"}</span></footer></button>
+    <button className="queue-card-main" type="button" onClick={onOpen}>
+      <header className="queue-card-heading">
+        <span className="queue-card-reference"><Icon name="unit" size={15} />{item.number}</span>
+        <span className={`priority-pill ${item.priority}`}>{CASE_PRIORITIES[item.priority]}</span>
+      </header>
+      <strong title={title}>{title}</strong>
+      <small title={workQueueUnitLabel(item, unit)}>{workQueueUnitLabel(item, unit)}</small>
+      <div className="queue-card-details">
+        <span>{item.readOnly ? "Serverstyret" : actorName(item.assigneeId)}</span>
+        <span>{type}</span>
+      </div>
+      <footer><span><Icon name="clock" size={12} />{dateOnly(item.dueDate)}</span></footer>
+    </button>
   </article>;
 }
 
 export function WorkQueue({ caseId, initialViewState, onViewStateChange, onNavigate, onBack = onNavigate }) {
-  const { units, relations, loading, updateCase, createManualCase, serverProjectionError } = useFleetData();
+  const { dataset, units, relations, loading, updateCase, createManualCase, serverProjectionError } = useFleetData();
   const [view, setView] = useState(() => initialViewState?.view || "kanban");
   const [filters, setFilters] = useState(() => initialViewState?.filters || { query: "", status: "", priority: "", assigneeId: "", sort: "priority" });
   const [quickError, setQuickError] = useState("");
@@ -30,7 +44,11 @@ export function WorkQueue({ caseId, initialViewState, onViewStateChange, onNavig
   useEffect(() => { onViewStateChange?.({ filters, view }); }, [filters, onViewStateChange, view]);
   const reports = relations.reports || [];
   const cases = relations.cases || [];
-  const filtered = useMemo(() => filterAndSortCases(cases, reports, units, filters), [cases, reports, units, filters]);
+  const queueUnits = useMemo(
+    () => workQueueUnits(dataset?.units || [], units),
+    [dataset?.units, units],
+  );
+  const filtered = useMemo(() => filterAndSortCases(cases, reports, queueUnits, filters), [cases, reports, queueUnits, filters]);
   const selected = cases.find((item) => item.id === caseId);
   const selectedReport = reports.find((item) => item.id === selected?.reportId);
   const quickMove = async (item, status) => {
@@ -53,10 +71,10 @@ export function WorkQueue({ caseId, initialViewState, onViewStateChange, onNavig
     {quickError ? <div className="form-alert warning" role="status">{quickError}</div> : null}
     {view === "kanban" ? <section className="kanban-board" aria-label="Kanbanvisning">{columns.map((status) => {
       const statusCases = filtered.filter((item) => item.status === status);
-      return <section className={`kanban-column status-${status}`} key={status}><header><h2>{CASE_STATUSES[status]}</h2><span>{statusCases.length}</span></header><div>{statusCases.map((item) => <CaseCard key={item.id} item={item} report={reports.find((entry) => entry.id === item.reportId)} unit={units.find((entry) => entry.id === item.unitId)} onOpen={() => onNavigate(`/arbejdsko/${item.id}`)} />)}{!statusCases.length ? <p className="kanban-empty">Ingen sager</p> : null}</div></section>;
-    })}</section> : <section className="queue-table-shell"><table><thead><tr><th>Sag</th><th>Enhed</th><th>Problem</th><th>Prioritet</th><th>Status</th><th>Ansvarlig</th><th>Frist</th><th>Handling</th></tr></thead><tbody>{filtered.map((item) => { const report = reports.find((entry) => entry.id === item.reportId); const unit = units.find((entry) => entry.id === item.unitId); return <tr key={item.id}><td><button type="button" onClick={() => onNavigate(`/arbejdsko/${item.id}`)}>{item.number}</button></td><td>{unit?.number}</td><td>{report?.title || item.title || "Manuel sag"}</td><td>{CASE_PRIORITIES[item.priority]}</td><td>{CASE_STATUSES[item.status]}</td><td>{item.readOnly ? "Serverstyret" : actorName(item.assigneeId)}</td><td>{dateOnly(item.dueDate)}</td><td>{item.readOnly ? <span className="integration-badge">Serverstyret</span> : <select aria-label={`Flyt ${item.number}`} value={item.status} onChange={(event) => quickMove(item,event.target.value)}>{columns.map((status) => <option key={status} value={status}>{CASE_STATUSES[status]}</option>)}</select>}</td></tr>; })}{!filtered.length ? <tr className="queue-table-empty"><td colSpan="8">Ingen sager matcher de valgte filtre.</td></tr> : null}</tbody></table></section>}
-    {selected && selected.status === "new" ? <DraggableDialog title={`${selected.number} · ${selectedReport?.title || selected.title || "Ny indberetning"}`} description={`${units.find((item) => item.id === selected.unitId)?.number} · ${CASE_STATUSES[selected.status]}`} draggable confirmClose={dialogDirty} onClose={() => onBack("/arbejdsko")}>
-      <div className="queue-report-dialog-grid"><section className="folder-card queue-report-summary"><span className="eyebrow">{selectedReport?.number || "Manuel sag"}</span><h3>{selectedReport?.title || selected.title || "Ny indberetning"}</h3><p>{selectedReport?.description || selected.description || "Ingen beskrivelse."}</p><dl className="detail-list"><div><dt>Enhed</dt><dd>{units.find((item) => item.id === selected.unitId)?.number}</dd></div><div><dt>Type</dt><dd>{selectedReport ? REPORT_TYPES[selectedReport.type] : "Manuel sag"}</dd></div><div><dt>Næste handling</dt><dd>{selected.nextAction}</dd></div></dl><div className="case-workflow-actions"><button className="secondary-button" type="button" onClick={() => onNavigate(`/sager/${selected.id}`)}>Åbn samlet sagsmappe</button>{selected.reportId ? <button className="secondary-button" type="button" onClick={() => onNavigate(`/indberetninger/${selected.reportId}`)}>Åbn oprindelig indberetning</button> : null}</div></section><CaseActionPanel caseItem={selected} report={selectedReport} onUpdate={updateCase} compact onDirtyChange={setDialogDirty} /></div>
+      return <section className={`kanban-column status-${status}`} key={status}><header><h2>{CASE_STATUSES[status]}</h2><span>{statusCases.length}</span></header><div>{statusCases.map((item) => <CaseCard key={item.id} item={item} report={reports.find((entry) => entry.id === item.reportId)} unit={queueUnits.find((entry) => entry.id === item.unitId)} onOpen={() => onNavigate(`/arbejdsko/${item.id}`)} />)}{!statusCases.length ? <p className="kanban-empty">Ingen sager</p> : null}</div></section>;
+    })}</section> : <section className="queue-table-shell"><table><thead><tr><th>Sag</th><th>Enhed</th><th>Problem</th><th>Prioritet</th><th>Status</th><th>Ansvarlig</th><th>Frist</th><th>Handling</th></tr></thead><tbody>{filtered.map((item) => { const report = reports.find((entry) => entry.id === item.reportId); const unit = queueUnits.find((entry) => entry.id === item.unitId); return <tr key={item.id}><td><button type="button" onClick={() => onNavigate(`/arbejdsko/${item.id}`)}>{item.number}</button></td><td>{unit?.number || workQueueUnitLabel(item, unit)}</td><td>{report?.title || item.title || "Manuel sag"}</td><td>{CASE_PRIORITIES[item.priority]}</td><td>{CASE_STATUSES[item.status]}</td><td>{item.readOnly ? "Serverstyret" : actorName(item.assigneeId)}</td><td>{dateOnly(item.dueDate)}</td><td>{item.readOnly ? <span className="integration-badge">Serverstyret</span> : <select aria-label={`Flyt ${item.number}`} value={item.status} onChange={(event) => quickMove(item,event.target.value)}>{columns.map((status) => <option key={status} value={status}>{CASE_STATUSES[status]}</option>)}</select>}</td></tr>; })}{!filtered.length ? <tr className="queue-table-empty"><td colSpan="8">Ingen sager matcher de valgte filtre.</td></tr> : null}</tbody></table></section>}
+    {selected && selected.status === "new" ? <DraggableDialog title={`${selected.number} · ${selectedReport?.title || selected.title || "Ny indberetning"}`} description={`${queueUnits.find((item) => item.id === selected.unitId)?.number || "Enhed uden stamdata"} · ${CASE_STATUSES[selected.status]}`} draggable confirmClose={dialogDirty} onClose={() => onBack("/arbejdsko")}>
+      <div className="queue-report-dialog-grid"><section className="folder-card queue-report-summary"><span className="eyebrow">{selectedReport?.number || "Manuel sag"}</span><h3>{selectedReport?.title || selected.title || "Ny indberetning"}</h3><p>{selectedReport?.description || selected.description || "Ingen beskrivelse."}</p><dl className="detail-list"><div><dt>Enhed</dt><dd>{queueUnits.find((item) => item.id === selected.unitId)?.number || workQueueUnitLabel(selected, null)}</dd></div><div><dt>Type</dt><dd>{selectedReport ? REPORT_TYPES[selectedReport.type] : "Manuel sag"}</dd></div><div><dt>Næste handling</dt><dd>{selected.nextAction}</dd></div></dl><div className="case-workflow-actions"><button className="secondary-button" type="button" onClick={() => onNavigate(`/sager/${selected.id}`)}>Åbn samlet sagsmappe</button>{selected.reportId ? <button className="secondary-button" type="button" onClick={() => onNavigate(`/indberetninger/${selected.reportId}`)}>Åbn oprindelig indberetning</button> : null}</div></section><CaseActionPanel caseItem={selected} report={selectedReport} onUpdate={updateCase} compact onDirtyChange={setDialogDirty} /></div>
     </DraggableDialog> : null}
     {selected && selected.status !== "new" ? <DraggableDialog title={`${selected.reference} · ${selected.number}`} description={selectedReport?.title || selected.title || "Sagsmappe"} wide confirmClose={dialogDirty} onClose={() => onBack("/arbejdsko")}><CaseFolder caseId={selected.id} onBack={onBack} onNavigate={onNavigate} dialog onDirtyChange={setDialogDirty} /></DraggableDialog> : null}
     {creatingManual ? <ManualCaseDialog units={units} onCreate={createManualCase} onClose={() => setCreatingManual(false)} onNavigate={onNavigate} /> : null}
