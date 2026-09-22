@@ -500,13 +500,18 @@ button:disabled, .is-disabled { cursor: not-allowed; opacity: .56; }
 .triage-list, .triage-detail, .triage-editor { min-width: 0; min-height: 690px; padding: 15px; }
 .triage-list h2, .triage-editor h2 { margin: 0 0 12px; font-size: 15px; }
 .compact-filters { display: grid; grid-template-columns: 1fr 105px; gap: 6px; margin-bottom: 8px; }
-.compact-filters input, .compact-filters select, .triage-editor input, .triage-editor select, .triage-editor textarea { width: 100%; min-height: 38px; padding: 8px 9px; border: 1px solid var(--veyro-border); border-radius: 7px; background: white; }
+.compact-filters input, .compact-filters select { box-sizing: border-box; width: 100%; height: 40px; min-height: 40px; padding: 7px 9px; border: 1px solid var(--veyro-border); border-radius: 7px; background: white; }
+.triage-editor input, .triage-editor select, .triage-editor textarea { width: 100%; min-height: 38px; padding: 8px 9px; border: 1px solid var(--veyro-border); border-radius: 7px; background: white; }
 .master-list { list-style: none; margin: 0 -15px; padding: 0; border-top: 1px solid var(--veyro-border); }
-.master-list li button { width: 100%; display: flex; justify-content: space-between; gap: 8px; padding: 11px 15px; border: 0; border-bottom: 1px solid #e8edef; text-align: left; background: white; cursor: pointer; }
+.master-list li button { width: 100%; min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 15px; border: 0; border-bottom: 1px solid #e8edef; text-align: left; background: white; cursor: pointer; }
 .master-list li button.is-active { background: linear-gradient(90deg, #dff6f8, #edfafa); border-left: 3px solid var(--veyro-cyan); }
-.master-list li button > span { min-width: 0; display: grid; }
+.master-list li button > span:first-child { min-width: 0; display: grid; gap: 1px; }
 .master-list strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .master-list small, .master-list time { color: var(--veyro-text-secondary); font-size: 9px; }
+.facility-report-row-meta { flex: 0 0 auto; display: grid; justify-items: end; gap: 4px; }
+.facility-report-status { display: inline-flex; align-items: center; min-height: 20px; padding: 2px 7px; border-radius: 999px; font-size: 9px; font-weight: 750; line-height: 1; white-space: nowrap; }
+.facility-report-status--received { color: var(--veyro-link); background: color-mix(in srgb, var(--veyro-link) 13%, white); }
+.facility-report-status--triaged { color: var(--veyro-warning); background: color-mix(in srgb, var(--veyro-warning) 16%, white); }
 .triage-detail > header { display: flex; justify-content: space-between; gap: 8px; }
 .triage-detail h2 { margin: 2px 0; font-size: 20px; }
 .triage-detail h3 { margin: 15px 0 6px; font-size: 12px; }

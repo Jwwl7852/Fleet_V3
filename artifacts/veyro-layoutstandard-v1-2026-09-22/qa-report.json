@@ -1,0 +1,355 @@
+{
+  "ok": true,
+  "baseUrl": "http://127.0.0.1:5197",
+  "screenshots": [
+    {
+      "filename": "01-fleet-indberetninger-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "path": "/fleet-v2/indberetninger/report-demo-002",
+      "title": "FLEET/Indberetninger",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "02-fleet-arbejdsko-kanban-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "path": "/fleet-v2/arbejdsko",
+      "title": "FLEET/Arbejdskø",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "03-fleet-arbejdsko-tom-kanban-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "path": "/fleet-v2/arbejdsko",
+      "title": "FLEET/Arbejdskø",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "04-fleet-arbejdsko-tabel-1280x800.png",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "path": "/fleet-v2/arbejdsko",
+      "title": "FLEET/Arbejdskø",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "05-facility-indberetninger-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "path": "/facility-v2/indberetninger",
+      "title": "FACILITY/Indberetninger",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "06-planning-1280x800.png",
+      "clientWidth": 1265,
+      "scrollWidth": 1265,
+      "path": "/planning-v2",
+      "title": "PLANNING/Dagens drift",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "07-procure-1280x800.png",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "path": "/indkoeb",
+      "title": "PROCURE/Overblik",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "08-ressourcer-1280x800.png",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "path": "/ressourcer/enheder",
+      "title": "RESSOURCER/Enheder",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "09-fleet-indberetninger-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "path": "/fleet-v2/indberetninger",
+      "title": "FLEET/Indberetninger",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "10-facility-indberetninger-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "path": "/facility-v2/indberetninger",
+      "title": "FACILITY/Indberetninger",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "11-fleet-arbejdsko-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "path": "/fleet-v2/arbejdsko",
+      "title": "FLEET/Arbejdskø",
+      "horizontalOverflow": false
+    }
+  ],
+  "checks": {
+    "fleetReports1440": {
+      "filters": [
+        40,
+        40,
+        40,
+        40,
+        40,
+        40
+      ],
+      "panels": [
+        880,
+        880,
+        880
+      ],
+      "viewport": 900,
+      "rows": [
+        70,
+        70,
+        70,
+        70,
+        70,
+        70,
+        70,
+        70,
+        70,
+        70,
+        70
+      ],
+      "statuses": [
+        "Ny",
+        "Ny",
+        "Under vurdering",
+        "Klar til værksted",
+        "Afventer oplysninger",
+        "Ny",
+        "Under vurdering",
+        "Ny",
+        "Klar til værksted",
+        "Under vurdering",
+        "Afventer oplysninger"
+      ]
+    },
+    "fleetReportsEmpty": {
+      "empty": "Ingen indberetninger matcher\n\nTilpas filtrene eller opret en ny indberetning.",
+      "panels": [
+        880,
+        880,
+        880
+      ],
+      "viewport": 900
+    },
+    "workQueue": {
+      "kpis": {
+        "x": 26,
+        "y": 162,
+        "width": 1388,
+        "height": 73,
+        "bottom": 235
+      },
+      "actions": {
+        "x": 26,
+        "y": 247,
+        "width": 1388,
+        "height": 40,
+        "bottom": 287
+      },
+      "board": {
+        "x": 26,
+        "y": 351,
+        "width": 1388,
+        "height": 529,
+        "bottom": 880
+      },
+      "overlap": false,
+      "columns": [
+        {
+          "height": 508,
+          "empty": false,
+          "cards": 4
+        },
+        {
+          "height": 508,
+          "empty": false,
+          "cards": 3
+        },
+        {
+          "height": 508,
+          "empty": false,
+          "cards": 2
+        },
+        {
+          "height": 508,
+          "empty": false,
+          "cards": 2
+        },
+        {
+          "height": 508,
+          "empty": true,
+          "cards": 0
+        },
+        {
+          "height": 508,
+          "empty": true,
+          "cards": 0
+        },
+        {
+          "height": 508,
+          "empty": true,
+          "cards": 0
+        },
+        {
+          "height": 508,
+          "empty": true,
+          "cards": 0
+        },
+        {
+          "height": 508,
+          "empty": true,
+          "cards": 0
+        }
+      ],
+      "fields": [
+        40,
+        40,
+        40,
+        40,
+        40
+      ]
+    },
+    "emptyKanban": {
+      "columns": 9,
+      "emptyStates": 9,
+      "boardHeight": 529
+    },
+    "table": {
+      "shell": {
+        "x": 26,
+        "y": 351,
+        "width": 1228,
+        "height": 429,
+        "bottom": 780
+      },
+      "rows": 11,
+      "bodyHeight": 800,
+      "viewport": 800
+    },
+    "facilityReports": {
+      "filters": [
+        40,
+        40
+      ],
+      "panels": [
+        880,
+        880,
+        880
+      ],
+      "viewport": 900,
+      "rows": [
+        66,
+        66
+      ],
+      "statuses": [
+        "Vurderet",
+        "Vurderet"
+      ]
+    },
+    "reloadAndReturn": {
+      "title": "FLEET/Arbejdskø",
+      "boardHeight": 429,
+      "caseCards": 11
+    },
+    "mobileFleet": {
+      "horizontalOverflow": false,
+      "listVisible": true,
+      "bodyHeight": 1136
+    },
+    "mobileFacility": {
+      "horizontalOverflow": false,
+      "listVisible": true,
+      "bodyHeight": 1680
+    },
+    "mobileWorkQueue": {
+      "horizontalOverflow": false,
+      "actionsVisible": true,
+      "columns": 9,
+      "bodyHeight": 2941
+    }
+  },
+  "modules": [
+    {
+      "module": "FLEET",
+      "path": "/fleet-v2/indberetninger",
+      "title": "FLEET/Indberetninger",
+      "topContext": false,
+      "horizontalOverflow": false
+    },
+    {
+      "module": "FACILITY",
+      "path": "/facility-v2/indberetninger",
+      "title": "FACILITY/Indberetninger",
+      "topContext": false,
+      "horizontalOverflow": false
+    },
+    {
+      "module": "PLANNING",
+      "path": "/planning-v2",
+      "title": "PLANNING/Dagens drift",
+      "topContext": false,
+      "horizontalOverflow": false
+    },
+    {
+      "module": "PROCURE",
+      "path": "/indkoeb",
+      "title": "PROCURE/Overblik",
+      "topContext": false,
+      "horizontalOverflow": false
+    },
+    {
+      "module": "WAREHOUSE",
+      "path": "/warehouse",
+      "title": "WAREHOUSE/Overblik",
+      "topContext": false,
+      "horizontalOverflow": false
+    },
+    {
+      "module": "WORKFORCE",
+      "path": "/workforce-v2",
+      "title": "WORKFORCE/Overblik",
+      "topContext": false,
+      "horizontalOverflow": false
+    },
+    {
+      "module": "UNITBOOKING",
+      "path": "/unitbooking",
+      "title": "UNITBOOKING/Overblik",
+      "topContext": false,
+      "horizontalOverflow": false
+    },
+    {
+      "module": "Fakturacenter",
+      "path": "/oekonomi/fakturacenter",
+      "title": "Fakturacenter",
+      "topContext": false,
+      "horizontalOverflow": false
+    },
+    {
+      "module": "Ressourcer",
+      "path": "/ressourcer/enheder",
+      "title": "RESSOURCER/Enheder",
+      "topContext": false,
+      "horizontalOverflow": false
+    },
+    {
+      "module": "Opsætning",
+      "path": "/opsaetning",
+      "title": "OPSÆTNING/Generelt",
+      "topContext": false,
+      "horizontalOverflow": false
+    }
+  ]
+}

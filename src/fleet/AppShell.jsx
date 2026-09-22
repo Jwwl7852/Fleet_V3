@@ -66,19 +66,14 @@ export default function AppShell() {
   const { pathname } = location;
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
-  const ressourceSide = pathname === "/ressourcer" || pathname.startsWith("/ressourcer/")
-    || pathname === "/facility-v2/ejendomme" || pathname === "/fleet-v2/leasing"
-    || pathname === "/fleet-v2/dokumenter" || pathname === "/opsaetning/ressourcer/varer";
   const modulePage = ["flaade", "facility", "booking", "indkoeb", "warehouse", "unitbooking", "bemanding"].includes(hoved.key);
-  const modulePageTitle = modulePage
-    ? `${String(hoved.label || hoved.titel).toLocaleUpperCase("da-DK")} – ${modul.label || modul.titel}`
-    : modul.titel;
-  const pageTitle = pathname.startsWith("/oekonomi/fakturacenter")
-    ? "Fakturacenter" : ressourceSide ? (modul.label || modul.titel) : modulePageTitle;
+  const sideModulLabel = hoved.label || hoved.titel;
+  const sideUnderLabel = modul.key !== hoved.key ? (modul.label || modul.titel) : null;
   const erFacilityIndberetninger = pathname === "/facility-v2/indberetninger";
   const erFleetIndberetninger = pathname === "/fleet-v2/indberetninger"
     || pathname.startsWith("/fleet-v2/indberetninger/");
   const erIndberetningsside = erFacilityIndberetninger || erFleetIndberetninger;
+  const erFleetArbejdskoe = pathname === "/fleet-v2/arbejdsko";
   const initialer = brugerInitialer(bruger?.navn, bruger?.email);
   const visningsKontekst = tenantId || tenant?.id || "ingen-tenant";
   const [zoom, setZoom, nulstilZoom] = useVisningsvalg({
@@ -240,7 +235,7 @@ export default function AppShell() {
   return <>
     <MiljoeBjaelke />
     <div className="fc-app fc-app--flydende-menu">
-      <div className={`fc-main fc-main--shared-page-top${modulePage ? " fc-main--module-title" : ""}${erIndberetningsside ? " fc-main--indberetninger" : ""}`}>
+      <div className={`fc-main fc-main--shared-page-top${modulePage ? " fc-main--module-title" : ""}${erIndberetningsside ? " fc-main--indberetninger" : ""}${erFleetArbejdskoe ? " fc-main--fleet-arbejdskoe" : ""}`}>
         <header className="fc-top">
           <div className="fc-shell-start">
             <button ref={menuKnap} type="button" className="fc-menu-knap" aria-haspopup="true"
@@ -249,9 +244,6 @@ export default function AppShell() {
               <span className="fc-menu-knap-ikon" aria-hidden="true"><i /><i /><i /></span><span>Menu</span>
             </button>
             <div className="fc-shell-logo"><VeyroLogo variant="header" /></div>
-          </div>
-          <div className="fc-top-h">
-            <p className="fc-top-kontekst"><strong>{hoved.label || hoved.titel}</strong><span aria-hidden="true"> / </span>{modul.label || modul.titel}</p>
           </div>
           <div className="fc-shell-brugerfunktioner">
             <details ref={visningDetaljer} className="fc-visning fc-visning--top">
@@ -316,7 +308,7 @@ export default function AppShell() {
           </>}
         </header>
         <div className="fc-sidehoved">
-          <h1>{pageTitle}</h1>
+          <h1>{sideUnderLabel ? <><span>{sideModulLabel}</span><i aria-hidden="true">/</i><strong>{sideUnderLabel}</strong></> : <strong>{sideModulLabel}</strong>}</h1>
           {erFacilityIndberetninger && <button type="button" className="fc-btn fc-btn-primaer"
             onClick={() => window.dispatchEvent(new CustomEvent("veyro:opret-facility-indberetning"))}>
             + Ny indberetning
