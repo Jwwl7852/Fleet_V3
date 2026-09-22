@@ -16,6 +16,17 @@ export function DraggableDialog({ title, description, onClose, children, draggab
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   useEffect(() => { confirmCloseRef.current = confirmClose; }, [confirmClose]);
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, []);
+
   const requestClose = () => {
     if (!confirmCloseRef.current || globalThis.confirm("Dine ugemte ændringer går tabt. Vil du lukke sagen?")) {
       onCloseRef.current();
@@ -73,9 +84,7 @@ export function DraggableDialog({ title, description, onClose, children, draggab
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
-  const appShell = document.querySelector(".fc-app");
-  const shellOffset = !appShell ? "0px" : appShell.classList.contains("fc-menu-kompakt") ? "72px" : "var(--fc-sidebar)";
-  const content = <div className="fleet-dialog-backdrop" style={{ "--fleet-dialog-left": shellOffset }} onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
+  const content = <div className="fleet-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
     <section ref={dialogRef} className={`fleet-route-dialog${wide ? " wide" : ""}${draggable ? " draggable" : ""}`} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}>
       <header className="fleet-route-dialog-head" onPointerDown={startDrag}><div><span className="eyebrow">{draggable ? "Flyt dialogen ved at trække i overskriften" : "Samlet sagsmappe"}</span><h2>{title}</h2>{description ? <p>{description}</p> : null}</div><button type="button" aria-label={`Luk ${title}`} onClick={requestClose}><Icon name="close" size={18} /></button></header>
       <div className="fleet-route-dialog-body">{children}</div>
