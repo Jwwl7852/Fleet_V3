@@ -1268,13 +1268,14 @@ describe("syntetiske scenarier og UI-afgrænsning", () => {
     assert.equal(FAKTURACENTER_SEKTIONER[1].betinget, true);
   });
 
-  test("sektionerne har én fælles sidebar-navigation", () => {
+  test("sektionerne har én fælles flydende navigation", () => {
     const ui = readFileSync("src/moduler/oekonomi/Fakturacenter.jsx", "utf8");
     const shell = readFileSync("src/fleet/AppShell.jsx", "utf8");
     const nav = readFileSync("src/fleet/nav.js", "utf8");
     assert.match(nav, /fakturacenterSektioner:\s*FAKTURACENTER_SEKTIONER/);
-    assert.match(shell, /aria-expanded=\{kompaktAktiv \? kompaktAaben === m\.key : undermenuAaben\}/);
-    assert.match(shell, /aria-current=\{aktivFakturacenterSektion === sektion\.id \? "page" : undefined\}/);
+    assert.match(shell, /m\.fakturacenterSektioner \|\| \[\]/);
+    assert.match(shell, /className=\{erAktiv \? "fc-flydende-subitem fc-on" : "fc-flydende-subitem"\}/);
+    assert.match(shell, /aria-current=\{erAktiv \? "page" : undefined\}/);
     assert.doesNotMatch(ui, /<Sektionsnavigation\b/);
     assert.doesNotMatch(ui, /<SektionIntroduktion\b/);
   });

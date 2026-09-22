@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "baseUrl": "http://127.0.0.1:5197",
+  "screenshots": [
+    {
+      "filename": "01-desktop-livekort-lukket-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "path": "/fleet-v2/livekort",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "02-desktop-fleet-menu-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "path": "/fleet-v2/livekort",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "03-facility-indberetninger-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "path": "/facility-v2/indberetninger",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "04-facility-indberetninger-1280x800.png",
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "path": "/facility-v2/indberetninger",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "05-fleet-indberetninger-1440x900.png",
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "path": "/fleet-v2/indberetninger",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "06-mobil-facility-indberetninger-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "path": "/facility-v2/indberetninger",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "07-mobil-modulliste-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "path": "/facility-v2/indberetninger",
+      "horizontalOverflow": false
+    },
+    {
+      "filename": "08-mobil-facility-undermenu-390x844.png",
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "path": "/facility-v2/indberetninger",
+      "horizontalOverflow": false
+    }
+  ],
+  "checks": {
+    "escapeClosedAndReturnedFocus": true,
+    "outsideClickClosed": true,
+    "facility1440": {
+      "panels": [
+        {
+          "height": 718,
+          "bottom": 880,
+          "scroll": "auto"
+        },
+        {
+          "height": 718,
+          "bottom": 880,
+          "scroll": "auto"
+        },
+        {
+          "height": 718,
+          "bottom": 880,
+          "scroll": "auto"
+        }
+      ],
+      "viewport": 900,
+      "bottomGap": 20,
+      "caseLink": "Åbn sag FAC-00047"
+    },
+    "facility1280": {
+      "panelBottoms": [
+        780,
+        780,
+        780
+      ],
+      "viewport": 800,
+      "bottomGap": 20
+    },
+    "fleetPanels": {
+      "panelBottoms": [
+        880,
+        880,
+        880
+      ],
+      "viewport": 900,
+      "bottomGap": 20
+    },
+    "mobile": {
+      "bodyLocked": true,
+      "overflow": false,
+      "back": true
+    }
+  }
+}

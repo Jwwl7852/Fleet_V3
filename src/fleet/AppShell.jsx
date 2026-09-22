@@ -1,10 +1,6 @@
 /* src/fleet/AppShell.jsx
- * Layout-rute: sidebar + topbar + <Outlet/>.
- *
- * ⚠ TOPBAREN HAR INGEN KONTROLLER LÆNGERE. Firmavælgeren, periodevælgeren og
- * "Opdateret 22.43" er væk fra hver side — se noten nede ved <header>.
- * Reglen står ved magt: et modul må stadig ikke bygge sin egen sidebar,
- * tenant-vælger eller periodevælger. Skal en af dem tilbage, hører den HER.
+ * V1-skallen ejer navigation, sidetitel, visningsvalg og brugerfunktioner.
+ * Navigationen er flydende og bruger fortsat NAV som eneste informationskilde.
  */
 import { Suspense, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
@@ -18,60 +14,24 @@ import VeyroLogo from "./VeyroLogo.jsx";
 import { miljoe, projektId, paaLokalMaskine, netlifyKontekst, erProduktionsdeploy } from "../firebase.js";
 import { useVisningsvalg } from "./useVisningsvalg.js";
 import { begraensZoom } from "./visningsvalg.js";
+import { brugerInitialer } from "./brugerinitialer.js";
 
-/**
- * Miljøbjælke — over hele bredden, over sidebaren, umulig at overse.
- *
- * Den farlige situation er ikke "jeg troede jeg var på prod". Det er
- * "jeg troede jeg var på dev" — og så skriver man testdata ind i rigtige
- * kunders base. Derfor råber den højest ved PRODUKTIONSNØGLER ET STED DE
- * IKKE HØRER HJEMME, ikke ved dev.
- *
- * To sådanne steder, og begge fanges:
- *   1. en udviklermaskine        (localhost eller vite dev)
- *   2. en deploy-preview eller branch-deploy
- *
- * Nr. 2 kan kun ses, fordi netlify.toml mapper Netlifys CONTEXT ned i en
- * VITE_-variabel. Uden den ligner en preview et helt almindeligt
- * produktionsdeploy — samme netlify.app-domæne, samme alt.
- *
- * Produktion fra et bekræftet produktionsdeploy viser INGEN bjælke. En
- * advarsel man ser hele tiden, holder man op med at se.
- */
 function MiljoeBjaelke() {
   const udvikling = paaLokalMaskine || import.meta.env.DEV;
-  /* Bemærk: kun hvis konteksten er KENDT og ikke er produktion. Er den ukendt
-     — et build hostet et sted vi ikke kender — falder vi tilbage på
-     localhost-tjekket frem for at give falsk alarm på det rigtige site. */
   const forkertKontekst = netlifyKontekst !== null && !erProduktionsdeploy;
-
   if (miljoe === "prod" && (udvikling || forkertKontekst)) {
-    return (
-      <div className="fc-miljoe fc-miljoe-fare" role="alert">
-        <b>Produktion</b>
-        <span>
-          Du kører mod <b>{projektId}</b>{" "}
-          {udvikling ? "fra en udviklermaskine" : `i en ${netlifyKontekst}`}.
-          Alt du gør, rammer rigtige kunders data.
-        </span>
-      </div>
-    );
+    return <div className="fc-miljoe fc-miljoe-fare" role="alert"><b>Produktion</b><span>
+      Du kører mod <b>{projektId}</b> {udvikling ? "fra en udviklermaskine" : `i en ${netlifyKontekst}`}.
+      Alt du gør, rammer rigtige kunders data.
+    </span></div>;
   }
   if (miljoe === "dev") {
-    return (
-      <div className="fc-miljoe fc-miljoe-dev" role="status">
-        <b>TEST{netlifyKontekst && !erProduktionsdeploy ? ` · ${netlifyKontekst}` : ""}</b>
-        <span>Syntetiske testdata i {projektId}. Ingen eksterne handlinger.</span>
-      </div>
-    );
+    return <div className="fc-miljoe fc-miljoe-dev" role="status"><b>TEST{netlifyKontekst && !erProduktionsdeploy ? ` · ${netlifyKontekst}` : ""}</b>
+      <span>Syntetiske testdata i {projektId}. Ingen eksterne handlinger.</span></div>;
   }
   if (miljoe === "demo") {
-    return (
-      <div className="fc-miljoe fc-miljoe-demo" role="status">
-        <b>Demo</b>
-        <span>Syntetiske testdata. Handlinger påvirker ikke kundedata eller eksterne leverandører.</span>
-      </div>
-    );
+    return <div className="fc-miljoe fc-miljoe-demo" role="status"><b>Demo</b>
+      <span>Syntetiske testdata. Handlinger påvirker ikke kundedata eller eksterne leverandører.</span></div>;
   }
   return null;
 }
@@ -86,15 +46,7 @@ const ICO = {
   indkoeb: "M3 4h2l2.5 11h10L21 7H6M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2m8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2",
   unitbooking: "M3 4h18v16H3zM3 10h18M3 15h18M8 4v6M15 10v5M11 15v5",
   warehouse: "M3 21V9l9-6 9 6v12M3 21h18M9 21v-6h6v6M6 12h3m6 0h3",
-  /* ⚠ `kunder` STOD HER OG ER VÆK. Kundekartoteket og de to prisskærme er
-     stamdata og ligger nu under Opsætning, så modulet har ikke længere et
-     hovedpunkt at tegne et ikon ved siden af. Et ikon til et punkt der er
-     fjernet, er en rest ingen opdager — idébanken efterlod netop sådan en
-     (beslutning 22), og prøven `har ingen ikoner tilovers` fandt den her. */
   oekonomi: "M4 20V10m5 10V4m5 16v-7m5 7V8",
-  /* Skive 2A: kunderOversigt og fakturacenter er topniveaupunkter nu, ikke
-     børn — se nav.js's hoved. Begge har derfor brug for deres eget ikon her,
-     ellers tegnes de uden (se prøven "hvert menupunkt har et ikon"). */
   kunderOversigt: "M2 10l10-7 10 7M4 10V21h16V10M9 21v-6h6v6",
   fakturacenter: "M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h3",
   leverandoerer: "M3 16V6a1 1 0 0 1 1-1h9v11M14 9h4l3 3v4h-2M3 16h2m9 0h5M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4M17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4",
@@ -103,13 +55,9 @@ const ICO = {
 };
 
 function Navigationsikon({ navn }) {
-  return (
-    <span className="fc-nav-ikon" data-ikon={navn} aria-hidden="true">
-      <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-        <path d={ICO[navn]} />
-      </svg>
-    </span>
-  );
+  return <span className="fc-nav-ikon" data-ikon={navn} aria-hidden="true">
+    <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d={ICO[navn]} /></svg>
+  </span>;
 }
 
 export default function AppShell() {
@@ -118,104 +66,79 @@ export default function AppShell() {
   const { pathname } = location;
   const modul = findModul(pathname);
   const hoved = findHovedmodul(pathname);
-  const ressourceSide = pathname === "/ressourcer"
-    || pathname.startsWith("/ressourcer/")
-    || pathname === "/facility-v2/ejendomme"
-    || pathname === "/fleet-v2/leasing"
-    || pathname === "/fleet-v2/dokumenter"
-    || pathname === "/opsaetning/ressourcer/varer";
+  const ressourceSide = pathname === "/ressourcer" || pathname.startsWith("/ressourcer/")
+    || pathname === "/facility-v2/ejendomme" || pathname === "/fleet-v2/leasing"
+    || pathname === "/fleet-v2/dokumenter" || pathname === "/opsaetning/ressourcer/varer";
   const modulePage = ["flaade", "facility", "booking", "indkoeb", "warehouse", "unitbooking", "bemanding"].includes(hoved.key);
   const modulePageTitle = modulePage
     ? `${String(hoved.label || hoved.titel).toLocaleUpperCase("da-DK")} – ${modul.label || modul.titel}`
     : modul.titel;
   const pageTitle = pathname.startsWith("/oekonomi/fakturacenter")
-    ? "Fakturacenter"
-    : ressourceSide ? (modul.label || modul.titel) : modulePageTitle;
-  const initialer = (bruger?.navn || bruger?.email || "?")
-    .split(/[ .@]/).slice(0, 2).map((s) => s[0] || "").join("").toUpperCase();
+    ? "Fakturacenter" : ressourceSide ? (modul.label || modul.titel) : modulePageTitle;
+  const erFacilityIndberetninger = pathname === "/facility-v2/indberetninger";
+  const erFleetIndberetninger = pathname === "/fleet-v2/indberetninger"
+    || pathname.startsWith("/fleet-v2/indberetninger/");
+  const erIndberetningsside = erFacilityIndberetninger || erFleetIndberetninger;
+  const initialer = brugerInitialer(bruger?.navn, bruger?.email);
   const visningsKontekst = tenantId || tenant?.id || "ingen-tenant";
-  const [menuvisning, setMenuvisning, nulstilMenuvisning] = useVisningsvalg({
-    brugerId: bruger?.uid, kontekst: visningsKontekst, skaerm: "kundeshell", egenskab: "menu", standard: "normal",
-  });
   const [zoom, setZoom, nulstilZoom] = useVisningsvalg({
     brugerId: bruger?.uid, kontekst: visningsKontekst, skaerm: pathname, egenskab: "zoom", standard: 100,
   });
-  const menuKompakt = menuvisning === "kompakt";
-  const [bredNavigation, setBredNavigation] = useState(() => window.matchMedia("(min-width: 721px)").matches);
-  const kompaktAktiv = menuKompakt && bredNavigation;
+  const [menuAaben, setMenuAaben] = useState(false);
+  const [valgtMenuModul, setValgtMenuModul] = useState(null);
+  const [mobilUndermenu, setMobilUndermenu] = useState(false);
+  const [fakturacenterAntal, setFakturacenterAntal] = useState({});
+  const menuKnap = useRef(null);
+  const menuPanel = useRef(null);
+  const visningDetaljer = useRef(null);
+  const { post: navvisning } = usePost("navvisning", bruger?.uid || null);
+
   const skiftZoom = (retning) => setZoom((aktuel) => begraensZoom(Number(aktuel) + retning));
   const nulstilVisning = () => {
-    nulstilMenuvisning();
     nulstilZoom();
     window.dispatchEvent(new CustomEvent("veyro:nulstil-visning", { detail: { skaerm: pathname } }));
   };
+  const synligeBorn = (m) => (m.born || [])
+    .filter((b) => !b.skjulINav)
+    .filter((b) => !b.kraeverModul || harModul(moduler, b.kraeverModul))
+    .filter((b) => !b.kraeverEtAfModuler || b.kraeverEtAfModuler.some((navn) => harModul(moduler, navn)))
+    .filter((b) => !b.kraeverPerm || harPerm(bruger?.perms, b.kraeverPerm));
+  const synligeUnderpunkter = (b) => (b.underpunkter || [])
+    .filter((u) => !u.skjulINav)
+    .filter((u) => !u.kraeverModul || harModul(moduler, u.kraeverModul))
+    .filter((u) => !u.kraeverEtAfModuler || u.kraeverEtAfModuler.some((navn) => harModul(moduler, navn)))
+    .filter((u) => !u.kraeverPerm || harPerm(bruger?.perms, u.kraeverPerm));
+  const synligeToppunkter = NAV
+    .filter((m) => { const n = modulNavnFor(m); return !n || harModul(moduler, n); })
+    .filter((m) => !m.kraeverEtAfModuler || m.kraeverEtAfModuler.some((navn) => harModul(moduler, navn)))
+    .filter((m) => !m.kraeverPerm || harPerm(bruger?.perms, m.kraeverPerm))
+    .filter((m) => !m.born?.length || synligeBorn(m).length)
+    .filter((m) => !erSkjultVedNavvisning(m.key, navvisning));
+  const harUndermenu = (m) => synligeBorn(m).length > 0 || (m.fakturacenterSektioner || []).length > 0;
+  const aktivtToppunkt = synligeToppunkter.find((m) => m.key === hoved.key) || null;
+  const valgtToppunkt = synligeToppunkter.find((m) => m.key === valgtMenuModul) || null;
+  const aktivFakturacenterSektion = new URLSearchParams(location.search).get("sektion");
 
-  /* Hjælp kan dermed medtage den side brugeren faktisk kom fra uden at tage
-     et screenshot eller kopiere sidens forretningsdata. Sessionen ryddes af
-     browseren og er ikke en adgangsbeslutning. */
+  const lukMenu = ({ fokus = true } = {}) => {
+    setMenuAaben(false);
+    setMobilUndermenu(false);
+    if (fokus) window.requestAnimationFrame(() => menuKnap.current?.focus());
+  };
+  const aabnMenu = () => {
+    if (document.querySelector('[aria-modal="true"], .fleet-dialog-backdrop, .procure-modal-layer, .procure-inventory-dialog-backdrop')) return;
+    setValgtMenuModul(aktivtToppunkt && harUndermenu(aktivtToppunkt) ? aktivtToppunkt.key : null);
+    setMobilUndermenu(false);
+    setMenuAaben(true);
+  };
+  const vaelgToppunkt = (m) => {
+    setValgtMenuModul(m.key);
+    if (window.matchMedia("(max-width: 720px)").matches) setMobilUndermenu(true);
+  };
+  const navigerFraMenu = () => lukMenu({ fokus: false });
+
   useEffect(() => {
-    if (!pathname.startsWith("/support")) {
-      window.sessionStorage.setItem("veyro:support:seneste-side", `${pathname}${location.search}`);
-    }
+    if (!pathname.startsWith("/support")) window.sessionStorage.setItem("veyro:support:seneste-side", `${pathname}${location.search}`);
   }, [pathname, location.search]);
-
-  /* ⚠ SKIVE 2B — NAVVISNING ER BRUGERENS EGEN, ÉT EKSTRA OPSLAG.
-     `usePost` med `id = null` (ingen bruger endnu) henter slet ikke —
-     samme "spørg ikke"-greb som resten af appen. Manglende post (`null`)
-     er IKKE det samme som "alt skjult": se navvisning.js's egen note om at
-     en manglende indstilling betyder "opfør dig som Skive 2A", som er
-     præcis hvad `erSkjultVedNavvisning()` gør for et tomt/manglende
-     opslag. */
-  const { post: navvisning } = usePost("navvisning", bruger?.uid || null);
-
-  /**
-   * Sidebar-gruppernes fold-tilstand (V1-brugertest: "FÆLLES/DRIFTMODULER/
-   * ADMINISTRATION skal kunne foldes sammen"). Rent visnings-lag, ingen
-   * permission ændres af at folde en gruppe sammen — samme skel som
-   * navvisning holder mellem hvad der TEGNES og hvad der er TILLADT.
-   *
-   * Huskes lokalt pr. bruger/browser i localStorage, navngivet med uid så
-   * to brugere på samme maskine ikke arver hinandens fold-tilstand. Læses
-   * kun ved mount — AppShell tegnes først når `bruger` findes (harAdgang
-   * kræver et tenant-claim), så uid'et er stabilt fra første render.
-   */
-  const [gruppeLukket, saetGruppeLukket] = useVisningsvalg({
-    brugerId: bruger?.uid, kontekst: visningsKontekst, skaerm: "kundeshell", egenskab: "grupper", standard: {},
-  });
-  const skifGruppe = (gruppe) => {
-    saetGruppeLukket((forrige) => {
-      const naeste = { ...forrige, [gruppe]: !forrige[gruppe] };
-      return naeste;
-    });
-  };
-
-  /* Et enkelt topniveaupunkts egen undermenu (fx Facility) rulles ud når
-     ruten er aktiv der. V1-brugertest: "man kan ikke klikke på den igen for
-     at rulle den sammen igen" — modulLukket er brugerens eksplicitte
-     overstyring af den ellers automatiske "aktiv ⇒ åben"-visning, IKKE en
-     ny synlighedsregel; ruten og dens permissions er upåvirkede. */
-  const [modulAaben, saetModulAaben] = useVisningsvalg({
-    brugerId: bruger?.uid, kontekst: visningsKontekst, skaerm: "kundeshell", egenskab: "moduler", standard: {},
-  });
-  const [kompaktAaben, saetKompaktAaben] = useState(null);
-  const [kompaktTop, saetKompaktTop] = useState({});
-  const kompaktAnker = useRef(null);
-  const undertrykKompaktFokusaabning = useRef(false);
-  const kompaktLukTimer = useRef(null);
-  const visningDetaljer = useRef(null);
-  const [fakturacenterAntal, setFakturacenterAntal] = useState({});
-  const erModulAaben = (key, aktiv) => Object.hasOwn(modulAaben || {}, key)
-    ? !!modulAaben[key] : aktiv;
-  const skifModul = (key, aktiv) =>
-    saetModulAaben((forrige) => ({ ...forrige, [key]: !erModulAaben(key, aktiv) }));
-  const lukKompaktMenu = ({ fokus = false } = {}) => {
-    if (kompaktLukTimer.current) window.clearTimeout(kompaktLukTimer.current);
-    saetKompaktAaben(null);
-    if (fokus) {
-      undertrykKompaktFokusaabning.current = true;
-      kompaktAnker.current?.focus();
-    }
-  };
 
   useEffect(() => {
     const lukVisningVedKlikUdenfor = (event) => {
@@ -229,7 +152,6 @@ export default function AppShell() {
       detaljer.open = false;
       detaljer.querySelector("summary")?.focus();
     };
-
     document.addEventListener("pointerdown", lukVisningVedKlikUdenfor, true);
     document.addEventListener("keydown", lukVisningVedEscape);
     return () => {
@@ -237,329 +159,105 @@ export default function AppShell() {
       document.removeEventListener("keydown", lukVisningVedEscape);
     };
   }, []);
-  const aabnKompaktMenu = (key, anker) => {
-    if (!kompaktAktiv) return;
-    if (undertrykKompaktFokusaabning.current) {
-      undertrykKompaktFokusaabning.current = false;
-      return;
-    }
-    if (kompaktLukTimer.current) window.clearTimeout(kompaktLukTimer.current);
-    kompaktAnker.current = anker;
-    const top = anker?.getBoundingClientRect?.().top || 0;
-    const maksHoejde = Math.min(window.innerHeight * 0.72, 620);
-    saetKompaktTop((forrige) => ({
-      ...forrige,
-      [key]: Math.max(8, Math.min(top, window.innerHeight - maksHoejde - 12)),
-    }));
-    saetKompaktAaben(key);
-  };
-  const planlaegKompaktLuk = () => {
-    if (kompaktLukTimer.current) window.clearTimeout(kompaktLukTimer.current);
-    kompaktLukTimer.current = window.setTimeout(() => saetKompaktAaben(null), 220);
-  };
 
   useEffect(() => {
-    if (!kompaktAktiv) saetKompaktAaben(null);
-  }, [kompaktAktiv]);
-
-  useEffect(() => {
-    const forespoergsel = window.matchMedia("(min-width: 721px)");
-    const opdater = (event) => setBredNavigation(event.matches);
-    forespoergsel.addEventListener("change", opdater);
-    return () => forespoergsel.removeEventListener("change", opdater);
-  }, []);
-
-  useEffect(() => {
-    const lukVedEscape = (event) => {
-      if (event.key !== "Escape" || !kompaktAaben) return;
-      event.preventDefault();
-      lukKompaktMenu({ fokus: true });
+    if (!menuAaben) return undefined;
+    document.body.classList.add("fc-flydende-menu-aaben");
+    const fokusTimer = window.requestAnimationFrame(() => {
+      const aktiv = menuPanel.current?.querySelector('[aria-current="page"], [aria-pressed="true"]');
+      (aktiv || menuPanel.current?.querySelector("button, a"))?.focus();
+    });
+    const tastatur = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        lukMenu();
+        return;
+      }
+      if (event.key !== "Tab" || !menuPanel.current) return;
+      const fokuspunkter = [...menuPanel.current.querySelectorAll('a[href], button:not([disabled]), summary')]
+        .filter((element) => element.offsetParent !== null);
+      if (!fokuspunkter.length) return;
+      const foerste = fokuspunkter[0];
+      const sidste = fokuspunkter.at(-1);
+      if (event.shiftKey && document.activeElement === foerste) {
+        event.preventDefault();
+        sidste.focus();
+      } else if (!event.shiftKey && document.activeElement === sidste) {
+        event.preventDefault();
+        foerste.focus();
+      }
     };
-    const lukVedKlikUdenfor = (event) => {
-      if (!kompaktAaben || event.target.closest(".fc-nav-modul")) return;
-      lukKompaktMenu();
-    };
-    document.addEventListener("keydown", lukVedEscape);
-    document.addEventListener("pointerdown", lukVedKlikUdenfor);
+    document.addEventListener("keydown", tastatur);
     return () => {
-      document.removeEventListener("keydown", lukVedEscape);
-      document.removeEventListener("pointerdown", lukVedKlikUdenfor);
-      if (kompaktLukTimer.current) window.clearTimeout(kompaktLukTimer.current);
+      window.cancelAnimationFrame(fokusTimer);
+      document.body.classList.remove("fc-flydende-menu-aaben");
+      document.removeEventListener("keydown", tastatur);
     };
-  }, [kompaktAaben]);
+  }, [menuAaben]);
 
-  /**
-   * De underpunkter der faktisk tegnes — ÉT sted, fordi svaret bruges to
-   * gange: til at tegne undermenuen, og til at afgøre om overskriften
-   * overhovedet skal stå. Regnede de to hver sin gang, kunne et toppunkt
-   * blive stående over en tom liste. Se de tre grunde nedenfor.
-   */
-  const synligeBorn = (m) => (m.born || [])
-    .filter((b) => !b.skjulINav)
-    .filter((b) => !b.kraeverModul || harModul(moduler, b.kraeverModul))
-    .filter((b) => !b.kraeverEtAfModuler || b.kraeverEtAfModuler.some((navn) => harModul(moduler, navn)))
-    .filter((b) => !b.kraeverPerm || harPerm(bruger?.perms, b.kraeverPerm));
-  const synligeUnderpunkter = (b) => (b.underpunkter || [])
-    .filter((u) => !u.skjulINav)
-    .filter((u) => !u.kraeverModul || harModul(moduler, u.kraeverModul))
-    .filter((u) => !u.kraeverEtAfModuler || u.kraeverEtAfModuler.some((navn) => harModul(moduler, navn)))
-    .filter((u) => !u.kraeverPerm || harPerm(bruger?.perms, u.kraeverPerm));
+  useEffect(() => {
+    setMenuAaben(false);
+    setMobilUndermenu(false);
+  }, [pathname, location.search]);
 
-  /* ⚠ SKIVE 2A: ET TOPNIVEAUPUNKT KAN NU OGSÅ VÆRE SPÆRRET, IKKE KUN ET
-     BARN. Før i dag blev kun `synligeBorn()` spurgt om `kraeverModul`/
-     `kraeverPerm` — ethvert topniveaupunkt blev tegnet, fordi intet af dem
-     bar felterne. `kunderOversigt` (kraeverModul) og `fakturacenter`
-     (kraeverPerm) er de to FØRSTE topniveaupunkter uden `born` der gør, og
-     uden udvidelsen her ville Fakturacenter stå åben for en chauffør,
-     som ikke har `indkoeb.laes` — se nav.js's hoved.
+  const renderUndermenu = (m) => {
+    if (!m) return null;
+    const sektioner = (m.fakturacenterSektioner || [])
+      .filter((sektion) => !sektion.betinget || fakturacenterAntal.__ekstraKontrolAktiv);
+    if (sektioner.length) {
+      const aktivSektion = sektioner.some((sektion) => sektion.id === aktivFakturacenterSektion)
+        ? aktivFakturacenterSektion : sektioner[0]?.id;
+      return sektioner.map((sektion) => {
+        const antal = fakturacenterAntal[sektion.id];
+        const erAktiv = hoved.key === m.key && aktivSektion === sektion.id;
+        return <Link key={sektion.id} to={`${m.sti}?sektion=${sektion.id}`} onClick={navigerFraMenu}
+          className={erAktiv ? "fc-flydende-subitem fc-on" : "fc-flydende-subitem"}
+          aria-current={erAktiv ? "page" : undefined}>
+          <span>{sektion.label}</span>
+          {Number.isInteger(antal) && <span className="fc-sub-count" aria-label={`${antal} poster`}>{antal}</span>}
+        </Link>;
+      });
+    }
+    return synligeBorn(m).map((b) => {
+      const underpunkter = synligeUnderpunkter(b);
+      const erAktiv = modul.key === b.key;
+      return <div key={b.key} className="fc-flydende-subgruppe">
+        <NavLink to={b.sti} end onClick={navigerFraMenu}
+          className={erAktiv ? "fc-flydende-subitem fc-on" : "fc-flydende-subitem"}
+          aria-current={erAktiv ? "page" : undefined}><span>{b.label}</span></NavLink>
+        {underpunkter.length > 0 && <div className="fc-flydende-underpunkter" aria-label={`${b.label} – underpunkter`}>
+          {underpunkter.map((u) => {
+            const underAktiv = modul.key === u.key;
+            return <NavLink key={u.key} to={u.sti} end onClick={navigerFraMenu}
+              className={underAktiv ? "fc-flydende-underitem fc-on" : "fc-flydende-underitem"}
+              aria-current={underAktiv ? "page" : undefined}>{u.label}</NavLink>;
+          })}
+        </div>}
+      </div>;
+    });
+  };
 
-     ⚠ OG `m.key` ER IKKE ALTID ET MODULNAVN — se `modulNavnFor()` i nav.js
-     for hvorfor et rå `m.kraeverModul || m.key`-fallback var forkert.
-
-     ⚠ OG SKIVE 2B: `erSkjultVedNavvisning()` STÅR SIDST, ALDRIG FØRST.
-     Rækkefølgen ER garantien "OG, ikke ELLER" — et punkt der allerede er
-     filtreret væk af modul/perm/børn ovenfor, kommer aldrig frem til
-     navvisning-tjekket, og navvisning kan derfor kun fjerne FLERE af de
-     punkter der overlevede de eksisterende kontroller, aldrig genindsætte
-     et der ikke gjorde. Se navvisning.js's hoved. */
-  const synligeToppunkter = NAV
-    .filter((m) => { const n = modulNavnFor(m); return !n || harModul(moduler, n); })
-    .filter((m) => !m.kraeverEtAfModuler || m.kraeverEtAfModuler.some((navn) => harModul(moduler, navn)))
-    .filter((m) => !m.kraeverPerm || harPerm(bruger?.perms, m.kraeverPerm))
-    .filter((m) => !m.born?.length || synligeBorn(m).length)
-    .filter((m) => !erSkjultVedNavvisning(m.key, navvisning));
-
-  return (
-    <>
-      <MiljoeBjaelke />
-      <div className={`fc-app${menuKompakt ? " fc-menu-kompakt" : ""}`}>
-        <aside className="fc-side" aria-label={menuKompakt ? "Kompakt navigation" : "Navigation"}>
-          <div className="fc-brand-logo"><VeyroLogo variant="sidebar" /></div>
-          <div className="fc-ver">version 3.0</div>
-          <button type="button" className="fc-menu-toggle"
-            aria-label={menuKompakt ? "Åbn normal menu" : "Fold menuen sammen"}
-            aria-pressed={menuKompakt}
-            title={menuKompakt ? "Åbn normal menu" : "Fold menuen sammen"}
-            onClick={() => setMenuvisning(menuKompakt ? "normal" : "kompakt")}>
-            <span aria-hidden="true">{menuKompakt ? "›" : "‹"}</span>
-          </button>
-
-          {/* ⚠ HER STOD GODS/BUS-VÆLGEREN — beslutning 9, fjernet i 70.
-              Argumentet der bar den, faldt sammen med sin egen præmis:
-              beslutning 19 skrev at "ingen abonnent har både gods og bus", og
-              en vælger mellem to ting hvoraf kunden kun har den ene, vælger
-              ikke noget. Den skiftede en tilstand der filtrerede en liste,
-              hvor den ene af de to udgaver altid var tom.
-
-              ⚠ OG DET VAR IKKE EN KOSMETISK KNAP. Den bar et FELT på syv
-              noder, en sti i `kpi/`, et filter i `useListe` og en
-              `udenDivision`-undtagelse på hvert modul. Alt sammen for en akse
-              der duplikerede den kunden allerede har: sine MODULER. Se
-              beslutning 70. */}
-
-          <nav className="fc-nav" aria-label="Moduler">
-            {/* ⚠ MENUEN SKJULER ET MODUL KUNDEN IKKE HAR KØBT — men det er en
-                KOMMERCIEL kontrol, ikke en sikkerhedskontrol. Taster kunden
-                /facility alligevel, ser han SIN EGEN tomme facility-node, ikke
-                en andens. At kunder ikke kan nå hinandens data er en helt
-                anden mekanisme: auth.token.tenant === $tenantId i hver regel,
-                prøvet på hver node i begge retninger. De to må ikke forveksles.
-                Se fleet/moduler.js.
-
-                ⚠ OG ET PUNKT HVIS BØRN ALLE ER SKJULT, TEGNES IKKE —
-                beslutning 105. En chauffør mangler `indkoeb.laes`, og så er
-                alle syv Procure-punkter væk; blev overskriften stående,
-                førte den til en afvist læsning og lovede seks punkter der
-                ikke fandtes. Et punkt UDEN børn (Dashboard) er upåvirket.
-                Se `synligeToppunkter` ovenfor.
-
-                ⚠ GRUPPEOVERSKRIFTERNE (Skive 2A) ER ET RENDER-LAG, IKKE EN
-                NY FILTRERINGSREGEL. `synligeToppunkter` er allerede den
-                fulde, filtrerede liste; grupperingen herunder bestemmer kun
-                HVOR i sidebaren hvert punkt tegnes. En gruppe uden et eneste
-                synligt punkt får ingen overskrift — se GRUPPE_ORDEN i
-                nav.js. */}
-            {GRUPPE_ORDEN.map((gruppe) => {
-              const punkter = synligeToppunkter.filter((m) => m.gruppe === gruppe);
-              if (!punkter.length) return null;
-              const harGruppeoverskrift = !!GRUPPE_LABEL[gruppe];
-              const lukket = harGruppeoverskrift && !menuKompakt && !!gruppeLukket[gruppe];
-              return (
-                <div key={gruppe} className="fc-nav-gruppe-blok">
-                  {harGruppeoverskrift && <button type="button" className="fc-nav-gruppe-toggle"
-                          onClick={() => skifGruppe(gruppe)} aria-expanded={!lukket}>
-                    <span className="fc-nav-gruppe">{GRUPPE_LABEL[gruppe]}</span>
-                    <svg className={lukket ? "fc-chevron fc-chevron-lukket" : "fc-chevron"}
-                         viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </button>}
-                  <div className={lukket ? "fc-nav-gruppe-punkter fc-lukket" : "fc-nav-gruppe-punkter"}>
-                  {punkter.map((m) => {
-                    const aktiv = hoved.key === m.key;
-                    /* ⚠ TO GRUNDE TIL AT ET UNDERPUNKT IKKE TEGNES, OG DE ER IKKE
-                       DEN SAMME. `skjulINav` er en detaljerute uden egen plads i
-                       menuen (/booking/forslag/:id). `kraeverModul` er et punkt der
-                       ligger under ET modul, men laeser EN ANDENS node — Enheder
-                       under Opsaetning laeser `koeretoejer`, som er modulspaerret
-                       paa `flaade` i reglerne. Opsaetning kan ikke fravaelges, saa
-                       uden det led ville en kunde uden Fleet faa et menupunkt der
-                       aabner en afvist laesning i sin egen opsaetning.
-                       Ruten findes stadig — det er menuen der tier, ikke adgangen
-                       der aendres. Se nav.js og moduler.js. */
-                    /* ⚠ OG EN TREDJE GRUND — beslutning 105. `kraeverPerm` er et
-                       punkt hvis EMNE er spærret for brugeren: efter beslutning 104
-                       kræver ti noder en læse-permission, og en chauffør havde
-                       **18 af 59 skærme** med mindst én afvist læsning. Menuen tier;
-                       ruten findes uændret, og skærmen svarer med en afvisning hvis
-                       man taster stien. Håndhævelsen ligger i reglerne. */
-                    const born = synligeBorn(m);
-                    const modulErAaben = erModulAaben(m.key, aktiv);
-                    const visBorn = kompaktAktiv ? born.length > 0 : born.length > 0 && modulErAaben;
-                    const fakturacenterSektioner = m.fakturacenterSektioner || [];
-                    const aktivFakturacenterSektion =
-                      fakturacenterSektioner.some((sektion) =>
-                        sektion.id === new URLSearchParams(location.search).get("sektion"))
-                        ? new URLSearchParams(location.search).get("sektion")
-                        : fakturacenterSektioner[0]?.id;
-                    if (fakturacenterSektioner.length) {
-                      const undermenuAaben = kompaktAktiv || modulErAaben;
-                      return (
-                        <div key={m.key}
-                          className={`fc-fakturacenter-nav fc-nav-modul${kompaktAaben === m.key ? " fc-kompakt-aaben" : ""}${undermenuAaben ? " fc-modul-aaben" : ""}`}
-                          data-modul-label={m.label}
-                          style={{ "--fc-kompakt-top": `${kompaktTop[m.key] || 0}px` }}
-                          onMouseEnter={(event) => aabnKompaktMenu(m.key, event.currentTarget.querySelector("button"))}
-                          onMouseLeave={planlaegKompaktLuk}
-                          onFocus={(event) => aabnKompaktMenu(m.key, event.currentTarget.querySelector("button"))}
-                          onBlur={(event) => {
-                            if (!event.currentTarget.contains(event.relatedTarget)) planlaegKompaktLuk();
-                          }}>
-                          <div className="fc-fakturacenter-main">
-                            <button type="button" className={aktiv ? "fc-link fc-on" : "fc-link"}
-                              aria-label={kompaktAktiv ? m.label : undefined}
-                              aria-expanded={kompaktAktiv ? kompaktAaben === m.key : undermenuAaben}
-                              onClick={(event) => {
-                                if (kompaktAktiv) {
-                                  aabnKompaktMenu(m.key, event.currentTarget);
-                                  return;
-                                }
-                                skifModul(m.key, aktiv);
-                              }}>
-                              <Navigationsikon navn={m.key} />
-                              <span>{m.label}</span>
-                              <svg className={(kompaktAktiv ? kompaktAaben === m.key : undermenuAaben)
-                                ? "fc-chevron" : "fc-chevron fc-chevron-lukket"}
-                                viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <path d="M6 9l6 6 6-6" />
-                              </svg>
-                            </button>
-                          </div>
-                          {undermenuAaben && (
-                            <div className="fc-sub fc-sub-fakturacenter" aria-label="Fakturacentersektioner">
-                              <strong className="fc-kompakt-modulnavn">{m.label}</strong>
-                              {fakturacenterSektioner.filter((sektion) =>
-                                !sektion.betinget || fakturacenterAntal.__ekstraKontrolAktiv).map((sektion) => {
-                                const antal = fakturacenterAntal[sektion.id];
-                                return (
-                                  <Link key={sektion.id} to={`${m.sti}?sektion=${sektion.id}`}
-                                    className={aktivFakturacenterSektion === sektion.id
-                                      ? "fc-sublink fc-on" : "fc-sublink"}
-                                    aria-current={aktivFakturacenterSektion === sektion.id ? "page" : undefined}>
-                                    <span>{sektion.label}</span>
-                                    {Number.isInteger(antal) && (
-                                      <span className="fc-sub-count" aria-label={`${antal} poster`}>{antal}</span>
-                                    )}
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={m.key}
-                        className={`fc-nav-modul${kompaktAaben === m.key ? " fc-kompakt-aaben" : ""}${visBorn ? " fc-modul-aaben" : ""}`}
-                        data-modul-label={m.label}
-                        style={{ "--fc-kompakt-top": `${kompaktTop[m.key] || 0}px` }}
-                        onMouseEnter={(event) => born.length && aabnKompaktMenu(m.key, event.currentTarget.querySelector("button,a"))}
-                        onMouseLeave={planlaegKompaktLuk}
-                        onFocus={(event) => born.length && aabnKompaktMenu(m.key, event.currentTarget.querySelector("button,a"))}
-                        onBlur={(event) => {
-                          if (!event.currentTarget.contains(event.relatedTarget)) planlaegKompaktLuk();
-                        }}>
-                        {born.length ? <button type="button" className={aktiv ? "fc-link fc-on" : "fc-link"}
-                          aria-label={kompaktAktiv ? m.label : undefined}
-                          aria-expanded={kompaktAktiv ? kompaktAaben === m.key : visBorn}
-                          onClick={(event) => {
-                            if (kompaktAktiv) {
-                              aabnKompaktMenu(m.key, event.currentTarget);
-                              return;
-                            }
-                            skifModul(m.key, aktiv);
-                          }}>
-                          <Navigationsikon navn={m.key} />
-                          <span>{m.label}</span>
-                          {born.length > 0 && (
-                            <svg className={visBorn ? "fc-chevron" : "fc-chevron fc-chevron-lukket"}
-                                 viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                              <path d="M6 9l6 6 6-6" />
-                            </svg>
-                          )}
-                        </button> : <NavLink to={m.sti} end={m.sti === "/"}
-                          className={aktiv ? "fc-link fc-on" : "fc-link"}>
-                          <Navigationsikon navn={m.key} />
-                          <span>{m.label}</span>
-                        </NavLink>}
-                        {visBorn && (
-                          <div className="fc-sub">
-                            <strong className="fc-kompakt-modulnavn">{m.label}</strong>
-                            {born.map((b) => {
-                              const underpunkter = synligeUnderpunkter(b);
-                              const link = (
-                                <NavLink key={underpunkter.length ? undefined : b.key} to={b.sti} end
-                                         onClick={() => lukKompaktMenu()}
-                                         className={modul.key === b.key ? "fc-sublink fc-on" : "fc-sublink"}>
-                                  {b.label}
-                                </NavLink>
-                              );
-                              if (!underpunkter.length) return link;
-                              return (
-                                <div key={b.key} className="fc-subgruppe">
-                                  {link}
-                                  <div className="fc-sub-sub" aria-label={`${b.label} – underpunkter`}>
-                                    {underpunkter.map((u) => (
-                                      <NavLink key={u.key} to={u.sti} end
-                                               onClick={() => lukKompaktMenu()}
-                                               className={modul.key === u.key ? "fc-sub-sublink fc-on" : "fc-sub-sublink"}>
-                                        {u.label}
-                                      </NavLink>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  </div>
-                </div>
-              );
-            })}
-          </nav>
-
-          <div className="fc-foot">
-            <details ref={visningDetaljer} className="fc-visning">
-              <summary>
-                <span className="fc-visning-ikon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><path d="M3 5h18v12H3zM8 21h8M12 17v4" /></svg>
-                </span>
-                <span className="fc-visning-label">Visning</span>
-                <span className="fc-visning-chevron" aria-hidden="true">⌄</span>
-              </summary>
+  return <>
+    <MiljoeBjaelke />
+    <div className="fc-app fc-app--flydende-menu">
+      <div className={`fc-main fc-main--shared-page-top${modulePage ? " fc-main--module-title" : ""}${erIndberetningsside ? " fc-main--indberetninger" : ""}`}>
+        <header className="fc-top">
+          <div className="fc-shell-start">
+            <button ref={menuKnap} type="button" className="fc-menu-knap" aria-haspopup="true"
+              aria-controls="fc-flydende-navigation" aria-expanded={menuAaben}
+              onClick={() => menuAaben ? lukMenu() : aabnMenu()}>
+              <span className="fc-menu-knap-ikon" aria-hidden="true"><i /><i /><i /></span><span>Menu</span>
+            </button>
+            <div className="fc-shell-logo"><VeyroLogo variant="header" /></div>
+          </div>
+          <div className="fc-top-h">
+            <p className="fc-top-kontekst"><strong>{hoved.label || hoved.titel}</strong><span aria-hidden="true"> / </span>{modul.label || modul.titel}</p>
+          </div>
+          <div className="fc-shell-brugerfunktioner">
+            <details ref={visningDetaljer} className="fc-visning fc-visning--top">
+              <summary><span className="fc-visning-ikon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M3 5h18v12H3zM8 21h8M12 17v4" /></svg>
+              </span><span className="fc-visning-label">Visning</span><span className="fc-visning-chevron" aria-hidden="true">⌄</span></summary>
               <div className="fc-visning-panel" aria-label="Visningsindstillinger">
                 <span className="fc-visning-panel-label">Zoom</span>
                 <div className="fc-zoomkontroller" role="group" aria-label="Arbejdsområdezoom">
@@ -570,67 +268,75 @@ export default function AppShell() {
                 <button type="button" className="fc-nulstil-visning" onClick={nulstilVisning}>Nulstil visning</button>
               </div>
             </details>
-            <div className="fc-who">
-              <div className="fc-av">{initialer}</div>
-              <div className="fc-who-txt">
-                <div className="fc-who-n">{bruger?.navn || "Ikke logget ind"}</div>
-              </div>
+            <div className="fc-who fc-who--top" title={bruger?.navn || bruger?.email || "Ikke logget ind"}>
+              <div className="fc-av">{initialer}</div><div className="fc-who-n">{bruger?.navn || "Ikke logget ind"}</div>
             </div>
-            {/* Identitet skiftes ved log ud og nyt login. Sidebaren viser kun
-                hvem der er logget ind og tilbyder derfor ingen bruger- eller
-                rollevælger — heller ikke i DEV eller demo. Se beslutning 28. */}
-            <button type="button" className="fc-side-btn" onClick={logUd}>Log ud</button>
+            <button type="button" className="fc-top-logud" onClick={logUd}>Log ud</button>
           </div>
-        </aside>
 
-        <div className={`fc-main fc-main--shared-page-top${modulePage ? " fc-main--module-title" : ""}`}>
-          <header className="fc-top">
-            <div className="fc-top-h">
-              <h1>{pageTitle}</h1>
-            </div>
-            {/* ⚠ HER LÅ FIRMAVÆLGEREN, PERIODEVÆLGEREN OG "Opdateret 22.43".
-                Alle tre er væk fra HVER side — ikke skjult pr. modul.
-
-                De tre var shellens, og det var rigtigt: et modul må ikke eje
-                dem. Men de var også de eneste tre kontroller i topbaren, og
-                de stod på hver eneste skærm uden at nogen brugte dem:
-
-                  Firmavælgeren  havde ÉN post uden for demo. Tenanten kommer
-                                 fra tokenets claim — en vælger med ét valg
-                                 er en kontrol der ligner et valg.
-                  Periodevælgeren blev læst af useListe og af INGEN skærm som
-                                 tekst. Perioden er der stadig; den står nu
-                                 fast på sin standard i FleetContext.
-                  Stemplet       sagde hvornår siden blev tegnet, ikke hvornår
-                                 tallene blev aggregeret. To forskellige ting,
-                                 ét klokkeslæt.
-
-                ⚠ TILSTANDEN ER IKKE FJERNET. `dage`, `tenantId` og `periode`
-                ligger stadig i FleetContext og driver stadig useListes
-                vinduer. Det er KONTROLLERNE der er væk, ikke begrebet — og
-                skal en periodevælger tilbage, hører den her i shellen igen,
-                aldrig i et modul. */}
-          </header>
-          {/* ⚠ Suspense LIGGER HER, IKKE OM HELE RUTETRÆET.
-              Skærmene hentes når de åbnes (beslutning 97), og React
-              venter ved den NÆRMESTE grænse. Lå den om <Routes> i
-              App.jsx, ville sidebaren, topbaren og periodevælgeren
-              forsvinde og blive tegnet om ved hvert eneste skift — og
-              en shell der blinker, føles som en app der genstarter.
-              Her skiftes kun indholdsfeltet ud. */}
-          <main className="fc-slot" onWheel={(event) => {
-            if (!event.shiftKey || event.ctrlKey || event.metaKey) return;
-            event.preventDefault();
-            skiftZoom(event.deltaY > 0 ? -5 : 5);
-          }}>
-            <div className="fc-workspace-zoom" style={{ "--fc-workspace-zoom": begraensZoom(zoom) / 100 }}>
-              <Suspense fallback={<div className="fc-empty">Henter skærmen …</div>}>
-                <Outlet context={{ setFakturacenterAntal }} />
-              </Suspense>
-            </div>
-          </main>
+          {menuAaben && <>
+            <div className="fc-menu-skaerm" aria-hidden="true" onPointerDown={(event) => {
+              event.preventDefault(); event.stopPropagation(); lukMenu();
+            }} />
+            <nav ref={menuPanel} id="fc-flydende-navigation"
+              className={`fc-flydende-nav${mobilUndermenu ? " fc-mobil-undermenu" : ""}`} aria-label="Hovednavigation">
+              <section className="fc-flydende-moduler" aria-label="Moduler">
+                <header className="fc-flydende-mobilhoved"><strong>Menu</strong>
+                  <button type="button" onClick={() => lukMenu()} aria-label="Luk menu">×</button></header>
+                <div className="fc-flydende-scroll">
+                  {GRUPPE_ORDEN.map((gruppe) => {
+                    const punkter = synligeToppunkter.filter((m) => m.gruppe === gruppe);
+                    if (!punkter.length) return null;
+                    return <div key={gruppe} className="fc-flydende-gruppe">
+                      {GRUPPE_LABEL[gruppe] && <h2>{GRUPPE_LABEL[gruppe]}</h2>}
+                      {punkter.map((m) => {
+                        const aktiv = hoved.key === m.key;
+                        const valgt = valgtMenuModul === m.key;
+                        return harUndermenu(m) ? <button key={m.key} type="button"
+                          className={aktiv ? "fc-flydende-modul fc-on" : "fc-flydende-modul"}
+                          aria-pressed={valgt} onClick={() => vaelgToppunkt(m)}>
+                          <Navigationsikon navn={m.key} /><span>{m.label}</span><span className="fc-flydende-pil" aria-hidden="true">›</span>
+                        </button> : <NavLink key={m.key} to={m.sti} end={m.sti === "/"} onClick={navigerFraMenu}
+                          className={aktiv ? "fc-flydende-modul fc-on" : "fc-flydende-modul"}
+                          aria-current={aktiv ? "page" : undefined}>
+                          <Navigationsikon navn={m.key} /><span>{m.label}</span>
+                        </NavLink>;
+                      })}
+                    </div>;
+                  })}
+                </div>
+              </section>
+              {valgtToppunkt && harUndermenu(valgtToppunkt) && <section className="fc-flydende-undermenu" aria-label={`${valgtToppunkt.label} – sider`}>
+                <header><button type="button" className="fc-flydende-tilbage" onClick={() => setMobilUndermenu(false)}>
+                  <span aria-hidden="true">‹</span> Tilbage</button><strong>{valgtToppunkt.label}</strong>
+                  <button type="button" className="fc-flydende-luk" onClick={() => lukMenu()} aria-label="Luk menu">×</button></header>
+                <div className="fc-flydende-scroll">{renderUndermenu(valgtToppunkt)}</div>
+              </section>}
+            </nav>
+          </>}
+        </header>
+        <div className="fc-sidehoved">
+          <h1>{pageTitle}</h1>
+          {erFacilityIndberetninger && <button type="button" className="fc-btn fc-btn-primaer"
+            onClick={() => window.dispatchEvent(new CustomEvent("veyro:opret-facility-indberetning"))}>
+            + Ny indberetning
+          </button>}
+          {erFleetIndberetninger && <Link className="fc-btn fc-btn-primaer" to="/fleet-v2/indberetninger/ny">
+            + Ny indberetning
+          </Link>}
         </div>
+        <main className="fc-slot" onWheel={(event) => {
+          if (!event.shiftKey || event.ctrlKey || event.metaKey) return;
+          event.preventDefault();
+          skiftZoom(event.deltaY > 0 ? -5 : 5);
+        }}>
+          <div className="fc-workspace-zoom" style={{ "--fc-workspace-zoom": begraensZoom(zoom) / 100 }}>
+            <Suspense fallback={<div className="fc-empty">Henter skærmen …</div>}>
+              <Outlet context={{ setFakturacenterAntal }} />
+            </Suspense>
+          </div>
+        </main>
       </div>
-    </>
-  );
+    </div>
+  </>;
 }

@@ -31,26 +31,26 @@ test("Ressourcer er et hovedområde med de syv aftalte registre", () => {
   assert.equal(medarbejdere.underpunkter[0].sti, "/ressourcer/medarbejdere/kompetencer");
   assert.equal(NAV.find((item) => item.key === "bemanding").born.some((item) => item.key === "workforceKompetencer"), false);
   assert.match(read("src/fleet/AppShell.jsx"), /synligeUnderpunkter/);
-  assert.match(read("src/fleet/AppShell.jsx"), /className="fc-sub-sub"/);
+  assert.match(read("src/fleet/AppShell.jsx"), /className="fc-flydende-underpunkter"/);
   assert.match(read("src/App.jsx"), /path="ressourcer\/medarbejdere\/kompetencer" element=\{<WorkforceV2Module \/>\}/);
   assert.match(read("src/fleet/workforce-v2-integration.js"), /ressourcer\/medarbejdere\/kompetencer"\) return "skills"/);
   assert.doesNotMatch(read("src/fleet/nav.js"), /key: "ressourceOverblik"/);
   assert.match(read("src/moduler/Ressourcer.jsx"), /<Navigate to=\{poster\[0\]\?\.til \|\| "\/"\} replace \/>/);
 });
 
-test("kompakt navigation bruger Veyro-logoet og centrerer alle modulikoner", () => {
+test("flydende navigation bruger Veyro-logoet og de fælles modulikoner", () => {
   const shell = read("src/fleet/AppShell.jsx");
   const styles = read("src/fleet/fleet.css");
-  assert.match(shell, /<div className="fc-brand-logo"><VeyroLogo variant="sidebar" \/><\/div>/);
+  assert.match(shell, /<div className="fc-shell-logo"><VeyroLogo variant="header" \/><\/div>/);
   assert.doesNotMatch(shell, /className="fc-tenant"/);
   assert.doesNotMatch(shell, /fc-brand-mark/);
   assert.match(shell, /function Navigationsikon\(\{ navn \}\)/);
-  assert.equal((shell.match(/<Navigationsikon navn=\{m\.key\} \/>/g) || []).length, 3);
-  assert.match(styles, /\.fc-menu-kompakt \.fc-brand-logo \.veyro-logo\{[^}]*display:block[^}]*width:184px[^}]*transform:translateX\(-11\.6px\)/);
+  assert.equal((shell.match(/<Navigationsikon navn=\{m\.key\} \/>/g) || []).length, 2);
+  assert.match(styles, /\.fc-shell-logo \.veyro-logo\{[^}]*width:108px/);
   assert.match(styles, /\.fc-nav-ikon\{[^}]*place-items:center[^}]*width:24px[^}]*height:24px/);
-  assert.match(styles, /\.fc-menu-kompakt \.fc-nav\{[^}]*padding:8px 8px 8px 0[^}]*overflow-y:auto/);
-  assert.match(styles, /\.fc-menu-kompakt \.fc-link\{[^}]*justify-content:center[^}]*width:44px[^}]*height:44px[^}]*margin:0[^}]*padding:0/);
-  assert.match(styles, /\.fc-menu-kompakt \.fc-nav-ikon>svg\{[^}]*width:20px[^}]*height:20px[^}]*transform:none/);
+  assert.match(styles, /\.fc-flydende-nav\{[^}]*position:absolute[^}]*display:flex/);
+  assert.match(styles, /\.fc-flydende-modul\{[^}]*display:grid[^}]*grid-template-columns:24px minmax\(0,1fr\) 18px/);
+  assert.match(styles, /\.fc-mobil-undermenu \.fc-flydende-moduler\{display:none\}/);
 });
 
 test("modulgenveje peger på de samme fælles registre", () => {

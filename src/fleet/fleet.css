@@ -2379,6 +2379,127 @@ body:has(.fc-login-side){margin:0}
    standalone-padding oveni og fik derfor en ekstra indrykning i V1. */
 .fc-main .fc-workspace-zoom>.procure-v2{padding-inline:0}
 
+/* Flydende V1-navigation. NAV, permissions og tællere kommer fortsat fra
+   AppShells eksisterende datalag; klasserne her ændrer kun præsentationen. */
+.fc-app--flydende-menu{display:flex;flex-direction:column;width:100%;min-width:0}
+.fc-app--flydende-menu .fc-main{width:100%;min-height:100%}
+.fc-app--flydende-menu .fc-top{position:relative;display:flex;align-items:center;flex-wrap:nowrap;gap:18px;min-height:68px;padding-block:10px;background:var(--fc-navy);color:var(--veyro-white)}
+.fc-shell-start{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.fc-shell-logo{display:flex;align-items:center;min-height:42px;padding:4px 9px;border-radius:9px;background:transparent}
+.fc-shell-logo .veyro-logo{width:108px}
+.fc-menu-knap{position:relative;z-index:56;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 14px;border:1px solid var(--fc-navy-3);border-radius:9px;background:transparent;box-shadow:none;color:var(--veyro-white);font:inherit;font-weight:700;cursor:pointer}
+.fc-menu-knap:hover,.fc-menu-knap[aria-expanded="true"]{border-color:var(--veyro-cyan);background:var(--fc-navy-3);color:var(--veyro-white)}
+.fc-menu-knap-ikon{display:grid;gap:3px;width:17px}
+.fc-menu-knap-ikon i{display:block;height:2px;border-radius:999px;background:currentColor}
+.fc-top-kontekst{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--veyro-white)!important;letter-spacing:.01em}
+.fc-top-kontekst strong{text-transform:uppercase}
+.fc-shell-brugerfunktioner{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto}
+.fc-who--top{max-width:210px;padding:3px 7px;border:0;border-radius:9px;background:transparent}
+.fc-who--top .fc-av{border:1px solid var(--veyro-cyan);background:var(--fc-navy-3)}
+.fc-who--top .fc-who-n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--veyro-white)}
+.fc-top-logud{min-height:38px;padding:0 11px;border:1px solid var(--fc-navy-3);border-radius:8px;background:transparent;color:var(--veyro-white);font:inherit;font-weight:600;cursor:pointer}
+.fc-top-logud:hover{border-color:var(--veyro-cyan);background:var(--fc-navy-3);color:var(--veyro-white)}
+.fc-visning--top{margin:0;color:var(--veyro-white)}
+.fc-visning--top>summary{min-height:38px;border-color:var(--fc-navy-3);background:transparent;color:var(--veyro-white)}
+.fc-visning--top>summary:hover,.fc-visning--top>summary:focus-visible{border-color:var(--veyro-cyan);background:var(--fc-navy-3)}
+.fc-visning--top .fc-visning-panel{top:calc(100% + 7px);right:0;bottom:auto;left:auto}
+
+.fc-sidehoved{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:58px;padding:8px 26px;background:var(--fc-bg)}
+.fc-sidehoved h1{min-width:0;margin:0;overflow:hidden;color:var(--bc-text);font-size:var(--fc-t-3xl);font-weight:700;line-height:1.2;letter-spacing:-.02em;text-overflow:ellipsis;white-space:nowrap}
+.fc-sidehoved .fc-btn{flex:0 0 auto;text-decoration:none}
+.fc-main--indberetninger :is(.veyro-module--facility .workflow-page,.fleet-v2-embedded>.triage-page)>.page-heading,
+.fc-main--indberetninger .fleet-v2-embedded>.triage-page>.page-heading-row{display:none}
+
+.fc-menu-skaerm{position:fixed;z-index:50;inset:0;background:transparent}
+.fc-flydende-nav{position:absolute;z-index:55;top:calc(100% - 10px);left:26px;display:flex;align-items:stretch;gap:8px;max-width:calc(100vw - 52px);color:var(--veyro-white)}
+.fc-flydende-moduler,.fc-flydende-undermenu{display:flex;flex-direction:column;min-width:270px;max-height:min(680px,calc(100dvh - 118px));overflow:hidden;border:1px solid var(--fc-navy-3);border-radius:11px;background:var(--fc-navy);box-shadow:var(--fc-shadow)}
+.fc-flydende-undermenu{min-width:300px;background:var(--fc-navy-2)}
+.fc-flydende-scroll{min-height:0;overflow-y:auto;padding:9px;scrollbar-width:thin;scrollbar-color:var(--fc-navy-3) transparent}
+.fc-flydende-scroll::-webkit-scrollbar{width:4px}
+.fc-flydende-scroll::-webkit-scrollbar-track{background:transparent}
+.fc-flydende-scroll::-webkit-scrollbar-thumb{border-radius:999px;background:var(--fc-navy-3)}
+.fc-flydende-mobilhoved{display:none}
+.fc-flydende-gruppe{display:grid;gap:2px}
+.fc-flydende-gruppe+.fc-flydende-gruppe{margin-top:7px;padding-top:7px;border-top:1px solid var(--fc-navy-3)}
+.fc-flydende-gruppe h2{margin:0;padding:6px 10px 4px;color:var(--veyro-muted-text);font-size:var(--fc-t-tight);letter-spacing:.06em;text-transform:uppercase}
+.fc-flydende-modul{box-sizing:border-box;display:grid;grid-template-columns:24px minmax(0,1fr) 18px;align-items:center;gap:10px;width:100%;min-height:42px;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:var(--veyro-white);font:inherit;font-weight:600;text-align:left;text-decoration:none;cursor:pointer}
+.fc-flydende-modul>span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fc-flydende-modul:hover,.fc-flydende-modul:focus-visible,.fc-flydende-modul[aria-pressed="true"]{background:var(--fc-navy-3)}
+.fc-flydende-modul.fc-on{color:var(--veyro-white)}
+.fc-flydende-modul.fc-on:not([aria-pressed="true"]){background:var(--bc-accent)}
+.fc-flydende-pil{justify-self:end;font-size:var(--fc-t-xl);line-height:1}
+.fc-flydende-undermenu>header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;min-height:52px;padding:8px 10px;border-bottom:1px solid var(--fc-navy-3)}
+.fc-flydende-undermenu>header strong{padding-left:4px;font-size:var(--fc-t-l)}
+.fc-flydende-tilbage{display:none}
+.fc-flydende-luk,.fc-flydende-mobilhoved button{display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid var(--fc-navy-3);border-radius:8px;background:transparent;color:var(--veyro-white);font:inherit;font-size:var(--fc-t-2xl);cursor:pointer}
+.fc-flydende-luk:hover,.fc-flydende-mobilhoved button:hover{background:var(--fc-navy-3)}
+.fc-flydende-subgruppe{display:grid;gap:2px}
+.fc-flydende-subitem,.fc-flydende-underitem{display:flex;align-items:center;justify-content:space-between;gap:9px;min-height:38px;padding:6px 10px;border-radius:7px;color:var(--veyro-white);font-size:var(--fc-t-m);text-decoration:none}
+.fc-flydende-subitem:hover,.fc-flydende-subitem:focus-visible,.fc-flydende-underitem:hover,.fc-flydende-underitem:focus-visible{background:var(--fc-navy-3)}
+.fc-flydende-subitem.fc-on,.fc-flydende-underitem.fc-on{background:var(--bc-accent);font-weight:700}
+.fc-flydende-underpunkter{display:grid;gap:1px;margin:0 0 5px 16px;padding-left:8px;border-left:1px solid var(--fc-navy-3)}
+.fc-flydende-underitem{min-height:32px;font-size:var(--fc-t-s)}
+
+@media(max-width:1000px){
+  .fc-app--flydende-menu .fc-top{flex-wrap:wrap;gap:10px 14px;padding-block:12px}
+  .fc-top-h{order:3;flex-basis:100%}
+  .fc-shell-brugerfunktioner{margin-left:auto}
+}
+
+@media(max-width:720px){
+  body.fc-flydende-menu-aaben{overflow:hidden;overscroll-behavior:none}
+  .fc-app--flydende-menu .fc-top{min-height:92px;padding:8px 10px;gap:5px}
+  .fc-shell-start{gap:5px}
+  .fc-shell-logo{min-height:36px;padding:2px 4px}
+  .fc-shell-logo .veyro-logo{width:72px}
+  .fc-menu-knap{min-height:38px;padding:0 8px}
+  .fc-top-h{min-width:0}
+  .fc-top-h h1{font-size:var(--fc-t-xl)}
+  .fc-top-kontekst{font-size:var(--fc-t-xs)!important}
+  .fc-shell-brugerfunktioner{gap:3px}
+  .fc-who--top{padding:0;border:0;background:transparent}
+  .fc-who--top .fc-who-n,.fc-visning--top .fc-visning-label{display:none}
+  .fc-visning--top>summary{grid-template-columns:24px 12px;gap:3px;padding:5px 7px}
+  .fc-top-logud{padding:0 6px;font-size:var(--fc-t-s)}
+  .fc-sidehoved{min-height:52px;padding:7px 10px;gap:8px}
+  .fc-sidehoved h1{font-size:var(--fc-t-xl);white-space:normal}
+  .fc-sidehoved .fc-btn{min-height:38px;padding-inline:9px;font-size:var(--fc-t-s)}
+  .fc-menu-skaerm{background:var(--fc-overlay)}
+  .fc-flydende-nav{position:fixed;inset:0 auto 0 0;display:block;width:min(340px,calc(100vw - 36px));max-width:none;background:var(--fc-navy);box-shadow:var(--fc-shadow)}
+  .fc-flydende-moduler,.fc-flydende-undermenu{width:100%;min-width:0;max-height:none;height:100dvh;border:0;border-radius:0;box-shadow:none}
+  .fc-flydende-mobilhoved{display:flex;align-items:center;justify-content:space-between;min-height:58px;padding:9px 12px;border-bottom:1px solid var(--fc-navy-3)}
+  .fc-flydende-mobilhoved strong{font-size:var(--fc-t-l)}
+  .fc-flydende-undermenu{display:none;background:var(--fc-navy)}
+  .fc-mobil-undermenu .fc-flydende-moduler{display:none}
+  .fc-mobil-undermenu .fc-flydende-undermenu{display:flex}
+  .fc-flydende-undermenu>header{grid-template-columns:auto minmax(0,1fr) auto;min-height:58px;padding:9px 12px}
+  .fc-flydende-undermenu>header strong{text-align:center}
+  .fc-flydende-tilbage{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 8px;border:0;border-radius:7px;background:transparent;color:var(--veyro-white);font:inherit;cursor:pointer}
+  .fc-flydende-tilbage:hover{background:var(--fc-navy-3)}
+  .fc-flydende-scroll{flex:1;padding-bottom:max(14px,env(safe-area-inset-bottom))}
+}
+
+/* Indberetningsarbejdsrummene bruger den plads, der er tilbage efter den
+   fælles top og siderækken. På mobil går panelerne tilbage til dokumentflow,
+   så alle handlinger fortsat kan nås uden sammenpressede kolonner. */
+@media(min-width:1251px){
+  .fc-main--indberetninger{height:100%;min-height:0}
+  .fc-main--indberetninger .fc-slot{display:flex;flex-direction:column;min-height:0}
+  .fc-main--indberetninger .fc-slot>.fc-workspace-zoom{display:flex;flex:1 1 0;flex-direction:column;min-height:0}
+  .fc-main--indberetninger :is(.veyro-module--facility,.veyro-module--fleet,.fleet-v2-embedded){display:flex;flex:1 1 0;flex-direction:column;height:auto;min-height:0}
+  .fc-main--indberetninger .veyro-module--facility>.workflow-page{display:grid;flex:1 1 0;height:auto;min-height:0;grid-template-rows:minmax(0,1fr)}
+  .fc-main--indberetninger .triage-layout.facility-three-panel{height:100%;min-height:0;align-items:stretch}
+  .fc-main--indberetninger .veyro-module--facility :is(.triage-list,.triage-detail,.triage-editor){height:100%;min-height:0;overflow-y:auto;scrollbar-gutter:stable}
+  .fc-main--indberetninger .veyro-module--facility .triage-editor{position:static}
+  .fc-main--indberetninger .fleet-v2-embedded>.triage-page{flex:1 1 0;height:auto;min-height:0;overflow:hidden;grid-template-rows:45px minmax(0,1fr)}
+}
+
+.veyro-module--facility .triage-case-link{align-self:flex-start;flex:0 0 auto;min-height:36px;height:auto;padding:7px 11px;white-space:nowrap}
+
+@media print{
+  .fc-shell-start,.fc-shell-brugerfunktioner,.fc-flydende-nav,.fc-menu-skaerm{display:none!important}
+}
+
 /* Livekortet er den eneste integrerede V1-side, der skal bruge hele den
    resterende arbejdshøjde. Gør slotten til en højdekæde uden at ændre de
    øvrige modulers naturlige dokumentflow. */

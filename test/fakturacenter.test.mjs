@@ -68,7 +68,7 @@ describe("Fakturacenteret er en skærm, ikke en node", () => {
   test("login og AppShell bruger det samme Veyro-logo", () => {
     assert.match(LOGIN, /import VeyroLogo from "\.\.\/fleet\/VeyroLogo\.jsx"/);
     assert.match(LOGIN, /<VeyroLogo variant="login" \/>/);
-    assert.match(APPSHELL, /<VeyroLogo variant="sidebar" \/>/);
+    assert.match(APPSHELL, /<VeyroLogo variant="header" \/>/);
     assert.doesNotMatch(LOGIN, /Fleet<b>Control<\/b>/);
   });
 
