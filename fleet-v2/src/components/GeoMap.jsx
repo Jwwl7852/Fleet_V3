@@ -58,6 +58,30 @@ function clusterMarkers(markers, isolatedUnitId = null) {
   return groups;
 }
 
+function clusterView(items, currentZoom) {
+  const positions = items.map((item) => item.position).filter(hasValidCoordinates);
+  const bounds = positions.reduce((result, position) => ({
+    minLat: Math.min(result.minLat, position.latitude), maxLat: Math.max(result.maxLat, position.latitude),
+    minLng: Math.min(result.minLng, position.longitude), maxLng: Math.max(result.maxLng, position.longitude),
+  }), { minLat: 90, maxLat: -90, minLng: 180, maxLng: -180 });
+  const center = {
+    latitude: (bounds.minLat + bounds.maxLat) / 2,
+    longitude: (bounds.minLng + bounds.maxLng) / 2,
+  };
+  let targetZoom = clamp(currentZoom + 1, 5, 18);
+  let separated = false;
+  while (targetZoom <= 18) {
+    const projected = positions.map((position) => ({
+      position,
+      ...project(position.latitude, position.longitude, targetZoom),
+    }));
+    separated = clusterMarkers(projected).every((group) => group.items.length === 1);
+    if (separated || targetZoom === 18) break;
+    targetZoom += 1;
+  }
+  return { center, zoom: targetZoom, separated };
+}
+
 export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId = null, focusUnitId = null, focusRequestId = 0, followUnitId = null, onSelect, onOpenUnit, onToggleFollow, compact = false, controls = true, now = new Date().toISOString(), ariaLabel = "Geografisk kort med demopositioner", routeSegments = [], routeGaps = [], routeStops = [], routeCursor = null, showMarkers = true }) {
   const initial = useMemo(() => fitView(positions, compact ? 480 : 820, compact ? 240 : 520), []); // Positionsopdateringer må ikke flytte brugerens udsnit.
   const [center, setCenter] = useState(initial.center);
@@ -190,16 +214,24 @@ export function GeoMap({ positions = [], units = [], selectedUnitId, popupUnitId
     {showMarkers ? <div className="map-markers">{groups.map((group) => {
       if (group.items.length > 1) {
         const key = group.items.map((item) => item.position.unitId).join("-");
-        return <button aria-expanded={activeCluster?.key === key} aria-label={`${group.items.length} enheder tæt på hinanden`} className="geo-cluster" key={key} onClick={() => setActiveCluster((current) => current?.key === key ? null : { key, x: group.x, y: group.y, items: group.items })} style={{ left: group.x, top: group.y }} type="button">{group.items.length}</button>;
+        return <button aria-expanded={activeCluster?.key === key} aria-label={`${group.items.length} enheder tæt på hinanden – zoom ind`} className="geo-cluster" key={key} onClick={() => {
+          const target = clusterView(group.items, zoom);
+          setCenter(target.center);
+          setZoom(target.zoom);
+          setActiveUnitId(null);
+          setActiveCluster(target.separated ? null : { key, x: size.width / 2, y: size.height / 2, items: group.items });
+        }} style={{ left: group.x, top: group.y }} type="button">{group.items.length}</button>;
       }
       const position = group.items[0].position;
       const unit = units.find((item) => item.id === position.unitId);
       const freshness = positionFreshness(position, now);
       const liveStatus = liveOperationalStatus(position, now);
       const hasHeading = position.heading !== null && position.heading !== undefined && position.heading !== "" && Number.isFinite(Number(position.heading));
+      const showDirection = liveStatus === "moving" && hasHeading;
+      const markerShape = liveStatus === "holding" ? "geo-direction-ring" : "geo-direction-dot";
       const unitName = [unit?.make, unit?.model].filter(Boolean).join(" ") || unit?.categoryName || "Navn ikke oplyst";
       const tooltipId = `geo-marker-tooltip-${position.unitId}`;
-      return <button aria-describedby={tooltipId} aria-label={`${unit?.number || "Ukendt enhed"}, ${unitName}, ${LIVE_STATUS_LABELS[liveStatus]}, ${freshness.label}`} className={`geo-marker ${liveStatus}${freshness.stale ? " stale" : ""}${selectedUnitId === position.unitId ? " selected" : ""}${highlightedUnitId === position.unitId ? " located" : ""}`} key={position.unitId} onClick={() => { setActiveUnitId(position.unitId); setActiveCluster(null); onSelect?.(position.unitId); }} style={{ left: group.x, top: group.y }} type="button"><span aria-hidden="true" className={hasHeading ? "geo-direction" : "geo-direction-dot"} style={hasHeading ? { transform: `rotate(${Number(position.heading)}deg)` } : undefined}>{hasHeading ? "▲" : ""}</span><span className="geo-marker-tooltip" id={tooltipId} role="tooltip"><strong>{unit?.number || position.unitId} · {unitName}</strong>{unit?.registration ? <small>Nummerplade: {unit.registration}</small> : null}<small>{LIVE_STATUS_LABELS[liveStatus]} · Seneste position {localDateTime(position.measuredAt)}</small>{freshness.stale ? <em>{freshness.label}</em> : null}</span></button>;
+      return <button aria-describedby={tooltipId} aria-label={`${unit?.number || "Ukendt enhed"}, ${unitName}, ${LIVE_STATUS_LABELS[liveStatus]}, ${freshness.label}`} className={`geo-marker ${liveStatus}${freshness.stale ? " stale" : ""}${selectedUnitId === position.unitId ? " selected" : ""}${highlightedUnitId === position.unitId ? " located" : ""}`} key={position.unitId} onClick={() => { setActiveUnitId(position.unitId); setActiveCluster(null); onSelect?.(position.unitId); }} style={{ left: group.x, top: group.y }} type="button"><span aria-hidden="true" className={showDirection ? "geo-direction" : markerShape} style={showDirection ? { transform: `rotate(${Number(position.heading)}deg)` } : undefined}>{showDirection ? "▲" : ""}</span><span className="geo-marker-tooltip" id={tooltipId} role="tooltip"><strong>{unit?.number || position.unitId} · {unitName}</strong>{unit?.registration ? <small>Nummerplade: {unit.registration}</small> : null}<small>{LIVE_STATUS_LABELS[liveStatus]} · Seneste position {localDateTime(position.measuredAt)}</small>{freshness.stale ? <em>{freshness.label}</em> : null}</span></button>;
     })}</div> : null}
     {activeMarker && activeUnit ? <section className="geo-unit-popup" aria-label={`Detaljer for ${activeUnit.number}`} style={{ left: clamp(activeMarker.x, 126, Math.max(126, size.width - 126)), top: clamp(activeMarker.y - 18, 116, Math.max(116, size.height - 80)) }}>
       <header><div><span className={`position-dot ${activeMarker.position.connectionStatus}`} /><strong>{activeUnit.number}</strong></div><button type="button" aria-label="Luk enhedsdetaljer" onClick={() => { setActiveUnitId(null); setDismissedUnitId(visiblePopupUnitId); }}>×</button></header>

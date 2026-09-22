@@ -34,10 +34,17 @@ describe("Livekortets kompakte enhedsmarkører", () => {
     expect(tooltip.textContent).toContain("Seneste position");
   });
 
-  it("bruger en rund prik ved ukendt retning og bevarer statusfarven", () => {
-    render(<GeoMap controls={false} now={NOW} positions={[position("unit-2", { heading: null, movementState: "stationary", speedKph: 0 })]} units={units} />);
+  it("bruger en rund ring ved stilstand, selv når en gammel retning findes", () => {
+    render(<GeoMap controls={false} now={NOW} positions={[position("unit-2", { heading: 270, movementState: "stationary", speedKph: 0 })]} units={units} />);
     const marker = screen.getByRole("button", { name: /TEST-202, Veyro Trailer, Holder/ });
     expect(marker.classList.contains("holding")).toBe(true);
+    expect(marker.querySelector(".geo-direction-ring")).toBeTruthy();
+    expect(marker.querySelector(".geo-direction")).toBeNull();
+  });
+
+  it("falder tilbage til en prik, når en kørende enhed ikke har en retning", () => {
+    render(<GeoMap controls={false} now={NOW} positions={[position("unit-1", { heading: null })]} units={units} />);
+    const marker = screen.getByRole("button", { name: /TEST-101, Veyro Servicebil, Kører/ });
     expect(marker.querySelector(".geo-direction-dot")).toBeTruthy();
     expect(marker.querySelector(".geo-direction")).toBeNull();
   });
@@ -53,11 +60,20 @@ describe("Livekortets kompakte enhedsmarkører", () => {
   it("isolerer og fremhæver den fundne enhed fra en tæt markørgruppe", () => {
     const positions = [position("unit-1", { heading: 45 }), position("unit-2", { heading: null })];
     const { rerender } = render(<GeoMap controls={false} now={NOW} positions={positions} units={units} />);
-    expect(screen.getByRole("button", { name: "2 enheder tæt på hinanden" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "2 enheder tæt på hinanden – zoom ind" })).toBeTruthy();
     rerender(<GeoMap controls={false} focusRequestId={1} focusUnitId="unit-1" now={NOW} positions={positions} units={units} />);
     const located = screen.getByRole("button", { name: /TEST-101, Veyro Servicebil/ });
     expect(located.classList.contains("located")).toBe(true);
-    expect(screen.queryByRole("button", { name: "2 enheder tæt på hinanden" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /2 enheder tæt på hinanden/ })).toBeNull();
+  });
+
+  it("zoomer direkte ind på en klynge, så de enkelte enheder bliver synlige", () => {
+    const positions = [position("unit-1", { longitude: 12.5683 }), position("unit-2", { longitude: 12.5693 })];
+    render(<GeoMap controls={false} now={NOW} positions={positions} units={units} />);
+    fireEvent.click(screen.getByRole("button", { name: "2 enheder tæt på hinanden – zoom ind" }));
+    expect(screen.queryByRole("button", { name: /enheder tæt på hinanden/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /TEST-101, Veyro Servicebil/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /TEST-202, Veyro Trailer/ })).toBeTruthy();
   });
 
   it("markerer en gammel position tydeligt i tooltippen", () => {
