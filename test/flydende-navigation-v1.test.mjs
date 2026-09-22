@@ -28,6 +28,21 @@ test("menuen lukker kontrolleret og beskytter mod klik gennem baggrunden", () =>
   assert.ok(shell.includes("document.querySelector('[aria-modal=\"true\"]"));
 });
 
+test("hver åbning starter med moduloversigten uden automatisk undermenu", () => {
+  const aabnMenu = shell.match(/const aabnMenu = \(\) => \{([\s\S]*?)\n  \};/)?.[1] || "";
+  assert.ok(aabnMenu.includes("setValgtMenuModul(null)"));
+  assert.doesNotMatch(aabnMenu, /aktivtToppunkt/);
+  assert.ok(shell.includes('aria-current={aktiv ? "page" : undefined} aria-pressed={valgt} aria-expanded={valgt}'));
+});
+
+test("desktop-hover åbner og lukker undermenuen forsinket over hele panelområdet", () => {
+  assert.ok(shell.includes('matchMedia("(hover: hover) and (pointer: fine)")'));
+  assert.match(shell, /setTimeout\(\(\) => \{\s*setValgtMenuModul\(m\.key\);[\s\S]*?\}, 120\)/);
+  assert.match(shell, /setTimeout\(\(\) => \{\s*setValgtMenuModul\(null\);[\s\S]*?\}, 180\)/);
+  assert.ok(shell.includes("onPointerEnter={holdUndermenuAaben} onPointerLeave={planlaegLukUndermenu}"));
+  assert.ok(shell.includes("onPointerEnter={() => planlaegToppunkt(m)} onClick={() => vaelgToppunkt(m)}"));
+});
+
 test("mobilmenuen bruger samme panel med Tilbage, Luk og låst baggrund", () => {
   assert.ok(shell.includes('className="fc-flydende-tilbage"'));
   assert.ok(shell.includes('aria-label="Luk menu"'));

@@ -85,6 +85,8 @@ export default function AppShell() {
   const [fakturacenterAntal, setFakturacenterAntal] = useState({});
   const menuKnap = useRef(null);
   const menuPanel = useRef(null);
+  const hoverAabnTimer = useRef(null);
+  const hoverLukTimer = useRef(null);
   const visningDetaljer = useRef(null);
   const { post: navvisning } = usePost("navvisning", bruger?.uid || null);
 
@@ -110,24 +112,59 @@ export default function AppShell() {
     .filter((m) => !m.born?.length || synligeBorn(m).length)
     .filter((m) => !erSkjultVedNavvisning(m.key, navvisning));
   const harUndermenu = (m) => synligeBorn(m).length > 0 || (m.fakturacenterSektioner || []).length > 0;
-  const aktivtToppunkt = synligeToppunkter.find((m) => m.key === hoved.key) || null;
   const valgtToppunkt = synligeToppunkter.find((m) => m.key === valgtMenuModul) || null;
   const aktivFakturacenterSektion = new URLSearchParams(location.search).get("sektion");
 
+  const erDesktopHover = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const rydHoverTimere = () => {
+    window.clearTimeout(hoverAabnTimer.current);
+    window.clearTimeout(hoverLukTimer.current);
+    hoverAabnTimer.current = null;
+    hoverLukTimer.current = null;
+  };
+  const holdUndermenuAaben = () => {
+    window.clearTimeout(hoverLukTimer.current);
+    hoverLukTimer.current = null;
+  };
+  const planlaegToppunkt = (m) => {
+    if (!erDesktopHover()) return;
+    holdUndermenuAaben();
+    window.clearTimeout(hoverAabnTimer.current);
+    hoverAabnTimer.current = window.setTimeout(() => {
+      setValgtMenuModul(m.key);
+      hoverAabnTimer.current = null;
+    }, 120);
+  };
+  const planlaegLukUndermenu = () => {
+    if (!erDesktopHover()) return;
+    window.clearTimeout(hoverAabnTimer.current);
+    hoverAabnTimer.current = null;
+    window.clearTimeout(hoverLukTimer.current);
+    hoverLukTimer.current = window.setTimeout(() => {
+      setValgtMenuModul(null);
+      hoverLukTimer.current = null;
+    }, 180);
+  };
+
   const lukMenu = ({ fokus = true } = {}) => {
+    rydHoverTimere();
     setMenuAaben(false);
+    setValgtMenuModul(null);
     setMobilUndermenu(false);
     if (fokus) window.requestAnimationFrame(() => menuKnap.current?.focus());
   };
   const aabnMenu = () => {
     if (document.querySelector('[aria-modal="true"], .fleet-dialog-backdrop, .procure-modal-layer, .procure-inventory-dialog-backdrop')) return;
-    setValgtMenuModul(aktivtToppunkt && harUndermenu(aktivtToppunkt) ? aktivtToppunkt.key : null);
+    rydHoverTimere();
+    setValgtMenuModul(null);
     setMobilUndermenu(false);
     setMenuAaben(true);
   };
   const vaelgToppunkt = (m) => {
-    setValgtMenuModul(m.key);
-    if (window.matchMedia("(max-width: 720px)").matches) setMobilUndermenu(true);
+    rydHoverTimere();
+    const erMobil = window.matchMedia("(max-width: 720px)").matches;
+    setValgtMenuModul((valgt) => erMobil || valgt !== m.key ? m.key : null);
+    if (erMobil) setMobilUndermenu(true);
   };
   const navigerFraMenu = () => lukMenu({ fokus: false });
 
@@ -192,8 +229,11 @@ export default function AppShell() {
 
   useEffect(() => {
     setMenuAaben(false);
+    setValgtMenuModul(null);
     setMobilUndermenu(false);
   }, [pathname, location.search]);
+
+  useEffect(() => () => rydHoverTimere(), []);
 
   const renderUndermenu = (m) => {
     if (!m) return null;
@@ -271,7 +311,8 @@ export default function AppShell() {
               event.preventDefault(); event.stopPropagation(); lukMenu();
             }} />
             <nav ref={menuPanel} id="fc-flydende-navigation"
-              className={`fc-flydende-nav${mobilUndermenu ? " fc-mobil-undermenu" : ""}`} aria-label="Hovednavigation">
+              className={`fc-flydende-nav${mobilUndermenu ? " fc-mobil-undermenu" : ""}`} aria-label="Hovednavigation"
+              onPointerEnter={holdUndermenuAaben} onPointerLeave={planlaegLukUndermenu}>
               <section className="fc-flydende-moduler" aria-label="Moduler">
                 <header className="fc-flydende-mobilhoved"><strong>Menu</strong>
                   <button type="button" onClick={() => lukMenu()} aria-label="Luk menu">×</button></header>
@@ -286,7 +327,8 @@ export default function AppShell() {
                         const valgt = valgtMenuModul === m.key;
                         return harUndermenu(m) ? <button key={m.key} type="button"
                           className={aktiv ? "fc-flydende-modul fc-on" : "fc-flydende-modul"}
-                          aria-pressed={valgt} onClick={() => vaelgToppunkt(m)}>
+                          aria-current={aktiv ? "page" : undefined} aria-pressed={valgt} aria-expanded={valgt}
+                          onPointerEnter={() => planlaegToppunkt(m)} onClick={() => vaelgToppunkt(m)}>
                           <Navigationsikon navn={m.key} /><span>{m.label}</span><span className="fc-flydende-pil" aria-hidden="true">›</span>
                         </button> : <NavLink key={m.key} to={m.sti} end={m.sti === "/"} onClick={navigerFraMenu}
                           className={aktiv ? "fc-flydende-modul fc-on" : "fc-flydende-modul"}
