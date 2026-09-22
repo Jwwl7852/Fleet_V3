@@ -10,6 +10,7 @@ import {
   mapServerRequirementToFleet,
   mapServerServiceHistoryToFleet,
   mapFleetUnitToShared,
+  mapSharedUnitPositionToFleet,
   mapSharedUnitToFleet,
   requirementInputToServer,
 } from "../src/fleet/fleet-service-client.js";
@@ -43,6 +44,29 @@ describe("FLEET-serviceklientens autoritative grænse", () => {
     assert.equal(mapped.number, "Bil 104");
     assert.equal(mapped.meter, 298450);
     assert.equal(mapped.source, "shared-unit-register");
+  });
+
+  it("projekterer en gyldig liveposition med samme stabile enheds-ID", () => {
+    const mapped = mapSharedUnitPositionToFleet({
+      id: "kt-104", tenantId: "tenant-a",
+      fleetLivePosition: {
+        latitude: 55.6761, longitude: 12.5683, label: "København K",
+        measuredAt: "2026-09-22T08:00:00.000Z", receivedAt: "2026-09-22T08:00:04.000Z",
+        movementState: "moving", connectionStatus: "online", speedKph: 36, heading: 75,
+        demo: true,
+      },
+    });
+    assert.equal(mapped.unitId, "kt-104");
+    assert.equal(mapped.heading, 75);
+    assert.equal(mapped.movementState, "moving");
+    assert.equal(mapped.demo, true);
+  });
+
+  it("opfinder ikke en position, når koordinater eller måletidspunkt mangler", () => {
+    assert.equal(mapSharedUnitPositionToFleet({ id: "uden-position" }), null);
+    assert.equal(mapSharedUnitPositionToFleet({
+      id: "ugyldig", fleetLivePosition: { latitude: 95, longitude: 12, measuredAt: "ikke-en-dato" },
+    }), null);
   });
 
   it("løser det brugerrettede typenavn fra kundens stabile kategori-ID", () => {

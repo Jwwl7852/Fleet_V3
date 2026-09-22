@@ -105,6 +105,48 @@ export function mapSharedUnitToFleet(unit = {}, resourceTypes = []) {
   };
 }
 
+/**
+ * Projekterer kun en position, når det fælles enhedsregister faktisk bærer
+ * gyldige koordinater og et gyldigt måletidspunkt. Dermed får den integrerede
+ * FLEET-visning samme stabile enheds-id som stamdataene uden at gætte en
+ * position for enheder, der ikke har positionsdata.
+ */
+export function mapSharedUnitPositionToFleet(unit = {}) {
+  const position = unit.fleetLivePosition;
+  const latitude = Number(position?.latitude);
+  const longitude = Number(position?.longitude);
+  const measuredAt = position?.measuredAt || position?.updatedAt || null;
+  if (!unit.id || !position
+    || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
+    || !Number.isFinite(longitude) || longitude < -180 || longitude > 180
+    || !Number.isFinite(Date.parse(measuredAt))) return null;
+
+  const numericOrNull = (value) => value === "" || value == null || !Number.isFinite(Number(value))
+    ? null : Number(value);
+  const heading = numericOrNull(position.heading);
+  return {
+    id: position.id || `position-${unit.id}`,
+    tenantId: unit.tenantId,
+    unitId: unit.id,
+    latitude,
+    longitude,
+    label: String(position.label || "Position uden adresse").trim(),
+    measuredAt,
+    receivedAt: position.receivedAt || measuredAt,
+    lastContactAt: position.lastContactAt || position.receivedAt || measuredAt,
+    movementState: ["moving", "stationary", "unknown"].includes(position.movementState)
+      ? position.movementState : "unknown",
+    connectionStatus: ["online", "degraded", "offline", "unknown"].includes(position.connectionStatus)
+      ? position.connectionStatus : "unknown",
+    accuracyMeters: numericOrNull(position.accuracyMeters),
+    speedKph: numericOrNull(position.speedKph),
+    heading,
+    source: position.source || "shared-unit-register",
+    alarms: Array.isArray(position.alarms) ? position.alarms : [],
+    demo: position.demo === true,
+  };
+}
+
 const sharedArtFor = (unit, current) => {
   if (unit.sharedArt) return unit.sharedArt;
   if (current?.art) return current.art;

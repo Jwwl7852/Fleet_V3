@@ -140,6 +140,14 @@ export function workforcePatch({ uid, now = Date.now() }) {
         equipment: { towHook: false, trailerCoupling: false, crane: false, lift: false },
         notes: "Kun syntetiske testdata", updatedAt: new Date(now).toISOString(),
       },
+      fleetLivePosition: {
+        latitude: 55.6761, longitude: 12.5683, label: "København K",
+        measuredAt: new Date(now - 15_000).toISOString(),
+        receivedAt: new Date(now - 12_000).toISOString(),
+        movementState: "moving", connectionStatus: "online",
+        accuracyMeters: 6, speedKph: 36, heading: 75,
+        source: FIXTURE, demo: true,
+      },
     },
     [`tenants/${TENANT_ID}/koeretoejer/review-unit-logistics`]: {
       art: "varevogn",
@@ -156,6 +164,14 @@ export function workforcePatch({ uid, now = Date.now() }) {
         meterType: "km", meter: 48000,
         equipment: { towHook: false, trailerCoupling: false, crane: false, lift: false },
         notes: "Kun syntetiske testdata", updatedAt: new Date(now).toISOString(),
+      },
+      fleetLivePosition: {
+        latitude: 55.6761, longitude: 12.5693, label: "København K",
+        measuredAt: new Date(now - 20_000).toISOString(),
+        receivedAt: new Date(now - 18_000).toISOString(),
+        movementState: "stationary", connectionStatus: "online",
+        accuracyMeters: 5, speedKph: 0, heading: 270,
+        source: FIXTURE, demo: true,
       },
     },
     [`tenants/${TENANT_ID}/fleetServiceKrav/review-service-overdue`]: {

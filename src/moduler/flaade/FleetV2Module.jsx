@@ -17,6 +17,7 @@ import {
   mapServerRequirementToFleet,
   mapServerServiceHistoryToFleet,
   mapSharedUnitToFleet,
+  mapSharedUnitPositionToFleet,
   mapFleetUnitToShared,
 } from "../../fleet/fleet-service-client.js";
 import { gemTransaktion } from "../../fleet/skriv.js";
@@ -97,6 +98,7 @@ export default function FleetV2Module() {
   const serviceBackend = useMemo(() => {
     const rawUnits = JSON.parse(serviceUnitsPayload);
     const units = rawUnits.map((unit) => mapSharedUnitToFleet(unit, sharedResourceCategories));
+    const positions = rawUnits.map(mapSharedUnitPositionToFleet).filter(Boolean);
     const requirements = JSON.parse(serviceRequirementsPayload).map(mapServerRequirementToFleet);
     const occurrences = JSON.parse(serviceOccurrencesPayload).map(mapServerOccurrenceToFleet);
     const reports = JSON.parse(serviceReportsPayload).map(mapServerReportToFleet);
@@ -117,6 +119,7 @@ export default function FleetV2Module() {
       serviceCategories: sharedCategories,
       resourceOptions: { categories: sharedResourceCategories, obdHardware: sharedObdHardware },
       relations: {
+        positions,
         serviceRequirements: requirements,
         serviceOccurrences: occurrences,
         reports,

@@ -77,4 +77,19 @@ describe("Version 1 moduloverblik – WORKFORCE emulatorfixture", () => {
     assert.equal(types.filter((type) => type.aktiv === false).length, 1);
     assert.equal(patch[`tenants/${TENANT_ID}/koeretoejer/review-unit-service`].kategoriId, "review-servicekoeretoej");
   });
+
+  it("leverer friske syntetiske positioner til de fælles enheds-id'er", () => {
+    const now = Date.parse("2026-09-22T10:00:00Z");
+    const patch = workforcePatch({ uid: "uid-review", now });
+    const moving = patch[`tenants/${TENANT_ID}/koeretoejer/review-unit-service`].fleetLivePosition;
+    const stationary = patch[`tenants/${TENANT_ID}/koeretoejer/review-unit-logistics`].fleetLivePosition;
+    assert.equal(moving.movementState, "moving");
+    assert.equal(moving.heading, 75);
+    assert.equal(stationary.movementState, "stationary");
+    assert.equal(stationary.speedKph, 0);
+    assert.ok(now - Date.parse(moving.measuredAt) < 120_000);
+    assert.notEqual(moving.longitude, stationary.longitude);
+    assert.equal(moving.demo, true);
+    assert.equal(stationary.demo, true);
+  });
 });
