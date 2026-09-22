@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("react-router-dom", () => ({ useLocation: () => ({ state: null }) }));
 vi.mock("../../src/firebase.js", () => ({
   auth: null,
+  brugerLokaleEmulatorer: false,
   miljoe: "test",
   offentligLoginKontekstUrl: "https://login.example/kontekst",
   projektId: "demo-login-test",
@@ -21,6 +22,11 @@ vi.mock("../../src/fleet/login-billeder.js", () => {
     vaelgLoginBillede: ({ billeder: tilladte }) => tilladte[0] || null,
   };
 });
+
+vi.mock("../../src/fleet/login-kundekonfiguration.js", () => ({
+  hentOffentligLoginKontekst: vi.fn(),
+  lokalSyntetiskLoginKontekst: () => null,
+}));
 
 import LoginE from "../../src/moduler/LoginE.jsx";
 import { INAKTIVITET_LOGOUT_BESKED_NOGLE } from "../../src/fleet/inaktivitet.js";

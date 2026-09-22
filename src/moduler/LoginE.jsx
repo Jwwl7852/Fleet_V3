@@ -2,7 +2,13 @@
  * ejet af firebase.js og App.jsx; dette er alene loginbrugerfladen. */
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { auth, miljoe, offentligLoginKontekstUrl, projektId } from "../firebase.js";
+import {
+  auth,
+  brugerLokaleEmulatorer,
+  miljoe,
+  offentligLoginKontekstUrl,
+  projektId,
+} from "../firebase.js";
 import { Knap } from "../fleet/ui.jsx";
 import VeyroLogo from "../fleet/VeyroLogo.jsx";
 import {
@@ -10,7 +16,10 @@ import {
   loginSenesteBilledeNøgle,
   vaelgLoginBillede,
 } from "../fleet/login-billeder.js";
-import { hentOffentligLoginKontekst } from "../fleet/login-kundekonfiguration.js";
+import {
+  hentOffentligLoginKontekst,
+  lokalSyntetiskLoginKontekst,
+} from "../fleet/login-kundekonfiguration.js";
 import { INAKTIVITET_LOGOUT_BESKED_NOGLE } from "../fleet/inaktivitet.js";
 
 const FEJLTEKST = {
@@ -47,8 +56,12 @@ export default function LoginE({ uprovisioneret = false, hentLoginKontekst = hen
   useEffect(() => {
     const controller = new AbortController();
     let aktiv = true;
-    hentLoginKontekst({ url: offentligLoginKontekstUrl, signal: controller.signal }).then((kontekst) => {
-      if (!aktiv || kontekst?.status !== "kendt") return;
+    hentLoginKontekst({ url: offentligLoginKontekstUrl, signal: controller.signal }).then((hentetKontekst) => {
+      if (!aktiv) return;
+      const kontekst = hentetKontekst?.status === "kendt"
+        ? hentetKontekst
+        : lokalSyntetiskLoginKontekst({ brugerLokaleEmulatorer });
+      if (!kontekst) return;
       const billeder = loginBillederForModuler(kontekst.moduler);
       const nøgle = loginSenesteBilledeNøgle(kontekst.contextId);
       const valgt = vaelgLoginBillede({ billeder, forrigeId: window.localStorage.getItem(nøgle) });

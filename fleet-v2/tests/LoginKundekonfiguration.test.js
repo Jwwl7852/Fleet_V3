@@ -1,7 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
-import { hentOffentligLoginKontekst, valideOffentligLoginKontekst } from "../../src/fleet/login-kundekonfiguration.js";
+import {
+  hentOffentligLoginKontekst,
+  lokalSyntetiskLoginKontekst,
+  valideOffentligLoginKontekst,
+} from "../../src/fleet/login-kundekonfiguration.js";
 
 describe("offentlig loginkontekst", () => {
+  it("giver kun hele det generelle katalog til den eksplicitte lokale emulator", () => {
+    expect(lokalSyntetiskLoginKontekst()).toBeNull();
+    const kontekst = lokalSyntetiskLoginKontekst({ brugerLokaleEmulatorer: true });
+    expect(kontekst.status).toBe("kendt");
+    expect(kontekst.contextId).toBe("lokal_demo");
+    expect(kontekst.moduler).toEqual([
+      "fleet", "facility", "planning", "procure", "fakturacenter",
+      "workforce", "warehouse", "unit-booking",
+    ]);
+  });
+
   it("accepterer kun en komplet projektion med kendte moduler", () => {
     expect(valideOffentligLoginKontekst({ version: 1, contextId: "kunde_public", moduler: ["fleet", "fleet", "workforce"] })).toEqual({
       status: "kendt", contextId: "kunde_public", moduler: ["fleet", "workforce"],

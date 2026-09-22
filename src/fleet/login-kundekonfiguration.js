@@ -9,6 +9,16 @@ export function valideOffentligLoginKontekst(data) {
   return { status: "kendt", contextId: data.contextId, moduler };
 }
 
+/**
+ * Den isolerede lokale V1-emulator har ingen kundesecret. Den må derfor bruge
+ * hele det statiske, generelle billedkatalog, men kun når firebase.js allerede
+ * har bevist localhost + demo-projekt + eksplicit emulatorflag.
+ */
+export function lokalSyntetiskLoginKontekst({ brugerLokaleEmulatorer = false } = {}) {
+  if (!brugerLokaleEmulatorer) return null;
+  return { status: "kendt", contextId: "lokal_demo", moduler: [...LOGIN_MODULER] };
+}
+
 export async function hentOffentligLoginKontekst({ url, fetchFn = fetch, signal } = {}) {
   if (!url) return { status: "ukendt", moduler: [] };
   try {
